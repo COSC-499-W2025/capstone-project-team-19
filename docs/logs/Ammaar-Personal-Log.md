@@ -1,6 +1,6 @@
 # Personal Log - Ammaar
 
-## Monday 15th - Sunday 21st September
+## (Week 3) Monday 15th - Sunday 21st September
 
 ![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Sept-15-21.png)
 
