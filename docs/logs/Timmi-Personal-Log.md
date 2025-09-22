@@ -1,6 +1,6 @@
 # Personal Log - Timmi
 
-## Monday 15th - Sunday 21st September
+## (Week 3) Monday 15th - Sunday 21st September
 
 ![Screenshot of this week's peer eval](./screenshots/Timmi%20Sept15-21.PNG)
 
