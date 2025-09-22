@@ -1,5 +1,7 @@
 # Personal Log - Salma
 
+## (Week 3) Monday 15th - Sunday 21st September
+
 ![Screenshot of week 3 peer eval](./screenshots/Salma-Sept15-21.png)
 
 Week recap:
