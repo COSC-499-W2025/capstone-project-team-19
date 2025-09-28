@@ -57,15 +57,17 @@ Plan for the next cycle: Discussing about team's project proposal and architectu
 ## (Week 4) Monday 22nd - Sunday 28th September
 
 **Week recap:**
-The team worked on building the architecture diagram and writing the project proposal. On Wednesday, we conversed with other teams about their architecture diagrams, then regrouped to discuss what we liked, didn't like, and what we wanted to add/expand on in our own diagram. 
+The team worked on building the architecture diagram and writing the project proposal. On Wednesday, we conversed with other teams about their architecture diagrams, then regrouped to discuss what we liked, didn't like, and what we wanted to add/expand on in our own diagram. We also finally decided to work on native app instead of web app considering the challenges of learning new things that might be useful for us in the future.
 
 For the project proposal, we divided writing responsibilities among the team. We also split up research tasks for the different file type functions. Team members researched approaches for text (PDF, DOCX), images, videos, audio, csv, and code analysis as well as retrieving data from online sources (Google Drive and Github). We integrated our research into the architecture diagram, and the dashboard visualization was expanded to include them. 
+
 
 ### Differences/Similarities with Other Teams' Architecture Diagrams
 
 **Team 14**
 
 - Included a portfolio builder, we did not
+- Connect with github that made us decided to also include in our features
 - Plan to leave room for a future web frontend, instead of keeping it as an app
 
 **Team 15**
