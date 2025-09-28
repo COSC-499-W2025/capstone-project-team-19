@@ -53,3 +53,29 @@ Details:
 - They added HR systems and hiring managers.
 
 Plan for the next cycle: Discussing about team's project proposal and architecture diagram that will be submitted next week
+
+## (Week 4) Monday 22nd - Sunday 28th September
+
+**Week recap:**
+The team worked on building the architecture diagram and writing the project proposal. On Wednesday, we conversed with other teams about their architecture diagrams, then regrouped to discuss what we liked, didn't like, and what we wanted to add/expand on in our own diagram. 
+
+For the project proposal, we divided writing responsibilities among the team. We also split up research tasks for the different file type functions. Team members researched approaches for text (PDF, DOCX), images, videos, audio, csv, and code analysis as well as retrieving data from online sources (Google Drive and Github). We integrated our research into the architecture diagram, and the dashboard visualization was expanded to include them. 
+
+### Differences/Similarities with Other Teams' Architecture Diagrams
+
+**Team 14**
+
+- Included a portfolio builder, we did not
+- Plan to leave room for a future web frontend, instead of keeping it as an app
+
+**Team 15**
+
+- Not using a database, keeping everything local
+- Not supporting music, audio, or video files (we plan to)
+
+**Team 18**
+
+- Also using Electron to support cross-platform desktop development
+
+Plan for next cycle: 
+Build the Data Flow Diagram (DFD) that must be submitted next week
