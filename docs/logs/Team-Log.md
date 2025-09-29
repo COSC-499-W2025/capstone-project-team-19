@@ -11,11 +11,11 @@ Our team has a feature where we ask for user's permission, while other team does
 
 ### Additional Context
 
-| Team | Highlights |
-| --- | --- |
-| Team 20 | **Functional:** More detailed file classification (e.g., programming language and type).<br>**Functional:** Analysis runs only on new files to avoid redundancy.<br>**Security:** Omits user permission requests before accessing local files. |
+| Team    | Highlights                                                                                                                                                                                                                                                                                    |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Team 20 | **Functional:** More detailed file classification (e.g., programming language and type).<br>**Functional:** Analysis runs only on new files to avoid redundancy.<br>**Security:** Omits user permission requests before accessing local files.                                                |
 | Team 17 | **Functional:** Adds trend analysis visualizations and file previews for user approval.<br>**Non-functional:** Groups requirements under performance, scalability, reliability, security, maintainability, and privacy.<br>**New:** Includes an onboarding/tutorial experience at app launch. |
-| Team 3 | **Functional:** Generates resume bullet points and provides a timeline visualization.<br>**Non-functional:** Favors a modular codebase design.<br>**Use Case:** Extends the system to HR platforms and hiring managers. |
+| Team 3  | **Functional:** Generates resume bullet points and provides a timeline visualization.<br>**Non-functional:** Favors a modular codebase design.<br>**Use Case:** Extends the system to HR platforms and hiring managers.                                                                       |
 
 Plan for the next cycle: Discussing about team's project proposal and architecture diagram that will be submitted next week
 
@@ -33,26 +33,25 @@ For the project proposal, we divided writing responsibilities among the team. We
 
 ### Github usernames
 
-| GitHub Username | Student Name |
-| --- | --- |
-| `AdaraPutri` | Adara S. Putri |
-| `ammaarkhan` | Ammaar Khan |
-| `ivonanicetin` | Ivona Nicetin |
-| `johaneshp` | Johanes Hamonangan |
-| `salmavkh` | Salma Vikha Ainindita |
-| `taoTimTim` | Timmi Draper |
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara S. Putri        |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
 
 ### Table view of completed tasks by username
 
-| GitHub Username | Screenshot |
-| --- | --- |
-| `AdaraPutri` | ![Completed tasks for Adara](screenshots/Completed-Adara-Sept22-28.png) |
-| `ammaarkhan` | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Sept22-28.png) |
-| `ivonanicetin` | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Sept22-28.png) |
-| `johaneshp` | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Sept22-28.png) |
-| `salmavkh` | ![Completed tasks for Salma](screenshots/Completed-Salma-Sept22-28.png) |
-| `taoTimTim` | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Sept22-28.png) |
-
+| GitHub Username | Screenshot                                                                  |
+| --------------- | --------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Sept22-28.png)     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Sept22-28.png)   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Sept22-28.png)     |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Sept22-28.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Sept22-28.png)     |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Sept22-28.png)     |
 
 ### Table view of in progress tasks by username
 
@@ -62,10 +61,10 @@ Not applicable – no tasks in progress.
 
 #### Differences/Similarities with Other Teams' Architecture Diagrams
 
-| Team | Takeaways |
-| --- | --- |
-| Team 14 | Included a portfolio builder that we decided to skip.<br>Connected with GitHub, which inspired us to add that feature.<br>Plans to leave room for a future web frontend rather than staying app-only. |
-| Team 15 | Avoids using a database, keeping everything local.<br>Does not support music, audio, or video files (we plan to include them). |
-| Team 18 | Also uses Electron to support cross-platform desktop development. |
+| Team    | Takeaways                                                                                                                                                                                                                                                              |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Team 14 | Included a portfolio builder that we decided to skip.<br>Connected with GitHub, which inspired us to add that feature.<br>Plans to leave room for a future web frontend rather than staying app-only.<br>Stored both raw and processed data (we don't store raw data). |
+| Team 15 | Avoids using a database, keeping everything local.<br>Does not support music, audio, or video files (we plan to include them).<br>Has post-processing in between ML and metrics steps to tidy up the data.                                                             |
+| Team 18 | Also uses Electron to support cross-platform desktop development.                                                                                                                                                                                                      |
 
 Plan for next cycle: Build the Data Flow Diagram (DFD) that must be submitted next week
