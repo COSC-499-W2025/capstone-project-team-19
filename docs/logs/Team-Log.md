@@ -29,6 +29,8 @@ For the project proposal, we divided writing responsibilities among the team. We
 
 ### Burnup chart
 
+![Burnup chart for Sept 22-28](screenshots/Burnup-Sept22-28.png)
+
 ### Github usernames
 
 | GitHub Username | Student Name |
@@ -42,7 +44,19 @@ For the project proposal, we divided writing responsibilities among the team. We
 
 ### Table view of completed tasks by username
 
+| GitHub Username | Screenshot |
+| --- | --- |
+| `AdaraPutri` | ![Completed tasks for Adara](screenshots/Completed-Adara-Sept22-28.png) |
+| `ammaarkhan` | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Sept22-28.png) |
+| `ivonanicetin` | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Sept22-28.png) |
+| `johaneshp` | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Sept22-28.png) |
+| `salmavkh` | ![Completed tasks for Salma](screenshots/Completed-Salma-Sept22-28.png) |
+| `taoTimTim` | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Sept22-28.png) |
+
+
 ### Table view of in progress tasks by username
+
+Not applicable – no tasks in progress.
 
 ### Additional context
 
