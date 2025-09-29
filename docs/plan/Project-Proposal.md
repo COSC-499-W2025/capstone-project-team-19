@@ -25,6 +25,10 @@ The solution is unique in its ability to unify diverse work artifacts into one c
 
 ## Use Cases
 
+### Use Case Diagram
+
+![UML Use Case Diagram](UML-Use-Case-Diagram.png)
+
 ### Use Case 1: Create Account and Login
 
 - **Primary Actor:** User
