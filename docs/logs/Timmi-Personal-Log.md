@@ -12,7 +12,7 @@ Week Recap: Worked with the team to build the functional and non-functional requ
 
 Worked with the team to build the architecture diagram and put together the project proposal. On Wednesday, we conversed with other teams about their architecture diagrams, then regrouped and talked about what we liked, what we didn't, and what we wanted to add/expand on.
 
-I was assigned to write the *Project Scope and Usage Scenario* and the *Proposed Solution* (with Adara) in the project proposal. Additionally, the team split up research tasks on the different file type functions.
+I was assigned to write the *Project Scope and Usage Scenario* and the *Proposed Solution* (with Salma) in the project proposal. Additionally, the team split up research tasks on the different file type functions.
 
 I took on the Image function, Video function, and getting data from online sources (Google Drive) with Ammaar, and thus spent a few hours researching how we would analyze those file types. I then added the processes to the Architecture Diagram.
 

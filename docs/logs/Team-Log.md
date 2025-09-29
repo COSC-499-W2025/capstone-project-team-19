@@ -35,7 +35,7 @@ For the project proposal, we divided writing responsibilities among the team. We
 
 | GitHub Username | Student Name          |
 | --------------- | --------------------- |
-| `AdaraPutri`    | Adara S. Putri        |
+| `AdaraPutri`    | Adara Putri           |
 | `ammaarkhan`    | Ammaar Khan           |
 | `ivonanicetin`  | Ivona Nicetin         |
 | `johaneshp`     | Johanes Hamonangan    |
