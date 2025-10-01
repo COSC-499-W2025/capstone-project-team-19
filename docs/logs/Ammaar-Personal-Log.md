@@ -17,3 +17,11 @@ Building on Adara's comprehensive GitHub endpoint research, I expanded our syste
 On the documentation side, I updated and revised our use case descriptions based on the UML case diagram that Ivona and Adara created. I also assisted Johanes with updating the file function in the system architecture when he encountered access issues with the Figma file.
 
 Finally, I converted our project proposal from Word format to Markdown as required for submission.
+
+## (Week 5) Monday 29th September - Sunday 5th October
+
+![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Sept29-Oct5.png)
+
+Week recap: On Monday, our team worked together to create the DFD Level 0 and Level 1 diagrams. We finalized the main processes, data flows, and external entities, making sure the diagrams aligned with our functional requirements and system architecture.
+
+On Wednesday, we joined the in-class activity where we rotated between different teams to compare DFDs. This gave us useful insights into how other groups represented their processes, especially around metrics extraction, artifact databases, and error handling. The comparison helped us refine our understanding of what details our diagrams capture well and what areas might need more specificity.
