@@ -68,3 +68,49 @@ Not applicable – no tasks in progress.
 | Team 18 | Also uses Electron to support cross-platform desktop development.                                                                                                                                                                                                      |
 
 Plan for next cycle: Build the Data Flow Diagram (DFD) that must be submitted next week
+
+## (Week 5) Monday 29th - Sunday 5th October
+
+### Week recap:
+
+The team focused on building the Data Flow Diagram (DFD). On Monday, we collaborated to draft Level 0 and Level 1, aligning on system boundaries, external entities, and the major data stores and flows. On Wednesday, we went around in class comparing DFDs with other teams, then regrouped to discuss what we liked, didn't like, and what we wanted to refine or add to our diagrams.
+
+### Burnup chart
+
+![Burnup chart for Sept 29-Oct 5](screenshots/Burnup-Sept29-Oct5.png)
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshot                                                                  |
+| --------------- | --------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Sept29-Oct5.png)   |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Sept29-Oct5.png) |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Sept29-Oct5.png)   |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Sept29-Oct5.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Sept29-Oct5.png)   |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Sept29-Oct5.png)   |
+
+### Table view of in progress tasks by username
+
+Not applicable – no tasks in progress.
+
+### Additional context
+
+#### Differences/Similarities with Other Teams' DFD Diagrams
+
+| Team  | Takeaways                                                                                                                                                                                                                         |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Team 11 | Focuses on scanning file metadata rather than calculating metrics.<br>Lacks a dedicated metrics module and renders the dashboard as static HTML.<br>We still need clarity on how their data extraction supports the insights they expect to present. |
+| Team 17 | Level 0 and Level 1 structures align closely with ours.<br>Introduces error logging and an artifact database, though the data ingestion flow remains unclear.<br>Aims to output a portfolio experience instead of a dashboard; users can opt out of saving to the database. |
+| Team 15 | Restricts processing to text files only, applying an ML model for every document.<br>Does not handle images or video sources.<br>Open questions on what metrics they intend to surface from the ML pipeline.                                                          |
