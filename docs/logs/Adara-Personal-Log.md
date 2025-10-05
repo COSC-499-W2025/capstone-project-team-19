@@ -16,7 +16,7 @@ For the GitHub component, I collaborated with Ammaar to research API endpoints a
 
 I worked with Ivona to create the UML use case diagram, collaborated with Ammaar, Ivona, and Salma to draft the use case descriptions, and assisted Timmi and Salma in writing the Project Scope and Proposed Solution to ensure it captured all of our system’s key features. I also added several rows to the "Requirements, Testing, and Requirement Verification" section of the proposal.
 
-## (Week 5) Monday 29th - Sunday 5th September
+## (Week 5) Monday 29th September - Sunday 5th October
 
 ![Screenshot of tasks done from this sprint](./screenshots/Adara-Sept22-28.PNG)
 
