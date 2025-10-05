@@ -17,3 +17,9 @@ I was assigned to write the *Project Scope and Usage Scenario* and the *Proposed
 I took on the Image function, Video function, and getting data from online sources (Google Drive) with Ammaar, and thus spent a few hours researching how we would analyze those file types. I then added the processes to the Architecture Diagram.
 
 I also helped with the *Tech Stack* and the *Requirements, Testing, and Requirement Verification* sections in the project proposal, as well as expanded on the dashboard visualization in the architecture diagram.
+
+## (Week 5) Monday 29th September - Sunday 5th October
+
+![Screenshot of this week's peer eval](./screenshots/Timmi-Sept29-Oct5.png)
+
+Week Recap: On Monday the team began working on the DFD, both Level 0 and Level 1. We researched DFD's to ensure we were putting the correct elements in our diagram, as they are specific to the level of the DFD. On Wednesday, we conversed with other teams, exchanging diagrams. We asked questions about their diagrams to learn their process and plans, and they asked about ours. 
