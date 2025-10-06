@@ -13,3 +13,8 @@ Wednesday: Talked to other teams as a sub team of 3 about their functional/ non-
 
 Week Recap:
 I was absent from class this week due to health reasons. I provided my professor with a doctor’s note and informed my team of my situation. Because of this, I wasn’t able to contribute earlier in the week, but by Saturday night/Sunday I caught up on all team discussions and reviewed the work completed. I contributed by helping with the UML Use Case Diagram.
+
+## (Week 4) Monday 22th - Sunday 28st September
+![Screenshot of this week's peer eval](./screenshots/Ivona-Sept29-Oct5.PNG)
+
+Helped polish up the DFD. Then on Wednesday my team and I talked to other teams and compared DFDs in class. We took notes on their DFDs on how they differed from ours. We had dissucions with the teams to better understand their diagrams.
