@@ -20,3 +20,14 @@ Week recap:
 - Created a shared Figma file for design collaboration and architecture diagram development.
 - Researched the audio function and integrated it into both the architecture diagram and dashboard visualization. The accompanying document outlines the workflow, including audio input, preprocessing, transcription, speaker diarization, and categorization into work or non-work artifacts with summary metrics.
 - Worked on the proposed solution and use cases for the project proposal.
+
+## (Week 5) Monday 29th September - Sunday 5th October
+
+![Screenshot of week 5 peer eval](./screenshots/Salma-Sept29-Oct5.PNG)
+
+Week recap:
+
+- Built the Data Flow Diagram (DFD) with the team on Monday.
+- Met with another team on Wednesday to compare diagrams and took notes.
+- Researched the differences between DFD Level 0 and Level 1.
+- Prepared a Figma file and reusable diagram template to make teamwork easier.
