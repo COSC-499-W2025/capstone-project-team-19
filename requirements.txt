@@ -1,0 +1,21 @@
+# Core testing and data
+pytest
+pandas
+requests
+
+# File parsing
+pymupdf
+docx2txt
+openpyxl
+
+# Media Processing
+ffmpeg-python
+opencv-python
+
+# Add later, when the processing functions are built:
+
+# scenedetect
+# ultralytics
+# openai-clip
+# google-api-python-client
+# msal

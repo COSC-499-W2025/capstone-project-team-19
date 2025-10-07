@@ -1,0 +1,22 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Env variables and secrets
+.env
+*.env
+
+# OS junk (mac and windows, to avoid any excess files being pushed)
+.DS_Store
+Thumbs.db
+
+# Editor settings (just in case)
+.vscode/
+.idea/
+
+# Build outputs (auto-generated every time we build, we should avoid committing them)
+build/
+dist/
