@@ -18,6 +18,7 @@ cd capstone-project-team-19
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 ```
+**Note for Windows:** If `pytest` returns an error, instead of `.\venv\Scripts\Activate.ps1`, try `source venv/bin/activate`.
 
 #### On Mac/Linux
 ```bash
