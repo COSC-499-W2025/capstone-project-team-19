@@ -25,6 +25,12 @@ python -m venv venv
 source venv/bin/activate
 ```
 
+**Note for Mac users:** If you have multiple Python versions installed or `python` is not found, you may need to use `python3` instead:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
 ### 3. Install Dependencies
 ```bash
 pip install --upgrade pip           # Upgrade pip to avoid weird dependency errors
