@@ -1,3 +1,6 @@
+from datetime import datetime
+import sqlite3
+
 CONSENT_TEXT = """
 ================= USER CONSENT NOTICE =================
 
@@ -25,3 +28,23 @@ Do you consent to continue? (y/n):
 
 =======================================================
 """
+
+def record_consent(conn: sqlite3.Connection, status: str, when: datetime | None = None) -> int:
+    """Insert consent record with timestamp into SQLite DB."""
+    if status not in ("accepted", "rejected"):
+        raise ValueError("status must be 'accepted' or 'rejected'")
+    ts = (when or datetime.now()).isoformat()
+    cur = conn.execute(
+        "INSERT INTO consent_log (user_id, status, timestamp) VALUES (1, ?, ?)",
+        (status, ts),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+def get_user_consent() -> str:
+    """Prompt user for y/n input in the terminal."""
+    while True:
+        ans = input("Do you consent to continue? (y/n): ").strip().lower()
+        if ans in ("y", "n"):
+            return "accepted" if ans == "y" else "rejected"
+        print("Please type 'y' for yes or 'n' for no:")

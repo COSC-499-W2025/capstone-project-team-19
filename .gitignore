@@ -20,3 +20,6 @@ Thumbs.db
 # Build outputs (auto-generated every time we build, we should avoid committing them)
 build/
 dist/
+
+# Local SQLite database (auto-generated at runtime)
+local_storage.db
