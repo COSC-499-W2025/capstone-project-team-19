@@ -1,5 +1,7 @@
-def main():
-    print("This is the main flow of the system!")
+from consent import CONSENT_TEXT
+
+def show_consent_text():
+    print(CONSENT_TEXT)
 
 if __name__ == "__main__":
-    main()
+    show_consent_text()
