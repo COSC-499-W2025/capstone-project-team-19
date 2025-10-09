@@ -45,7 +45,7 @@ pytest
 
 If everything is set up correctly, you should see the tests pass.
 
-## Level 1 Data Flow
+## Level 1 Data Flow Diagram
 
 ![DFD Level 1](docs/plan/Updated-DFD-Level-1-Diagram.png)
 
