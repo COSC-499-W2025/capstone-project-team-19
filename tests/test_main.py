@@ -3,7 +3,7 @@ from src import main
 def test_main_prints_message(capsys):
     main.main()
     captured = capsys.readouterr()
-    assert "This is the main flow of the system!" in captured.out
+    assert "Welcome aboard! Let’s turn your work into cool insights." in captured.out
 
 def test_main_prints_error(capsys):
     main.main()
