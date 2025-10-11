@@ -84,7 +84,6 @@ Work breakdown structure will be updated based on [this google sheets](https://d
 | 3.2 | File Upload Visual | Create file upload interface |  |  |
 | 3.3 | File Analyzation Tracking Visual | Display the ongoing process of analyzing |  |  |
 | 3.4.| Output | Display result in form of dashboard, charts, and summary | | |
-
 | **4** | **Testing and Verification** |  |  |  |
 | 4.1 | Unit Testing | Perform unit tests for all modules |  |  |
 | 4.2 | Integration Testing | Perform integration testing between modules |  |  |
