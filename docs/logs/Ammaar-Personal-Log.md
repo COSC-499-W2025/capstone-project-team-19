@@ -25,3 +25,19 @@ Finally, I converted our project proposal from Word format to Markdown as requir
 Week recap: On Monday, our team worked together to create the DFD Level 0 and Level 1 diagrams. We finalized the main processes, data flows, and external entities, making sure the diagrams aligned with our functional requirements and system architecture.
 
 On Wednesday, we joined the in-class activity where we rotated between different teams to compare DFDs. This gave us useful insights into how other groups represented their processes, especially around metrics extraction, artifact databases, and error handling. The comparison helped us refine our understanding of what details our diagrams capture well and what areas might need more specificity.
+
+## (Week 6) Monday 6th October - Sunday 12th October
+
+![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Oct6-12.png)
+
+Week recap: This week we kicked off implementation and started coding! I had the chance to collaborate with Adara on refining our DFD and system architecture diagram. After reviewing the professor's updated requirements, I made some adjustments to the level 1 data flow diagram, and Adara helped ensure everything stayed in sync between our diagrams.
+
+I also had the chance to collaborate with the team through several PR reviews:
+
+1. Timmi's environment setup PR was solid - I added a quick note in the readme for Mac users since I'd run into that issue myself.
+
+2. Salma's consent feature was well-structured - I suggested a couple of small tweaks to make sure it behaves exactly as we want, and she quickly addressed them.
+
+3. Timmi's parsing PR was great - I noticed one test failing (probably from the main merge) and discovered something interesting about the file paths when running commands from different directories.
+
+4. Johannes' WBS was well-organized - I did some reading on WBS best practices and shared a few ideas on how we might expand it to cover more of our requirements comprehensively.
