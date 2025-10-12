@@ -61,6 +61,10 @@ def collect_file_info(root_dir):
     collected = []
 
     for folder, _, files in os.walk(root_dir):
+        # Skip any mac files
+        if "__MACOSX" in folder:
+            continue
+
         for file in files:
             full_path = os.path.join(folder, file)
             stats = os.stat(full_path)
