@@ -1,8 +1,12 @@
+from parsing import parse_zip_file
 from db import connect, init_schema
 from consent import CONSENT_TEXT, get_user_consent, record_consent
 
 def main():
     print("Welcome aboard! Let’s turn your work into cool insights.")
+
+    # Should be called in main() not __main__ beacsue __main__ does not run during tests
+    prompt_and_store()
 
 def prompt_and_store():
     """Show consent text, get input, and store in DB."""
@@ -15,6 +19,13 @@ def prompt_and_store():
     print()
     print(f"Consent '{status}' recorded successfully.")
 
+    zip_path = get_zip_path_from_user()
+    print(f"Recieved path: {zip_path}")
+    parse_zip_file(zip_path)
+
+def get_zip_path_from_user():
+    path = input("Please enter the path to your ZIP file: ").strip()
+    return path
+
 if __name__ == "__main__":
     main()
-    prompt_and_store()
