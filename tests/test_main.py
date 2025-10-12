@@ -6,7 +6,7 @@ def test_main_prints_message(monkeypatch, capsys):
 
     main.main()
     captured = capsys.readouterr()
-    assert "This is the main flow of the system!" in captured.out
+    assert "Welcome aboard! Let’s turn your work into cool insights." in captured.out
 
 def test_main_prints_error(monkeypatch, capsys):
     # mock input so main does not wait for user input while testing

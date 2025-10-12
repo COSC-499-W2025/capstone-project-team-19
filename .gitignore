@@ -20,3 +20,8 @@ Thumbs.db
 # Build outputs (auto-generated every time we build, we should avoid committing them)
 build/
 dist/
+
+# SQLite database and WAL files
+*.db
+*.db-shm
+*.db-wal
