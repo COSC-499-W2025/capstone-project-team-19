@@ -22,13 +22,13 @@ def parse_zip_file(zip_path):
         if len(zip_ref.namelist()) == 0:
             return []
 
-        extract_to = "./extracted"
+        extract_to = "../zip_data/parsed_zip_rawdata"
         zip_ref.extractall(extract_to)
 
     files_info = collect_file_info(extract_to)
 
     # Write to JSON file
-    output_path = "../extracted_data/parsed_zip_file_output.json"
+    output_path = "../zip_data/parsed_zip_metadata.json"
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     with open(output_path, "w", encoding="utf-8") as f:
