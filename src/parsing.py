@@ -1,6 +1,7 @@
 import os
 import zipfile
 import time
+import json
 
 def parse_zip_file(zip_path):
     zip_path = str(zip_path)
@@ -25,9 +26,18 @@ def parse_zip_file(zip_path):
         zip_ref.extractall(extract_to)
 
     files_info = collect_file_info(extract_to)
-    print("Extracted file info:")
-    for f in files_info:
-        print(f)
+
+    # Write to JSON file
+    output_path = "../extracted_data/parsed_zip_file_output.json"
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(files_info, f, indent=4)
+
+    print (f"Parsed file info has been saved to {output_path}")
+    #print("Extracted file info:")
+    #for f in files_info:
+        #print(f)
 
     return files_info
 
