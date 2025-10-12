@@ -5,13 +5,21 @@ import os
 # Default database path (can be overridden in tests)
 DEFAULT_DB = Path(os.getenv("APP_DB_PATH", "local_storage.db"))
 
-def connect(db_path: Path | str = DEFAULT_DB) -> sqlite3.Connection:
-    """Open SQLite connection with safe defaults."""
-    conn = sqlite3.connect(db_path)
+def connect(db_path: str | Path | None = None) -> sqlite3.Connection:
+    """Open a SQLite connection that respects APP_DB_PATH during tests."""
+    target = str(db_path) if db_path is not None else os.getenv("APP_DB_PATH", "local_storage.db")
+
+    # Create directory if needed
+    if target != ":memory:":
+        Path(target).parent.mkdir(parents=True, exist_ok=True)
+
+    conn = sqlite3.connect(target)
     conn.execute("PRAGMA foreign_keys=ON;")
-    conn.execute("PRAGMA journal_mode=WAL;")
+    if target != ":memory:":
+        conn.execute("PRAGMA journal_mode=WAL;")  # skip WAL for in-memory DBs
     conn.execute("PRAGMA synchronous=NORMAL;")
     return conn
+
 
 def init_schema(conn: sqlite3.Connection) -> None:
     """

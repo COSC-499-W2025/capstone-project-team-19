@@ -9,6 +9,7 @@ from consent import record_consent
 def tmp_conn(tmp_path: Path):
     """Each test uses its own temporary DB file."""
     os.environ["APP_DB_PATH"] = str(tmp_path / "test.db")
+    # print("Test DB path:", os.environ["APP_DB_PATH"])
     conn = connect()
     init_schema(conn)
     yield conn

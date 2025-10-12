@@ -21,5 +21,7 @@ Thumbs.db
 build/
 dist/
 
-# Local SQLite database (auto-generated at runtime)
-local_storage.db
+# SQLite database and WAL files
+*.db
+*.db-shm
+*.db-wal
