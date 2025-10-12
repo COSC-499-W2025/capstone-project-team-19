@@ -5,6 +5,8 @@ from consent import CONSENT_TEXT, get_user_consent, record_consent
 def main():
     print("Welcome aboard! Let’s turn your work into cool insights.")
 
+    prompt_and_store()
+
 def prompt_and_store():
     """Show consent text, get input, and store in DB."""
     conn = connect()
@@ -26,4 +28,3 @@ def get_zip_path_from_user():
 
 if __name__ == "__main__":
     main()
-    prompt_and_store()
