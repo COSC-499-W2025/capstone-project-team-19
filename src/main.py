@@ -5,6 +5,7 @@ from consent import CONSENT_TEXT, get_user_consent, record_consent
 def main():
     print("Welcome aboard! Let’s turn your work into cool insights.")
 
+    # Should be called in main() not __main__ beacsue __main__ does not run during tests
     prompt_and_store()
 
 def prompt_and_store():
