@@ -124,7 +124,7 @@ This week, the team focused on moving from design to implementation, refining bo
 
 ### Burnup chart
 
-![Burnup chart for Oct 6 - 12]()
+![Burnup chart for Oct 6 - 12](screenshots/Burnup-Oct6-12.png)
 
 ### Github usernames
 
@@ -143,8 +143,8 @@ This week, the team focused on moving from design to implementation, refining bo
 | --------------- | --------------------------------------------------------------------------- |
 | `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct6-12.png)   |
 | `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct6-12.png) |
-| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Sept29-Oct5.png)   |
-| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Sept29-Oct5.png) |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct6-12.png)   |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Oct6-12.png) |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct6-12.png)   |
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct6-12.png)   |
 
