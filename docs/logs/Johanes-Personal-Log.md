@@ -21,3 +21,8 @@ I was helped by ammaar in adding details to the architecture diagram since I can
 ![Screenshot of week 5 peer eval](./screenshots/Johanes-Sept29-Oct5.PNG)
 
 Week recap: Discussed and built DFD with team during class on Monday, and reflect based on other team's DFDs on Wednesday. Did a research about differences between DFD level 0 and level 1.
+
+## (Week 6) Monday 6th October - Sunday 12th October
+![Screenshot of week 6 peer eval](./screenshots/Johanes-Oct6-12.PNG)
+
+Week recap: Our team started few codings, I am in charge in creating the WBS. My teammate suggested about the WBS needs to be more detailed on milestone 2 and 3. Did a research about what a proper WBS should look like. Did a review for my teammate's PR.
