@@ -2,8 +2,9 @@ import os
 import zipfile
 from pathlib import Path
 import pytest
+import json
 
-from parsing import parse_zip_file, collect_file_info
+from parsing import parse_zip_file, collect_file_info, UNSUPPORTED_LOG_PATH, DUPLICATE_LOG_PATH
 
 # Helper
 def create_sample_zip_with_various_types(tmp_dir):
@@ -123,3 +124,74 @@ def test_parse_zip_file_corrupted_zip_returns_none(tmp_path):
 
     result = parse_zip_file(str(corrupt_zip))
     assert result is None
+    
+def test_parse_zip_file_with_unsupported_files(tmp_path):
+    zip_path = tmp_path / "unsupported_files.zip"
+    content_dir = tmp_path / "content"
+    content_dir.mkdir()
+    (content_dir / "photo.png").write_text("fake image content")
+    (content_dir / "virus.exe").write_text("binary data")
+
+    with zipfile.ZipFile(zip_path, "w") as z:
+        for file in content_dir.iterdir():
+            z.write(file, file.name)
+
+    result = parse_zip_file(str(zip_path))
+    assert all(f["extension"] not in {".png", ".exe"} for f in result)
+
+    assert os.path.exists(UNSUPPORTED_LOG_PATH)
+    
+def test_parse_zip_file_with_duplicate_files(tmp_path):
+    zip_path = tmp_path / "duplicates.zip"
+    content_dir = tmp_path / "content"
+    content_dir.mkdir()
+
+    # Create two identical files with same name in the same folder
+    (content_dir / "main.py").write_text("print('a')")
+    (content_dir / "main_copy.py").write_text("print('a')")
+
+    # Create ZIP where both are added to the same relative path to simulate duplicate
+    with zipfile.ZipFile(zip_path, "w") as z:
+        z.write(content_dir / "main.py", "code/main.py")
+        z.write(content_dir / "main_copy.py", "code/main.py")  # same arcname (duplicate)
+
+    result = parse_zip_file(str(zip_path))
+
+    assert isinstance(result, list)
+
+    file_names = [f["file_name"] for f in result]
+    assert file_names.count("main.py") <= 1
+
+    assert os.path.exists(DUPLICATE_LOG_PATH)
+
+    with open(DUPLICATE_LOG_PATH, "r", encoding="utf-8") as f:
+        logged_duplicates = json.load(f)
+    assert any("code/main.py" in d for d in logged_duplicates)
+    
+def test_parse_zip_file_detects_duplicates_across_folders(tmp_path):
+    # Create temporary files with identical name and content
+    zip_path = tmp_path / "duplicate_across_folders.zip"
+    content_dir = tmp_path / "content"
+    content_dir.mkdir()
+
+    # Two identical files (same name + same content)
+    (content_dir / "data1.txt").write_text("hello")
+    (content_dir / "data2.txt").write_text("hello")  # same content & size
+
+    # Create ZIP where they exist in different folders but have same name
+    with zipfile.ZipFile(zip_path, "w") as z:
+        z.write(content_dir / "data1.txt", "folderA/report.txt")
+        z.write(content_dir / "data2.txt", "folderB/report.txt")
+
+    result = parse_zip_file(str(zip_path))
+
+    assert isinstance(result, list)
+    assert os.path.exists(DUPLICATE_LOG_PATH)
+
+    with open(DUPLICATE_LOG_PATH, "r", encoding="utf-8") as f:
+        logged_duplicates = json.load(f)
+
+    assert any("folderB/report.txt" in d for d in logged_duplicates)
+
+
+

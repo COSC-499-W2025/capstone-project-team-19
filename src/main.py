@@ -21,7 +21,9 @@ def prompt_and_store():
 
     zip_path = get_zip_path_from_user()
     print(f"Recieved path: {zip_path}")
-    parse_zip_file(zip_path)
+    result = parse_zip_file(zip_path)
+    if not result:
+        print("No valid files were processed. Check logs for unsupported or corrupted files.")
 
 def get_zip_path_from_user():
     path = input("Please enter the path to your ZIP file: ").strip()
