@@ -114,3 +114,40 @@ Not applicable – no tasks in progress.
 | Team 11 | Focuses on scanning file metadata rather than calculating metrics.<br>Lacks a dedicated metrics module and renders the dashboard as static HTML.<br>We still need clarity on how their data extraction supports the insights they expect to present. |
 | Team 17 | Level 0 and Level 1 structures align closely with ours.<br>Introduces error logging and an artifact database, though the data ingestion flow remains unclear.<br>Aims to output a portfolio experience instead of a dashboard; users can opt out of saving to the database. |
 | Team 15 | Restricts processing to text files only, applying an ML model for every document.<br>Does not handle images or video sources.<br>Open questions on what metrics they intend to surface from the ML pipeline.                                                          |
+
+
+## (Week 5) Monday 29th - Sunday 5th October
+
+### Week recap:
+
+This week, the team focused on moving from design to implementation, refining both the System Architecture Diagram and DFD Level 1 to reflect all updated project requirements and new modules like offline processing. The team also began coding key system features: setting up the local environment, implementing ZIP file parsing, and enhancing it with error handling for unsupported and duplicate files, MIME validation, and detailed logging. Unit tests were added to ensure these features work as intended. Additionally, the team worked on creating and testing the consent form for external service usage, ensuring responses are correctly stored in the database. Everyone reviewed and refined multiple PRs, aligning coding progress with the finalized system design.
+
+### Burnup chart
+
+![Burnup chart for Oct 6 - 12](screenshots/Burnup-Oct6-12.png)
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshot                                                                  |
+| --------------- | --------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct6-12.png)   |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct6-12.png) |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct6-12.png)   |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Oct6-12.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct6-12.png)   |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct6-12.png)   |
+
+### Table view of in progress tasks by username
+
+Not applicable – no tasks in progress.
