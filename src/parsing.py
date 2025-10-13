@@ -82,7 +82,8 @@ def classify_file(extension: str) -> str:
 def is_valid_mime(file_path, extension):
     mime, _ = mimetypes.guess_type(file_path)
     if not mime:
-        return False
+        return extension in SUPPORTED_EXTENSIONS # trust extensions instead
+    
     # Text formats
     if extension in TEXT_EXTENSIONS:
         valid_text_mimes = {
@@ -92,7 +93,7 @@ def is_valid_mime(file_path, extension):
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }
-        return any(mime.startswith("text") or mime == t for t in valid_text_mimes)
+        return mime.startswith("text") or mime in valid_text_mimes
 
     # Code formats
     if extension in CODE_EXTENSIONS:
@@ -106,7 +107,7 @@ def is_valid_mime(file_path, extension):
             "text/html",
             "text/css",
         }
-        return any(mime == t or mime.startswith("text/") for t in valid_code_mimes)
+        return mime.startswith("text") or mime in valid_code_mimes
     return False
 
 def collect_file_info(root_dir):
