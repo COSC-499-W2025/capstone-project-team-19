@@ -28,4 +28,13 @@ Week Recap: On Monday the team began working on the DFD, both Level 0 and Level 
 
 ![Screenshot of this week's peer eval](./screenshots/Timmi-Oct6-Oct12.png)
 
-Week Recap: Spent time inputting each requirement as in issue. We did not have a meeting this week, so each team member self-assigned a task to themselves. I took on setting up the local environment and implemnting the requirement "parsing zip files". 
+Week Recap: Spent time inputting each requirement as in issue. We did not have a meeting this week, so each team member self-assigned a task to themselves. I took on setting up the local environment and implemnting the requirement "parsing zip files". I researched how to parse a file in python, and also general python set up for the system. Additionally, I wrote the tests for the parsing files requirement.
+
+My PR's: 
+1. Local environment setup
+2. Parsing files
+
+Reviewed the following PR's:
+1. User consent feature (Salma)
+2. Add updated system architecture diagram and description (Adara)
+3. Wbs (Johanes)
