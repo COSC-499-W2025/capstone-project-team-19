@@ -5,8 +5,8 @@
         "extension": ".cpp",
         "file_type": "code",
         "size_bytes": 44,
-        "created": "Sun Oct 12 19:11:58 2025",
-        "modified": "Sun Oct 12 19:11:58 2025"
+        "created": "Sun Oct 12 19:15:44 2025",
+        "modified": "Sun Oct 12 19:15:44 2025"
     },
     {
         "file_path": "code/index.html",
@@ -14,8 +14,8 @@
         "extension": ".html",
         "file_type": "code",
         "size_bytes": 28,
-        "created": "Sun Oct 12 19:11:58 2025",
-        "modified": "Sun Oct 12 19:11:58 2025"
+        "created": "Sun Oct 12 19:15:44 2025",
+        "modified": "Sun Oct 12 19:15:44 2025"
     },
     {
         "file_path": "code/styles.css",
@@ -23,8 +23,8 @@
         "extension": ".css",
         "file_type": "code",
         "size_bytes": 27,
-        "created": "Sun Oct 12 19:11:58 2025",
-        "modified": "Sun Oct 12 19:11:58 2025"
+        "created": "Sun Oct 12 19:15:44 2025",
+        "modified": "Sun Oct 12 19:15:44 2025"
     },
     {
         "file_path": "code/program.c",
@@ -32,8 +32,26 @@
         "extension": ".c",
         "file_type": "code",
         "size_bytes": 24,
-        "created": "Sun Oct 12 19:11:58 2025",
-        "modified": "Sun Oct 12 19:11:58 2025"
+        "created": "Sun Oct 12 19:15:44 2025",
+        "modified": "Sun Oct 12 19:15:44 2025"
+    },
+    {
+        "file_path": "code/main.js",
+        "file_name": "main.js",
+        "extension": ".js",
+        "file_type": "code",
+        "size_bytes": 18,
+        "created": "Sun Oct 12 19:15:44 2025",
+        "modified": "Sun Oct 12 19:15:44 2025"
+    },
+    {
+        "file_path": "code/Program.java",
+        "file_name": "Program.java",
+        "extension": ".java",
+        "file_type": "code",
+        "size_bytes": 23,
+        "created": "Sun Oct 12 19:15:44 2025",
+        "modified": "Sun Oct 12 19:15:44 2025"
     },
     {
         "file_path": "code/program.h",
@@ -41,8 +59,8 @@
         "extension": ".h",
         "file_type": "code",
         "size_bytes": 42,
-        "created": "Sun Oct 12 19:11:58 2025",
-        "modified": "Sun Oct 12 19:11:58 2025"
+        "created": "Sun Oct 12 19:15:44 2025",
+        "modified": "Sun Oct 12 19:15:44 2025"
     },
     {
         "file_path": "code/script.py",
@@ -50,8 +68,8 @@
         "extension": ".py",
         "file_type": "code",
         "size_bytes": 14,
-        "created": "Sun Oct 12 19:11:58 2025",
-        "modified": "Sun Oct 12 19:11:58 2025"
+        "created": "Sun Oct 12 19:15:44 2025",
+        "modified": "Sun Oct 12 19:15:44 2025"
     },
     {
         "file_path": "text/file.txt",
@@ -59,8 +77,26 @@
         "extension": ".txt",
         "file_type": "text",
         "size_bytes": 15,
-        "created": "Sun Oct 12 19:11:58 2025",
-        "modified": "Sun Oct 12 19:11:58 2025"
+        "created": "Sun Oct 12 19:15:44 2025",
+        "modified": "Sun Oct 12 19:15:44 2025"
+    },
+    {
+        "file_path": "text/file.docx",
+        "file_name": "file.docx",
+        "extension": ".docx",
+        "file_type": "text",
+        "size_bytes": 19,
+        "created": "Sun Oct 12 19:15:44 2025",
+        "modified": "Sun Oct 12 19:15:44 2025"
+    },
+    {
+        "file_path": "text/file.pdf",
+        "file_name": "file.pdf",
+        "extension": ".pdf",
+        "file_type": "text",
+        "size_bytes": 18,
+        "created": "Sun Oct 12 19:15:44 2025",
+        "modified": "Sun Oct 12 19:15:44 2025"
     },
     {
         "file_path": "text/file.csv",
@@ -68,7 +104,7 @@
         "extension": ".csv",
         "file_type": "text",
         "size_bytes": 14,
-        "created": "Sun Oct 12 19:11:58 2025",
-        "modified": "Sun Oct 12 19:11:58 2025"
+        "created": "Sun Oct 12 19:15:44 2025",
+        "modified": "Sun Oct 12 19:15:44 2025"
     }
 ]

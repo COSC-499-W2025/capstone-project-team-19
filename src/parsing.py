@@ -64,17 +64,30 @@ def is_valid_mime(file_path, extension):
     mime, _ = mimetypes.guess_type(file_path)
     if not mime:
         return False
-    if extension in TEXT_EXTENSIONS and mime.startswith("text"):
-        return True
-    if extension in CODE_EXTENSIONS and mime in {
-        "text/x-python",
-        "text/x-c",
-        "application/javascript",
-        "text/html",
-        "text/css",
-        "text/plain",
-    }:
-        return True
+    # Text formats
+    if extension in TEXT_EXTENSIONS:
+        valid_text_mimes = {
+            "text/plain",
+            "text/csv",
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }
+        return any(mime.startswith("text") or mime == t for t in valid_text_mimes)
+
+    # Code formats
+    if extension in CODE_EXTENSIONS:
+        valid_code_mimes = {
+            "text/x-python",
+            "text/x-c",
+            "text/x-c++",
+            "text/x-java-source",
+            "application/javascript",
+            "text/javascript",
+            "text/html",
+            "text/css",
+        }
+        return any(mime == t or mime.startswith("text/") for t in valid_code_mimes)
     return False
 
 def collect_file_info(root_dir):
