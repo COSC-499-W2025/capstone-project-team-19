@@ -1,6 +1,8 @@
 from parsing import parse_zip_file
 from db import connect, init_schema
 from consent import CONSENT_TEXT, get_user_consent, record_consent
+from external_consent import get_external_consent, record_external_consent
+
 
 def main():
     print("Welcome aboard! Let’s turn your work into cool insights.")
@@ -18,6 +20,11 @@ def prompt_and_store():
     record_consent(conn, status)
     print()
     print(f"Consent '{status}' recorded successfully.")
+
+    # External service consent
+    ext_status = get_external_consent()
+    record_external_consent(conn, ext_status)
+    print(f"External service consent '{ext_status}' recorded successfully.\n")
 
     zip_path = get_zip_path_from_user()
     print(f"Recieved path: {zip_path}")
