@@ -44,6 +44,14 @@ def init_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_consent_user_time
             ON consent_log(user_id, timestamp);
 
+        CREATE TABLE IF NOT EXISTS external_consent (
+            consent_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            status TEXT NOT NULL CHECK(status IN ('accepted','rejected')),
+            timestamp TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+
         -- ADD OTHER TABLES HERE (future milestones)
         """
     )
