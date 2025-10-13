@@ -2,6 +2,7 @@ import os
 import zipfile
 import time
 import json
+import mimetypes
 
 CURR_DIR = os.path.dirname(os.path.abspath(__file__)) # Gives the location of the script itself, not where user is running the command from
 REPO_ROOT = os.path.abspath(os.path.join(CURR_DIR, "..")) # Moves up one level into main repository directory
@@ -48,6 +49,8 @@ def parse_zip_file(zip_path):
 
 TEXT_EXTENSIONS = {".txt", ".csv", ".docx", ".pdf", ".xlsx"}
 CODE_EXTENSIONS = {".py", ".java", ".js", ".html", ".css", ".c", ".cpp", ".h"}
+SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS.union(CODE_EXTENSIONS)
+UNSUPPORTED_LOG_PATH = os.path.join(ZIP_DATA_DIR, "unsupported_files.json")
 
 def classify_file(extension: str) -> str:
     if extension in TEXT_EXTENSIONS:
@@ -57,8 +60,27 @@ def classify_file(extension: str) -> str:
     else:
         return "other"
 
+def is_valid_mime(file_path, extension):
+    mime, _ = mimetypes.guess_type(file_path)
+    if not mime:
+        return False
+    if extension in TEXT_EXTENSIONS and mime.startswith("text"):
+        return True
+    if extension in CODE_EXTENSIONS and mime in {
+        "text/x-python",
+        "text/x-c",
+        "application/javascript",
+        "text/html",
+        "text/css",
+        "text/plain",
+    }:
+        return True
+    return False
+
 def collect_file_info(root_dir):
     collected = []
+    unsupported_files = []
+    seen = set()
 
     for folder, _, files in os.walk(root_dir):
         # Skip any mac files
@@ -67,8 +89,20 @@ def collect_file_info(root_dir):
 
         for file in files:
             full_path = os.path.join(folder, file)
-            stats = os.stat(full_path)
             extension = os.path.splitext(file)[1].lower()
+            
+            # Skip duplicates
+            if file in seen:
+                print(f"Duplicate skipped: {file}")
+                continue
+            seen.add(file)
+
+            if extension not in SUPPORTED_EXTENSIONS or not is_valid_mime(full_path, extension):
+                print(f"Unsupported file skipped: {file}")
+                unsupported_files.append(file)
+                continue
+            
+            stats = os.stat(full_path)
 
             collected.append({
                 "file_path": os.path.relpath(full_path, root_dir),
@@ -79,5 +113,12 @@ def collect_file_info(root_dir):
                 "created": time.ctime(stats.st_ctime),
                 "modified": time.ctime(stats.st_mtime)
             })
+            
+    # Log the unsupported files (feedback to users)
+    if unsupported_files:
+        with open(UNSUPPORTED_LOG_PATH, "w", encoding="utf-8") as f:
+            json.dump(unsupported_files, f, indent=4)
+        print(f"Unsupported files logged at: {UNSUPPORTED_LOG_PATH}")
+    
     return collected
 
