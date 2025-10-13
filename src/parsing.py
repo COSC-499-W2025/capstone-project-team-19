@@ -36,16 +36,25 @@ def parse_zip_file(zip_path):
     
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         names = zip_ref.namelist()
-        if len(zip_ref.namelist()) == 0:
+        if len(names) == 0:
             return []
         
-        seen_names = set()
+        seen = {}
         duplicate_names = []
         for name in names:
-            if name in seen_names:
+            if name.endswith("/"):
+                continue
+            
+            info = zip_ref.getinfo(name)
+            filename = os.path.basename(name)
+            size = info.file_size
+            
+            key = (filename, size)
+            if key in seen:
                 print(f"Duplicate found in ZIP: {name}")
                 duplicate_names.append(name)
-            seen_names.add(name)
+            else:
+                seen[key] = True
 
         if duplicate_names:
             with open(DUPLICATE_LOG_PATH, "w", encoding="utf-8") as f:
