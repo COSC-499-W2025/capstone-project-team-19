@@ -1,0 +1,74 @@
+[
+    {
+        "file_path": "code/program.cpp",
+        "file_name": "program.cpp",
+        "extension": ".cpp",
+        "file_type": "code",
+        "size_bytes": 44,
+        "created": "Sun Oct 12 19:10:15 2025",
+        "modified": "Sun Oct 12 19:10:15 2025"
+    },
+    {
+        "file_path": "code/index.html",
+        "file_name": "index.html",
+        "extension": ".html",
+        "file_type": "code",
+        "size_bytes": 28,
+        "created": "Sun Oct 12 19:10:15 2025",
+        "modified": "Sun Oct 12 19:10:15 2025"
+    },
+    {
+        "file_path": "code/styles.css",
+        "file_name": "styles.css",
+        "extension": ".css",
+        "file_type": "code",
+        "size_bytes": 27,
+        "created": "Sun Oct 12 19:10:15 2025",
+        "modified": "Sun Oct 12 19:10:15 2025"
+    },
+    {
+        "file_path": "code/program.c",
+        "file_name": "program.c",
+        "extension": ".c",
+        "file_type": "code",
+        "size_bytes": 24,
+        "created": "Sun Oct 12 19:10:15 2025",
+        "modified": "Sun Oct 12 19:10:15 2025"
+    },
+    {
+        "file_path": "code/program.h",
+        "file_name": "program.h",
+        "extension": ".h",
+        "file_type": "code",
+        "size_bytes": 42,
+        "created": "Sun Oct 12 19:10:15 2025",
+        "modified": "Sun Oct 12 19:10:15 2025"
+    },
+    {
+        "file_path": "code/script.py",
+        "file_name": "script.py",
+        "extension": ".py",
+        "file_type": "code",
+        "size_bytes": 14,
+        "created": "Sun Oct 12 19:10:15 2025",
+        "modified": "Sun Oct 12 19:10:15 2025"
+    },
+    {
+        "file_path": "text/file.txt",
+        "file_name": "file.txt",
+        "extension": ".txt",
+        "file_type": "text",
+        "size_bytes": 15,
+        "created": "Sun Oct 12 19:10:15 2025",
+        "modified": "Sun Oct 12 19:10:15 2025"
+    },
+    {
+        "file_path": "text/file.csv",
+        "file_name": "file.csv",
+        "extension": ".csv",
+        "file_type": "text",
+        "size_bytes": 14,
+        "created": "Sun Oct 12 19:10:15 2025",
+        "modified": "Sun Oct 12 19:10:15 2025"
+    }
+]

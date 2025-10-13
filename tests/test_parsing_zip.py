@@ -3,7 +3,7 @@ import zipfile
 from pathlib import Path
 import pytest
 
-from parsing import parse_zip_file, collect_file_info
+from parsing import parse_zip_file, collect_file_info, UNSUPPORTED_LOG_PATH
 
 # Helper
 def create_sample_zip_with_various_types(tmp_dir):
@@ -123,3 +123,20 @@ def test_parse_zip_file_corrupted_zip_returns_none(tmp_path):
 
     result = parse_zip_file(str(corrupt_zip))
     assert result is None
+    
+def test_parse_zip_file_with_unsupported_files(tmp_path):
+    zip_path = tmp_path / "unsupported_files.zip"
+    content_dir = tmp_path / "content"
+    content_dir.mkdir()
+    (content_dir / "photo.png").write_text("fake image content")
+    (content_dir / "virus.exe").write_text("binary data")
+
+    with zipfile.ZipFile(zip_path, "w") as z:
+        for file in content_dir.iterdir():
+            z.write(file, file.name)
+
+    result = parse_zip_file(str(zip_path))
+    assert all(f["extension"] not in {".png", ".exe"} for f in result)
+
+    assert os.path.exists(UNSUPPORTED_LOG_PATH)
+
