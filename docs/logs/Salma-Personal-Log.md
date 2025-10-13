@@ -31,3 +31,14 @@ Week recap:
 - Met with another team on Wednesday to compare diagrams and took notes.
 - Researched the differences between DFD Level 0 and Level 1.
 - Prepared a Figma file and reusable diagram template to make teamwork easier.
+
+## (Week 6) Monday 6th October - Sunday 12th October
+
+![Screenshot of week 6 peer eval](./screenshots/Salma-Oct6-12.png)
+
+Week Recap:
+
+- Reviewed the professor’s requirements and discussed them with the team during Wednesday’s class.
+- Worked on the consent feature: drafted the consent text, implemented logic to store consent responses in the SQLite database, and wrote tests to ensure both accepted and rejected responses are stored correctly.
+- Made several adjustments based on feedback e.g. incorporated Ammaar’s suggestion to add the .db file to .gitignore and ensured test data doesn’t pollute the actual user consent database.
+- Provided comments and suggestions on pull requests, such as the file output placement in Timmi’s ZIP parsing PR. Also reviewed other PRs, including DFD Level 1 (Ammaar) and WBS (Johanes).
