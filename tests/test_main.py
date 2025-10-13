@@ -1,11 +1,20 @@
 from src import main
 
-def test_main_prints_message(capsys):
-    main.main()
-    captured = capsys.readouterr()
-    assert "This is the main flow of the system!" in captured.out
+def test_main_prints_message(monkeypatch, capsys):
+    # Mock both consent and zip inputs
+    inputs = iter(['y', 'fake_path.zip'])   # consent, zip path
+    monkeypatch.setattr('builtins.input', lambda _: next(inputs))
 
-def test_main_prints_error(capsys):
     main.main()
     captured = capsys.readouterr()
-    assert "This is not correct!" != captured.out
+    assert "Welcome aboard! Let’s turn your work into cool insights." in captured.out
+
+
+def test_main_prints_error(monkeypatch, capsys):
+    # Mock both consent and zip inputs
+    inputs = iter(['y', 'non-existent.zip'])  # consent, bad zip path
+    monkeypatch.setattr('builtins.input', lambda _: next(inputs))
+
+    main.main()
+    captured = capsys.readouterr()
+    assert "Error" in captured.out
