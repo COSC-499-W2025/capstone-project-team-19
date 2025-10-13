@@ -51,41 +51,110 @@ Work breakdown structure will be updated based on [this google sheets](https://d
 
 | No | Module/Functionality | Description | Member(s) | Time Estimation |
 |----|----------------------|--------------|------------|------------------|
-| **1** | **Project Requirements** |  |  |  |
-| 1.1 | Project Requirements | Define project goal, do self research on gathering requirements | All members |  |
-| 1.2 | System Architecture | Generate system architecture diagram, use case diagram, DFD based on the requirements | All members |  |
-| 1.3 | Project Proposal | Generate project proposal based on requirements and system architecture | All members |  |
-| 1.4 | Updated Project Plan | Update project plan based on evaluation, including system architecture diagram, DFD, and requirements | All members |  |
+| **1** | **Project Plan** |  |  |  |
+| 1.1 | Project Requirements | Define project goal, do self research on gathering requirements | All Members |  |
+| 1.2 | System Architecture | Generate system architecture diagram, use case diagram, DFD based on the requirements | All Members |  |
+| 1.3 | Project Proposal | Generate project proposal based on requirements and system architecture | All Members |  |
+| 1.4 | Updated Project Plan | Update project plan based on evaluation, including System architecture diagram, DFD, and requirements | All Members |  |
 | 1.5 | Local Environment | Setup local environment based on project requirements | Timmi |  |
 | **2** | **Backend** |  |  |  |
-| 2.1 | External Service Consent Module |  | Salma |  |
-| 2.1.1 | Ask for Consent Functionality | Ask user for consent of accessing data | Salma |  |
-| 2.1.2 | Consent Store to Database Functionality | Store consent to database for future configuration | Salma |  |
-| 2.2 | File Processing Module |  |  |  |
-| 2.2.1 | ZIP Extraction Functionality | Parse a specified zipped folder containing nested folders and files |  |  |
-| 2.2.2 | File Checking Functionality | Check whether file in the folder is according to accepted file format, return error if not |  |  |
-| 2.2.3 | Storing to Database Functionality | Store file metadata in SQLite |  |  |
-| 2.3 | Consent Module |  |  |  |
-| 2.3.1 | Ask for Consent Functionality | Display permission text and risk |  |  |
-| 2.3.2 | Consent Storage | Store consent in database for future configuration |  |  |
-| 2.4 | Information Generator Module |  |  |  |
+| 2.1 | Consent Module |  | Salma |  |
+| 2.1.1 | Ask for consent functionality | Ask user for consent of accessing data | Salma |  |
+| 2.1.2 | Consent store to database functionality | Store consent to database for future configuration | Salma |  |
+| 2.2 | Folder Processing Module |  | Timmi |  |
+| 2.2.1 | ZIP Extraction Functionality | Parse a specified zipped folder containing nested folders and files | Timmi |  |
+| 2.2.2 | File checking functionality | Check whether file in the folder is according to the accepted file format, if not, return error response | Timmi |  |
+| 2.2.3 | Storing to database functionality | Store file metadata in SQLite | Timmi |  |
+| 2.3 | External Service Consent Module |  | Ivona |  |
+| 2.3.1 | Ask for consent functionality | Display permission text and risk | Ivona |  |
+| 2.3.2 | Consent Storage | Store consent in database for future configuration | Ivona |  |
+| 2.4 | File Processing Module |  |  |  |
 | 2.4.1 | Link to External Service Functionality | Use external service such as LLM to analyze files |  |  |
-| 2.4.2 | Alternative Analysis Modules | Implement local analysis alternatives that produce the same metrics |  |  |
+| 2.4.2 | Alternative analysis modules | Implement local analysis alternatives that produce the same metrics |  |  |
 | 2.4.3 | Metadata Extraction Functionality | Extract key information for each project/file |  |  |
 | 2.4.5 | Skill Extraction Functionality | Extract key skills demonstrated in project |  |  |
-| 2.4.6 | Project Identification Functionality | Distinguish individual/collaborative projects, extrapolate individual contributions, extract metrics, identify programming language and framework |  |  |
+| 2.4.6 | Project Identification Functionality | Distinguish individual/collaborative projects, Extrapolate individual contributions in collabortion projects, Extract metrics, identify programming language and framework used if it is a code |  |  |
 | 2.4.7 | Project Information Storage Functionality | Store identification result in database |  |  |
-| 2.5 | Project Ranking Module |  |  |  |
+| 2.5 | Information Generator Module |  |  |  |
 | 2.5.1 | Project Ranking Functionality | Rank importance of each project based on user's contributions |  |  |
 | 2.5.2 | Project Summarizing Functionality | Summarize top-ranked projects |  |  |
 | 2.5.3 | Chronological List Functionality | Produce chronological list of projects and skills exercised |  |  |
-| **3** | **Frontend** |  |  |  |
-| 3.1 | Consent and Permission Display | Display user consent and permission interface |  |  |
-| 3.2 | File Upload Visual | Create file upload interface |  |  |
-| 3.3 | File Analyzation Tracking Visual | Display the ongoing process of analyzing |  |  |
-| 3.4.| Output | Display result in form of dashboard, charts, and summary | | |
-| **4** | **Testing and Verification** |  |  |  |
-| 4.1 | Unit Testing | Perform unit tests for all modules |  |  |
-| 4.2 | Integration Testing | Perform integration testing between modules |  |  |
-| **5** | **Documentation & Report** |  |  |  |
-| 5.1 | Milestone 1 Documentation | Prepare milestone 1 documentation |  |  |
+| 2.6 | Past Data Modification Module |  |  |  |
+| 2.6.1 | Retrieve Previous Portfolio information Functionality | Retrieve previous data for adding new data in the same project |  |  |
+| 2.6.2 | Retrieve Previous Resume Item Functionality | Retrieve previous data for adding new data in the same project |  |  |
+| 2.6.3 | Delete Past Insights Functionality | Deleting past insights which is shared in multiple projects without affecting other projects |  |  |
+| **3** | **Testing and Verification** |  |  |  |
+| 3.1 | Unit Testing | Perform unit test for all modules |  |  |
+| 3.2 | Integration Testing | Perform integration testing between modules |  |  |
+| **4** | **Documentation & Report** |  |  |  |
+| 4.1 | Milestone 1 Documentation | Prepare milestone 1 documentation |  |  |
+| **5** | **Review and Evaluation** |  |  |  |
+| 5.1 | Milestone #1 Review | Review and Evaluate Milestone #1 for future use in milestone 2 |  |  |
+| 5.2 | API Framework Decision | Decide API Framework to be used in milestone 2 |  |  |
+| **6** | **API Implementation** |  |  |  |
+| 6.1 | Implement endpoints for some functions | Implement endpoints for functions such as uploading additional zipped folder, modification of data |  |  |
+| 6.2 | Define acceptable JSON formats | Standardized JSON response formats |  |  |
+| **7** | **Backend Update** |  |  |  |
+| 7.1 | Incremental Data Addition Module |  |  |  |
+| 7.1.1 | Retrieve Previous Data | Retrieve previous data to be added (milestone 1) |  |  |
+| 7.1.2 | Handle Metadata | Handle metadata for version tracking |  |  |
+| 7.1.3 | Merge new data functionality | Merge new data with previously retrieved data |  |  |
+| 7.2 | Duplicate File Handling Modules |  |  |  |
+| 7.2.1 | Identify Duplicate Functionality | Recognized duplicate files |  |  |
+| 7.2.2 | Maintain Unique Files | maintain using only one file of duplicates to avoid redundancy |  |  |
+| 7.2.3 | Return response to users | Return response to user for feedback functionality |  |  |
+| 7.3 | Database Update |  |  |  |
+| 7.3.1 | Implement New Tables | New tables for storing thumbnails image, etc. |  |  |
+| 7.3.2 | Resume Text Update | Update resume based on added file |  |  |
+| 7.3.3 | Metrics and data updates | Update metrics based on added file |  |  |
+| **8** | **Human-in-the-Loop Module** |  |  |  |
+| 8.1 | User Customization Interface | Allow user to be involved in selection, customization and corrections |  |  |
+| 8.1.1 | Re-rank project functionality | Allow user to re-rank the project after the analyzation done |  |  |
+| 8.1.2 | Corrections to chronology functionality | Allow user to correct the chronology |  |  |
+| 8.1.3 | Modify attributes for project comparison | Allow user to choose and modify attributes for project comparison |  |  |
+| 8.1.4 | Highlight specific skills | Allow user to choose specific skills to be represented |  |  |
+| 8.2 | Role and Evidence Functionality |  |  |  |
+| 8.2.1 | Assign user's key role | Allow user to input their key role in a project and incorporate it into the data |  |  |
+| 8.2.2 | Attach success evidence | Allow user to attach success evidence of their project |  |  |
+| 8.3 | Project Media Module |  |  |  |
+| 8.3.1 | Project Thumbnail Upload Functionality | New function to upload project thumbnail |  |  |
+| 8.4 | Result Customization Module |  |  |  |
+| 8.4.1 | Customize Portfolio Information | Allow users to customize and save portfolio information |  |  |
+| 8.4.2 | Customize Project Wording | Allow users to customize and save the wording of a project used for a resume item |  |  |
+| **9** | **Data Display and Output** |  |  |  |
+| 9.1 | Portfolio Display Module |  |  |  |
+| 9.1.1 | Textual Information Display | Display textual information about a project as a portfolio showcase |  |  |
+| 9.2 | Resume Display Module |  |  |  |
+| 9.2.1 | Textual Information Display | Display textual information about a project as a résumé item |  |  |
+| 9.2.2 | Export Functionality | Allow users to download/export the resume generated |  |  |
+| **10** | **Testing** |  |  |  |
+| 10.1 | Unit Test | Perform unit test for all modules |  |  |
+| 10.2 | Integration Testing | Perform integration testing between modules |  |  |
+| **11** | **Documentation** |  |  |  |
+| 11.1 | Milestone 2 Documentation | Prepare for documentation |  |  |
+| **12** | **Frontend** |  |  |  |
+| 12.1 | System Plan |  |  |  |
+| 12.1.1 | Review Milestone #2 | Review and Evaluate Milestone #1 for future use in milestone 2 |  |  |
+| 12.1.2 | Choose front-end framework | Decide front-end framework to be used |  |  |
+| 12.1.3 | Define UI/UX flow | Define flow to be implemented |  |  |
+| 12.1.4 | Design | Design interface to be implemented |  |  |
+| 12.2 | One Page Resume Frontend |  |  |  |
+| 12.2.1 | Define resume layout | Define resume layout to be displayed to users |  |  |
+| 12.2.2 | Implement frontend design and layout | Implement frontend design and resume layout |  |  |
+| 12.2.3 | Integrate Resume data from backend API |  |  |  |
+| 12.2.4 | Display resume |  |  |  |
+| 12.2.5 | Implement previous milestone's feature | Implement previous milestone's feature in frontend such as downloading files, etc. |  |  |
+| 12.3 | Web Portfolio Frontend |  |  |  |
+| 12.3.1 | Define layouts | Define portfolio page layout to be displayed to users |  |  |
+| 12.3.2 | Implement design and layout | Implement frontend design and layout |  |  |
+| 12.3.3 | Showcase Section | Showcase of top 3 projects illustrating process to demonstrate evolution of changes |  |  |
+| 12.3.4 | Integrate data from backend API |  |  |  |
+| 12.3.5 | Implement Previous Milestone's features | Implement previous milestone's features in frontend. |  |  |
+| 12.3.6 | Implement private dashboard | Private dashboard where user can interactively customize specific components or visualizations before going live |  |  |
+| 12.3.7 | Implement public dashboard | Public dashboard where the dashboard information only changes based on search and filter |  |  |
+| **13** | **Integration and Testing** |  |  |  |
+| 13.1 | Frontend and backend APIs integration | Integrate backend and frontend |  |  |
+| 13.2 | Synchronization Test | Test whether data in backend and frontend synchronized |  |  |
+| 13.3 | User Testing | User manual testing for usability and accessibility |  |  |
+| **14** | **Documentation and Reporting** |  |  |  |
+| 14.1 | Milestone 3 Documentation | Prepare for milestone 3 documentation |  |  |
