@@ -23,3 +23,18 @@ I also helped with the *Tech Stack* and the *Requirements, Testing, and Requirem
 ![Screenshot of this week's peer eval](./screenshots/Timmi-Sept29-Oct5.png)
 
 Week Recap: On Monday the team began working on the DFD, both Level 0 and Level 1. We researched DFD's to ensure we were putting the correct elements in our diagram, as they are specific to the level of the DFD. On Wednesday, we conversed with other teams, exchanging diagrams. We asked questions about their diagrams to learn their process and plans, and they asked about ours. 
+
+## (Week 6) Monday 6th October - Sunday 12th October
+
+![Screenshot of this week's peer eval](./screenshots/Timmi-Oct6-Oct12.png)
+
+Week Recap: Spent time inputting each requirement as in issue. We did not have a meeting this week, so each team member self-assigned a task to themselves. I took on setting up the local environment and implementing the requirement "parsing zip files". I researched how to parse a file in python, and also general python set up for the system. Additionally, I wrote the tests for the parsing files requirement.
+
+My PR's: 
+- Local environment setup
+- Parsing files
+
+Reviewed the following PR's:
+- User consent feature (Salma)
+- Add updated system architecture diagram and description (Adara)
+- Wbs (Johanes)
