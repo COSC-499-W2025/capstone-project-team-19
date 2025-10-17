@@ -1,6 +1,7 @@
 from pathlib import Path
 import sqlite3
 import os
+from typing import Optional, Tuple
 
 # Default database path (can be overridden in tests)
 DEFAULT_DB = Path(os.getenv("APP_DB_PATH", "local_storage.db"))
