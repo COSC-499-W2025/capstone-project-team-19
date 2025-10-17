@@ -20,44 +20,102 @@ def connect(db_path: str | Path | None = None) -> sqlite3.Connection:
     conn.execute("PRAGMA synchronous=NORMAL;")
     return conn
 
+import sqlite3
 
 def init_schema(conn: sqlite3.Connection) -> None:
-    """
-    Create initial schema: includes consent_log and users table for week-1.
-    """
-    conn.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            display_name TEXT,
-            email TEXT
-        );
+    """Create all tables and indexes if they don't exist."""
+    cur = conn.cursor()
 
-        CREATE TABLE IF NOT EXISTS consent_log (
-            consent_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id    INTEGER NOT NULL DEFAULT 1,
-            status     TEXT NOT NULL CHECK (status IN ('accepted','rejected')),
-            timestamp  TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-        );
+    # --- USERS TABLE ---
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        user_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+        username  TEXT,
+        email     TEXT
+    );
+    """)
 
-        CREATE INDEX IF NOT EXISTS idx_consent_user_time
-            ON consent_log(user_id, timestamp);
+    # Unique index so usernames cannot duplicate (case-insensitive)
+    cur.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_nocase
+        ON users(LOWER(username));
+    """)
 
-        CREATE TABLE IF NOT EXISTS external_consent (
-            consent_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL DEFAULT 1,
-            status TEXT NOT NULL CHECK(status IN ('accepted','rejected')),
-            timestamp TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(user_id)
-        );
+    # --- CONSENT LOG TABLE ---
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS consent_log (
+        consent_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER NOT NULL DEFAULT 1,
+        status     TEXT NOT NULL CHECK (status IN ('accepted','rejected')),
+        timestamp  TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
+    """)
 
-        -- ADD OTHER TABLES HERE (future milestones)
-        """
-    )
+    # Index for quick "latest consent per user" lookup
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_consent_user_time
+        ON consent_log(user_id, timestamp);
+    """)
 
-    # Ensure one default user entry
-    cur = conn.execute("SELECT COUNT(*) FROM users")
-    if cur.fetchone()[0] == 0:
-        conn.execute("INSERT INTO users(display_name) VALUES (?)", ("local-user",))
+    # --- EXTERNAL CONSENT TABLE ---
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS external_consent (
+        consent_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL DEFAULT 1,
+        status TEXT NOT NULL CHECK(status IN ('accepted','rejected')),
+        timestamp TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+    );
+    """)
+
+    # Mirror index for fast "latest external consent per user"
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_external_user_time
+        ON external_consent(user_id, timestamp);
+    """)
+
     conn.commit()
+
+# ----------------------------------------------------------
+
+def _normalize_username(u: str) -> str:
+    """Clean username for consistent lookup."""
+    return u.strip()
+
+def get_user_by_username(conn: sqlite3.Connection, username: str) -> Optional[Tuple[int, str, Optional[str]]]:
+    """Case-insensitive lookup."""
+    norm = _normalize_username(username)
+    row = conn.execute(
+        "SELECT user_id, username, email FROM users WHERE LOWER(username)=LOWER(?)",
+        (norm,),
+    ).fetchone()
+    return row if row else None
+
+def get_or_create_user(conn: sqlite3.Connection, username: str, email: Optional[str] = None) -> int:
+    """Return existing user_id or create new user."""
+    existing = get_user_by_username(conn, username)
+    if existing:
+        return existing[0]
+    cur = conn.execute(
+        "INSERT INTO users (username, email) VALUES (?, ?)",
+        (username.strip(), email),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+def get_latest_consent(conn: sqlite3.Connection, user_id: int) -> Optional[str]:
+    """Return most recent consent status for a user."""
+    row = conn.execute(
+        "SELECT status FROM consent_log WHERE user_id=? ORDER BY timestamp DESC LIMIT 1",
+        (user_id,),
+    ).fetchone()
+    return row[0] if row else None
+
+def get_latest_external_consent(conn: sqlite3.Connection, user_id: int) -> Optional[str]:
+    """Return most recent external consent status for a user."""
+    row = conn.execute(
+        "SELECT status FROM external_consent WHERE user_id=? ORDER BY timestamp DESC LIMIT 1",
+        (user_id,),
+    ).fetchone()
+    return row[0] if row else None
