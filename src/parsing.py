@@ -65,9 +65,12 @@ def parse_zip_file(zip_path):
         if duplicate_names:
             print(f"Duplicate files found in ZIP: {len(duplicate_names)} duplicates detected")
 
-        zip_ref.extractall(RAWDATA_DIR)
+        zip_name = os.path.splitext(os.path.basename(zip_path))[0]
+        target_dir = os.path.join(ZIP_DATA_DIR, zip_name)
+        os.makedirs(target_dir, exist_ok=True)
+        zip_ref.extractall(target_dir)
 
-    files_info = collect_file_info(RAWDATA_DIR)
+    files_info = collect_file_info(target_dir)
 
     # Store parsed data in local database
     conn = connect()
