@@ -22,8 +22,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 import numpy as np
 
-##TODO: Text Extraction (from pdf, txt, docx)
-##      Linguistic + Readability analysis
+##TODO: Text Extraction (from pdf, txt, docx)✅
+##      Linguistic + Readability analysis 
 ##      Topic modelling
 ##      Metrics to be produced: Summary, Project Ranking, Activity frequency timeline, Key skills, Success indicators, Work type breakdown, collaboration share
 
@@ -90,5 +90,65 @@ def extractfromdocx (filepath: str)->str:
             return text
     except Exception as e:
         print(f"Error : {e}")
+
+#linguistic and readability analysis
+
+def analyze_linguistic_complexity(text: str)->Dict[str, any]:
+    if not text or len(text.strip())==0:
+        return {
+        'word_count': 0,
+        'sentence_count': 0,
+        'char_count': 0,
+        'avg_word_length': 0,
+        'avg_sentence_length': 0,
+        'lexical_diversity': 0,
+        'flesch_reading_ease': 0,
+        'flesch_kincaid_grade': 0,
+        'smog_index': 0,
+        'reading_level': 'N/A'
+        }
+    
+    word_count=len(word_tokenize(text))
+    sentence_count=len(sent_tokenize(text))
+    char_count=len(text)
+
+    #readability analysis
+    flesch_reading_ease=textstat.flesch_reading_ease(text)
+    flesch_kincaid_grade=textstat.flesch_kincaid_grade(text)
+    smog_index=textstat.smog_index(text)
+
+    #lexical diversity
+    words=word_tokenize(text.lower())
+    unique_words=set(words)
+    lexicaldiversity=len(unique_words)/word_count if word_count>0 else 0
+
+    #average length
+    word_average=char_count/word_count
+    sentence_average=word_count/sentence_count
+
+    return{
+        'word_count': word_count,
+        'sentence_count': sentence_count,
+        'char_count': char_count,
+        'avg_word_length': round(word_average, 2),
+        'avg_sentence_length': round(sentence_average, 2),
+        'lexical_diversity': round(lexicaldiversity, 3),
+        'flesch_reading_ease': round(flesch_reading_ease, 2),
+        'flesch_kincaid_grade': round(flesch_kincaid_grade, 2),
+        'smog_index': round(smog_index, 2),
+        'reading_level': _interpret_reading_level(flesch_kincaid_grade)
+    }
+
+def _interpret_reading_level(grade: float) -> str:
+    if grade < 6:
+        return "Elementary"
+    elif grade < 9:
+        return "Middle School"
+    elif grade < 13:
+        return "High School"
+    elif grade < 16:
+        return "College"
+    else:
+        return "Graduate"
 
 
