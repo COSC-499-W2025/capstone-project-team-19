@@ -9,8 +9,6 @@ This application may send some of your data to external services
 
 Before continuing, please read the following terms:
 
-Before continuing, please read the following terms:
-
 • Using external services may send your files or content off your device.
 • We have no control over what external services do with your data. 
   They may store, process, or use it according to their own policies.
