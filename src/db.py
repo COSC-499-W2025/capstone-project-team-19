@@ -21,8 +21,6 @@ def connect(db_path: str | Path | None = None) -> sqlite3.Connection:
     conn.execute("PRAGMA synchronous=NORMAL;")
     return conn
 
-import sqlite3
-
 def init_schema(conn: sqlite3.Connection) -> None:
     """Create all tables and indexes if they don't exist."""
     cur = conn.cursor()
@@ -74,6 +72,30 @@ def init_schema(conn: sqlite3.Connection) -> None:
     cur.execute("""
     CREATE INDEX IF NOT EXISTS idx_external_user_time
         ON external_consent(user_id, timestamp);
+    """)
+
+    # Add a view for latest user consents
+    cur.execute("""
+    CREATE VIEW IF NOT EXISTS latest_user_consents AS
+    SELECT 
+        u.user_id,
+        u.username,
+        (
+            SELECT c.status
+            FROM consent_log c
+            WHERE c.user_id = u.user_id
+            ORDER BY c.timestamp DESC
+            LIMIT 1
+        ) AS latest_consent,
+        (
+            SELECT e.status
+            FROM external_consent e
+            WHERE e.user_id = u.user_id
+            ORDER BY e.timestamp DESC
+            LIMIT 1
+        ) AS latest_external_consent
+    FROM users u
+    ORDER BY u.user_id;
     """)
 
     conn.commit()
