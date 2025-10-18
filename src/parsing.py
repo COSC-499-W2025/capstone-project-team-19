@@ -106,6 +106,8 @@ def is_valid_mime(file_path, extension):
     mime, _ = mimetypes.guess_type(file_path)
 
     # If windows can not guess the MIME, trust the extension
+
+    # If windows can not guess the MIME, trust the extension
     if not mime:
         return extension in SUPPORTED_EXTENSIONS # trust extensions instead
     
