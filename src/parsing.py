@@ -104,11 +104,14 @@ def classify_file(extension: str) -> str:
 
 def is_valid_mime(file_path, extension):
     mime, _ = mimetypes.guess_type(file_path)
+
+    # If windows can not guess the MIME, trust the extension
     if not mime:
         return extension in SUPPORTED_EXTENSIONS # trust extensions instead
     
     # Text formats
     if extension in TEXT_EXTENSIONS:
+        # Expanded set of valid text-related MIME types
         valid_text_mimes = {
             "text/plain",
             "text/csv",
@@ -117,7 +120,16 @@ def is_valid_mime(file_path, extension):
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "text/markdown",
             "text/x-markdown",
+            "application/msword",  # older DOCs sometimes show up as this
+            "application/vnd.ms-excel"
         }
+
+        # CSV sometimes appears as plain text or Excel MIME on Windows
+        if extension == ".csv" and (
+            mime in ("text/plain", "application/vnd.ms-excel", "text/csv")
+        ):
+            return True
+
         return mime.startswith("text") or mime in valid_text_mimes
 
     # Code formats
