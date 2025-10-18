@@ -98,6 +98,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
     ORDER BY u.user_id;
     """)
 
+    # --- FILES TABLE ---
     cur.execute("""
     CREATE TABLE IF NOT EXISTS files (
         file_id     INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -113,7 +114,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
     );
     """)
 
-    # Index for faster lookups
+    # Index for faster file lookups (requires user id and file name)
     cur.execute("""
     CREATE INDEX IF NOT EXISTS idx_files_user 
         ON files(user_id, file_name)
@@ -164,8 +165,29 @@ def get_latest_external_consent(conn: sqlite3.Connection, user_id: int) -> Optio
     ).fetchone()
     return row[0] if row else None
 
-def get_or_create_user():
-    pass
+def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id: int) -> None:
+    # Insert parsed metadata into the 'files' table
+    # Each file is linked to the user
 
-def store_parsed_files():
-    pass
+    if not files_info:
+        return # nothing to insert
+    
+    cur = conn.cursor()
+    for f in files_info:
+        cur.execute("""
+            INSERT INTO files (
+                user_id, file_name, file_path, extension, file_type, size_bytes, created, modified
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            f.get("file_name"),
+            f.get("file_path"),
+            f.get("extension"),
+            f.get("file_type"),
+            f.get("size_bytes"),
+            f.get("created"),
+            f.get("modified")
+        ))
+    
+    conn.commit()
+    
