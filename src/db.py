@@ -98,6 +98,27 @@ def init_schema(conn: sqlite3.Connection) -> None:
     ORDER BY u.user_id;
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS files (
+        file_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id     INTEGER NOT NULL,
+        file_name   TEXT NOT NULL,
+        file_path   TEXT,
+        extension   TEXT,
+        file_type   TEXT,
+        size_bytes  INTEGER,
+        created     TEXT,
+        modified    TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
+    """)
+
+    # Index for faster lookups
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_files_user 
+        ON files(user_id, file_name)
+    """)
+
     conn.commit()
 
 # ----------------------------------------------------------
