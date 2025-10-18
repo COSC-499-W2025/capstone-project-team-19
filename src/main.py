@@ -22,6 +22,7 @@ def prompt_and_store():
     prev_ext = get_latest_external_consent(conn, user_id)
 
     reused = False  # track reuse
+    current_ext_consent=None 
 
     # Edge case 1: user exists but no consents yet
     if not prev_consent and not prev_ext:
@@ -33,6 +34,7 @@ def prompt_and_store():
         record_consent(conn, status, user_id=user_id)
         ext_status = get_external_consent()
         record_external_consent(conn, ext_status, user_id=user_id)
+        current_ext_consent=ext_status
 
     # Edge case 2: partial configuration (only one consent found)
     elif (prev_consent and not prev_ext) or (not prev_consent and prev_ext):
@@ -51,6 +53,9 @@ def prompt_and_store():
         if not prev_ext:
             ext_status = get_external_consent()
             record_external_consent(conn, ext_status, user_id=user_id)
+            current_ext_consent=ext_status
+        else:
+            current_ext_consent=prev_ext
 
     # --- Returning user with full configuration ---
     elif prev_consent and prev_ext:
@@ -62,6 +67,7 @@ def prompt_and_store():
             reused = True
             record_consent(conn, prev_consent, user_id=user_id)
             record_external_consent(conn, prev_ext, user_id=user_id)
+            current_ext_consent=prev_ext
         else:
             print("\nAlright, let’s review your consents again.\n")
             print(CONSENT_TEXT)
@@ -69,6 +75,7 @@ def prompt_and_store():
             record_consent(conn, status, user_id=user_id)
             ext_status = get_external_consent()
             record_external_consent(conn, ext_status, user_id=user_id)
+            current_ext_consent = ext_status
 
     # --- Brand new user ---
     else:
@@ -78,6 +85,7 @@ def prompt_and_store():
         record_consent(conn, status, user_id=user_id)
         ext_status = get_external_consent()
         record_external_consent(conn, ext_status, user_id=user_id)
+        current_ext_consent=ext_status
 
     # Only show message if not reusing previous config
     if not reused:
@@ -91,6 +99,9 @@ def prompt_and_store():
     result = parse_zip_file(zip_path)
     if not result:
         print("No valid files were processed. Check logs for unsupported or corrupted files.")
+        return
+
+
 
 def get_zip_path_from_user():
     path = input("Please enter the path to your ZIP file: ").strip()

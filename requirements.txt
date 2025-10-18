@@ -7,6 +7,13 @@ requests
 pymupdf
 docx2txt
 openpyxl
+python-docx2txt
+PyPDF2
+
+nltk
+texstat
+scikit-learn
+numpy
 
 # Media Processing
 ffmpeg-python
