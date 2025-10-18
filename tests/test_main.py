@@ -1,9 +1,15 @@
 from src import main
 
 def test_main_prints_message(monkeypatch, capsys):
-    # Mock both consent, external consent and zip inputs
-    inputs = iter(['y','y', 'fake_path.zip'])   # consent, zip path
+    inputs = iter(['john', 'fake_path.zip'])
     monkeypatch.setattr('builtins.input', lambda _: next(inputs))
+
+    # Patch the names bound in src.main
+    monkeypatch.setattr('src.main.get_user_consent', lambda: 'accepted')
+    monkeypatch.setattr('src.main.get_external_consent', lambda: 'accepted')
+
+    # Avoid real parsing
+    monkeypatch.setattr('src.main.parse_zip_file', lambda _p: True)
 
     main.main()
     captured = capsys.readouterr()
@@ -11,10 +17,15 @@ def test_main_prints_message(monkeypatch, capsys):
 
 
 def test_main_prints_error(monkeypatch, capsys):
-    # Mock both consent, external consent and zip inputs
-    inputs = iter(['y','y', 'non-existent.zip'])  # consent, bad zip path
+    inputs = iter(['jane', 'non-existent.zip'])
     monkeypatch.setattr('builtins.input', lambda _: next(inputs))
+
+    monkeypatch.setattr('src.main.get_user_consent', lambda: 'accepted')
+    monkeypatch.setattr('src.main.get_external_consent', lambda: 'accepted')
+
+    # Force parse failure
+    monkeypatch.setattr('src.main.parse_zip_file', lambda _p: False)
 
     main.main()
     captured = capsys.readouterr()
-    assert "Error" in captured.out
+    assert "No valid files were processed" in captured.out
