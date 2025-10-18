@@ -126,6 +126,8 @@ def test_parse_zip_file_corrupted_zip_returns_none(tmp_path):
     assert result is None
     
 def test_parse_zip_file_with_unsupported_files(tmp_path):
+    # Unsupported file types should not appear in DB
+
     zip_path = tmp_path / "unsupported_files.zip"
     content_dir = tmp_path / "content"
     content_dir.mkdir()
@@ -139,9 +141,14 @@ def test_parse_zip_file_with_unsupported_files(tmp_path):
     result = parse_zip_file(str(zip_path))
     assert all(f["extension"] not in {".png", ".exe"} for f in result)
 
-    assert os.path.exists(UNSUPPORTED_LOG_PATH)
+    from src.db import connect
+    conn = connect()
+    rows = conn.execute("SELECT extension FROM files").fetchall()
+    assert all(ext[0] not in {".png", ".exe"} for ext in rows)
     
 def test_parse_zip_file_with_duplicate_files(tmp_path):
+    # Duplicate files in the same ZIP should appear only once in DB
+
     zip_path = tmp_path / "duplicates.zip"
     content_dir = tmp_path / "content"
     content_dir.mkdir()
@@ -159,16 +166,14 @@ def test_parse_zip_file_with_duplicate_files(tmp_path):
 
     assert isinstance(result, list)
 
-    file_names = [f["file_name"] for f in result]
-    assert file_names.count("main.py") <= 1
-
-    assert os.path.exists(DUPLICATE_LOG_PATH)
-
-    with open(DUPLICATE_LOG_PATH, "r", encoding="utf-8") as f:
-        logged_duplicates = json.load(f)
-    assert any("code/main.py" in d for d in logged_duplicates)
+    from src.db import connect
+    conn = connect()
+    rows = conn.execute("SELECT file_name FROM files WHERE file_name='main.py'").fetchall()
+    assert len(rows) == 1
     
 def test_parse_zip_file_detects_duplicates_across_folders(tmp_path):
+    # Files with the same name but in different folders should both be stored
+
     # Create temporary files with identical name and content
     zip_path = tmp_path / "duplicate_across_folders.zip"
     content_dir = tmp_path / "content"
@@ -186,12 +191,10 @@ def test_parse_zip_file_detects_duplicates_across_folders(tmp_path):
     result = parse_zip_file(str(zip_path))
 
     assert isinstance(result, list)
-    assert os.path.exists(DUPLICATE_LOG_PATH)
-
-    with open(DUPLICATE_LOG_PATH, "r", encoding="utf-8") as f:
-        logged_duplicates = json.load(f)
-
-    assert any("folderB/report.txt" in d for d in logged_duplicates)
-
+    
+    from src.db import connect
+    conn = connect()
+    rows = conn.execute("SELECT file_path FROM files WHERE file_name='report.txt'").fetchall()
+    assert len(rows) == 2  # both stored since paths differ
 
 

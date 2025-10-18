@@ -7,11 +7,18 @@ from consent import record_consent
 
 @pytest.fixture()
 def tmp_conn(tmp_path: Path):
-    """Each test uses its own temporary DB file."""
+    """Each test uses its own temporary SQLite DB file."""
     os.environ["APP_DB_PATH"] = str(tmp_path / "test.db")
-    # print("Test DB path:", os.environ["APP_DB_PATH"])
     conn = connect()
     init_schema(conn)
+
+    # Seed a default user so FK(user_id=1) is valid
+    # Use INSERT OR IGNORE to be idempotent across tests
+    conn.execute(
+        "INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'default', NULL);"
+    )
+    conn.commit()
+
     yield conn
     conn.close()
     os.environ.pop("APP_DB_PATH", None)
