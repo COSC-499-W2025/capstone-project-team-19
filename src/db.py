@@ -142,3 +142,9 @@ def get_latest_external_consent(conn: sqlite3.Connection, user_id: int) -> Optio
         (user_id,),
     ).fetchone()
     return row[0] if row else None
+
+def get_or_create_user():
+    pass
+
+def store_parsed_files():
+    pass
