@@ -8,14 +8,21 @@ import warnings
 warnings.filterwarnings("ignore", message="Duplicate name:")
 # This is just to silence the warning in unit test (system doesn't know that we purposefully created a duplicate file for testing)
 
+from db import connect, store_parsed_files, get_or_create_user
+
 CURR_DIR = os.path.dirname(os.path.abspath(__file__)) # Gives the location of the script itself, not where user is running the command from
 REPO_ROOT = os.path.abspath(os.path.join(CURR_DIR, "..")) # Moves up one level into main repository directory
 
 ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
 RAWDATA_DIR = os.path.join(ZIP_DATA_DIR, "parsed_zip_rawdata")
-METADATA_PATH = os.path.join(ZIP_DATA_DIR, "parsed_zip_metadata.json")
 
-def parse_zip_file(zip_path):
+TEXT_EXTENSIONS = {".txt", ".csv", ".docx", ".pdf", ".xlsx"}
+CODE_EXTENSIONS = {".py", ".java", ".js", ".html", ".css", ".c", ".cpp", ".h"}
+SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS.union(CODE_EXTENSIONS)
+UNSUPPORTED_LOG_PATH = os.path.join(ZIP_DATA_DIR, "unsupported_files.json")
+DUPLICATE_LOG_PATH = os.path.join(ZIP_DATA_DIR, "duplicate_files.json")
+
+def parse_zip_file(zip_path, user_id):
     zip_path = str(zip_path)
 
     if not os.path.exists(zip_path):
@@ -32,7 +39,6 @@ def parse_zip_file(zip_path):
     
     # Make sure directories exist
     os.makedirs(RAWDATA_DIR, exist_ok=True)
-    os.makedirs(os.path.dirname(METADATA_PATH), exist_ok=True)
     
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         names = zip_ref.namelist()
@@ -57,28 +63,26 @@ def parse_zip_file(zip_path):
                 seen[key] = True
 
         if duplicate_names:
-            with open(DUPLICATE_LOG_PATH, "w", encoding="utf-8") as f:
-                json.dump(duplicate_names, f, indent=4)
-            print(f"Duplicate files logged at: {DUPLICATE_LOG_PATH}")
+            print(f"Duplicate files found in ZIP: {len(duplicate_names)} duplicates detected")
 
-        zip_ref.extractall(RAWDATA_DIR)
+        zip_name = os.path.splitext(os.path.basename(zip_path))[0]
+        target_dir = os.path.join(ZIP_DATA_DIR, zip_name)
+        os.makedirs(target_dir, exist_ok=True)
+        zip_ref.extractall(target_dir)
 
-    files_info = collect_file_info(RAWDATA_DIR)
+    files_info = collect_file_info(target_dir)
 
-    with open(METADATA_PATH, "w", encoding="utf-8") as f:
-        json.dump(files_info, f, indent=4)
+    # Store parsed data in local database
+    conn = connect()
+    store_parsed_files(conn, files_info, user_id)
+    conn.close()
 
-    print (f"Extracted ZIP to: {RAWDATA_DIR}")
-    print(f"Metdata has been saved to: {METADATA_PATH}")
+    #with open(METADATA_PATH, "w", encoding="utf-8") as f:
+    #   json.dump(files_info, f, indent=4)
 
+    print(f"Extracted and stored {len(files_info)} files in database (user_id={user_id})")
     return files_info
 
-
-TEXT_EXTENSIONS = {".txt", ".csv", ".docx", ".pdf", ".xlsx"}
-CODE_EXTENSIONS = {".py", ".java", ".js", ".html", ".css", ".c", ".cpp", ".h"}
-SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS.union(CODE_EXTENSIONS)
-UNSUPPORTED_LOG_PATH = os.path.join(ZIP_DATA_DIR, "unsupported_files.json")
-DUPLICATE_LOG_PATH = os.path.join(ZIP_DATA_DIR, "duplicate_files.json")
 
 def classify_file(extension: str) -> str:
     if extension in TEXT_EXTENSIONS:
@@ -87,6 +91,7 @@ def classify_file(extension: str) -> str:
         return "code"
     else:
         return "other"
+
 
 def is_valid_mime(file_path, extension):
     mime, _ = mimetypes.guess_type(file_path)
@@ -119,6 +124,7 @@ def is_valid_mime(file_path, extension):
         return mime.startswith("text") or mime in valid_code_mimes
     return False
 
+
 def collect_file_info(root_dir):
     collected = []
     unsupported_files = []
@@ -136,7 +142,6 @@ def collect_file_info(root_dir):
 
             if extension not in SUPPORTED_EXTENSIONS or not is_valid_mime(full_path, extension):
                 print(f"Unsupported file skipped: {file}")
-                unsupported_files.append(file)
                 continue
             
             stats = os.stat(full_path)
@@ -153,13 +158,9 @@ def collect_file_info(root_dir):
             
     # Log the unsupported files (feedback to users)
     if unsupported_files:
-        with open(UNSUPPORTED_LOG_PATH, "w", encoding="utf-8") as f:
-            json.dump(unsupported_files, f, indent=4)
         print(f"Unsupported files logged at: {UNSUPPORTED_LOG_PATH}")
     
     if duplicate_files:
-        with open(DUPLICATE_LOG_PATH, "w", encoding="utf-8") as f:
-            json.dump(duplicate_files, f, indent=4)
         print(f"Duplicate files logged at: {DUPLICATE_LOG_PATH}")
     
     return collected
