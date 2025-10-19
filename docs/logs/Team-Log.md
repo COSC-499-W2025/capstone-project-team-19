@@ -182,7 +182,7 @@ This week, the team continued implementation work for Milestone 1, completing se
 | `ivonanicetin`  | ![Completed tasks for Ivona]()   |
 | `johaneshp`     | ![Completed tasks for Johanes]() |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct13-19.PNG)   |
-| `taoTimTim`     | ![Completed tasks for Timmi]()   |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct13-19.PNG)   |
 
 ### Table view of in progress tasks by username
 
