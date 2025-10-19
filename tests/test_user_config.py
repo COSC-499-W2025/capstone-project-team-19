@@ -34,7 +34,7 @@ def _inputs_repeat_last(monkeypatch, answers):
 
 def _stub_parse(monkeypatch, return_value=True):
     """Avoid real parsing during tests."""
-    monkeypatch.setattr("src.main.parse_zip_file", lambda _p: return_value)
+    monkeypatch.setattr("src.main.parse_zip_file", lambda _p, user_id=None: return_value)
 
 
 def _never_called(*_args, **_kwargs):
