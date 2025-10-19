@@ -1,5 +1,14 @@
-from parsing import parse_zip_file
-from db import connect, init_schema, get_or_create_user, _normalize_username, get_user_by_username, get_latest_consent, get_latest_external_consent
+import os
+
+from parsing import parse_zip_file, analyze_project_layout
+from db import (
+    connect,
+    init_schema,
+    get_or_create_user,
+    get_latest_consent,
+    get_latest_external_consent,
+    record_project_classifications,
+)
 from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
 
@@ -88,13 +97,95 @@ def prompt_and_store():
     # Continue to file selection
     zip_path = get_zip_path_from_user()
     print(f"Recieved path: {zip_path}")
-    result = parse_zip_file(zip_path)
+    result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
     if not result:
         print("No valid files were processed. Check logs for unsupported or corrupted files.")
+        return
+
+    prompt_for_project_classifications(conn, user_id, zip_path, result)
+
 
 def get_zip_path_from_user():
     path = input("Please enter the path to your ZIP file: ").strip()
     return path
+
+
+def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_info: list[dict]) -> None:
+    """Ask the user to classify each detected project as individual or collaborative."""
+    zip_name = os.path.splitext(os.path.basename(zip_path))[0]
+    layout = analyze_project_layout(files_info)
+    root_name = layout["root_name"]
+    auto_assignments = layout["auto_assignments"]
+    pending_projects = layout["pending_projects"]
+    stray_locations = layout["stray_locations"]
+
+    if not auto_assignments and not pending_projects:
+        print("No project folders detected to classify.")
+        return
+
+    if root_name:
+        print(f"\nUsing '{root_name}' as the root folder for this upload.")
+
+    if auto_assignments:
+        print("\nAutomatically classified projects based on folder placement:")
+        for name, label in sorted(auto_assignments.items()):
+            print(f"  • {name}: {label}")
+
+    assignments = dict(auto_assignments)
+
+    if pending_projects:
+        print("\nProjects still needing classification:")
+        for name in pending_projects:
+            print(f"  • {name}")
+
+        scope = ask_overall_scope()
+        if scope in {"individual", "collaborative"}:
+            for name in pending_projects:
+                assignments[name] = scope
+        else:
+            print("\nLet’s classify each remaining project individually.")
+            for name in pending_projects:
+                assignments[name] = ask_project_classification(name)
+
+    record_project_classifications(conn, user_id, zip_name, assignments)
+
+    print("\nProject classifications saved:")
+    for name, classification in sorted(assignments.items()):
+        print(f"  • {name}: {classification}")
+
+    if stray_locations:
+        print("\nSkipped items (no project folder detected):")
+        for name in stray_locations:
+            print(f"  • {name}")
+
+
+def ask_overall_scope() -> str:
+    """Prompt for a bulk classification decision for the remaining projects."""
+    prompt = (
+        "\nFor the projects listed above, are they all individual, all collaborative, or a mix?\n"
+        "Type 'i' for individual, 'c' for collaborative, or 'm' for mixed: "
+    )
+    while True:
+        answer = input(prompt).strip().lower()
+        if answer in {"i", "individual"}:
+            return "individual"
+        if answer in {"c", "collaborative"}:
+            return "collaborative"
+        if answer in {"m", "mixed", "b", "both"}:
+            return "mixed"
+        print("Please respond with 'i' (individual), 'c' (collaborative), or 'm' (mixed).")
+
+
+def ask_project_classification(project_name: str) -> str:
+    """Prompt the user to classify a single project as individual or collaborative."""
+    prompt = f"  - Is '{project_name}' individual or collaborative? (i/c): "
+    while True:
+        answer = input(prompt).strip().lower()
+        if answer in {"i", "individual"}:
+            return "individual"
+        if answer in {"c", "collaborative"}:
+            return "collaborative"
+        print("Please respond with 'i' for individual or 'c' for collaborative.")
 
 if __name__ == "__main__":
     main()
