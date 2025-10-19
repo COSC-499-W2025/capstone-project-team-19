@@ -2,7 +2,8 @@ from parsing import parse_zip_file
 from db import connect, init_schema, get_or_create_user, _normalize_username, get_user_by_username, get_latest_consent, get_latest_external_consent
 from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
-
+from alt_analyze import extractfile, extract_keywords, topic_extraction, analyze_linguistic_complexity
+import os
 
 def main():
     print("Welcome aboard! Let’s turn your work into cool insights.")
@@ -101,7 +102,76 @@ def prompt_and_store():
         print("No valid files were processed. Check logs for unsupported or corrupted files.")
         return
 
+    analyze_files(conn, user_id, current_ext_consent, result, zip_path)
 
+def analyze_files(conn, user_id, external_consent, parsed_files, zip_path):
+    if external_consent=='accepted':
+    #for now will only use alternative method
+        alternative_analysis(conn, user_id, parsed_files, zip_path)
+    else:
+        alternative_analysis(conn, user_id, parsed_files, zip_path)
+
+def alternative_analysis(conn, user_id, parsed_files, zip_path):
+    text_files=[f for f in parsed_files if f.get('file_type')=='text']
+    metrics=[]
+
+    if not text_files:
+        return
+
+    REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
+    zip_name = os.path.splitext(os.path.basename(zip_path))[0]
+    base_path = os.path.join(ZIP_DATA_DIR, zip_name)
+
+    for file_info in text_files:
+        file_path = os.path.join(base_path, file_info['file_path'])
+        filename = file_info['file_name']
+    
+    print(f"Analyzing: {filename}")
+    text=extractfile(file_path)
+
+    linguistic_analysis= analyze_linguistic_complexity(text)
+    topics=topic_extraction(text, n_topics=3, n_words=5)
+    keywords=extract_keywords(text, n_words=5)
+
+    metrics.append({
+        'filename': filename,
+        'file_path': file_info['file_path'],
+        'linguistic': linguistic_analysis,
+        'topics': topics,
+        'keywords': keywords
+    })
+    display_analysis_results(filename, linguistic_analysis, topics, keywords)
+
+def display_analysis_results(filename:str, linguistic:dict, topics:list, keywords:list):
+    print("Linguistic and Readability:\n")
+    print(f"Word Count:              {linguistic['word_count']}")
+    print(f"Sentence Count:          {linguistic['sentence_count']}")
+    print(f"Character Count:         {linguistic['char_count']}")
+    print(f"Avg Word Length:         {linguistic['avg_word_length']}")
+    print(f"Avg Sentence Length:     {linguistic['avg_sentence_length']}")
+    print(f"Lexical Diversity:       {linguistic['lexical_diversity']}")
+    print(f"\nReadability Scores:")
+    print(f"  Flesch Reading Ease:   {linguistic['flesch_reading_ease']}")
+    print(f"  Flesch-Kincaid Grade:  {linguistic['flesch_kincaid_grade']}")
+    print(f"  SMOG Index:            {linguistic['smog_index']}")
+    print(f"  Reading Level:         {linguistic['reading_level']}")
+
+    print(f'\n Top Keywords:\n')
+    if keywords:
+        for i, (word, score) in enumerate(keywords[:15], 1):
+            print(f"{i:2d}. {word:30s} (score: {score:.4f})")
+    else:
+        print("No keywords extracted")
+    print(f"\nTopics:")
+    print("-" * 80)
+    if topics:
+        for topic in topics:
+            print(f"\nTopic {topic['topic_id'] + 1}: {topic['label']}")
+            print(f"  Top words: {', '.join(topic['words'][:10])}")
+    else:
+        print("No topics extracted")
+  
 
 def get_zip_path_from_user():
     path = input("Please enter the path to your ZIP file: ").strip()
