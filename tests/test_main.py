@@ -9,7 +9,7 @@ def test_main_prints_message(monkeypatch, capsys):
     monkeypatch.setattr('src.main.get_external_consent', lambda: 'accepted')
 
     # Avoid real parsing
-    monkeypatch.setattr('src.main.parse_zip_file', lambda _p: True)
+    monkeypatch.setattr('src.main.parse_zip_file', lambda _p, _uid=None: True)
 
     main.main()
     captured = capsys.readouterr()
@@ -24,7 +24,7 @@ def test_main_prints_error(monkeypatch, capsys):
     monkeypatch.setattr('src.main.get_external_consent', lambda: 'accepted')
 
     # Force parse failure
-    monkeypatch.setattr('src.main.parse_zip_file', lambda _p: False)
+    monkeypatch.setattr('src.main.parse_zip_file', lambda _p, _uid=None: False)
 
     main.main()
     captured = capsys.readouterr()

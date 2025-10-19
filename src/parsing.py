@@ -22,7 +22,7 @@ SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS.union(CODE_EXTENSIONS)
 UNSUPPORTED_LOG_PATH = os.path.join(ZIP_DATA_DIR, "unsupported_files.json")
 DUPLICATE_LOG_PATH = os.path.join(ZIP_DATA_DIR, "duplicate_files.json")
 
-def parse_zip_file(zip_path):
+def parse_zip_file(zip_path, user_id):
     zip_path = str(zip_path)
 
     if not os.path.exists(zip_path):
@@ -74,7 +74,6 @@ def parse_zip_file(zip_path):
 
     # Store parsed data in local database
     conn = connect()
-    user_id = get_or_create_user(conn, "local-user")
     store_parsed_files(conn, files_info, user_id)
     conn.close()
 

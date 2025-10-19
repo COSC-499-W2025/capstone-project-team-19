@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import json
 
-from parsing import parse_zip_file, collect_file_info, UNSUPPORTED_LOG_PATH, DUPLICATE_LOG_PATH
+from src.parsing import parse_zip_file, collect_file_info, UNSUPPORTED_LOG_PATH, DUPLICATE_LOG_PATH
 
 # Helper
 def create_sample_zip_with_various_types(tmp_dir):
@@ -46,9 +46,9 @@ def create_sample_zip_with_various_types(tmp_dir):
 
 
 # Tests
-def test_parse_zip_file_handles_all_supported_types(tmp_path):
+def test_parse_zip_file_handles_all_supported_types(tmp_path, test_user_id):
     zip_path = create_sample_zip_with_various_types(tmp_path)
-    result = parse_zip_file(str(zip_path))
+    result = parse_zip_file(str(zip_path), user_id=test_user_id)
 
     assert result is not None
     assert isinstance(result, list)
@@ -72,24 +72,24 @@ def test_parse_zip_file_handles_all_supported_types(tmp_path):
             assert key in entry
 
 
-def test_parse_zip_file_invalid_path_returns_none(tmp_path):
+def test_parse_zip_file_invalid_path_returns_none(tmp_path, test_user_id):
     bad_path = tmp_path / "does_not_exist.zip"
-    result = parse_zip_file(str(bad_path))
+    result = parse_zip_file(str(bad_path), user_id=test_user_id)
     assert result is None
 
 
-def test_parse_zip_file_non_zip_file_returns_none(tmp_path):
+def test_parse_zip_file_non_zip_file_returns_none(tmp_path, test_user_id):
     fake_file = tmp_path / "not_a_zip.txt"
     fake_file.write_text("hello")
 
-    result = parse_zip_file(str(fake_file))
+    result = parse_zip_file(str(fake_file), user_id=test_user_id)
     assert result is None
 
-def test_parse_zip_file_fake_zip_extension_returns_none(tmp_path):
+def test_parse_zip_file_fake_zip_extension_returns_none(tmp_path, test_user_id):
     fake_zip = tmp_path / "fake.zip"
     fake_zip.write_text("This is not a real ZIP folder")
 
-    result = parse_zip_file(fake_zip)
+    result = parse_zip_file(fake_zip, user_id=test_user_id)
     assert result is None
 
 def test_collect_file_info_returns_metadata(tmp_path):
@@ -109,23 +109,23 @@ def test_collect_file_info_returns_metadata(tmp_path):
     assert "modified" in info
 
 # testing empty zip file
-def test_parse_zip_file_empty_zip(tmp_path):
+def test_parse_zip_file_empty_zip(tmp_path, test_user_id):
     #Create empty zip file
     empty_zip = tmp_path / "empty.zip"
     with zipfile.ZipFile(empty_zip, "w") as f:
         pass
 
-    result = parse_zip_file(empty_zip)
+    result = parse_zip_file(empty_zip, user_id=test_user_id)
     assert result == []
 
-def test_parse_zip_file_corrupted_zip_returns_none(tmp_path):
+def test_parse_zip_file_corrupted_zip_returns_none(tmp_path, test_user_id):
     corrupt_zip = tmp_path / "corrupt.zip"
     corrupt_zip.write_bytes(b"PK\x03\x04\x00\x00\x00\x00\x00")  # looks like a header but incomplete 
 
-    result = parse_zip_file(str(corrupt_zip))
+    result = parse_zip_file(str(corrupt_zip), user_id=test_user_id)
     assert result is None
     
-def test_parse_zip_file_with_unsupported_files(tmp_path):
+def test_parse_zip_file_with_unsupported_files(tmp_path, test_user_id):
     # Unsupported file types should not appear in DB
 
     zip_path = tmp_path / "unsupported_files.zip"
@@ -138,7 +138,7 @@ def test_parse_zip_file_with_unsupported_files(tmp_path):
         for file in content_dir.iterdir():
             z.write(file, file.name)
 
-    result = parse_zip_file(str(zip_path))
+    result = parse_zip_file(str(zip_path), user_id=test_user_id)
     assert all(f["extension"] not in {".png", ".exe"} for f in result)
 
     from src.db import connect
@@ -146,7 +146,7 @@ def test_parse_zip_file_with_unsupported_files(tmp_path):
     rows = conn.execute("SELECT extension FROM files").fetchall()
     assert all(ext[0] not in {".png", ".exe"} for ext in rows)
     
-def test_parse_zip_file_with_duplicate_files(tmp_path):
+def test_parse_zip_file_with_duplicate_files(tmp_path, test_user_id):
     # Duplicate files in the same ZIP should appear only once in DB
 
     zip_path = tmp_path / "duplicates.zip"
@@ -162,7 +162,7 @@ def test_parse_zip_file_with_duplicate_files(tmp_path):
         z.write(content_dir / "main.py", "code/main.py")
         z.write(content_dir / "main_copy.py", "code/main.py")  # same arcname (duplicate)
 
-    result = parse_zip_file(str(zip_path))
+    result = parse_zip_file(str(zip_path), user_id=test_user_id)
 
     assert isinstance(result, list)
 
@@ -171,7 +171,7 @@ def test_parse_zip_file_with_duplicate_files(tmp_path):
     rows = conn.execute("SELECT file_name FROM files WHERE file_name='main.py'").fetchall()
     assert len(rows) == 1
     
-def test_parse_zip_file_detects_duplicates_across_folders(tmp_path):
+def test_parse_zip_file_detects_duplicates_across_folders(tmp_path, test_user_id):
     # Files with the same name but in different folders should both be stored
 
     # Create temporary files with identical name and content
@@ -188,7 +188,7 @@ def test_parse_zip_file_detects_duplicates_across_folders(tmp_path):
         z.write(content_dir / "data1.txt", "folderA/report.txt")
         z.write(content_dir / "data2.txt", "folderB/report.txt")
 
-    result = parse_zip_file(str(zip_path))
+    result = parse_zip_file(str(zip_path), user_id=test_user_id)
 
     assert isinstance(result, list)
     
