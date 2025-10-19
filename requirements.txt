@@ -8,7 +8,7 @@ pymupdf
 docx2txt
 openpyxl
 python-docx2txt
-PyPDF2
+pypdf
 
 nltk
 texstat

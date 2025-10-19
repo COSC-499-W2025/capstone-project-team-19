@@ -9,7 +9,7 @@ import json
 # Text extraction
 import docx2txt
 import fitz  # PyMuPDF
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 from docx import Document
 
 # NLP and analysis
@@ -151,4 +151,56 @@ def _interpret_reading_level(grade: float) -> str:
     else:
         return "Graduate"
 
+# topic modelling
+def topic_extraction(text: str, n_topics: int=5, n_words: int=10)->List[Dict[str, any]]:
+    # n_topics: number of topics to extract
+    #n_words: Number of top words per topic
+    if not text:
+        return[]
+    stop_words=set(stopwords.words('english'))
+    words=word_tokenize(text.lower())
+    words=[w for w in words if w.isalpha() and w not in stop_words and len(w)>2]
+    
+    clean_text=' '.join(words)
 
+    vectorizer=CountVectorizer(max_features=1000, min_df=1, max_df=1.0)
+    try:
+        doc_term=vectorizer.fit_transform([clean_text])
+        lda=LatentDirichletAllocation(n_components=min(n_topics, 3), random_state=42)
+        lda.fit(doc_term)
+        topics=[]
+        featurenames=vectorizer.get_feature_names_out()
+        for topic_idx, topic in enumerate(lda.components_):
+            top_index=topic.argsort()[-n_words:][::-1]
+            top_words=[featurenames[i] for i in top_index]
+            top_weights=[float(topic[i]) for i in top_index]
+
+            topics.append({
+                'topic_id': topic_idx,
+                'words': top_words,
+                'weights': top_weights,
+                'label':', '.join(top_words[:3]).title()
+            })
+
+        return topics
+    except Exception as e:
+        return[]
+
+def extract_keywords(text: str, n_words: int=20)->List[Tuple[str,float]]:
+    stop_words=set(stopwords.words('english'))
+    try:
+        vectorizer=TfidfVectorizer(
+            max_features=100,
+            stop_words=list(stop_words),
+            ngram_range=(1,2)
+        )
+        tfidf_mat=vectorizer.fit_transform([text])
+        feature_names=vectorizer.get_feature_names_out()
+
+        scores=tfidf_mat.toarray()[0]
+        top_index=scores.argsort()[-n_words:][::-1]
+        keywords=[(feature_names[i], float(scores[i])) for i in top_index if scores[i]>0]
+        return keywords
+    except Exception as e:
+        print(f"Error:{e}")
+        return []
