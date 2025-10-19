@@ -107,11 +107,14 @@ def prompt_and_store():
 def analyze_files(conn, user_id, external_consent, parsed_files, zip_path):
     if external_consent=='accepted':
     #for now will only use alternative method
-        alternative_analysis(conn, user_id, parsed_files, zip_path)
+        alternative_analysis(parsed_files, zip_path)
     else:
-        alternative_analysis(conn, user_id, parsed_files, zip_path)
+        alternative_analysis(parsed_files, zip_path)
 
-def alternative_analysis(conn, user_id, parsed_files, zip_path):
+def alternative_analysis(parsed_files, zip_path):
+    if not isinstance(parsed_files, list):
+        return
+
     text_files=[f for f in parsed_files if f.get('file_type')=='text']
     metrics=[]
 
@@ -126,22 +129,22 @@ def alternative_analysis(conn, user_id, parsed_files, zip_path):
     for file_info in text_files:
         file_path = os.path.join(base_path, file_info['file_path'])
         filename = file_info['file_name']
-    
-    print(f"Analyzing: {filename}")
-    text=extractfile(file_path)
 
-    linguistic_analysis= analyze_linguistic_complexity(text)
-    topics=topic_extraction(text, n_topics=3, n_words=5)
-    keywords=extract_keywords(text, n_words=5)
+        print(f"Analyzing: {filename}")
+        text=extractfile(file_path)
 
-    metrics.append({
-        'filename': filename,
-        'file_path': file_info['file_path'],
-        'linguistic': linguistic_analysis,
-        'topics': topics,
-        'keywords': keywords
-    })
-    display_analysis_results(filename, linguistic_analysis, topics, keywords)
+        linguistic_analysis= analyze_linguistic_complexity(text)
+        topics=topic_extraction(text, n_topics=1, n_words=5)
+        keywords=extract_keywords(text, n_words=5)
+
+        metrics.append({
+            'filename': filename,
+            'file_path': file_info['file_path'],
+            'linguistic': linguistic_analysis,
+            'topics': topics,
+            'keywords': keywords
+        })
+        display_analysis_results(filename, linguistic_analysis, topics, keywords)
 
 def display_analysis_results(filename:str, linguistic:dict, topics:list, keywords:list):
     print("Linguistic and Readability:\n")
@@ -164,13 +167,13 @@ def display_analysis_results(filename:str, linguistic:dict, topics:list, keyword
     else:
         print("No keywords extracted")
     print(f"\nTopics:")
-    print("-" * 80)
     if topics:
         for topic in topics:
             print(f"\nTopic {topic['topic_id'] + 1}: {topic['label']}")
             print(f"  Top words: {', '.join(topic['words'][:10])}")
     else:
         print("No topics extracted")
+    print("-" * 80)
   
 
 def get_zip_path_from_user():
