@@ -36,3 +36,15 @@ def shared_db(tmp_path, monkeypatch):
         conn.close()
     finally:
         monkeypatch.delenv("APP_DB_PATH", raising=False)
+
+
+@pytest.fixture
+def test_user_id(shared_db):
+    """
+    Create and return a consistent test user for all tests.
+    Uses the shared test database connection.
+    """
+    conn = db.connect()
+    user_id = db.get_or_create_user(conn, "test-user")
+    conn.close()
+    return user_id

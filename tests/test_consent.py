@@ -2,8 +2,8 @@ import os
 import sqlite3
 from pathlib import Path
 import pytest
-from db import connect, init_schema
-from consent import record_consent
+from src.db import connect, init_schema
+from src.consent import record_consent
 
 @pytest.fixture()
 def tmp_conn(tmp_path: Path):
