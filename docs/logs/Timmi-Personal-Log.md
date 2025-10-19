@@ -43,7 +43,7 @@ Reviewed the following PR's:
 
 ![Screenshot of this week's peer evaluation](./screenshots/Timmi-Oct13-Oct19.PNG)
 
-Week Recap: This week, I started by setting up the PR template and ensuring all assigned issues were in the Kanban board. Then, I fixed a Windows-specific bug where MIME detection was failing to recognize certain CSV files during pytest runs, which required additional research to resolve. I also connected the parsed files to the database so the files metadata is now stored in the database instead of only in the zip data file, although at the moment the parsed raw files are still stored in a folder.
+Week Recap: This week, I started by setting up the PR template and ensuring all assigned issues were in the Kanban board. Then, I fixed a Windows-specific bug where MIME detection was failing to recognize certain CSV files during pytest runs, which required additional research to resolve. I also connected the parsed ZIP files to the database so the files metadata is now stored in the database. The files themselves remain stored locally on the user’s machine rather than within the database, which is something the team plans to discuss further in our next meeting.
 
 My PR's:
 - 74 (Pull request template)
