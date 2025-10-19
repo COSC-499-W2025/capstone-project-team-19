@@ -53,6 +53,7 @@ To keep analysis simple, please structure the folder you zip and upload like thi
 2. Inside the root folder you may optionally create subfolders named `individual/` and `collaborative/`.
    - If you create these folders, add each project as a subfolder beneath the appropriate one. Every subfolder under `individual/` is treated as an individual project; every subfolder under `collaborative/` is treated as a collaborative project.
 3. If you do **not** create `individual/` or `collaborative/`, simply keep each project as a child folder directly under the root. The CLI will then ask you to classify each project one-by-one.
+   - Any loose files left directly in the root (not inside a project folder) are ignored during analysis, so be sure to nest everything you want processed inside a project directory.
 
 Example structures:
 
