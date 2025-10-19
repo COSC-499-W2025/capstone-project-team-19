@@ -39,16 +39,3 @@ Reviewed the following PR's:
 - Add updated system architecture diagram and description (Adara)
 - Wbs (Johanes)
 
-## (Week 7) Monday October 13 - Sunday October 17
-
-![Screenshot of this week's peer evaluation](./screenshots/Timmi-Oct13-Oct19.PNG)
-
-Week Recap: This week, I started by setting up the PR template and ensuring all assigned issues were in the Kanban board. Then, I fixed a Windows-specific bug where MIME detection was failing to recognize certain CSV files during pytest runs, which required additional research to resolve. I also connected the parsed files to the database so the files metadata is now stored in the database instead of only in the zip data file, although at the moment the parsed raw files are still stored in a folder.
-
-My PR's:
-- 74 (Pull request template)
-- 77 (Windows test failure)
-- 78 (Parsing to db)
-
-Reviewed the following PR's:
-- 75 (Store user config) - Salma
