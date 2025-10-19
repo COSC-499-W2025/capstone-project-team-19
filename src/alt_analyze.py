@@ -1,10 +1,8 @@
 
 import os
-import re
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
-from pathlib import Path
-import json
+
 
 # Text extraction
 import docx2txt
@@ -218,8 +216,8 @@ def calculate_document_metrics(filepath: str)-> Dict[str, any]:
         }
     
     linguistic_metrics= analyze_linguistic_complexity(text)
-    topics=topic_extraction(text)
-    keywords=extract_keywords(text)
+    topics=topic_extraction(text, n_topics=1, n_words=5)
+    keywords=extract_keywords(text, n_words=5)
 
     return{
  
@@ -248,7 +246,7 @@ def calculate_project_metrics(documents_metrics: List[Dict])->Dict[str,any]:
         for word, score in doc.get('keywords', []):
             all_keywords[word]=all_keywords.get(word, 0)+score
     
-    top_keywords=sorted(all_keywords.items(), key=lambda x: x[1], reversed=True)[:20]
+    top_keywords=sorted(all_keywords.items(), key=lambda x: x[1], reverse=True)[:20]
     return{
         'summary':{
             'total_documents':total_docs,

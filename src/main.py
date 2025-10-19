@@ -2,7 +2,7 @@ from parsing import parse_zip_file
 from db import connect, init_schema, get_or_create_user, _normalize_username, get_user_by_username, get_latest_consent, get_latest_external_consent
 from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
-from alt_analyze import extractfile, extract_keywords, topic_extraction, analyze_linguistic_complexity
+from alt_analyze import calculate_document_metrics, calculate_project_metrics
 import os
 
 def main():
@@ -116,9 +116,9 @@ def alternative_analysis(parsed_files, zip_path):
         return
 
     text_files=[f for f in parsed_files if f.get('file_type')=='text']
-    metrics=[]
 
     if not text_files:
+        print("No text files found to analyze.")
         return
 
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -126,54 +126,83 @@ def alternative_analysis(parsed_files, zip_path):
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     base_path = os.path.join(ZIP_DATA_DIR, zip_name)
 
+    print(f"\n{'='*80}")
+    print(f"Analyzing {len(text_files)} file(s)...")
+    print(f"{'='*80}\n")
+
+    # Calculate metrics for each document
+    all_document_metrics = []
     for file_info in text_files:
         file_path = os.path.join(base_path, file_info['file_path'])
         filename = file_info['file_name']
 
-        print(f"Analyzing: {filename}")
-        text=extractfile(file_path)
+        print(f"Processing: {filename}")
+        doc_metrics = calculate_document_metrics(file_path)
 
-        linguistic_analysis= analyze_linguistic_complexity(text)
-        topics=topic_extraction(text, n_topics=1, n_words=5)
-        keywords=extract_keywords(text, n_words=5)
+        if doc_metrics.get('processed'):
+            # Add filename for reference
+            doc_metrics['filename'] = filename
+            all_document_metrics.append(doc_metrics)
+            display_individual_results(filename, doc_metrics)
+        else:
+            print(f"Failed to process: {doc_metrics.get('error', 'Unknown error')}\n")
 
-        metrics.append({
-            'filename': filename,
-            'file_path': file_info['file_path'],
-            'linguistic': linguistic_analysis,
-            'topics': topics,
-            'keywords': keywords
-        })
-        display_analysis_results(filename, linguistic_analysis, topics, keywords)
+    # Display project-wide summary
+    if all_document_metrics:
+        print(f"\n{'='*80}")
+        print("PROJECT SUMMARY - Aggregated Metrics Across All Files")
+        print(f"{'='*80}\n")
+        display_project_summary(calculate_project_metrics(all_document_metrics))
+    else:
+        print("\nNo files were successfully processed.")
 
-def display_analysis_results(filename:str, linguistic:dict, topics:list, keywords:list):
-    print("Linguistic and Readability:\n")
-    print(f"Word Count:              {linguistic['word_count']}")
-    print(f"Sentence Count:          {linguistic['sentence_count']}")
-    print(f"Character Count:         {linguistic['char_count']}")
-    print(f"Avg Word Length:         {linguistic['avg_word_length']}")
-    print(f"Avg Sentence Length:     {linguistic['avg_sentence_length']}")
-    print(f"Lexical Diversity:       {linguistic['lexical_diversity']}")
-    print(f"\nReadability Scores:")
-    print(f"  Flesch Reading Ease:   {linguistic['flesch_reading_ease']}")
-    print(f"  Flesch-Kincaid Grade:  {linguistic['flesch_kincaid_grade']}")
-    print(f"  SMOG Index:            {linguistic['smog_index']}")
-    print(f"  Reading Level:         {linguistic['reading_level']}")
+def display_individual_results(filename: str, doc_metrics: dict):
+    """Display analysis results for an individual file."""
+    linguistic = doc_metrics['linguistic_metrics']
+    topics = doc_metrics['topics']
+    keywords = doc_metrics['keywords']
 
-    print(f'\n Top Keywords:\n')
+    print(f"  Linguistic & Readability:")
+    print(f"    Word Count: {linguistic['word_count']}, Sentences: {linguistic['sentence_count']}")
+    print(f"    Reading Level: {linguistic['reading_level']} (Grade {linguistic['flesch_kincaid_grade']})")
+    print(f"    Lexical Diversity: {linguistic['lexical_diversity']}")
+
+    print(f"  Top Keywords: ", end="")
     if keywords:
-        for i, (word, score) in enumerate(keywords[:15], 1):
-            print(f"{i:2d}. {word:30s} (score: {score:.4f})")
+        keyword_str = ', '.join([word for word, _score in keywords[:5]])
+        print(keyword_str)
     else:
-        print("No keywords extracted")
-    print(f"\nTopics:")
+        print("None")
+
+    print(f"  Topics: ", end="")
     if topics:
-        for topic in topics:
-            print(f"\nTopic {topic['topic_id'] + 1}: {topic['label']}")
-            print(f"  Top words: {', '.join(topic['words'][:10])}")
+        topic_labels = [topic['label'] for topic in topics[:2]]
+        print(', '.join(topic_labels))
     else:
-        print("No topics extracted")
-    print("-" * 80)
+        print("None")
+    print()
+
+def display_project_summary(project_metrics: dict):
+    """Display aggregated project-wide metrics."""
+    if not project_metrics or 'error' in project_metrics:
+        print("Unable to generate project summary.")
+        return
+
+    summary = project_metrics['summary']
+    print(f"Total Documents Analyzed:     {summary['total_documents']}")
+    print(f"Total Words:                  {summary['total_words']:,}")
+    print(f"Average Reading Level:        {summary['reading_level_label']} (Grade {summary['reading_level_average']})")
+
+    print(f"\nTop Keywords Across All Documents:")
+    print("-" * 50)
+    keywords = project_metrics.get('keywords', [])
+    if keywords:
+        for i, kw in enumerate(keywords[:15], 1):
+            print(f"{i:2d}. {kw['word']:30s} (score: {kw['score']:.3f})")
+    else:
+        print("No keywords found")
+
+    print(f"\n{'='*80}\n")
   
 
 def get_zip_path_from_user():
