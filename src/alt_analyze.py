@@ -21,6 +21,7 @@ import textstat
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 import numpy as np
+import parsing
 
 ##TODO: Text Extraction (from pdf, txt, docx)✅
 ##      Linguistic + Readability analysis 
@@ -204,3 +205,57 @@ def extract_keywords(text: str, n_words: int=20)->List[Tuple[str,float]]:
     except Exception as e:
         print(f"Error:{e}")
         return []
+
+##      Metrics to be produced: Summary, Project Ranking, Activity frequency timeline, Key skills, Success indicators, Work type breakdown, collaboration share
+
+def calculate_document_metrics(filepath: str)-> Dict[str, any]: 
+    text=extractfile(filepath)
+    if not text:
+        return{
+            'file_path':filepath,
+            'error': 'Failed to extract text',
+            'processed': False
+        }
+    
+    linguistic_metrics= analyze_linguistic_complexity(text)
+    topics=topic_extraction(text)
+    keywords=extract_keywords(text)
+
+    return{
+ 
+        'processed': True,
+        'linguistic_metrics': linguistic_metrics,
+        'topics':topics,
+        'keywords':keywords[:10],
+        'processing_timestamp':datetime.now().isoformat()
+
+    }
+
+def calculate_project_metrics(documents_metrics: List[Dict])->Dict[str,any]:
+    if not documents_metrics:
+        return{}
+    valid_docs=[d for d in documents_metrics if d.get('processed', False)]
+
+    if not valid_docs:
+        return {'error':'No documents processed'}
+    
+    total_word_count=sum(d['linguistic_metrics']['word_count'] for d in valid_docs)
+    total_docs=len(valid_docs)
+    reading_level_average=np.mean([d['linguistic_metrics']['flesch_kincaid_grade'] for d in valid_docs])
+
+    all_keywords={}
+    for doc in valid_docs:
+        for word, score in doc.get('keywords', []):
+            all_keywords[word]=all_keywords.get(word, 0)+score
+    
+    top_keywords=sorted(all_keywords.items(), key=lambda x: x[1], reversed=True)[:20]
+    return{
+        'summary':{
+            'total_documents':total_docs,
+            'total_words':total_word_count,
+            'reading_level_average': round(reading_level_average,2),
+            'reading_level_label':_interpret_reading_level(reading_level_average)
+        },
+        'keywords': [{'word': word, 'score': round(score, 3)} for word, score in top_keywords]
+    }
+
