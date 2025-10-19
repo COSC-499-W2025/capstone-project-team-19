@@ -116,7 +116,7 @@ Not applicable – no tasks in progress.
 | Team 15 | Restricts processing to text files only, applying an ML model for every document.<br>Does not handle images or video sources.<br>Open questions on what metrics they intend to surface from the ML pipeline.                                                          |
 
 
-## (Week 5) Monday 29th - Sunday 5th October
+## (Week 6) Monday 6th - Sunday 12th October
 
 ### Week recap:
 
@@ -147,6 +147,42 @@ This week, the team focused on moving from design to implementation, refining bo
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Oct6-12.png) |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct6-12.png)   |
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct6-12.png)   |
+
+### Table view of in progress tasks by username
+
+Not applicable – no tasks in progress.
+
+## (Week 7) Monday 13th - Sunday 19th October
+
+### Week recap:
+
+This week, the team continued implementation work for Milestone 1, completing several major system features. Timmi added the Pull Request template, fixed a Windows-specific MIME-type detection bug to ensure consistent file recognition across platforms, and completed the integration of ZIP file parsing with metadata storage in the local SQLite database. Salma implemented user-configuration storage, enabling persistent saving of user consent preferences (accepted and rejected for both LLM usage and file parsing). Ivona completed the feature for detecting and identifying the programming language and framework used in uploaded coding projects and also implemented functionality to extract key contribution metrics within a project. Ammaar developed the feature that distinguishes individual projects from collaborative ones, allowing the system to identify when files belong to shared repositories versus solo workspaces for more accurate contribution tracking. Johanes implemented the alternative analysis feature, ensuring that when user data cannot be sent to an external service, the system automatically performs a local analysis to maintain functionality and data privacy. Adara implemented the feature to extrapolate individual contributions within collaborative projects, enabling the system to analyze shared workspaces and attribute specific files or changes to individual users.
+
+### Burnup chart
+
+![Burnup chart for Oct 6 - 12]()
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshot                                                                  |
+| --------------- | --------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara]()   |
+| `ammaarkhan`    | ![Completed tasks for Ammaar]() |
+| `ivonanicetin`  | ![Completed tasks for Ivona]()   |
+| `johaneshp`     | ![Completed tasks for Johanes]() |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct13-19.PNG)   |
+| `taoTimTim`     | ![Completed tasks for Timmi]()   |
 
 ### Table view of in progress tasks by username
 
