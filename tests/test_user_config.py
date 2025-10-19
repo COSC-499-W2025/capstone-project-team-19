@@ -10,6 +10,10 @@ from db import (
 from consent import record_consent
 from external_consent import record_external_consent
 
+_FAKE_FILES_INFO = [
+    {"file_path": "project_one/main.py", "file_name": "main.py"},
+]
+
 
 # ---------- helpers ----------
 
@@ -32,9 +36,11 @@ def _inputs_repeat_last(monkeypatch, answers):
     monkeypatch.setattr(builtins, "input", _fake_input)
 
 
-def _stub_parse(monkeypatch, return_value=True):
+def _stub_parse(monkeypatch, return_value=None):
     """Avoid real parsing during tests."""
-    monkeypatch.setattr("src.main.parse_zip_file", lambda _p: return_value)
+    if return_value is None:
+        return_value = list(_FAKE_FILES_INFO)
+    monkeypatch.setattr("src.main.parse_zip_file", lambda *args, **kwargs: return_value)
 
 
 def _never_called(*_args, **_kwargs):
@@ -52,7 +58,7 @@ def test_new_username_prompts_and_saves_both(monkeypatch):
     conn = connect(); init_schema(conn)
 
     # username -> zip path
-    _inputs_repeat_last(monkeypatch, ["john", "/tmp/fake.zip"])
+    _inputs_repeat_last(monkeypatch, ["john", "/tmp/fake.zip", "i"])
     _stub_parse(monkeypatch)
 
     # stub consent prompts so no extra input() calls
@@ -72,7 +78,7 @@ def test_existing_username_no_consents_prompts_both(monkeypatch):
     conn = connect(); init_schema(conn)
     user_id = get_or_create_user(conn, "jane")
 
-    _inputs_repeat_last(monkeypatch, ["jane", "/tmp/fake.zip"])
+    _inputs_repeat_last(monkeypatch, ["jane", "/tmp/fake.zip", "i"])
     _stub_parse(monkeypatch)
 
     monkeypatch.setattr("src.main.get_user_consent", lambda: "accepted")
@@ -93,7 +99,7 @@ def test_partial_missing_external_only_prompts_external(monkeypatch):
     user_id = get_or_create_user(conn, "alex")
     record_consent(conn, "rejected", user_id=user_id)  # only user consent exists
 
-    _inputs_repeat_last(monkeypatch, ["alex", "/tmp/fake.zip"])
+    _inputs_repeat_last(monkeypatch, ["alex", "/tmp/fake.zip", "i"])
     _stub_parse(monkeypatch)
 
     # user consent should NOT be called again
@@ -115,7 +121,7 @@ def test_partial_missing_user_only_prompts_user(monkeypatch):
     user_id = get_or_create_user(conn, "bob")
     record_external_consent(conn, "accepted", user_id=user_id)  # only external consent exists
 
-    _inputs_repeat_last(monkeypatch, ["bob", "/tmp/fake.zip"])
+    _inputs_repeat_last(monkeypatch, ["bob", "/tmp/fake.zip", "i"])
     _stub_parse(monkeypatch)
 
     # external consent should NOT be called again
@@ -138,7 +144,7 @@ def test_full_configuration_reuse_yes_records_again(monkeypatch, capsys):
     record_external_consent(conn, "accepted", user_id=user_id)
 
     # username -> reuse? -> zip path
-    _inputs_repeat_last(monkeypatch, ["chris", "y", "/tmp/fake.zip"])
+    _inputs_repeat_last(monkeypatch, ["chris", "y", "/tmp/fake.zip", "i"])
     _stub_parse(monkeypatch)
 
     # No consent prompts should be needed in reuse=yes path
@@ -163,7 +169,7 @@ def test_full_configuration_reuse_no_reprompts_both(monkeypatch):
     record_external_consent(conn, "rejected", user_id=user_id)
 
     # username -> reuse? -> zip path
-    _inputs_repeat_last(monkeypatch, ["drew", "n", "/tmp/fake.zip"])
+    _inputs_repeat_last(monkeypatch, ["drew", "n", "/tmp/fake.zip", "i"])
     _stub_parse(monkeypatch)
 
     # re-prompt both to new choices
@@ -191,7 +197,7 @@ def test_correct_user_id_is_used(monkeypatch):
     record_external_consent(conn, "rejected", user_id=ub)
 
     # Log in as jane and choose reuse
-    _inputs_repeat_last(monkeypatch, ["jane", "y", "/tmp/fake.zip"])
+    _inputs_repeat_last(monkeypatch, ["jane", "y", "/tmp/fake.zip", "i"])
     _stub_parse(monkeypatch)
 
     # No prompts expected on reuse
@@ -207,3 +213,34 @@ def test_correct_user_id_is_used(monkeypatch):
     # john's latest remains accepted/accepted
     assert get_latest_consent(conn, ua) == "accepted"
     assert get_latest_external_consent(conn, ua) == "accepted"
+
+
+def test_project_classifications_are_recorded(monkeypatch):
+    conn = connect(); init_schema(conn)
+
+    fake_files = [
+        {"file_path": "alpha/main.py", "file_name": "main.py"},
+        {"file_path": "beta/utils.py", "file_name": "utils.py"},
+    ]
+
+    _inputs_repeat_last(monkeypatch, ["jess", "/tmp/fake.zip", "m", "i", "c"])
+    _stub_parse(monkeypatch, return_value=fake_files)
+
+    monkeypatch.setattr("src.main.get_user_consent", lambda: "accepted")
+    monkeypatch.setattr("src.main.get_external_consent", lambda: "accepted")
+
+    main.prompt_and_store()
+
+    user_id = get_or_create_user(conn, "jess")
+    rows = conn.execute(
+        """
+        SELECT project_name, classification
+        FROM project_classifications
+        WHERE user_id=?
+        ORDER BY project_name
+        """,
+        (user_id,),
+    ).fetchall()
+
+    assert rows == [("alpha", "individual"), ("beta", "collaborative")]
+

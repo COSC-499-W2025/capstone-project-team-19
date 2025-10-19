@@ -1,7 +1,21 @@
 from src import main
 
+
+def _fake_files_info():
+    """
+    Return minimal metadata so parse_zip_file stub looks like the real thing.
+    Needed because main() now passes the parse results straight into the project
+    classification workflow, which expects items shaped like real metadata rows.
+    """
+    return [
+        {
+            "file_path": "project_alpha/app.py",
+            "file_name": "app.py",
+        }
+    ]
+
 def test_main_prints_message(monkeypatch, capsys):
-    inputs = iter(['john', 'fake_path.zip'])
+    inputs = iter(['john', 'fake_path.zip', 'i'])
     monkeypatch.setattr('builtins.input', lambda _: next(inputs))
 
     # Patch the names bound in src.main
@@ -9,7 +23,7 @@ def test_main_prints_message(monkeypatch, capsys):
     monkeypatch.setattr('src.main.get_external_consent', lambda: 'accepted')
 
     # Avoid real parsing
-    monkeypatch.setattr('src.main.parse_zip_file', lambda _p: True)
+    monkeypatch.setattr('src.main.parse_zip_file', lambda *args, **kwargs: _fake_files_info())
 
     main.main()
     captured = capsys.readouterr()
@@ -24,7 +38,7 @@ def test_main_prints_error(monkeypatch, capsys):
     monkeypatch.setattr('src.main.get_external_consent', lambda: 'accepted')
 
     # Force parse failure
-    monkeypatch.setattr('src.main.parse_zip_file', lambda _p: False)
+    monkeypatch.setattr('src.main.parse_zip_file', lambda *args, **kwargs: False)
 
     main.main()
     captured = capsys.readouterr()
