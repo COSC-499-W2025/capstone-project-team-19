@@ -160,7 +160,7 @@ This week, the team continued implementation work for Milestone 1, completing se
 
 ### Burnup chart
 
-![Burnup chart for Oct 13 - 19]()
+![Burnup chart for Oct 13 - 19](screenshots/week7-burnupchart.png)
 
 ### Github usernames
 
@@ -179,7 +179,7 @@ This week, the team continued implementation work for Milestone 1, completing se
 | --------------- | --------------------------------------------------------------------------- |
 | `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct13-Oct19.png)   |
 | `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct13-Oct19.png) |
-| `ivonanicetin`  | ![Completed tasks for Ivona]()   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct13-Oct19.png)   |
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Oct13-Oct19.png) |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct13-Oct19.png)   |
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct13-Oct19.png)   |
