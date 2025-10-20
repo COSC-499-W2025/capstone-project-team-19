@@ -26,3 +26,8 @@ Week recap: Discussed and built DFD with team during class on Monday, and reflec
 ![Screenshot of week 6 peer eval](./screenshots/Johanes-Oct6-12.PNG)
 
 Week recap: Our team started few codings, I am in charge in creating the WBS. My teammate suggested about the WBS needs to be more detailed on milestone 2 and 3. Did a research about what a proper WBS should look like. Did a review for my teammate's PR.
+
+## (Week 7) Monday 13th October - Sunday 19th October
+![Screenshot of week 7 peer eval](./screenshots/Johanes-Oct13-19.PNG)
+
+Week recap: implemented the alternative analyses, did some research about the functions to be used in the implementation. Get some feedback from teammate. Feedbacks will be discussed in class on wednesday for further update. 
