@@ -1,7 +1,8 @@
 from pathlib import Path
 import sqlite3
 import os
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
+from datetime import datetime
 
 # Default database path (can be overridden in tests)
 DEFAULT_DB = Path(os.getenv("APP_DB_PATH", "local_storage.db"))
@@ -120,6 +121,25 @@ def init_schema(conn: sqlite3.Connection) -> None:
         ON files(user_id, file_name)
     """)
 
+    # --- PROJECT CLASSIFICATIONS TABLE ---
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS project_classifications (
+        classification_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id           INTEGER NOT NULL,
+        zip_name          TEXT NOT NULL,
+        project_name      TEXT NOT NULL,
+        classification    TEXT NOT NULL CHECK (classification IN ('individual','collaborative')),
+        recorded_at       TEXT NOT NULL,
+        UNIQUE(user_id, zip_name, project_name),
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_project_classifications_lookup
+        ON project_classifications(user_id, zip_name);
+    """)
+
     conn.commit()
 
 # ----------------------------------------------------------
@@ -190,4 +210,68 @@ def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id
         ))
     
     conn.commit()
+
+
+def record_project_classification(
+    conn: sqlite3.Connection,
+    user_id: int,
+    zip_name: str,
+    project_name: str,
+    classification: str,
+    when: datetime | None = None
+) -> None:
+    """Persist a single project classification selection."""
+    if classification not in {"individual", "collaborative"}:
+        raise ValueError("classification must be 'individual' or 'collaborative'")
+
+    timestamp = (when or datetime.now()).isoformat()
+    conn.execute(
+        """
+        INSERT INTO project_classifications (
+            user_id, zip_name, project_name, classification, recorded_at
+        )
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, zip_name, project_name) DO UPDATE SET
+            classification=excluded.classification,
+            recorded_at=excluded.recorded_at
+        """,
+        (user_id, zip_name, project_name, classification, timestamp),
+    )
+    conn.commit()
+
+
+def record_project_classifications(
+    conn: sqlite3.Connection,
+    user_id: int,
+    zip_name: str,
+    assignments: Dict[str, str],
+    when: datetime | None = None,
+) -> None:
+    """Bulk helper that stores classifications for multiple project names."""
+    for project_name, classification in assignments.items():
+        record_project_classification(
+            conn,
+            user_id,
+            zip_name,
+            project_name,
+            classification,
+            when=when,
+        )
+
+
+def get_project_classifications(
+    conn: sqlite3.Connection,
+    user_id: int,
+    zip_name: str,
+) -> dict[str, str]:
+    """Fetch saved classifications for a given user + uploaded ZIP."""
+    rows = conn.execute(
+        """
+        SELECT project_name, classification
+        FROM project_classifications
+        WHERE user_id=? AND zip_name=?
+        """,
+        (user_id, zip_name),
+    ).fetchall()
+    return {project_name: classification for project_name, classification in rows}
     

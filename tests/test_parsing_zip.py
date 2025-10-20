@@ -59,6 +59,7 @@ def test_parse_zip_file_handles_all_supported_types(tmp_path, test_user_id):
         ".txt", ".csv", ".docx", ".pdf", 
         ".py", ".java", ".js", ".html", ".css", ".c", ".cpp", ".h"
     }
+
     assert expected_extensions.issubset(extensions)
 
     # Check classification
