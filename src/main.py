@@ -12,6 +12,7 @@ from db import (
 from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
 from alt_analyze import calculate_document_metrics, calculate_project_metrics
+from llm_analyze import run_llm_analysis
 import os
 
 def main():
@@ -119,10 +120,12 @@ def prompt_and_store():
     
 def analyze_files(conn, user_id, external_consent, parsed_files, zip_path):
     if external_consent=='accepted':
-    #for now will only use alternative method
-        alternative_analysis(parsed_files, zip_path)
+        llm_analysis(parsed_files, zip_path)
     else:
         alternative_analysis(parsed_files, zip_path)
+        
+def llm_analysis(parsed_files, zip_path):
+    run_llm_analysis(parsed_files, zip_path)
 
 def alternative_analysis(parsed_files, zip_path):
     if not isinstance(parsed_files, list):
