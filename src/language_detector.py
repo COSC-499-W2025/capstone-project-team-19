@@ -1,7 +1,8 @@
 import os
-import json
+import sqlite3
+from collections import defaultdict
+from typing import Dict
 
-# Language Detection
 EXTENSION_TO_LANGUAGE = {
     ".py": "Python",
     ".java": "Java",
@@ -13,19 +14,25 @@ EXTENSION_TO_LANGUAGE = {
     ".h": "C/C++ Header"
 }
 
-def detect_languages(project_path):
-    """Detect languages by file extensions."""
-    languages = set()
-    for root, _, files in os.walk(project_path):
-        for file in files:
-            ext = os.path.splitext(file)[1]
-            if ext in EXTENSION_TO_LANGUAGE:
-                languages.add(EXTENSION_TO_LANGUAGE[ext])
-    return list(languages)
+def detect_languages(db_path: str) -> Dict[str, list[str]]:
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT file_path, extension FROM files")
+    rows = cursor.fetchall()
+    conn.close()
 
-# Testing
-if __name__ == "__main__":
-    # add your project path here for manual testing
-    project_folder = "C:/Users/ivona/Projects/Hello, Stars!/Hackathon2025"
-    detected = detect_languages(project_folder)
-    print("Languages detected:", detected)
+    languages_by_project = defaultdict(set)
+
+    for file_path, ext in rows:
+        if ext not in EXTENSION_TO_LANGUAGE:
+            continue
+
+        # Extract just the first folder as the project name
+        normalized_path = file_path.replace("\\", "/")  # handle Windows paths
+        parts = normalized_path.split("/")
+        proj_name = parts[0] if parts else "unknown"
+
+        languages_by_project[proj_name].add(EXTENSION_TO_LANGUAGE[ext])
+
+    # Convert sets to sorted lists
+    return {proj: sorted(list(langs)) for proj, langs in languages_by_project.items()}
