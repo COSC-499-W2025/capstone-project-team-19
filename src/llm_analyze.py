@@ -10,7 +10,6 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
 def run_llm_analysis(parsed_files, zip_path):
-    """Run the LLM-based text analysis pipeline (summary + skills)."""
     if not isinstance(parsed_files, list):
         return
 
@@ -43,16 +42,14 @@ def run_llm_analysis(parsed_files, zip_path):
         # LLM calls
         summary = generate_llm_summary(text)
         skills = generate_llm_skills(text)
-
-        # placeholder for next stage (success factors)
-        success = {"strengths": "None", "weaknesses": "None", "score": "None"}
+        success = generate_llm_success_factors(text, linguistic)
 
         display_llm_results(filename, linguistic, summary, skills, success)
 
     print(f"\n{'='*80}")
-    print("PROJECT SUMMARY - (LLM-based results: summaries + skills)")
+    print("PROJECT SUMMARY - (LLM-based results: summaries, skills, and success factors)")
     print(f"{'='*80}\n")
-    print("Summaries and skill insights successfully generated for eligible text files.")
+    print("All insights successfully generated for eligible text files.")
     print(f"\n{'='*80}\n")
 
 
@@ -77,7 +74,6 @@ def display_llm_results(filename, linguistic, summary, skills, success):
 
 
 def generate_llm_summary(text):
-    """Use Llama 3.1 (Groq) to classify document type and summarize its purpose."""
     text = text[:6000]
     prompt = (
         "You are analyzing a document that could be any type of written work — "
@@ -114,7 +110,6 @@ def generate_llm_summary(text):
 
 
 def generate_llm_skills(text):
-    """Use Llama 3.1 (Groq) to infer 3–5 key skills demonstrated in the document."""
     text = text[:6000]
     prompt = (
         "From the following text, infer 3–5 key *skills* demonstrated by the author or creator. "
@@ -155,3 +150,61 @@ def generate_llm_skills(text):
     except Exception as e:
         print(f"Error generating skills: {e}")
         return ["[Skills unavailable due to API error]"]
+
+
+def generate_llm_success_factors(text, linguistic):
+    text = text[:6000]
+    readability = linguistic.get("reading_level", "N/A")
+    diversity = linguistic.get("lexical_diversity", "N/A")
+
+    prompt = (
+        f"You are evaluating the quality of a written document. "
+        f"Based on the text and its linguistic profile (reading level: {readability}, lexical diversity: {diversity}), "
+        "provide the following:\n\n"
+        "1. **Strengths:** briefly describe what the text does well (clarity, creativity, structure, tone, depth, etc.).\n"
+        "2. **Weaknesses:** point out any areas of improvement (focus, flow, argument support, or expression).\n"
+        "3. **Overall Evaluation:** rate the work on a 1–10 scale and summarize it in one concise phrase "
+        "like '8.5 / 10 (Strong analytical clarity)'.\n\n"
+        "Text:\n"
+        f"{text}\n\n"
+        "Respond in JSON format like this:\n"
+        "{\n"
+        '  "strengths": "...",\n'
+        '  "weaknesses": "...",\n'
+        '  "score": "8.5 / 10 (...)"\n'
+        "}\n\n"
+        "Your response:"
+    )
+
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": "You are a concise evaluator of writing quality and structure."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.25,
+            max_tokens=250,
+        )
+
+        import json
+        raw_output = completion.choices[0].message.content.strip()
+
+        try:
+            data = json.loads(raw_output)
+            return {
+                "strengths": data.get("strengths", "None"),
+                "weaknesses": data.get("weaknesses", "None"),
+                "score": data.get("score", "None"),
+            }
+        except json.JSONDecodeError:
+            # fallback if LLM didn’t return JSON
+            return {
+                "strengths": "[Parsing error: raw output below]",
+                "weaknesses": raw_output,
+                "score": "None",
+            }
+
+    except Exception as e:
+        print(f"Error generating success factors: {e}")
+        return {"strengths": "None", "weaknesses": "None", "score": "None"}
