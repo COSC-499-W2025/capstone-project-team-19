@@ -52,3 +52,5 @@ My PR's:
 
 Reviewed the following PR's:
 - 75 (Store user config) - Salma
+- 81 (Alternative Analaysis) - Johanes
+- 80 (Project Classification (Individual vs Collaborative)) - Ammaar
