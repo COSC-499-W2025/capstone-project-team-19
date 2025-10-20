@@ -153,26 +153,34 @@ def generate_llm_skills(text):
 
 
 def generate_llm_success_factors(text, linguistic):
+    """Generate concise, context-aware success factors that adapt to different text types."""
     text = text[:6000]
     readability = linguistic.get("reading_level", "N/A")
     diversity = linguistic.get("lexical_diversity", "N/A")
+    word_count = linguistic.get("word_count", "N/A")
 
     prompt = (
-        f"You are evaluating the quality of a written document. "
-        f"Based on the text and its linguistic profile (reading level: {readability}, lexical diversity: {diversity}), "
-        "provide the following:\n\n"
-        "1. **Strengths:** briefly describe what the text does well (clarity, creativity, structure, tone, depth, etc.).\n"
-        "2. **Weaknesses:** point out any areas of improvement (focus, flow, argument support, or expression).\n"
-        "3. **Overall Evaluation:** rate the work on a 1–10 scale and summarize it in one concise phrase "
-        "like '8.5 / 10 (Strong analytical clarity)'.\n\n"
-        "Text:\n"
-        f"{text}\n\n"
-        "Respond in JSON format like this:\n"
+        f"You are evaluating a piece of writing. Here are some details:\n"
+        f"- Reading level: {readability}\n"
+        f"- Lexical diversity: {diversity}\n"
+        f"- Word count: {word_count}\n\n"
+        "Different kinds of text require different evaluation criteria:\n"
+        "- Academic or analytical works → clarity of argument, evidence use, structure, originality.\n"
+        "- Creative or narrative works → storytelling, emotional depth, imagery, originality.\n"
+        "- Functional or professional texts (e.g., project proposals, itineraries, reports, resumes) → clarity, organization, tone, usefulness, professionalism.\n\n"
+        "Tailor your assessment accordingly.\n\n"
+        "Write three brief parts:\n"
+        "1. **Strengths:** 2–4 short, specific phrases (no full sentences).\n"
+        "2. **Weaknesses:** 2–4 short, specific phrases (avoid generic terms like 'needs improvement').\n"
+        "3. **Overall Evaluation:** Give a score from 1 to 10, with a 3–5 word summary in parentheses "
+        "(e.g., '8.3 / 10 (Strong clarity)').\n\n"
+        "Keep the total response under 30 words and respond *only* in JSON format like this:\n"
         "{\n"
-        '  "strengths": "...",\n'
-        '  "weaknesses": "...",\n'
-        '  "score": "8.5 / 10 (...)"\n'
+        '  "strengths": "clear layout, consistent tone, relevant examples",\n'
+        '  "weaknesses": "minor redundancy, limited depth",\n'
+        '  "score": "8.1 / 10 (Well-organized work)"\n'
         "}\n\n"
+        f"Text:\n{text}\n\n"
         "Your response:"
     )
 
@@ -180,11 +188,17 @@ def generate_llm_success_factors(text, linguistic):
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": "You are a concise evaluator of writing quality and structure."},
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a concise evaluator who adapts your judgment based on the document type. "
+                        "Avoid repeating stock phrases and keep the tone professional."
+                    ),
+                },
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.25,
-            max_tokens=250,
+            temperature=0.45,
+            max_tokens=200,
         )
 
         import json
@@ -198,7 +212,6 @@ def generate_llm_success_factors(text, linguistic):
                 "score": data.get("score", "None"),
             }
         except json.JSONDecodeError:
-            # fallback if LLM didn’t return JSON
             return {
                 "strengths": "[Parsing error: raw output below]",
                 "weaknesses": raw_output,
@@ -208,3 +221,4 @@ def generate_llm_success_factors(text, linguistic):
     except Exception as e:
         print(f"Error generating success factors: {e}")
         return {"strengths": "None", "weaknesses": "None", "score": "None"}
+
