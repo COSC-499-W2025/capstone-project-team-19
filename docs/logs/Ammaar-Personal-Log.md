@@ -46,6 +46,6 @@ I also had the chance to collaborate with the team through several PR reviews:
 
 ![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Oct13-19.png)
 
-Week recap: Focused on the project classification flow. I extended the backend to persist project tags, updated the CLI to auto-detect `individual/` and `collaborative/` folder structures, and added Markdown support in the parser so doc-heavy projects are recognized. I also updated the README with ZIP-prep instructions. Wrapped up with a dedicated test suite covering the new layout analyzer and confirmed the existing consent/user configuration tests still pass. 
+Week recap: Focused on the project classification flow. I extended the backend to persist project tags, updated the CLI to auto-detect `individual/` and `collaborative/` folder structures, and added Markdown support in the parser so doc-heavy projects are recognized. I also updated the README with ZIP-prep instructions. Wrapped up with a dedicated test suite covering the new layout analyzer and confirmed the existing consent/user configuration tests still pass.
 
-I also reviewed Timmi’s parsing to DB PR to make sure the new schema changes fit smoothly with the parsing flow. 
+As for PR reviews, I reviewed Timmi’s parsing to DB PR to make sure the new schema changes fit smoothly with the parsing flow. I also reviewed Johanes' PR on alternate analysis methods and provided some feedback.
