@@ -8,7 +8,6 @@ from datetime import datetime
 import docx2txt
 import fitz  # PyMuPDF
 from pypdf import PdfReader
-from docx import Document
 
 # NLP and analysis
 import nltk

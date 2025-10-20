@@ -7,11 +7,10 @@ requests
 pymupdf
 docx2txt
 openpyxl
-python-docx2txt
 pypdf
 
 nltk
-texstat
+textstat
 scikit-learn
 numpy
 
