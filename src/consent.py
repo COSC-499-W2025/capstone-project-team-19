@@ -48,3 +48,15 @@ def get_user_consent() -> str:
         if ans in ("y", "n"):
             return "accepted" if ans == "y" else "rejected"
         print("Please type 'y' for yes or 'n' for no:")
+
+def record_consent(conn: sqlite3.Connection, status: str, user_id: int = 1, when: datetime | None = None) -> int:
+    """Insert consent record for the given user."""
+    if status not in ("accepted", "rejected"):
+        raise ValueError("status must be 'accepted' or 'rejected'")
+    ts = (when or datetime.now()).isoformat()
+    cur = conn.execute(
+        "INSERT INTO consent_log (user_id, status, timestamp) VALUES (?, ?, ?)",
+        (user_id, status, ts),
+    )
+    conn.commit()
+    return cur.lastrowid
