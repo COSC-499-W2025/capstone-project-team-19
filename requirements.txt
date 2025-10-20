@@ -18,6 +18,9 @@ numpy
 ffmpeg-python
 opencv-python
 
+# LLM
+groq>=0.5.0
+
 # Add later, when the processing functions are built:
 
 # scenedetect
