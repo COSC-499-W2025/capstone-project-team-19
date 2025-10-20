@@ -25,3 +25,6 @@ dist/
 *.db
 *.db-shm
 *.db-wal
+
+# User's uploaded files (so that it is not accessible through our public github repo)
+zip_data/
