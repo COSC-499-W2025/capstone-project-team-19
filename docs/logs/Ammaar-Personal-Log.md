@@ -41,3 +41,11 @@ I also had the chance to collaborate with the team through several PR reviews:
 3. Timmi's parsing PR was great - I noticed one test failing (probably from the main merge) and discovered something interesting about the file paths when running commands from different directories.
 
 4. Johannes' WBS was well-organized - I did some reading on WBS best practices and shared a few ideas on how we might expand it to cover more of our requirements comprehensively.
+
+## (Week 7) Monday 13th October - Sunday 19th October
+
+![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Oct13-19.png)
+
+Week recap: Focused on the project classification flow. I extended the backend to persist project tags, updated the CLI to auto-detect `individual/` and `collaborative/` folder structures, and added Markdown support in the parser so doc-heavy projects are recognized. I also updated the README with ZIP-prep instructions. Wrapped up with a dedicated test suite covering the new layout analyzer and confirmed the existing consent/user configuration tests still pass.
+
+As for PR reviews, I reviewed Timmi’s parsing to DB PR to make sure the new schema changes fit smoothly with the parsing flow. I also reviewed Johanes' PR on alternate analysis methods and provided some feedback.
