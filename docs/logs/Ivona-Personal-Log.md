@@ -24,3 +24,9 @@ Helped polish up the DFD. Then on Wednesday my team and I talked to other teams 
 
 This week I worked on the external consent feature for milestone #1. Pr #40.
 I implemented the tests, file and updated main file to ask user's permission to use external services on their files. Reviewed teammate's PRs.
+
+## (Week 7) Monday 13th - Sunday 19st October
+![Screenshot of this week's peer eval](./screenshots/Ivona-Oct.13-19.PNG)
+
+This week I worked on the feature for detecting languages and frameworks used in coding projects. I implemented the languages and framework detection and then refactored the languages to be more efficient(PR 90).
+My plan now is to do the same with the framework but there is an aditional step that needs to be done (adding config files to the database) which I discussed with the team. So I will continue to work on that next week. As well as with extracting key contributation metrics in a project (without LLM).
