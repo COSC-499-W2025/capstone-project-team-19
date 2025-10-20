@@ -177,10 +177,10 @@ This week, the team continued implementation work for Milestone 1, completing se
 
 | GitHub Username | Screenshot                                                                  |
 | --------------- | --------------------------------------------------------------------------- |
-| `AdaraPutri`    | ![Completed tasks for Adara]()   |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct13-Oct19.png)   |
 | `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct13-Oct19.png) |
 | `ivonanicetin`  | ![Completed tasks for Ivona]()   |
-| `johaneshp`     | ![Completed tasks for Johanes]() |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Oct13-Oct19.png) |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct13-Oct19.png)   |
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct13-Oct19.png)   |
 
