@@ -49,5 +49,3 @@ My PR's:
 - 74 (Pull request template)
 - 77 (Windows test failure)
 - 78 (Parsing to db)
-
-
