@@ -2,6 +2,7 @@ import pytest
 import tempfile
 import os
 import json
+from language_detector import detect_languages
 
 
 # Test language detection
