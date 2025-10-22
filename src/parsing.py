@@ -1,3 +1,13 @@
+"""
+parsing.py
+-----------
+Handles ZIP and directory parsing for project metadata extraction.
+Includes:
+  - MIME and extension validation
+  - Duplicate detection
+  - SQLite database storage linkage
+"""
+
 import os
 import zipfile
 import time
@@ -10,13 +20,12 @@ warnings.filterwarnings("ignore", message="Duplicate name:")
 
 from db import connect, store_parsed_files, get_or_create_user
 
-CURR_DIR = os.path.dirname(os.path.abspath(__file__)) # Gives the location of the script itself, not where user is running the command from
-REPO_ROOT = os.path.abspath(os.path.join(CURR_DIR, "..")) # Moves up one level into main repository directory
-
 TEXT_EXTENSIONS = {".txt", ".csv", ".docx", ".pdf", ".xlsx", ".md"}
 CODE_EXTENSIONS = {".py", ".java", ".js", ".html", ".css", ".c", ".cpp", ".h"}
 SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS.union(CODE_EXTENSIONS)
 
+
+# Parses a ZIP archive, extracts metadata for supported files, and stores that metadata in the local SQLite database.
 def parse_zip_file(zip_path, user_id: int | None = None, conn=None):
     """Extract a ZIP archive and persist file metadata to the database."""
     zip_path = str(zip_path)
@@ -68,6 +77,7 @@ def classify_file(extension: str) -> str:
         return "other"
 
 
+# MIME-based validation provides an extra safety check beyond file extensions, preventing misclassified or fake file types.
 def is_valid_mime(file_path, extension):
     mime, _ = mimetypes.guess_type(file_path)
     
@@ -188,6 +198,8 @@ def collect_file_info(zip_path, zip_stats = None):
                 continue
 
             size = info.file_size
+
+            # Skip exact duplicates (same path inside ZIP + same size)
             key = (name.lower(), size)
             if key in seen:
                 print(f"Duplicate skipped: {filename}")
