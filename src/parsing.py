@@ -2,6 +2,7 @@ import os
 import zipfile
 import time
 import mimetypes
+from datetime import datetime
 
 import warnings
 warnings.filterwarnings("ignore", message="Duplicate name:")
@@ -12,14 +13,9 @@ from db import connect, store_parsed_files, get_or_create_user
 CURR_DIR = os.path.dirname(os.path.abspath(__file__)) # Gives the location of the script itself, not where user is running the command from
 REPO_ROOT = os.path.abspath(os.path.join(CURR_DIR, "..")) # Moves up one level into main repository directory
 
-ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
-RAWDATA_DIR = os.path.join(ZIP_DATA_DIR, "parsed_zip_rawdata")
-
 TEXT_EXTENSIONS = {".txt", ".csv", ".docx", ".pdf", ".xlsx", ".md"}
 CODE_EXTENSIONS = {".py", ".java", ".js", ".html", ".css", ".c", ".cpp", ".h"}
 SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS.union(CODE_EXTENSIONS)
-UNSUPPORTED_LOG_PATH = os.path.join(ZIP_DATA_DIR, "unsupported_files.json")
-DUPLICATE_LOG_PATH = os.path.join(ZIP_DATA_DIR, "duplicate_files.json")
 
 def parse_zip_file(zip_path, user_id: int | None = None, conn=None):
     """Extract a ZIP archive and persist file metadata to the database."""
@@ -37,41 +33,14 @@ def parse_zip_file(zip_path, user_id: int | None = None, conn=None):
         print(f"Error: The file is not a valid ZIP archive.")
         return
     
-    # Make sure directories exist
-    os.makedirs(RAWDATA_DIR, exist_ok=True)
+    zip_stats = os.stat(zip_path)  # for created time
+
+    files_info = collect_file_info(zip_path, zip_stats)
+
+    if not files_info:
+        print("No supported files found in the ZIP.")
+        return []
     
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        names = zip_ref.namelist()
-        if len(names) == 0:
-            return []
-        
-        seen = {}
-        duplicate_names = []
-        for name in names:
-            if name.endswith("/"):
-                continue
-            
-            info = zip_ref.getinfo(name)
-            filename = os.path.basename(name)
-            size = info.file_size
-            
-            key = (filename, size)
-            if key in seen:
-                print(f"Duplicate found in ZIP: {name}")
-                duplicate_names.append(name)
-            else:
-                seen[key] = True
-
-        if duplicate_names:
-            print(f"Duplicate files found in ZIP: {len(duplicate_names)} duplicates detected")
-
-        zip_name = os.path.splitext(os.path.basename(zip_path))[0]
-        target_dir = os.path.join(ZIP_DATA_DIR, zip_name)
-        os.makedirs(target_dir, exist_ok=True)
-        zip_ref.extractall(target_dir)
-
-    files_info = collect_file_info(target_dir)
-
     # Store parsed data in local database
     created_conn = False
     if conn is None:
@@ -85,9 +54,6 @@ def parse_zip_file(zip_path, user_id: int | None = None, conn=None):
 
     if created_conn:
         conn.close()
-
-    #with open(METADATA_PATH, "w", encoding="utf-8") as f:
-    #   json.dump(files_info, f, indent=4)
 
     print(f"Extracted and stored {len(files_info)} files in database (user_id={user_id})")
     return files_info
@@ -148,44 +114,49 @@ def is_valid_mime(file_path, extension):
     return False
 
 
-def collect_file_info(root_dir):
+def collect_file_info(zip_path, zip_stats):
+    # Collect file info directly from within ZIP file without extracting (unnecessary now because raw files are no longer being saved)
     collected = []
-    unsupported_files = []
-    duplicate_files = []
     seen = set()
 
-    for folder, _, files in os.walk(root_dir):
-        # Skip any mac files
-        if "__MACOSX" in folder:
-            continue
-
-        for file in files:
-            full_path = os.path.join(folder, file)
-            extension = os.path.splitext(file)[1].lower()    
-
-            if extension not in SUPPORTED_EXTENSIONS or not is_valid_mime(full_path, extension):
-                print(f"Unsupported file skipped: {file}")
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        for name in zip_ref.namelist():
+            if name.endswith("/"):  # Skip folders
                 continue
-            
-            stats = os.stat(full_path)
+
+            info = zip_ref.getinfo(name)
+            filename = os.path.basename(name)
+            extension = os.path.splitext(filename)[1].lower()
+
+            # Skip unsupported or unknown file types
+            if extension not in SUPPORTED_EXTENSIONS:
+                print(f"Unsupported file skipped: {filename}")
+                continue
+
+            mime, _ = mimetypes.guess_type(filename)
+            if not is_valid_mime(filename, extension):
+                print(f"Unsupported file skipped (invalid MIME): {filename} ({mime})")
+                continue
+
+            size = info.file_size
+            key = (filename, size)
+            if key in seen:
+                print(f"Duplicate skipped: {filename}")
+                continue
+            seen.add(key)
+
+            modified_dt = datetime(*info.date_time)
 
             collected.append({
-                "file_path": os.path.relpath(full_path, root_dir),
-                "file_name": file,
+                "file_path": name,
+                "file_name": filename,
                 "extension": extension,
                 "file_type": classify_file(extension),
-                "size_bytes": stats.st_size,
-                "created": time.ctime(stats.st_ctime),
-                "modified": time.ctime(stats.st_mtime)
+                "size_bytes": size,
+                "created": time.ctime(zip_stats.st_ctime),  # ZIP creation (approx project creation)
+                "modified": modified_dt.ctime(),  # File modification timestamp from ZIP metadata
             })
             
-    # Log the unsupported files (feedback to users)
-    if unsupported_files:
-        print(f"Unsupported files logged at: {UNSUPPORTED_LOG_PATH}")
-    
-    if duplicate_files:
-        print(f"Duplicate files logged at: {DUPLICATE_LOG_PATH}")
-    
     return collected
 
 
