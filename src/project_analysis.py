@@ -8,9 +8,7 @@ Collaborative projects - processed to extract individual user contributions
 """
 
 import sqlite3
-import os
-from typing import List, Dict, Optional
-from alt_analyze import alternative_analysis, display_individual_results, display_project_summary
+from alt_analyze import alternative_analysis
 from llm_analyze import run_llm_analysis
 from helpers import _fetch_files
 
@@ -99,36 +97,74 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
     Notes:
         - Skips projects that do not have a project_type or classification (this should rarely, if ever, happen)
         - Calls downstream analysis functions for each project depending on its type
+
+    Always offer INDIVIDUAL first, then (optionally) COLLABORATIVE.
+    Flow:
+      1) "Run individual analysis now?"  -> if yes, run all individual projects
+      2) "Run collaborative analysis now?" -> if yes, run all collaborative projects
+      3) otherwise exit
     """
 
+    # Collect projects + types
+    individual = []
+    collaborative = []
+
     for project_name, classification in assignments.items():
-        types = conn.execute("""
+        row = conn.execute(
+            """
             SELECT project_type
             FROM project_classifications
             WHERE user_id = ? AND project_name = ?
-        """, (user_id, project_name)).fetchone()
+            """,
+            (user_id, project_name),
+        ).fetchone()
 
-
-        if not types:
-            print(f"Skipping {project_name}: project_type not found.")
+        if not row or not row[0]:
+            print(f"Skipping '{project_name}': project_type missing.")
             continue
 
-        project_type = types[0]
+        project_type = row[0]
+        if classification == "individual":
+            individual.append((project_name, project_type))
+        elif classification == "collaborative":
+            collaborative.append((project_name, project_type))
+        else:
+            print(f"Unknown classification '{classification}' for '{project_name}', skipping.")
 
-        if not project_type:
-            print(f"Skipping '{project_name}': project_type is NULL.")
-            continue
+    if not individual and not collaborative:
+        print("No projects to analyze.")
+        return
 
-        if classification == "collaborative":
-            print(f"Running collaborative flow for {project_name} ({project_type})")
-            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent)
-
-        elif classification == "individual": # individual
-            print(f"Running individual flow for {project_name} ({project_type})")
+    # Helper runners
+    def run_individual_phase():
+        if not individual:
+            print("\n[INDIVIDUAL] No individual projects.")
+            return
+        print("\n[INDIVIDUAL] Running individual projects...")
+        for project_name, project_type in individual:
+            print(f"  → {project_name} ({project_type})")
             run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path)
 
-        else:
-            print(f"Unknown classification '{classification} for project '{project_name}'. Skipping.")
+    def run_collaborative_phase():
+        if not collaborative:
+            print("\n[COLLABORATIVE] No collaborative projects.")
+            return
+        print("\n[COLLABORATIVE] Running collaborative projects...")
+        for project_name, project_type in collaborative:
+            print(f"  → {project_name} ({project_type})")
+            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent)
+
+    # Prompt 1: INDIVIDUAL first (default yes)
+    ans_ind = input("\nDo you want to run the INDIVIDUAL analysis now? (Y/n): ").strip().lower()
+    if ans_ind in {"", "y", "yes"}:
+        run_individual_phase()
+
+    # Prompt 2: COLLABORATIVE next (default no if user typed explicit 'n' on first, still ask)
+    ans_collab = input("\nDo you want to run the COLLABORATIVE analysis now? (y/N): ").strip().lower()
+    if ans_collab in {"y", "yes"}:
+        run_collaborative_phase()
+    else:
+        print("Exiting without running collaborative analysis.")
 
 
 def get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent):
