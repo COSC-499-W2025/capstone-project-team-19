@@ -36,6 +36,14 @@ def prompt_and_store():
     current_consent = prev_consent
     current_ext_consent = prev_ext
 
+    if current_consent == "rejected":
+        print(f"\nHeads up, {username}: you previously declined consent, so we can't reuse that configuration.")
+        print("Let's review the consent screen again.\n")
+        prev_consent = None
+        prev_ext = None
+        current_consent = None
+        current_ext_consent = None
+
     # Edge case 1: user exists but no consents yet
     if not prev_consent and not prev_ext:
         print(f"\nWelcome back, {username}!")
