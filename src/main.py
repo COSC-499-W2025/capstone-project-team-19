@@ -116,7 +116,7 @@ def prompt_and_store():
     assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
     detect_project_type(conn, user_id, assignments)
     analyze_files(conn, user_id, current_ext_consent, result, zip_path)
-    send_to_analysis(conn, user_id, assignments, current_ext_consent)
+    send_to_analysis(conn, user_id, assignments, current_ext_consent) #takes projects and sends them into the analysis flow
 
     
     
