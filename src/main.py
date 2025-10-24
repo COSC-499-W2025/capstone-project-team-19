@@ -33,7 +33,8 @@ def prompt_and_store():
     prev_ext = get_latest_external_consent(conn, user_id)
 
     reused = False  # track reuse
-    current_ext_consent=None 
+    current_consent = prev_consent
+    current_ext_consent = prev_ext
 
     # Edge case 1: user exists but no consents yet
     if not prev_consent and not prev_ext:
@@ -43,9 +44,13 @@ def prompt_and_store():
         print(CONSENT_TEXT)
         status = get_user_consent()
         record_consent(conn, status, user_id=user_id)
+        current_consent = status
+        if status != "accepted":
+            print("\nConsent declined. Exiting.")
+            return
         ext_status = get_external_consent()
         record_external_consent(conn, ext_status, user_id=user_id)
-        current_ext_consent=ext_status
+        current_ext_consent = ext_status
 
     # Edge case 2: partial configuration (only one consent found)
     elif (prev_consent and not prev_ext) or (not prev_consent and prev_ext):
@@ -60,13 +65,15 @@ def prompt_and_store():
             print(CONSENT_TEXT)
             status = get_user_consent()
             record_consent(conn, status, user_id=user_id)
+            current_consent = status
+            if status != "accepted":
+                print("\nConsent declined. Exiting.")
+                return
         # Although this is not necessary because you have to answer user consent before going to external consent
         if not prev_ext:
             ext_status = get_external_consent()
             record_external_consent(conn, ext_status, user_id=user_id)
-            current_ext_consent=ext_status
-        else:
-            current_ext_consent=prev_ext
+            current_ext_consent = ext_status
 
     # --- Returning user with full configuration ---
     elif prev_consent and prev_ext:
@@ -78,12 +85,17 @@ def prompt_and_store():
             reused = True
             record_consent(conn, prev_consent, user_id=user_id)
             record_external_consent(conn, prev_ext, user_id=user_id)
-            current_ext_consent=prev_ext
+            current_consent = prev_consent
+            current_ext_consent = prev_ext
         else:
             print("\nAlright, let’s review your consents again.\n")
             print(CONSENT_TEXT)
             status = get_user_consent()
             record_consent(conn, status, user_id=user_id)
+            current_consent = status
+            if status != "accepted":
+                print("\nConsent declined. Exiting.")
+                return
             ext_status = get_external_consent()
             record_external_consent(conn, ext_status, user_id=user_id)
             current_ext_consent = ext_status
@@ -94,9 +106,17 @@ def prompt_and_store():
         print(CONSENT_TEXT)
         status = get_user_consent()
         record_consent(conn, status, user_id=user_id)
+        current_consent = status
+        if status != "accepted":
+            print("\nConsent declined. Exiting.")
+            return
         ext_status = get_external_consent()
         record_external_consent(conn, ext_status, user_id=user_id)
-        current_ext_consent=ext_status
+        current_ext_consent = ext_status
+
+    if current_consent != "accepted":
+        print("\nConsent declined. Exiting.")
+        return
 
     # Only show message if not reusing previous config
     if not reused:

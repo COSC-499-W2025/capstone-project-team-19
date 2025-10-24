@@ -134,6 +134,22 @@ def test_partial_missing_user_only_prompts_user(monkeypatch):
     assert get_latest_external_consent(conn, user_id) == "accepted" # unchanged
 
 
+def test_rejected_user_consent_exits_early(monkeypatch, capsys):
+    conn = connect(); init_schema(conn)
+
+    _inputs_repeat_last(monkeypatch, ["sam"])
+    monkeypatch.setattr("src.main.parse_zip_file", _never_called)
+    monkeypatch.setattr("src.main.get_user_consent", lambda: "rejected")
+    monkeypatch.setattr("src.main.get_external_consent", _never_called)
+
+    main.prompt_and_store()
+    out = capsys.readouterr().out
+
+    user_id = get_or_create_user(conn, "sam")
+    assert get_latest_consent(conn, user_id) == "rejected"
+    assert "Consent declined" in out
+
+
 def test_full_configuration_reuse_yes_records_again(monkeypatch, capsys):
     """
     Full config exists; user chooses to reuse. We re-record (audit trail) and proceed.
@@ -174,12 +190,12 @@ def test_full_configuration_reuse_no_reprompts_both(monkeypatch):
 
     # re-prompt both to new choices
     monkeypatch.setattr("src.main.get_user_consent", lambda: "rejected")
-    monkeypatch.setattr("src.main.get_external_consent", lambda: "accepted")
+    monkeypatch.setattr("src.main.get_external_consent", _never_called)
 
     main.prompt_and_store()
 
     assert get_latest_consent(conn, user_id) == "rejected"
-    assert get_latest_external_consent(conn, user_id) == "accepted"
+    assert get_latest_external_consent(conn, user_id) == "rejected"
 
 
 def test_correct_user_id_is_used(monkeypatch):
@@ -243,4 +259,3 @@ def test_project_classifications_are_recorded(monkeypatch):
     ).fetchall()
 
     assert rows == [("alpha", "individual"), ("beta", "collaborative")]
-
