@@ -124,7 +124,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
 
         elif classification == "individual": # individual
             print(f"Running individual flow for {project_name} ({project_type})")
-            run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent)
+            run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path)
 
         else:
             print(f"Unknown classification '{classification} for project '{project_name}'. Skipping.")
@@ -180,11 +180,19 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent)
     pass
 
 
-def run_text_analysis(conn, user_id, project_name, current_ext_consent):
+def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path):
     """
     Placeholder for individual text project analysis.
+    Individual TEXT project → pull files from DB and analyze.
 
     """
+
+    parsed_files = _fetch_files(conn, user_id, project_name, only_text=True)
+    if not parsed_files:
+        print(f"[INDIVIDUAL-TEXT] No text files found for '{project_name}'.")
+        return
+    analyze_files(conn, user_id, current_ext_consent, parsed_files, zip_path)
+
     pass
 
 
