@@ -1,31 +1,44 @@
 # code_collaborative.py
 import os
+import sqlite3
 import subprocess
 import datetime as dt
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import Dict, List, Optional, Tuple
 
 # ======================================================================================
 # Public entry point
 # ======================================================================================
 
-def analyze_collaborative_projects(conn, user_id: int, zip_path: str, username: Optional[str] = None) -> None:
+def analyze_collaborative_projects(conn, user_id: int, zip_path: str) -> None:
     """
-    End-to-end: find collaborative projects for this upload, locate folders, detect .git,
-    read commits, compute metrics, and print per-project + global summary.
-    If username is not provided, politely ask for the GitHub username or commit email.
+    Workflow:
+      - Resolve upload base path
+      - Read collaborative project names for this user+upload
+      - If user has no stored aliases, scan authors across projects and prompt once
+      - Extract commits, compute metrics for each project, print cards + global summary
     """
-    # Ask for identity if not provided
-    if not username:
-        username = input("Enter your GitHub username OR the email used in your commits (for authorship matching): ").strip()
-
     base_path, zip_name = _resolve_zip_base(zip_path)
     projects = _get_collaborative_projects(conn, user_id, zip_name)
     if not projects:
         print("\nNo collaborative projects found for this upload.")
         return
 
-    aliases = _load_aliases(username)
+    _ensure_alias_table(conn)
+    aliases = _load_aliases_for_user(conn, user_id)
+
+    # If we don't have aliases yet, build a list of authors from all projects and prompt once
+    if not aliases["emails"] and not aliases["names"]:
+        author_list = _collect_authors_across_projects(base_path, projects)
+        if not author_list:
+            print("\nNo authors found across collaborative projects. Skipping metrics.")
+            return
+        selected_emails, selected_names = _prompt_user_identity_choice(author_list)
+        if not selected_emails and not selected_names:
+            print("\nNo identities selected. Skipping metrics.")
+            return
+        _save_aliases_for_user(conn, user_id, selected_emails, selected_names)
+        aliases = _load_aliases_for_user(conn, user_id)
 
     all_project_metrics = []
     for proj in projects:
@@ -63,13 +76,10 @@ def _resolve_zip_base(zip_path: str) -> Tuple[str, str]:
     return base_path, zip_name
 
 # ======================================================================================
-# DB: get collaborative projects for this user + upload
+# DB helpers: read collaborative projects + alias persistence
 # ======================================================================================
 
 def _get_collaborative_projects(conn, user_id: int, zip_name: str) -> List[str]:
-    """
-    Reads project names from project_classifications where classification='collaborative'.
-    """
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -77,22 +87,64 @@ def _get_collaborative_projects(conn, user_id: int, zip_name: str) -> List[str]:
             FROM project_classifications
             WHERE user_id = ? AND zip_name = ? AND classification = 'collaborative'
         """, (user_id, zip_name))
-        rows = cur.fetchall()
-        return [r[0] for r in rows]
+        return [r[0] for r in cur.fetchall()]
     except Exception as e:
         print(f"[warn] Could not read project_classifications: {e}")
         return []
+
+def _ensure_alias_table(conn) -> None:
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS user_aliases (
+                user_id     INTEGER NOT NULL,
+                email       TEXT,
+                name        TEXT,
+                created_at  TEXT DEFAULT (datetime('now')),
+                UNIQUE(user_id, email, name)
+            )
+        """)
+        conn.commit()
+    except Exception as e:
+        print(f"[warn] Could not ensure user_aliases table: {e}")
+
+def _load_aliases_for_user(conn, user_id: int) -> Dict[str, set]:
+    emails, names = set(), set()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT email, name FROM user_aliases WHERE user_id = ?", (user_id,))
+        for email, name in cur.fetchall():
+            if email:
+                emails.add(email.lower())
+            if name:
+                names.add(name.lower())
+    except Exception as e:
+        print(f"[warn] Could not load aliases: {e}")
+    return {"emails": emails, "names": names}
+
+def _save_aliases_for_user(conn, user_id: int, emails: List[str], names: List[str]) -> None:
+    try:
+        cur = conn.cursor()
+        for em in emails:
+            cur.execute(
+                "INSERT OR IGNORE INTO user_aliases(user_id, email, name) VALUES (?, ?, NULL)",
+                (user_id, em.strip().lower())
+            )
+        for nm in names:
+            cur.execute(
+                "INSERT OR IGNORE INTO user_aliases(user_id, email, name) VALUES (?, NULL, ?)",
+                (user_id, nm.strip())
+            )
+        conn.commit()
+        print("\nSaved your identity for future runs ✅")
+    except Exception as e:
+        print(f"[warn] Could not save aliases: {e}")
 
 # ======================================================================================
 # Locate project directory
 # ======================================================================================
 
 def _find_project_dir(base_path: str, project_name: str) -> Optional[str]:
-    """
-    Try:
-      - <base>/<project_name>/
-      - <base>/collaborative/<project_name>/
-    """
     candidates = [
         os.path.join(base_path, project_name),
         os.path.join(base_path, "collaborative", project_name),
@@ -103,6 +155,77 @@ def _find_project_dir(base_path: str, project_name: str) -> Optional[str]:
     return None
 
 # ======================================================================================
+# Collect authors (fast path for the one-time prompt)
+# ======================================================================================
+
+def _collect_authors_across_projects(base_path: str, projects: List[str]) -> List[Tuple[str, str, int]]:
+    """
+    Returns list of (author_name, author_email, count) across all collaborative repos.
+    Uses a fast git log query (no diffs).
+    """
+    counts = Counter()
+    for proj in projects:
+        pdir = _find_project_dir(base_path, proj)
+        if not pdir or not _is_git_repo(pdir):
+            continue
+        # author name/email only, unique per commit
+        out = _run_git(pdir, ["log", "--pretty=format:%an%x09%ae"])
+        if not out:
+            continue
+        for line in out.splitlines():
+            parts = line.split("\t")
+            if len(parts) >= 2:
+                an = (parts[0] or "").strip()
+                ae = (parts[1] or "").strip().lower()
+                if ae or an:
+                    counts[(an, ae)] += 1
+
+    # sort by desc count, then name/email
+    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0][0].lower(), kv[0][1]))
+    return [(an, ae, c) for (an, ae), c in ranked]
+
+def _prompt_user_identity_choice(author_list: List[Tuple[str, str, int]]) -> Tuple[List[str], List[str]]:
+    """
+    Display a numbered list of unique authors and let the user select one or more indices.
+    Returns (emails[], names[]).
+    """
+    print("\nWe found collaborators across your projects. Pick which identities are YOU.")
+    print("You can select multiple (e.g., 1,3,5) or press Enter to skip.")
+    print("\nTop authors:\n")
+    for i, (an, ae, c) in enumerate(author_list, start=1):
+        label = f"{an} <{ae}>" if ae else an
+        print(f"{i:3d}. {label}   [{c} commits]")
+
+    choice = input("\nEnter numbers (comma-separated), or leave blank to skip: ").strip()
+    if not choice:
+        return [], []
+
+    sel_idx = set()
+    for tok in choice.split(","):
+        tok = tok.strip()
+        if not tok:
+            continue
+        if tok.isdigit():
+            sel_idx.add(int(tok))
+    emails, names = [], []
+    for i in sorted(sel_idx):
+        if 1 <= i <= len(author_list):
+            an, ae, _ = author_list[i-1]
+            if ae:
+                emails.append(ae)
+            if an:
+                names.append(an)
+    # Also allow manual additions
+    extra = input("Add any extra commit emails (comma-separated), or Enter to continue: ").strip()
+    if extra:
+        emails.extend([e.strip().lower() for e in extra.split(",") if e.strip()])
+
+    # de-dup
+    emails = sorted(set(e for e in emails if e))
+    names  = sorted(set(n for n in names if n))
+    return emails, names
+
+# ======================================================================================
 # Git helpers (uses system `git`)
 # ======================================================================================
 
@@ -111,7 +234,6 @@ def _is_git_repo(repo_dir: str) -> bool:
     if os.path.isdir(git_dir):
         return True
     if os.path.isfile(git_dir):
-        # worktrees: .git is a file pointing to a gitdir
         try:
             with open(git_dir, "r", encoding="utf-8", errors="ignore") as f:
                 return "gitdir:" in f.read().lower()
@@ -156,7 +278,6 @@ def _parse_git_logs(log_numstat: str, log_namestatus: str) -> List[dict]:
     for line in log_namestatus.splitlines():
         if "\t" in line:
             parts = line.split("\t")
-            # name-status rows usually 2+ cols, commit header has 7 from fmt
             if 2 <= len(parts) < 7:
                 if current_hash:
                     name_status_map.setdefault(current_hash, []).append(parts)
@@ -221,7 +342,6 @@ def _parse_git_logs(log_numstat: str, log_namestatus: str) -> List[dict]:
     for line in log_numstat.splitlines():
         fields = line.split("\t")
         if len(fields) >= 7 and _looks_like_hash(fields[0]):
-            # new header
             flush_commit(header, pending_files)
             header = fields[:7]
             pending_files = []
@@ -237,58 +357,8 @@ def _looks_like_hash(s: str) -> bool:
     return len(s) >= 7 and all(c in "0123456789abcdef" for c in s[:7].lower())
 
 # ======================================================================================
-# Identity / aliases
+# Identity matching
 # ======================================================================================
-
-def _load_aliases(username_or_email: Optional[str]) -> Dict[str, set]:
-    """
-    Build a minimal alias set from:
-      - provided username_or_email (if contains '@' → email; else → name fragment)
-      - optional config/aliases.yaml (emails/names lists)
-      - optional env var WORKSTATS_ALIASES="email1;email2;name:Exact Name"
-    """
-    emails, names = set(), set()
-
-    # from input
-    if username_or_email:
-        if "@" in username_or_email:
-            emails.add(username_or_email.lower())
-        else:
-            names.add(username_or_email.strip().lower())
-
-    # YAML (optional)
-    here = os.path.dirname(os.path.abspath(__file__))
-    cfg = os.path.join(os.path.dirname(here), "config", "aliases.yaml")
-    if os.path.isfile(cfg):
-        try:
-            import re
-            with open(cfg, "r", encoding="utf-8", errors="ignore") as f:
-                text = f.read()
-            # very light-weight parse: comma-separated lists inside []
-            def _grab_list(key: str):
-                m = re.search(rf"{key}\s*:\s*\[(.*?)\]", text, flags=re.S | re.I)
-                if not m:
-                    return []
-                raw = m.group(1)
-                return [x.strip().strip("'\"").lower() for x in raw.split(",") if x.strip()]
-            emails.update(_grab_list("emails"))
-            names.update(_grab_list("names"))
-        except Exception:
-            pass
-
-    # ENV
-    env = os.getenv("WORKSTATS_ALIASES", "")
-    if env:
-        for tok in env.split(";"):
-            tok = tok.strip()
-            if not tok:
-                continue
-            if tok.startswith("name:"):
-                names.add(tok[5:].strip().lower())
-            elif "@" in tok:
-                emails.add(tok.lower())
-
-    return {"emails": emails, "names": names}
 
 def _is_authored_by_user(commit: dict, aliases: Dict[str, set]) -> bool:
     ae = (commit.get("author_email") or "").lower()
@@ -356,7 +426,6 @@ def _compute_metrics(project: str, path: str, commits: List[dict], aliases: Dict
 
     net = add_sum - del_sum
 
-    # Dates & activity
     first_dt = min((c["authored_at"] for c in commits if c["authored_at"]), default=None)
     last_dt  = max((c["authored_at"] for c in commits if c["authored_at"]), default=None)
     l30  = _count_in_last_days(your_commits, 30)
@@ -364,7 +433,6 @@ def _compute_metrics(project: str, path: str, commits: List[dict], aliases: Dict
     l365 = _count_in_last_days(your_commits, 365)
     longest_streak, current_streak = _streaks([c["authored_at"].date() for c in your_commits if c["authored_at"]])
 
-    # When you code
     dow = Counter()
     hod = Counter()
     for c in your_commits:
@@ -372,7 +440,6 @@ def _compute_metrics(project: str, path: str, commits: List[dict], aliases: Dict
         if t:
             dow[t.strftime("%a")] += 1
             hod[t.hour] += 1
-
     top_days  = ", ".join([d for d, _ in dow.most_common(2)]) if dow else "—"
     top_hours = _top_hours(hod)
 
