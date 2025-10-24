@@ -151,7 +151,7 @@ def prompt_and_store():
             print("\nInvalid ZIP file structure. Please make sure your ZIP file contains project folders where individual files are stored.")
         
     send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path) #takes projects and sends them into the analysis flow
-    
+  
 
 
 def get_zip_path_from_user():
