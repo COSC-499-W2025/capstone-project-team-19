@@ -14,6 +14,7 @@ from external_consent import get_external_consent, record_external_consent
 from alt_analyze import calculate_document_metrics, calculate_project_metrics
 from llm_analyze import run_llm_analysis
 import os
+from code_collaborative import analyze_collaborative_projects
 
 def main():
     print("Welcome aboard! Let’s turn your work into cool insights.")
@@ -115,6 +116,14 @@ def prompt_and_store():
 
   
     prompt_for_project_classifications(conn, user_id, zip_path, result)
+
+    # NEW: run code metrics for collaborative repos
+    run_code = input("\nRun code metrics for collaborative projects now? (y/n): ").strip().lower()
+    if run_code == "y":
+        # Ask explicitly (best) or reuse the login username if you like
+        github_id = input("GitHub username or commit email to match your commits: ").strip()
+        analyze_collaborative_projects(conn, user_id, zip_path, username=github_id)
+
     analyze_files(conn, user_id, current_ext_consent, result, zip_path)
     
     
