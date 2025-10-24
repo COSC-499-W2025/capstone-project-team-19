@@ -68,3 +68,79 @@ def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dic
         """, (project_type, user_id, project_name))
 
     conn.commit()
+
+def send_to_analysis(conn, user_id, assignments, current_ext_consent):
+    """
+    Routes each project to the appropriate analysis flow based on its classification and type.
+    Collaborative projects trigger contribution analysis.
+    Individual projects go directly into standard analysis.
+    """
+
+    for project_name, classification in assignments.items():
+        types = conn.execute("""
+            SELECT project_type
+            FROM project_classifications
+            WHERE user_id = ? AND project_name = ?
+        """, (user_id, project_name)).fetchone()
+
+
+        if not types:
+            print(f"Skipping {project_name}: project_type not found.")
+            continue
+
+        project_type = types[0]
+
+        if not project_type:
+            print(f"Skipping '{project_name}': project_type is NULL.")
+            continue
+
+        if classification == "collaborative":
+            print(f"Running collaborative flow for {project_name} ({project_type})")
+            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent)
+
+        elif classification == "individual": # individual
+            print(f"Running individual flow for {project_name} ({project_type})")
+            run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent)
+
+        else:
+            print(f"Unknown classification '{classification} for project '{project_name}'. Skipping.")
+
+
+def get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent):
+    """Analyze collaborative projects by breaking down contributions for just the user"""
+
+    print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' ({project_type})")
+
+    if project_type == "text":
+        analyze_text_contributions(conn, user_id, project_name, current_ext_consent)
+    elif project_type == "code":
+        analyze_code_contributions(conn, user_id, project_name, current_ext_consent)
+    else:
+        print(f"[COLLABORATIVE] Unknown project type for '{project_name}', skipping.")
+
+
+def run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent):
+    """Decides if a project should go into code or text analysis"""
+    
+    if project_type == "text":
+        run_text_analysis(conn, user_id, project_name, current_ext_consent)
+    elif project_type == "code":
+        run_code_analysis(conn, user_id, project_name, current_ext_consent)
+    else:
+        print(f"[INDIVIDUAL] Unknown project type for '{project_name}', skipping.")
+
+
+def analyze_text_contributions(conn, user_id, project_name, current_ext_consent):
+    pass
+
+
+def analyze_code_contributions(conn, user_id, project_name, current_ext_consent):
+    pass
+
+
+def run_text_analysis(conn, user_id, project_name, current_ext_consent):
+    pass
+
+
+def run_code_analysis(conn, user_id, project_name, current_ext_consent):
+    pass

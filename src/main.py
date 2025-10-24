@@ -13,7 +13,7 @@ from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
 from alt_analyze import calculate_document_metrics, calculate_project_metrics
 from llm_analyze import run_llm_analysis
-from project_analysis import detect_project_type
+from project_analysis import detect_project_type, send_to_analysis
 import os
 
 def main():
@@ -116,6 +116,8 @@ def prompt_and_store():
     assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
     detect_project_type(conn, user_id, assignments)
     analyze_files(conn, user_id, current_ext_consent, result, zip_path)
+    send_to_analysis(conn, user_id, assignments, current_ext_consent)
+
     
     
 def analyze_files(conn, user_id, external_consent, parsed_files, zip_path):
