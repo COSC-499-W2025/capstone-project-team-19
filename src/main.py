@@ -13,6 +13,7 @@ from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
 from alt_analyze import calculate_document_metrics, calculate_project_metrics
 from llm_analyze import run_llm_analysis
+from project_analysis import detect_project_type
 import os
 
 def main():
@@ -112,9 +113,8 @@ def prompt_and_store():
         print("No valid files were processed. Check logs for unsupported or corrupted files.")
         return
 
-
-  
-    prompt_for_project_classifications(conn, user_id, zip_path, result)
+    assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
+    detect_project_type(conn, user_id, assignments)
     analyze_files(conn, user_id, current_ext_consent, result, zip_path)
     
     
@@ -273,6 +273,8 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
         print("\nSkipped items (no project folder detected):")
         for name in stray_locations:
             print(f"  • {name}")
+
+    return assignments
 
 
 def ask_overall_scope() -> str:
