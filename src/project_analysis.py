@@ -8,6 +8,8 @@ Collaborative projects - processed to extract individual user contributions
 """
 
 import sqlite3
+import os
+from typing import List, Dict, Optional
 from alt_analyze import calculate_document_metrics, calculate_project_metrics
 from llm_analyze import run_llm_analysis
 
@@ -87,7 +89,7 @@ def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dic
 
     conn.commit()
 
-def send_to_analysis(conn, user_id, assignments, current_ext_consent):
+def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
     """
     Routes each project to the appropriate analysis flow based on its classification and type.
     Collaborative projects trigger contribution analysis.
@@ -144,15 +146,15 @@ def get_individual_contributions(conn, user_id, project_name, project_type, curr
         print(f"[COLLABORATIVE] Unknown project type for '{project_name}', skipping.")
 
 
-def run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent):
+def run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path):
     """
     Run full analysis on an individual project, depending on project_type.
     """
     
     if project_type == "text":
-        run_text_analysis(conn, user_id, project_name, current_ext_consent)
+        run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path)
     elif project_type == "code":
-        run_code_analysis(conn, user_id, project_name, current_ext_consent)
+        run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path)
     else:
         print(f"[INDIVIDUAL] Unknown project type for '{project_name}', skipping.")
 
@@ -297,4 +299,23 @@ def display_project_summary(project_metrics: dict):
         print("No keywords found")
 
     print(f"\n{'='*80}\n")
+    
 
+# HELPERS
+
+def _fetch_files(conn: sqlite3.Connection, user_id: int, project_name: str, only_text: bool = False) -> List[Dict[str, str]]:
+    """
+    Fetch files for a project from the 'files' table.
+    Returns: [{'file_name','file_type','file_path'}, ...]
+    """
+    query = """
+        SELECT file_name, file_type, file_path
+        FROM files
+        WHERE user_id = ? AND project_name = ?
+    """
+    params = [user_id, project_name]
+    if only_text:
+        query += " AND file_type = 'text'"
+
+    rows = conn.execute(query, params).fetchall()
+    return [{"file_name": r[0], "file_type": r[1], "file_path": r[2]} for r in rows]
