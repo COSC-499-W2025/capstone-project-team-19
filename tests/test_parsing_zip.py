@@ -69,7 +69,7 @@ def test_parse_zip_file_handles_all_supported_types(tmp_path, test_user_id):
 
     # Check metadata fields
     for entry in result:
-        for key in ["file_path", "file_name", "extension", "file_type", "size_bytes", "created", "modified"]:
+        for key in ["file_path", "file_name", "extension", "file_type", "size_bytes", "created", "modified", "project_name"]:
             assert key in entry
 
 
@@ -198,4 +198,29 @@ def test_parse_zip_file_detects_duplicates_across_folders(tmp_path, test_user_id
     rows = conn.execute("SELECT file_path FROM files WHERE file_name='report.txt'").fetchall()
     assert len(rows) == 2  # both stored since paths differ
 
+
+def test_parse_zip_file_assigns_project_names(tmp_path, test_user_id):
+    zip_path = tmp_path / "projects.zip"
+    workspace = tmp_path / "workspace"
+    (workspace / "Individual" / "solo-notes").mkdir(parents=True, exist_ok=True)
+    (workspace / "Individual" / "solo-notes" / "README.md").write_text("# Notes")
+    (workspace / "Individual" / "solo-notes" / "summary.txt").write_text("Summary")
+
+    with zipfile.ZipFile(zip_path, "w") as z:
+        for file in workspace.rglob("*"):
+            if file.is_file():
+                arcname = file.relative_to(tmp_path)
+                z.write(file, arcname=str(arcname))
+
+    result = parse_zip_file(str(zip_path), user_id=test_user_id)
+    assert any(entry["project_name"] == "solo-notes" for entry in result)
+
+    from src.db import connect
+    conn = connect()
+    project_rows = conn.execute("""
+        SELECT DISTINCT project_name
+        FROM files
+        WHERE file_path LIKE '%solo-notes%'
+    """).fetchall()
+    assert ("solo-notes",) in project_rows
 

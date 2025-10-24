@@ -2,6 +2,7 @@ import os
 import zipfile
 import time
 import mimetypes
+import shutil
 
 import warnings
 warnings.filterwarnings("ignore", message="Duplicate name:")
@@ -67,10 +68,14 @@ def parse_zip_file(zip_path, user_id: int | None = None, conn=None):
 
         zip_name = os.path.splitext(os.path.basename(zip_path))[0]
         target_dir = os.path.join(ZIP_DATA_DIR, zip_name)
+        if os.path.isdir(target_dir):
+            shutil.rmtree(target_dir)
         os.makedirs(target_dir, exist_ok=True)
         zip_ref.extractall(target_dir)
 
     files_info = collect_file_info(target_dir)
+    layout = analyze_project_layout(files_info)
+    _annotate_projects_on_files(files_info, layout)
 
     # Store parsed data in local database
     created_conn = False
@@ -320,3 +325,58 @@ def _collect_folder_names(paths: list[list[str]], start_index: int) -> set[str]:
 def _has_nested_paths(paths: list[list[str]], start_index: int) -> bool:
     """Return True if any path has deeper content beyond the given index."""
     return any(len(parts) > start_index + 1 for parts in paths)
+
+
+def _annotate_projects_on_files(files_info: list[dict], layout: dict) -> None:
+    """Attach inferred project names to each parsed file entry."""
+    if not files_info:
+        return
+
+    recognized_projects: set[str] = set(layout.get("auto_assignments", {}).keys())
+    recognized_projects.update(layout.get("pending_projects", []))
+
+    root_name = layout.get("root_name")
+    if not recognized_projects and root_name:
+        recognized_projects.add(root_name)
+
+    for entry in files_info:
+        rel_path = entry.get("file_path") or entry.get("file_name")
+        project = _infer_project_for_path(rel_path, root_name, recognized_projects)
+        if project and project in recognized_projects:
+            entry["project_name"] = project
+        else:
+            entry["project_name"] = None
+
+
+def _infer_project_for_path(
+    rel_path: str | None,
+    root_name: str | None,
+    recognized_projects: set[str],
+) -> str | None:
+    """Best-effort inference of the project folder for a file path."""
+    if not rel_path:
+        return None
+
+    normalized = rel_path.replace("\\", "/")
+    parts = [part for part in normalized.split("/") if part]
+    if not parts:
+        return None
+
+    if root_name and parts[0] == root_name:
+        if len(parts) == 1:
+            return root_name if root_name in recognized_projects else None
+        if root_name in recognized_projects and len(parts) == 2:
+            return root_name
+        parts = parts[1:]
+
+    if not parts:
+        return None
+
+    first = parts[0]
+    lower_first = first.lower()
+    if lower_first in BUCKET_LABELS:
+        if len(parts) >= 2:
+            return parts[1]
+        return None
+
+    return first
