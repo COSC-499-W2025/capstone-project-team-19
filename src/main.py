@@ -135,11 +135,11 @@ def prompt_and_store():
     unchecked_zip = True
     while (unchecked_zip):
         zip_path = get_zip_path_from_user()
-        print(f"Received path: {zip_path}")
+        print(f"\nReceived path: {zip_path}")
         result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
         if not result:
-            print("No valid files were processed. Check logs for unsupported or corrupted files.")
-            return
+            print("\nNo valid files were processed. Check logs for unsupported or corrupted files.")
+            continue
 
         assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
         try: 
