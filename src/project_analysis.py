@@ -155,12 +155,12 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
             get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent)
 
     # Prompt 1: INDIVIDUAL first (default yes)
-    ans_ind = input("\nDo you want to run the INDIVIDUAL analysis now? (Y/n): ").strip().lower()
+    ans_ind = input("\nDo you want to run the INDIVIDUAL analysis now? (y/n): ").strip().lower()
     if ans_ind in {"", "y", "yes"}:
         run_individual_phase()
 
     # Prompt 2: COLLABORATIVE next (default no if user typed explicit 'n' on first, still ask)
-    ans_collab = input("\nDo you want to run the COLLABORATIVE analysis now? (y/N): ").strip().lower()
+    ans_collab = input("\nDo you want to run the COLLABORATIVE analysis now? (y/n): ").strip().lower()
     if ans_collab in {"y", "yes"}:
         run_collaborative_phase()
     else:
