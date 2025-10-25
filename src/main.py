@@ -11,8 +11,6 @@ from db import (
 )
 from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
-from alt_analyze import calculate_document_metrics, calculate_project_metrics
-from llm_analyze import run_llm_analysis
 from project_analysis import detect_project_type, send_to_analysis
 import os
 
@@ -143,112 +141,9 @@ def prompt_and_store():
 
     assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
     detect_project_type(conn, user_id, assignments)
-    analyze_files(conn, user_id, current_ext_consent, result, zip_path)
-    send_to_analysis(conn, user_id, assignments, current_ext_consent) #takes projects and sends them into the analysis flow
-
+    send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path) #takes projects and sends them into the analysis flow
     
     
-def analyze_files(conn, user_id, external_consent, parsed_files, zip_path):
-    if external_consent=='accepted':
-        llm_analysis(parsed_files, zip_path)
-    else:
-        alternative_analysis(parsed_files, zip_path)
-        
-def llm_analysis(parsed_files, zip_path):
-    run_llm_analysis(parsed_files, zip_path)
-
-def alternative_analysis(parsed_files, zip_path):
-    if not isinstance(parsed_files, list):
-        return
-
-    text_files=[f for f in parsed_files if f.get('file_type')=='text']
-
-    if not text_files:
-        print("No text files found to analyze.")
-        return
-
-    REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
-    zip_name = os.path.splitext(os.path.basename(zip_path))[0]
-    base_path = os.path.join(ZIP_DATA_DIR, zip_name)
-
-    print(f"\n{'='*80}")
-    print(f"Analyzing {len(text_files)} file(s)...")
-    print(f"{'='*80}\n")
-
-    # Calculate metrics for each document
-    all_document_metrics = []
-    for file_info in text_files:
-        file_path = os.path.join(base_path, file_info['file_path'])
-        filename = file_info['file_name']
-
-        print(f"Processing: {filename}")
-        doc_metrics = calculate_document_metrics(file_path)
-
-        if doc_metrics.get('processed'):
-            # Add filename for reference
-            doc_metrics['filename'] = filename
-            all_document_metrics.append(doc_metrics)
-            display_individual_results(filename, doc_metrics)
-        else:
-            print(f"Failed to process: {doc_metrics.get('error', 'Unknown error')}\n")
-
-    # Display project-wide summary
-    if all_document_metrics:
-        print(f"\n{'='*80}")
-        print("PROJECT SUMMARY - Aggregated Metrics Across All Files")
-        print(f"{'='*80}\n")
-        display_project_summary(calculate_project_metrics(all_document_metrics))
-    else:
-        print("\nNo files were successfully processed.")
-
-def display_individual_results(filename: str, doc_metrics: dict):
-    """Display analysis results for an individual file."""
-    linguistic = doc_metrics['linguistic_metrics']
-    topics = doc_metrics['topics']
-    keywords = doc_metrics['keywords']
-
-    print(f"  Linguistic & Readability:")
-    print(f"    Word Count: {linguistic['word_count']}, Sentences: {linguistic['sentence_count']}")
-    print(f"    Reading Level: {linguistic['reading_level']} (Grade {linguistic['flesch_kincaid_grade']})")
-    print(f"    Lexical Diversity: {linguistic['lexical_diversity']}")
-
-    print(f"  Top Keywords: ", end="")
-    if keywords:
-        keyword_str = ', '.join([word for word, _score in keywords[:5]])
-        print(keyword_str)
-    else:
-        print("None")
-
-    print(f"  Topics: ", end="")
-    if topics:
-        topic_labels = [topic['label'] for topic in topics[:2]]
-        print(', '.join(topic_labels))
-    else:
-        print("None")
-    print()
-
-def display_project_summary(project_metrics: dict):
-    """Display aggregated project-wide metrics."""
-    if not project_metrics or 'error' in project_metrics:
-        print("Unable to generate project summary.")
-        return
-
-    summary = project_metrics['summary']
-    print(f"Total Documents Analyzed:     {summary['total_documents']}")
-    print(f"Total Words:                  {summary['total_words']:,}")
-    print(f"Average Reading Level:        {summary['reading_level_label']} (Grade {summary['reading_level_average']})")
-
-    print(f"\nTop Keywords Across All Documents:")
-    print("-" * 50)
-    keywords = project_metrics.get('keywords', [])
-    if keywords:
-        for i, kw in enumerate(keywords[:15], 1):
-            print(f"{i:2d}. {kw['word']:30s} (score: {kw['score']:.3f})")
-    else:
-        print("No keywords found")
-
-    print(f"\n{'='*80}\n")
 
 
 def get_zip_path_from_user():

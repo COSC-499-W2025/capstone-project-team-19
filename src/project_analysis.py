@@ -8,6 +8,9 @@ Collaborative projects - processed to extract individual user contributions
 """
 
 import sqlite3
+from alt_analyze import alternative_analysis
+from llm_analyze import run_llm_analysis
+from helpers import _fetch_files
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     """
@@ -85,7 +88,7 @@ def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dic
 
     conn.commit()
 
-def send_to_analysis(conn, user_id, assignments, current_ext_consent):
+def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
     """
     Routes each project to the appropriate analysis flow based on its classification and type.
     Collaborative projects trigger contribution analysis.
@@ -94,36 +97,114 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent):
     Notes:
         - Skips projects that do not have a project_type or classification (this should rarely, if ever, happen)
         - Calls downstream analysis functions for each project depending on its type
+
+    Always offer INDIVIDUAL first, then (optionally) COLLABORATIVE.
+    Flow:
+      1) "Run individual analysis now?"  -> if yes, run all individual projects
+      2) "Run collaborative analysis now?" -> if yes, run all collaborative projects
+      3) otherwise exit
+
+    After each phase (or set of prompts), ask:
+    "Do you want to exit analysis now? (y/n)"
+    If user answers 'n'/'no', automatically run the remaining (unrun) phase(s),
+    starting with INDIVIDUAL if still pending.
     """
 
+    # Partition projects and attach their detected types
+    individual = []
+    collaborative = []
+
     for project_name, classification in assignments.items():
-        types = conn.execute("""
+        row = conn.execute(
+            """
             SELECT project_type
             FROM project_classifications
             WHERE user_id = ? AND project_name = ?
-        """, (user_id, project_name)).fetchone()
+            """,
+            (user_id, project_name),
+        ).fetchone()
 
-
-        if not types:
-            print(f"Skipping {project_name}: project_type not found.")
+        if not row or not row[0]:
+            print(f"Skipping '{project_name}': project_type missing or NULL.")
             continue
 
-        project_type = types[0]
-
-        if not project_type:
-            print(f"Skipping '{project_name}': project_type is NULL.")
-            continue
-
-        if classification == "collaborative":
-            print(f"Running collaborative flow for {project_name} ({project_type})")
-            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent)
-
-        elif classification == "individual": # individual
-            print(f"Running individual flow for {project_name} ({project_type})")
-            run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent)
-
+        project_type = row[0]
+        if classification == "individual":
+            individual.append((project_name, project_type))
+        elif classification == "collaborative":
+            collaborative.append((project_name, project_type))
         else:
-            print(f"Unknown classification '{classification} for project '{project_name}'. Skipping.")
+            print(f"Unknown classification '{classification}' for '{project_name}', skipping.")
+
+    if not individual and not collaborative:
+        print("No projects to analyze.")
+        return
+
+    def run_individual_phase():
+        if not individual:
+            print("\n[INDIVIDUAL] No individual projects.")
+            return False
+        print("\n[INDIVIDUAL] Running individual projects...")
+        for project_name, project_type in individual:
+            print(f"  → {project_name} ({project_type})")
+            run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path)
+        return True
+
+    def run_collaborative_phase():
+        if not collaborative:
+            print("\n[COLLABORATIVE] No collaborative projects.")
+            return False
+        print("\n[COLLABORATIVE] Running collaborative projects...")
+        for project_name, project_type in collaborative:
+            print(f"  → {project_name} ({project_type})")
+            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent)
+        return True
+
+    # Track pending phases
+    pending_individual = bool(individual)
+    pending_collab = bool(collaborative)
+
+    # ---- Initial prompts (individual first) ----
+    if pending_individual:
+        ans_ind = input("\nRun INDIVIDUAL analysis now? (y/n): ").strip().lower()
+        if ans_ind in {"", "y", "yes"}:
+            if run_individual_phase():
+                pending_individual = False
+
+    if pending_collab:
+        ans_collab = input("\nRun COLLABORATIVE analysis now? (y/n): ").strip().lower()
+        if ans_collab in {"y", "yes"}:
+            if run_collaborative_phase():
+                pending_collab = False
+
+    # If nothing left, we're done
+    if not (pending_individual or pending_collab):
+        print("\nAll requested analyses completed.")
+        return
+
+    # ---- Exit loop: if user chooses not to exit, run whatever is still pending ----
+    while pending_individual or pending_collab:
+        # Craft hint about what will run next if they choose NOT to exit
+        next_to_run = "INDIVIDUAL" if pending_individual else "COLLABORATIVE"
+        ans_exit = input(
+            f"\nDo you want to exit analysis now? (y/n)\n"
+            f"If you answer 'n'/'no', the {next_to_run} analysis will be run next: "
+        ).strip().lower()
+
+        if ans_exit in {"y", "yes"}:
+            print("Exiting analysis.")
+            return
+
+        # User chose to continue: run the next pending phase (individual gets priority)
+        if pending_individual:
+            if run_individual_phase():
+                pending_individual = False
+        elif pending_collab:
+            if run_collaborative_phase():
+                pending_collab = False
+
+    print("\nAll requested analyses completed.")
+
 
 
 def get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent):
@@ -142,15 +223,15 @@ def get_individual_contributions(conn, user_id, project_name, project_type, curr
         print(f"[COLLABORATIVE] Unknown project type for '{project_name}', skipping.")
 
 
-def run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent):
+def run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path):
     """
     Run full analysis on an individual project, depending on project_type.
     """
     
     if project_type == "text":
-        run_text_analysis(conn, user_id, project_name, current_ext_consent)
+        run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path)
     elif project_type == "code":
-        run_code_analysis(conn, user_id, project_name, current_ext_consent)
+        run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path)
     else:
         print(f"[INDIVIDUAL] Unknown project type for '{project_name}', skipping.")
 
@@ -176,15 +257,35 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent)
     pass
 
 
-def run_text_analysis(conn, user_id, project_name, current_ext_consent):
+def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path):
     """
     Placeholder for individual text project analysis.
+    Individual TEXT project → pull files from DB and analyze.
+
     """
+
+    parsed_files = _fetch_files(conn, user_id, project_name, only_text=True)
+    if not parsed_files:
+        print(f"[INDIVIDUAL-TEXT] No text files found for '{project_name}'.")
+        return
+    analyze_files(conn, user_id, current_ext_consent, parsed_files, zip_path)
+
     pass
 
 
-def run_code_analysis(conn, user_id, project_name, current_ext_consent):
+def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path):
     """
     Placeholder for individual code project analysis.
     """
     pass
+
+
+
+# From LLMs and alternative analysis
+
+def analyze_files(conn, user_id, external_consent, parsed_files, zip_path):
+    if external_consent=='accepted':
+        run_llm_analysis(parsed_files, zip_path)
+    else:
+        alternative_analysis(parsed_files, zip_path)
+  
