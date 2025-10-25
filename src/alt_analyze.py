@@ -32,7 +32,10 @@ def nltk_data():
     requireddata=[
         ('tokenizers/punkt', 'punkt'),
         ('tokenizers/punkt_tab', "punkt_tab"),
-        ('corpora/stopwords', 'stopwords')
+        ('corpora/stopwords', 'stopwords'),
+        ('taggers/averaged_perceptron_tagger', 'averaged_perceptron_tagger'),
+        ('taggers/averaged_perceptron_tagger_eng', 'averaged_perceptron_tagger_eng')
+
     ]
 
     for path, package in requireddata:
@@ -164,7 +167,7 @@ def topic_extraction(text: str, n_topics: int=5, n_words: int=10)->List[Dict[str
     vectorizer=CountVectorizer(max_features=1000, min_df=1, max_df=1.0)
     try:
         doc_term=vectorizer.fit_transform([clean_text])
-        lda=LatentDirichletAllocation(n_components=min(n_topics, 3), random_state=42)
+        lda=LatentDirichletAllocation(n_components=n_topics, random_state=42)
         lda.fit(doc_term)
         topics=[]
         featurenames=vectorizer.get_feature_names_out()
@@ -186,14 +189,22 @@ def topic_extraction(text: str, n_topics: int=5, n_words: int=10)->List[Dict[str
 
 def extract_keywords(text: str, n_words: int=20)->List[Tuple[str,float]]:
     stop_words=set(stopwords.words('english'))
+    stop_words.update({'al', 'et', 'etc', 'ie', 'eg', 'cf'})
     try:
+        tokens = word_tokenize(text.lower())
+        pos_tags = nltk.pos_tag(tokens)
+        noun_adj_tokens = [
+            word for word, pos in pos_tags
+            if pos.startswith('NN') or pos.startswith('JJ')
+        ]
+        filtered_text = ' '.join(noun_adj_tokens)
         vectorizer=TfidfVectorizer(
             max_features=100,
             stop_words=list(stop_words),
             ngram_range=(1,2),
-            token_pattern=r'(?u)\b[a-z]{3,}\b'
+            #token_pattern=r'(?u)\b[a-z]{3,}\b'
         )
-        tfidf_mat=vectorizer.fit_transform([text])
+        tfidf_mat=vectorizer.fit_transform([filtered_text])
         feature_names=vectorizer.get_feature_names_out()
 
         scores=tfidf_mat.toarray()[0]
