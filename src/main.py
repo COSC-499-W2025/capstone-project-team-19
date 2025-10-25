@@ -137,7 +137,7 @@ def prompt_and_store():
     print(f"Recieved path: {zip_path}")
 
     # Check for duplicate zip_path already stored in database
-    check_existing_zip(conn, user_id, zip_path)
+    #check_existing_zip(conn, user_id, zip_path)
 
     result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
     if not result:
@@ -193,7 +193,7 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
             for name in pending_projects:
                 assignments[name] = ask_project_classification(name)
 
-    record_project_classifications(conn, user_id, zip_name, assignments)
+    record_project_classifications(conn, user_id, zip_path, zip_name, assignments)
 
     print("\nProject classifications saved:")
     for name, classification in sorted(assignments.items()):
