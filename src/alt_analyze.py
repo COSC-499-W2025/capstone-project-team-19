@@ -18,7 +18,7 @@ import textstat
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 import numpy as np
-import parsing
+from parsing import analyze_project_layout
 
 ##TODO: Text Extraction (from pdf, txt, docx)✅
 ##      Linguistic + Readability analysis 
@@ -205,8 +205,6 @@ def extract_keywords(text: str, n_words: int=20)->List[Tuple[str,float]]:
         print(f"Error:{e}")
         return []
 
-##      Metrics to be produced: Summary, Project Ranking, Activity frequency timeline, Key skills, Success indicators, Work type breakdown, collaboration share
-
 def calculate_document_metrics(filepath: str)-> Dict[str, any]: 
     text=extractfile(filepath)
     if not text:
@@ -237,7 +235,7 @@ def calculate_project_metrics(documents_metrics: List[Dict])->Dict[str,any]:
 
     if not valid_docs:
         return {'error':'No documents processed'}
-    
+
     total_word_count=sum(d['linguistic_metrics']['word_count'] for d in valid_docs)
     total_docs=len(valid_docs)
     reading_level_average=np.mean([d['linguistic_metrics']['flesch_kincaid_grade'] for d in valid_docs])
@@ -246,7 +244,7 @@ def calculate_project_metrics(documents_metrics: List[Dict])->Dict[str,any]:
     for doc in valid_docs:
         for word, score in doc.get('keywords', []):
             all_keywords[word]=all_keywords.get(word, 0)+score
-    
+
     top_keywords=sorted(all_keywords.items(), key=lambda x: x[1], reverse=True)[:20]
     return{
         'summary':{
@@ -257,6 +255,89 @@ def calculate_project_metrics(documents_metrics: List[Dict])->Dict[str,any]:
         },
         'keywords': [{'word': word, 'score': round(score, 3)} for word, score in top_keywords]
     }
+
+def group_files_by_project(text_files: List[Dict]) -> Dict[str, List[Dict]]:
+    layout = analyze_project_layout(text_files)
+
+    root_name = layout.get('root_name')
+    auto_assignments = layout.get('auto_assignments', {})
+    pending_projects = layout.get('pending_projects', [])
+
+    all_project_names = set(auto_assignments.keys()) | set(pending_projects)
+
+    if not all_project_names:
+        return {root_name or "Default Project": text_files}
+
+    projects = {name: [] for name in all_project_names}
+
+    for file_info in text_files:
+        file_path = file_info.get('file_path', '')
+        normalized_path = file_path.replace('\\', '/')
+        path_parts = [part for part in normalized_path.split('/') if part]
+
+        if not path_parts or path_parts[0].startswith('__MACOSX'):
+            continue
+
+        # Determine which path level contains the project name
+        # If there's a root folder, check if level 1 is a bucket (individual/collaborative)
+        project_candidate = None
+
+        if root_name and len(path_parts) > 2:
+            # Check if path_parts[1] is a bucket folder
+            bucket_folder = path_parts[1].lower()
+            if bucket_folder in ['individual', 'collaborative']:
+                # Structure: root/bucket/project/files
+                project_candidate = path_parts[2]
+            else:
+                # Structure: root/project/files (no bucket)
+                project_candidate = path_parts[1]
+        elif root_name and len(path_parts) > 1:
+            # Structure: root/project/files
+            project_candidate = path_parts[1]
+        elif not root_name and len(path_parts) > 0:
+            # No root, top level is project
+            project_candidate = path_parts[0]
+
+        if project_candidate and project_candidate in projects:
+            projects[project_candidate].append(file_info)
+
+    return {name: files for name, files in projects.items() if files}
+
+def ask_user_for_project_summaries(project_names: List[str]) -> Dict[str, str]:
+    """
+    Ask user to provide a summary/description for each project.
+    Returns a dictionary mapping project_name -> user_summary
+    """
+    if not project_names:
+        return {}
+
+    print(f"\n{'='*80}")
+    print("DETECTED PROJECTS")
+    print(f"{'='*80}\n")
+
+    for i, project_name in enumerate(project_names, 1):
+        print(f"  {i}. {project_name}")
+
+    print(f"\n{'-'*80}")
+    print("Please provide a brief summary for each project.")
+    print("This will help document what each project is about.")
+    print("(Press Enter to skip a project)")
+    print(f"{'-'*80}\n")
+
+    project_summaries = {}
+
+    for project_name in project_names:
+        print(f"\nProject: {project_name}")
+        summary = input("  Your summary: ").strip()
+
+        if summary:
+            project_summaries[project_name] = summary
+            print("Summary saved")
+        else:
+            print("Skipped")
+
+    return project_summaries
+
 def run_alt_analysis(parsed_files, zip_path):
     if not isinstance(parsed_files, list):
         return
@@ -272,35 +353,84 @@ def run_alt_analysis(parsed_files, zip_path):
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     base_path = os.path.join(ZIP_DATA_DIR, zip_name)
 
+    # Group files by project (top-level folder)
+    projects_files = group_files_by_project(text_files)
+
+    if not projects_files:
+        print("No project folders detected.")
+        return
+
+    project_names = sorted(projects_files.keys())
+
+    # Ask user for project summaries BEFORE processing
+    user_summaries = ask_user_for_project_summaries(project_names)
+
     print(f"\n{'='*80}")
-    print(f"Analyzing {len(text_files)} file(s)...")
+    print(f"STARTING ANALYSIS OF {len(projects_files)} PROJECT(S)")
     print(f"{'='*80}\n")
 
-    # Calculate metrics for each document
-    all_document_metrics = []
-    for file_info in text_files:
-        file_path = os.path.join(base_path, file_info['file_path'])
-        filename = file_info['file_name']
+    # Store results to display later
+    all_projects_results = []
 
-        print(f"Processing: {filename}")
-        doc_metrics = calculate_document_metrics(file_path)
-
-        if doc_metrics.get('processed'):
-            # Add filename for reference
-            doc_metrics['filename'] = filename
-            all_document_metrics.append(doc_metrics)
-            display_individual_results(filename, doc_metrics)
-        else:
-            print(f"Failed to process: {doc_metrics.get('error', 'Unknown error')}\n")
-
-    # Display project-wide summary
-    if all_document_metrics:
+    for project_name, project_files in projects_files.items():
         print(f"\n{'='*80}")
-        print("PROJECT SUMMARY - Aggregated Metrics Across All Files")
+        print(f"ANALYZING PROJECT: {project_name}")
+        print(f"Files in this project: {len(project_files)}")
         print(f"{'='*80}\n")
-        display_project_summary(calculate_project_metrics(all_document_metrics))
-    else:
-        print("\nNo files were successfully processed.")
+
+        # Calculate metrics for each document in this project
+        project_document_metrics = []
+        for file_info in project_files:
+            file_path = os.path.join(base_path, file_info['file_path'])
+            filename = file_info['file_name']
+
+            print(f"Processing: {filename}")
+            doc_metrics = calculate_document_metrics(file_path)
+
+            if doc_metrics.get('processed'):
+                # Add filename for reference
+                doc_metrics['filename'] = filename
+                project_document_metrics.append(doc_metrics)
+                display_individual_results(filename, doc_metrics)
+            else:
+                print(f"Failed to process: {doc_metrics.get('error', 'Unknown error')}\n")
+
+        # Store results to display later (don't display immediately)
+        if project_document_metrics:
+            project_summary = calculate_project_metrics(project_document_metrics)
+
+            # Store results including user summary
+            all_projects_results.append({
+                'project_name': project_name,
+                'summary': project_summary,
+                'file_count': len(project_document_metrics),
+                'user_summary': user_summaries.get(project_name, None)
+            })
+            print(f"Successfully processed {len(project_document_metrics)} file(s)\n")
+        else:
+            print(f"No files were successfully processed in project: {project_name}\n")
+
+    # Display all summaries at the end
+    if all_projects_results:
+        print(f"\n\n{'='*80}")
+        print("PROJECT SUMMARIES")
+        print(f"{'='*80}\n")
+
+        for result in all_projects_results:
+            project_name = result['project_name']
+            user_summary = result['user_summary']
+
+            print(f"\n{'─'*80}")
+            print(f"PROJECT: {project_name}")
+            print(f"Files Analyzed: {result['file_count']}")
+
+            if user_summary:
+                print(f"\nYour Summary:")
+                print(f"  {user_summary}")
+
+            print(f"{'─'*80}\n")
+
+            display_project_summary(result['summary'])
 
 def display_individual_results(filename: str, doc_metrics: dict):
     """Display analysis results for an individual file."""
@@ -343,11 +473,43 @@ def display_project_summary(project_metrics: dict):
     print("-" * 50)
     keywords = project_metrics.get('keywords', [])
     if keywords:
-        for i, kw in enumerate(keywords[:15], 1):
+        for i, kw in enumerate(keywords[:5], 1):
             print(f"{i:2d}. {kw['word']:30s} (score: {kw['score']:.3f})")
     else:
         print("No keywords found")
 
     print(f"\n{'='*80}\n")
+
+def display_all_projects_summary(all_projects_results: List[Dict]):
+    """Display an overall summary comparing all analyzed projects."""
+    print(f"\n{'='*80}")
+    print("OVERALL SUMMARY - All Projects Combined")
+    print(f"{'='*80}\n")
+
+    print(f"Total Projects Analyzed: {len(all_projects_results)}\n")
+
+    # Calculate totals across all projects
+    total_files = sum(p['file_count'] for p in all_projects_results)
+    total_words_all = sum(p['summary']['summary']['total_words'] for p in all_projects_results)
+
+    print(f"Combined Statistics:")
+    print(f"  Total Files Processed:      {total_files}")
+    print(f"  Total Words Across Projects: {total_words_all:,}")
+
+    print(f"\nPer-Project Breakdown:")
+    print("-" * 80)
+
+    for project_result in all_projects_results:
+        project_name = project_result['project_name']
+        summary = project_result['summary']['summary']
+        file_count = project_result['file_count']
+
+        print(f"\n  Project: {project_name}")
+        print(f"    Files:         {file_count}")
+        print(f"    Total Words:   {summary['total_words']:,}")
+        print(f"    Reading Level: {summary['reading_level_label']} (Grade {summary['reading_level_average']})")
+
+    print(f"\n{'='*80}\n")
+
 
 
