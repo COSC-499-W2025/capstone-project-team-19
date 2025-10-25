@@ -103,9 +103,14 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
       1) "Run individual analysis now?"  -> if yes, run all individual projects
       2) "Run collaborative analysis now?" -> if yes, run all collaborative projects
       3) otherwise exit
+
+    After each phase (or set of prompts), ask:
+    "Do you want to exit analysis now? (y/n)"
+    If user answers 'n'/'no', automatically run the remaining (unrun) phase(s),
+    starting with INDIVIDUAL if still pending.
     """
 
-    # Collect projects + types
+    # Partition projects and attach their detected types
     individual = []
     collaborative = []
 
@@ -120,7 +125,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
         ).fetchone()
 
         if not row or not row[0]:
-            print(f"Skipping '{project_name}': project_type missing.")
+            print(f"Skipping '{project_name}': project_type missing or NULL.")
             continue
 
         project_type = row[0]
@@ -135,36 +140,71 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
         print("No projects to analyze.")
         return
 
-    # Helper runners
     def run_individual_phase():
         if not individual:
             print("\n[INDIVIDUAL] No individual projects.")
-            return
+            return False
         print("\n[INDIVIDUAL] Running individual projects...")
         for project_name, project_type in individual:
             print(f"  → {project_name} ({project_type})")
             run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path)
+        return True
 
     def run_collaborative_phase():
         if not collaborative:
             print("\n[COLLABORATIVE] No collaborative projects.")
-            return
+            return False
         print("\n[COLLABORATIVE] Running collaborative projects...")
         for project_name, project_type in collaborative:
             print(f"  → {project_name} ({project_type})")
             get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent)
+        return True
 
-    # Prompt 1: INDIVIDUAL first (default yes)
-    ans_ind = input("\nDo you want to run the INDIVIDUAL analysis now? (Y/n): ").strip().lower()
-    if ans_ind in {"", "y", "yes"}:
-        run_individual_phase()
+    # Track pending phases
+    pending_individual = bool(individual)
+    pending_collab = bool(collaborative)
 
-    # Prompt 2: COLLABORATIVE next (default no if user typed explicit 'n' on first, still ask)
-    ans_collab = input("\nDo you want to run the COLLABORATIVE analysis now? (y/N): ").strip().lower()
-    if ans_collab in {"y", "yes"}:
-        run_collaborative_phase()
-    else:
-        print("Exiting without running collaborative analysis.")
+    # ---- Initial prompts (individual first) ----
+    if pending_individual:
+        ans_ind = input("\nRun INDIVIDUAL analysis now? (y/n): ").strip().lower()
+        if ans_ind in {"", "y", "yes"}:
+            if run_individual_phase():
+                pending_individual = False
+
+    if pending_collab:
+        ans_collab = input("\nRun COLLABORATIVE analysis now? (y/n): ").strip().lower()
+        if ans_collab in {"y", "yes"}:
+            if run_collaborative_phase():
+                pending_collab = False
+
+    # If nothing left, we're done
+    if not (pending_individual or pending_collab):
+        print("\nAll requested analyses completed.")
+        return
+
+    # ---- Exit loop: if user chooses not to exit, run whatever is still pending ----
+    while pending_individual or pending_collab:
+        # Craft hint about what will run next if they choose NOT to exit
+        next_to_run = "INDIVIDUAL" if pending_individual else "COLLABORATIVE"
+        ans_exit = input(
+            f"\nDo you want to exit analysis now? (y/n)\n"
+            f"If you answer 'n'/'no', the {next_to_run} analysis will be run next: "
+        ).strip().lower()
+
+        if ans_exit in {"y", "yes"}:
+            print("Exiting analysis.")
+            return
+
+        # User chose to continue: run the next pending phase (individual gets priority)
+        if pending_individual:
+            if run_individual_phase():
+                pending_individual = False
+        elif pending_collab:
+            if run_collaborative_phase():
+                pending_collab = False
+
+    print("\nAll requested analyses completed.")
+
 
 
 def get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent):
