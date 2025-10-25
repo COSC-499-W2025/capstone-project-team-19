@@ -52,3 +52,17 @@ My PR's:
 
 Reviewed the following PR's:
 - 75 (Store user config) - Salma
+
+## (Week 8) Monday October 20 - Sunday October 26
+
+![Screenshot of this week's peer evaluation]()
+
+Week Recap: This week, I started by removing and refactoring the `zip_data` folder so that raw files would no longer be saved in the directory or the database. This change was discussed with the team on Wednesday, October 22. However, when my PR was reviewed, there was some confusion because parts of the existing analysis code still relied on those raw files being saved. There was a misunderstanding about which files were stored where, and after further discussion on Discord, we decided that the `zip_data` folder would only be removed after the parsing and analysis are complete. I then closed my PR without merging and created an issue to implement this change in the future.
+
+After that, I began implementing the flow for parsing and analysis by adding a `project_type` attribute to the `project_classifications` table to indicate whether each project was code or text. I also added modular routing for collaborative versus individual projects. Collaborative projects now trigger contribution analysis to determine which parts the user worked on, while individual projects go straight to file analysis. All relevant tests have been implemented.
+
+Next week, I plan to continue with the analysis of the files. Finish writing this before making PR.
+
+My PR's:
+- 104 (Refactor/remove zip data saving) - closed, unmerged
+- 118 (Project type classification)
