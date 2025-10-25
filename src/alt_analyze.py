@@ -257,7 +257,7 @@ def calculate_project_metrics(documents_metrics: List[Dict])->Dict[str,any]:
     }
 
 
-# MAIN FUNCTIONS TO BE PASSED TO MAIN.PY
+# moved these functions here from main.py
 
 def alternative_analysis(parsed_files, zip_path):
     if not isinstance(parsed_files, list):

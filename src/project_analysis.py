@@ -233,7 +233,7 @@ def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     pass
 
 
-def run_code_analysis(conn, user_id, project_name, current_ext_consent):
+def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path):
     """
     Placeholder for individual code project analysis.
     """
