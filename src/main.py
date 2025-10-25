@@ -139,7 +139,8 @@ def prompt_and_store():
     # Check for duplicate zip_path already stored in database
     zip_path = handle_existing_zip(conn, user_id, zip_path)
     if not zip_path:
-        return # user chose to reuse or cancel
+        print("Skipping parsing and analysis (reuse selected).")
+        return # user chose to reuse
 
     result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
     if not result:
