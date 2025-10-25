@@ -130,6 +130,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         zip_name          TEXT NOT NULL,
         project_name      TEXT NOT NULL,
         classification    TEXT NOT NULL CHECK (classification IN ('individual','collaborative')),
+        project_type      TEXT CHECK (project_type IN ('code', 'text')),
         recorded_at       TEXT NOT NULL,
         UNIQUE(user_id, zip_name, project_name),
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
