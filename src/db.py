@@ -127,6 +127,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
     CREATE TABLE IF NOT EXISTS project_classifications (
         classification_id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id           INTEGER NOT NULL,
+        zip_path          TEXT NOT NULL,
         zip_name          TEXT NOT NULL,
         project_name      TEXT NOT NULL,
         classification    TEXT NOT NULL CHECK (classification IN ('individual','collaborative')),

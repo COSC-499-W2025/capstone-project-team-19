@@ -12,6 +12,7 @@ from db import (
 from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
 from project_analysis import detect_project_type, send_to_analysis
+from upload_checks import check_existing_zip
 import os
 
 def main():
@@ -134,6 +135,10 @@ def prompt_and_store():
     # Continue to file selection
     zip_path = get_zip_path_from_user()
     print(f"Recieved path: {zip_path}")
+
+    # Check for duplicate zip_path already stored in database
+    check_existing_zip(conn, user_id, zip_path)
+
     result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
     if not result:
         print("No valid files were processed. Check logs for unsupported or corrupted files.")
