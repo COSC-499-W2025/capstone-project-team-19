@@ -34,8 +34,8 @@ def test_stored_parsed_files_inserts_rows(conn, tmp_path):
     store_parsed_files(conn, files_info, user_id)
 
     # verify result
-    result = conn.execute("SELECT file_name, user_id FROM files").fetchone()
-    assert result == ("example.py", user_id)
+    result = conn.execute("SELECT file_name, user_id, project_name FROM files").fetchone()
+    assert result == ("example.py", user_id, None)
 
 def test_files_linked_to_correct_user(conn, tmp_path):
     # Checks that inserted files are linked to the right user

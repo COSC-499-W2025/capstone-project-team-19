@@ -338,7 +338,8 @@ def ask_user_for_project_summaries(project_names: List[str]) -> Dict[str, str]:
 
     return project_summaries
 
-def run_alt_analysis(parsed_files, zip_path):
+def alternative_analysis(parsed_files, zip_path):
+    """Main analysis function for alternative (non-LLM) analysis."""
     if not isinstance(parsed_files, list):
         return
 

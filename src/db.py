@@ -111,6 +111,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         size_bytes  INTEGER,
         created     TEXT,
         modified    TEXT,
+        project_name TEXT,
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
     );
     """)
@@ -129,6 +130,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         zip_name          TEXT NOT NULL,
         project_name      TEXT NOT NULL,
         classification    TEXT NOT NULL CHECK (classification IN ('individual','collaborative')),
+        project_type      TEXT CHECK (project_type IN ('code', 'text')),
         recorded_at       TEXT NOT NULL,
         UNIQUE(user_id, zip_name, project_name),
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
@@ -196,8 +198,8 @@ def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id
     for f in files_info:
         cur.execute("""
             INSERT INTO files (
-                user_id, file_name, file_path, extension, file_type, size_bytes, created, modified
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                user_id, file_name, file_path, extension, file_type, size_bytes, created, modified, project_name
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             user_id,
             f.get("file_name"),
@@ -206,7 +208,8 @@ def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id
             f.get("file_type"),
             f.get("size_bytes"),
             f.get("created"),
-            f.get("modified")
+            f.get("modified"),
+            f.get("project_name"),
         ))
     
     conn.commit()

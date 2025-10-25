@@ -11,12 +11,10 @@ from db import (
 )
 from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
-from alt_analyze import run_alt_analysis
-from llm_analyze import run_llm_analysis
-import os
+from project_analysis import detect_project_type, send_to_analysis
 
 def main():
-    print("Welcome aboard! Let’s turn your work into cool insights.")
+    print("Welcome aboard! Let's turn your work into cool insights.")
 
     # Should be called in main() not __main__ beacsue __main__ does not run during tests
     prompt_and_store()
@@ -33,13 +31,13 @@ def prompt_and_store():
     prev_ext = get_latest_external_consent(conn, user_id)
 
     reused = False  # track reuse
-    current_ext_consent=None 
+    current_ext_consent=None
 
     # Edge case 1: user exists but no consents yet
     if not prev_consent and not prev_ext:
         print(f"\nWelcome back, {username}!")
-        print("Looks like you’ve been here before, but we don’t have your consent record yet.")
-        print("Let’s complete your setup.\n")
+        print("Looks like you've been here before, but we don't have your consent record yet.")
+        print("Let's complete your setup.\n")
         print(CONSENT_TEXT)
         status = get_user_consent()
         record_consent(conn, status, user_id=user_id)
@@ -53,7 +51,7 @@ def prompt_and_store():
         print("We found a partial configuration:")
         print(f"  • User consent = {prev_consent or 'none'}")
         print(f"  • External service consent = {prev_ext or 'none'}")
-        print("Let’s complete your setup.\n")
+        print("Let's complete your setup.\n")
 
         # Only ask for the missing one
         if not prev_consent:
@@ -80,7 +78,7 @@ def prompt_and_store():
             record_external_consent(conn, prev_ext, user_id=user_id)
             current_ext_consent=prev_ext
         else:
-            print("\nAlright, let’s review your consents again.\n")
+            print("\nAlright, let's review your consents again.\n")
             print(CONSENT_TEXT)
             status = get_user_consent()
             record_consent(conn, status, user_id=user_id)
@@ -112,22 +110,10 @@ def prompt_and_store():
         print("No valid files were processed. Check logs for unsupported or corrupted files.")
         return
 
-    prompt_for_project_classifications(conn, user_id, zip_path, result)
-    analyze_files(conn, user_id, current_ext_consent, result, zip_path)
-    
-    
-def analyze_files(conn, user_id, external_consent, parsed_files, zip_path):
-    if external_consent=='accepted':
-        llm_analysis(parsed_files, zip_path)
-    else:
-        alternative_analysis(parsed_files, zip_path)
-        
-def llm_analysis(parsed_files, zip_path):
-    run_llm_analysis(parsed_files, zip_path)
-
-def alternative_analysis(parsed_files, zip_path):
-    run_alt_analysis(parsed_files, zip_path)
-
+    # Get project classifications and send to analysis
+    assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
+    detect_project_type(conn, user_id, assignments)
+    send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path)
 
 
 def get_zip_path_from_user():
@@ -135,7 +121,7 @@ def get_zip_path_from_user():
     return path
 
 
-def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_info: list[dict]) -> None:
+def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_info: list[dict]) -> dict:
     """Ask the user to classify each detected project as individual or collaborative."""
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     layout = analyze_project_layout(files_info)
@@ -146,7 +132,7 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
 
     if not auto_assignments and not pending_projects:
         print("No project folders detected to classify.")
-        return
+        return {}
 
     if root_name:
         print(f"\nUsing '{root_name}' as the root folder for this upload.")
@@ -168,7 +154,7 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
             for name in pending_projects:
                 assignments[name] = scope
         else:
-            print("\nLet’s classify each remaining project individually.")
+            print("\nLet's classify each remaining project individually.")
             for name in pending_projects:
                 assignments[name] = ask_project_classification(name)
 
@@ -182,6 +168,8 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
         print("\nSkipped items (no project folder detected):")
         for name in stray_locations:
             print(f"  • {name}")
+
+    return assignments
 
 
 def ask_overall_scope() -> str:
