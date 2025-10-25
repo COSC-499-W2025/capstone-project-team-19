@@ -137,7 +137,7 @@ def prompt_and_store():
     print(f"Recieved path: {zip_path}")
 
     # Check for duplicate zip_path already stored in database
-    #check_existing_zip(conn, user_id, zip_path)
+    check_existing_zip(conn, user_id, zip_path)
 
     result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
     if not result:
