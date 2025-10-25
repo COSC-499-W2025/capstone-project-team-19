@@ -132,17 +132,25 @@ def prompt_and_store():
         print("\nContinuing with your saved configuration…\n")
 
     # Continue to file selection
-    zip_path = get_zip_path_from_user()
-    print(f"Recieved path: {zip_path}")
-    result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
-    if not result:
-        print("No valid files were processed. Check logs for unsupported or corrupted files.")
-        return
+    unchecked_zip = True
+    while (unchecked_zip):
+        zip_path = get_zip_path_from_user()
+        print(f"Received path: {zip_path}")
+        result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
+        if not result:
+            print("No valid files were processed. Check logs for unsupported or corrupted files.")
+            return
 
-    assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
-    detect_project_type(conn, user_id, assignments)
+        assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
+        try: 
+            detect_project_type(conn, user_id, assignments)
+            # if zip file is valid (has folders)
+            unchecked_zip = False
+        except AttributeError:
+            # if zip file is invalid
+            print("\nInvalid ZIP file structure. Please make sure your ZIP file contains project folders where individual files are stored.")
+        
     send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path) #takes projects and sends them into the analysis flow
-    
     
 
 
