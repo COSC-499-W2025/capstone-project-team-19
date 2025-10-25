@@ -2,6 +2,7 @@ import os
 import tempfile
 from pathlib import Path
 import pytest
+from unittest.mock import patch, MagicMock
 from src.alt_analyze import (
     extractfile,
     analyze_linguistic_complexity,
@@ -42,7 +43,7 @@ def test_analyze_linguistic_complexity():
     text="The implementation of sophisticated algorithms necessitates comprehensive understanding of computational complexity theory. Contemporary methodologies incorporate various optimization techniques to enhance performance metrics."
     metrics=analyze_linguistic_complexity(text)
 
-    assert metrics ['word_count']==24
+    assert metrics ['word_count']==22
     assert metrics ['sentence_count']==2
     assert metrics['char_count']==226
     assert metrics['flesch_kincaid_grade']>10
