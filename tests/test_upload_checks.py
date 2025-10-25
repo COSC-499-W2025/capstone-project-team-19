@@ -1,7 +1,7 @@
 import sqlite3
 import pytest
 from src.upload_checks import (
-    check_existing_zip,
+    handle_existing_zip,
     generate_duplicate_zip_name,
     _zip_exists,
 )
@@ -22,7 +22,7 @@ def test_check_existing_zip_no_duplicate(monkeypatch, setup_db):
     conn = setup_db
     user_id = 1
     zip_path = "C:/fake/path/project.zip"
-    result = check_existing_zip(conn, user_id, zip_path)
+    result = handle_existing_zip(conn, user_id, zip_path)
     assert result == zip_path
 
 """If duplicate exists and user chooses overwrite, it should delete old data and return same path."""
@@ -41,7 +41,7 @@ def test_check_existing_zip_duplicate_overwrite(monkeypatch, setup_db):
     # Mock user input to choose overwrite
     monkeypatch.setattr("builtins.input", lambda _: "o")
 
-    result = check_existing_zip(conn, user_id, zip_path)
+    result = handle_existing_zip(conn, user_id, zip_path)
     assert result == zip_path
 
     # Ensure the old project is deleted
@@ -64,7 +64,7 @@ def test_check_existing_zip_duplicate_duplicate(monkeypatch, setup_db):
     # Mock user input to choose duplicate
     monkeypatch.setattr("builtins.input", lambda _: "d")
 
-    new_path = check_existing_zip(conn, user_id, zip_path)
+    new_path = handle_existing_zip(conn, user_id, zip_path)
     assert new_path != zip_path
     assert new_path.startswith(zip_path.replace(".zip", ""))
     assert new_path.endswith(".zip")
@@ -85,7 +85,7 @@ def test_check_existing_zip_duplicate_reuse(monkeypatch, setup_db):
 
     monkeypatch.setattr("builtins.input", lambda _: "r")
 
-    result = check_existing_zip(conn, user_id, zip_path)
+    result = handle_existing_zip(conn, user_id, zip_path)
     assert result is None
 
 

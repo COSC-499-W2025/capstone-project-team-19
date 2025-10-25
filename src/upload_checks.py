@@ -5,7 +5,7 @@ Contains all required functions to check for duplicate ZIP files or projects in 
 import os
 from db import connect
 
-def check_existing_zip(conn, user_id, zip_path):
+def handle_existing_zip(conn, user_id, zip_path):
     cursor = conn.cursor()
 
     # There can only be one project connected to a single zip_path in the database (no duplicates)

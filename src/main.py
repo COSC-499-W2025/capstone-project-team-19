@@ -12,7 +12,7 @@ from db import (
 from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
 from project_analysis import detect_project_type, send_to_analysis
-from upload_checks import check_existing_zip
+from upload_checks import handle_existing_zip
 import os
 
 def main():
@@ -137,7 +137,9 @@ def prompt_and_store():
     print(f"Recieved path: {zip_path}")
 
     # Check for duplicate zip_path already stored in database
-    check_existing_zip(conn, user_id, zip_path)
+    zip_path = handle_existing_zip(conn, user_id, zip_path)
+    if not zip_path:
+        return # user chose to reuse or cancel
 
     result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
     if not result:
