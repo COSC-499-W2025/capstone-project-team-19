@@ -90,7 +90,11 @@ def extract_code_file(filepath: str)->Optional[str]:
         context_lines = []
         for line in lines:
             stripped = line.strip()
-            if stripped.startswith(("def ", "class ", "#", '"""', "'''")):
+            # python, c, c++, java
+            if stripped.startswith(("def ", "class ", "#", "//", "/*", "*", '"""', "'''")):
+                context_lines.append(line.rstrip())
+            # html, css, js comments or tags
+            elif stripped.startswith(("<!--", "<!DOCTYPE", "<html", "<head", "<body", "<script", "<style")):
                 context_lines.append(line.rstrip())
                 
         return "\n".join(line for line in context_lines if line.strip()) if context_lines else None

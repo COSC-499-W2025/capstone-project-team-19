@@ -62,23 +62,23 @@ def display_code_llm_results(project_name, summary):
     print("\n  Summary:")
     print(textwrap.fill(summary, width=80, subsequent_indent="    "))
     print("\n" + "-"*80 + "\n")
+
     
 
 def generate_code_llm_summary(project_context):
     prompt = f"""
     You are analyzing a multi-file software project.
 
-    Based on the following combined content (including README excerpts,
-    function/class headers, comments, and docstrings), write a clear,
-    technical summary describing:
-      1. What the project does (overall purpose)
-      2. Its main features or modules
-      3. The technologies, algorithms, or design patterns it uses
-      4. Its potential applications or intended users
+    Write a concise, single-paragraph professional summary suitable for a resume
+    or portfolio description. Focus on:
+    - What the project does and its main purpose
+    - Key technologies, methods, or algorithms used
+    - Its impact or intended users
 
-    Keep your response under 150 words, in a professional and concise tone.
-
-    Combined project context:
+    Do NOT use bullet points, numbering, or markdown formatting.
+    Write 1 cohesive paragraph in a formal but natural tone (max 120 words).
+    
+    Project context (README + code excerpts):
     {project_context[:12000]}
 
     Your summary:
@@ -91,8 +91,8 @@ def generate_code_llm_summary(project_context):
                 {
                     "role": "system",
                     "content": (
-                        "You are a technical analyst who summarizes software projects "
-                        "based on code structure and documentation. "
+                        "You are a technical writer who summarizes software projects for resumes or portfolios. "
+                        "Write clear, concise paragraphs without lists or markdown."
                         "Your tone should be precise, neutral, and professional."
                     ),
                 },
