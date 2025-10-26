@@ -12,6 +12,7 @@ from db import (
 from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
 from project_analysis import detect_project_type, send_to_analysis
+from upload_checks import handle_existing_zip
 import os
 
 def main():
@@ -134,6 +135,13 @@ def prompt_and_store():
     # Continue to file selection
     zip_path = get_zip_path_from_user()
     print(f"Recieved path: {zip_path}")
+
+    # Check for duplicate zip_path already stored in database
+    zip_path = handle_existing_zip(conn, user_id, zip_path)
+    if not zip_path:
+        print("Skipping parsing and analysis (reuse selected).")
+        return # user chose to reuse
+
     result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
     if not result:
         print("No valid files were processed. Check logs for unsupported or corrupted files.")
@@ -188,7 +196,7 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
             for name in pending_projects:
                 assignments[name] = ask_project_classification(name)
 
-    record_project_classifications(conn, user_id, zip_name, assignments)
+    record_project_classifications(conn, user_id, zip_path, zip_name, assignments)
 
     print("\nProject classifications saved:")
     for name, classification in sorted(assignments.items()):
