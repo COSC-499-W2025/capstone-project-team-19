@@ -127,6 +127,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
     CREATE TABLE IF NOT EXISTS project_classifications (
         classification_id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id           INTEGER NOT NULL,
+        zip_path          TEXT NOT NULL,
         zip_name          TEXT NOT NULL,
         project_name      TEXT NOT NULL,
         classification    TEXT NOT NULL CHECK (classification IN ('individual','collaborative')),
@@ -218,6 +219,7 @@ def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id
 def record_project_classification(
     conn: sqlite3.Connection,
     user_id: int,
+    zip_path: str,
     zip_name: str,
     project_name: str,
     classification: str,
@@ -231,14 +233,14 @@ def record_project_classification(
     conn.execute(
         """
         INSERT INTO project_classifications (
-            user_id, zip_name, project_name, classification, recorded_at
+            user_id, zip_path, zip_name, project_name, classification, recorded_at
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id, zip_name, project_name) DO UPDATE SET
             classification=excluded.classification,
             recorded_at=excluded.recorded_at
         """,
-        (user_id, zip_name, project_name, classification, timestamp),
+        (user_id, zip_path, zip_name, project_name, classification, timestamp),
     )
     conn.commit()
 
@@ -246,6 +248,7 @@ def record_project_classification(
 def record_project_classifications(
     conn: sqlite3.Connection,
     user_id: int,
+    zip_path: str,
     zip_name: str,
     assignments: Dict[str, str],
     when: datetime | None = None,
@@ -255,6 +258,7 @@ def record_project_classifications(
         record_project_classification(
             conn,
             user_id,
+            zip_path,
             zip_name,
             project_name,
             classification,
