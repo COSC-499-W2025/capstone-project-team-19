@@ -78,7 +78,7 @@ SUPPORTED_CODE_EXTENSIONS={'.py', '.java', '.js', '.html', '.css', '.c', '.cpp',
 
 def extract_code_file(filepath: str)->Optional[str]:
     root, extension = os.path.splitext(filepath)
-    if extension not in SUPPORTED_CODE_EXTENSIONS:
+    if extension.lower() not in SUPPORTED_CODE_EXTENSIONS:
         return None
     
     try:
@@ -93,7 +93,7 @@ def extract_code_file(filepath: str)->Optional[str]:
             if stripped.startswith(("def ", "class ", "#", '"""', "'''")):
                 context_lines.append(line.rstrip())
                 
-        return "\n".join(context_lines) if context_lines else None
+        return "\n".join(line for line in context_lines if line.strip()) if context_lines else None
     
     except Exception as e:
         print(f"Error extracting code from {filepath}: {e}")
