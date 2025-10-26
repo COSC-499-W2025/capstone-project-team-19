@@ -16,7 +16,7 @@ from upload_checks import handle_existing_zip
 import os
 
 def main():
-    print("Welcome aboard! Let’s turn your work into cool insights.")
+    print("Welcome aboard! Let's turn your work into cool insights.")
 
     # Should be called in main() not __main__ beacsue __main__ does not run during tests
     prompt_and_store()
@@ -47,8 +47,8 @@ def prompt_and_store():
     # Edge case 1: user exists but no consents yet
     if not prev_consent and not prev_ext:
         print(f"\nWelcome back, {username}!")
-        print("Looks like you’ve been here before, but we don’t have your consent record yet.")
-        print("Let’s complete your setup.\n")
+        print("Looks like you've been here before, but we don't have your consent record yet.")
+        print("Let's complete your setup.\n")
         print(CONSENT_TEXT)
         status = get_user_consent()
         record_consent(conn, status, user_id=user_id)
@@ -66,7 +66,7 @@ def prompt_and_store():
         print("We found a partial configuration:")
         print(f"  • User consent = {prev_consent or 'none'}")
         print(f"  • External service consent = {prev_ext or 'none'}")
-        print("Let’s complete your setup.\n")
+        print("Let's complete your setup.\n")
 
         # Only ask for the missing one
         if not prev_consent:
@@ -96,7 +96,7 @@ def prompt_and_store():
             current_consent = prev_consent
             current_ext_consent = prev_ext
         else:
-            print("\nAlright, let’s review your consents again.\n")
+            print("\nAlright, let's review your consents again.\n")
             print(CONSENT_TEXT)
             status = get_user_consent()
             record_consent(conn, status, user_id=user_id)
@@ -147,6 +147,7 @@ def prompt_and_store():
         print("No valid files were processed. Check logs for unsupported or corrupted files.")
         return
 
+    # Get project classifications and send to analysis
     assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
     detect_project_type(conn, user_id, assignments)
     send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path) #takes projects and sends them into the analysis flow
@@ -159,7 +160,7 @@ def get_zip_path_from_user():
     return path
 
 
-def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_info: list[dict]) -> None:
+def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_info: list[dict]) -> dict:
     """Ask the user to classify each detected project as individual or collaborative."""
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     layout = analyze_project_layout(files_info)
@@ -170,7 +171,7 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
 
     if not auto_assignments and not pending_projects:
         print("No project folders detected to classify.")
-        return
+        return {}
 
     if root_name:
         print(f"\nUsing '{root_name}' as the root folder for this upload.")
@@ -192,7 +193,7 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
             for name in pending_projects:
                 assignments[name] = scope
         else:
-            print("\nLet’s classify each remaining project individually.")
+            print("\nLet's classify each remaining project individually.")
             for name in pending_projects:
                 assignments[name] = ask_project_classification(name)
 
