@@ -33,7 +33,7 @@ def run_text_llm_analysis(parsed_files, zip_path):
         filename = file_info["file_name"]
         print(f"[{idx}/{total_files}] Processing: {filename}")
 
-        text = extractfile(file_path)
+        text = extract_text_file(file_path)
         if not text:
             print(f"Skipping {filename}: failed to extract text.\n")
             continue

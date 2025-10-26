@@ -71,3 +71,43 @@ def extractfromdocx (filepath: str)->str:
         print(f"Error : {e}")
         
         
+
+## Code extraction
+
+SUPPORTED_CODE_EXTENSIONS={'.py', '.java', '.js', '.html', '.css', '.c', '.cpp', '.h'}
+
+def extract_code_file(filepath: str)->Optional[str]:
+    root, extension = os.path.splitext(filepath)
+    if extension not in SUPPORTED_CODE_EXTENSIONS:
+        return None
+    
+    try:
+        # .py, .java, .js, .html, .css, .c, .cpp, .h can be accessed using regular text extraction
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            lines = f.readlines()
+        
+        # instead of extracting the whole code, we just need function names, class headers, comments, and docstrings
+        context_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith(("def ", "class ", "#", '"""', "'''")):
+                context_lines.append(line.rstrip())
+                
+        return "\n".join(context_lines) if context_lines else None
+    
+    except Exception as e:
+        print(f"Error extracting code from {filepath}: {e}")
+        return None
+    return None
+
+def extract_readme_file(base_path: str) -> Optional[str]:
+    for filename in os.listdir(base_path):
+        if filename.lower().startswith("readme") and filename.lower().endswith((".md", ".txt")):
+            filepath = os.path.join(base_path, filename)
+            try:
+                with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                    return f.read()
+            except Exception as e:
+                print(f"Error reading README: {e}")
+                return None
+    return None
