@@ -111,7 +111,7 @@ def prompt_and_store():
                 current_ext_consent = ext_status
                 break
             else:
-                print("\nEnter either 'y' or 'n'")
+                print("\nPlease type 'y' for yes or 'n' for no:")
 
 
     # --- Brand new user ---
