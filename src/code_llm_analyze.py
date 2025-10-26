@@ -1,5 +1,6 @@
 import os
 import textwrap
+import re
 from helpers import extract_code_file, extract_readme_file
 from dotenv import load_dotenv
 from groq import Groq
@@ -47,8 +48,12 @@ def run_code_llm_analysis(parsed_files, zip_path):
         print("No readable code context found. Skipping LLM analysis.\n")
         return
     
+    # get the top-level folder name where the code files live
+    project_folders = sorted(set(os.path.dirname(f["file_path"]).split(os.sep)[0] for f in code_files))
+    project_name = project_folders[0] if project_folders else zip_name
+    
     summary = generate_code_llm_summary(project_context)
-    display_code_llm_results(zip_name, summary)
+    display_code_llm_results(project_name, summary)
         
     print(f"\n{'='*80}")
     print("PROJECT SUMMARY - (LLM-based results: summaries)")
@@ -66,23 +71,31 @@ def display_code_llm_results(project_name, summary):
     
 
 def generate_code_llm_summary(project_context):
-    prompt = f"""
-    You are analyzing a multi-file software project.
-
-    Write a concise, single-paragraph professional summary suitable for a resume
-    or portfolio description. Focus on:
-    - What the project does and its main purpose
-    - Key technologies, methods, or algorithms used
-    - Its impact or intended users
-
-    Do NOT use bullet points, numbering, or markdown formatting.
-    Write 1 cohesive paragraph in a formal but natural tone (max 120 words).
-    
-    Project context (README + code excerpts):
-    {project_context[:12000]}
-
-    Your summary:
     """
+    Produce ONE first-person, resume-ready paragraph (≈80–120 words)
+    with this flow: purpose → what I built/did → real tech used → impact.
+    Start with a strong past-tense action verb (Built/Developed/Designed/Implemented).
+    """
+    prompt = f"""
+You are a technical résumé writer. Based ONLY on the provided context (README + headers/docstrings/comments),
+write ONE concise paragraph (80–120 words) in FIRST PERSON ("I ...") that follows this flow:
+- the project's purpose and what it enables,
+- what I specifically designed/implemented/tested/optimized,
+- the key technologies/patterns that are actually evident in the context,
+- the impact for users or stakeholders (performance, reliability, usability, insight).
+
+Style rules (must follow):
+- Start the paragraph with a strong past-tense action verb (e.g., Built, Developed, Designed, Implemented).
+- Do NOT use bullets, numbering, headings, or markdown.
+- Do NOT list file or function names (refer generically, e.g., "the application", "the pipeline").
+- Do NOT invent libraries or tools that are not present in the context.
+- Professional, concrete, impact-oriented tone. One paragraph only.
+
+Context:
+{project_context[:12000]}
+
+Output: one paragraph, first person, 80–120 words, starting with a past-tense action verb.
+"""
 
     try:
         completion = client.chat.completions.create(
@@ -91,18 +104,41 @@ def generate_code_llm_summary(project_context):
                 {
                     "role": "system",
                     "content": (
-                        "You are a technical writer who summarizes software projects for resumes or portfolios. "
-                        "Write clear, concise paragraphs without lists or markdown."
-                        "Your tone should be precise, neutral, and professional."
+                        "You are a precise technical résumé writer. "
+                        "Always return one first-person paragraph (no lists/markdown). "
+                        "Mention only technologies present in the provided context."
                     ),
                 },
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.3,
-            max_tokens=250,
+            temperature=0.15,   # tighter for consistency
+            max_tokens=220,
         )
-        return completion.choices[0].message.content.strip()
+        raw = completion.choices[0].message.content.strip()
+        return _sanitize_resume_paragraph(raw)
     except Exception as e:
         print(f"Error generating project summary: {e}")
         return "[Summary unavailable due to API error]"
+    
+
+def _sanitize_resume_paragraph(text: str) -> str:
+    # Remove leading role preambles like "As a software developer," / "As an engineer,"
+    text = re.sub(r"^\s*As\s+an?\s+[^,]+,\s*", "", text, flags=re.IGNORECASE)
+
+    # Remove explicit file names (main.cpp, data_utils.py, index.html, style.css, sensor.h, etc.)
+    text = re.sub(r"\b[\w\-]+\.(?:py|js|cpp|c|h|html|css|java)\b", "the codebase", text)
+
+    # Replace identifier-y tokens with generic phrasing (softly)
+    text = re.sub(r"\b[a-z]+(?:_[a-z0-9]+)+\b", "a utility function", text)      # snake_case
+    text = re.sub(r"\b[a-z]+[A-Z][a-zA-Z0-9]*\b", "a utility function", text)    # camelCase
+
+    # Collapse to one clean paragraph
+    text = re.sub(r"\s*\n+\s*", " ", text)
+    text = re.sub(r"\s{2,}", " ", text).strip()
+
+    # Ensure we don't accidentally start with "As a ..." again
+    if re.match(r"^As\s+an?\s", text, flags=re.IGNORECASE):
+        text = re.sub(r"^As\s+an?\s+[^,]+,\s*", "", text)
+
+    return text
 
