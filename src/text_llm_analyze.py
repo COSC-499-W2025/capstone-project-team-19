@@ -1,6 +1,7 @@
 import os
 import textwrap
-from alt_analyze import analyze_linguistic_complexity, extractfile
+from alt_analyze import analyze_linguistic_complexity
+from helpers import extract_text_file
 from dotenv import load_dotenv
 from groq import Groq
 
