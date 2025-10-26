@@ -8,7 +8,7 @@ load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
-def run_llm_analysis(parsed_files, zip_path):
+def run_text_llm_analysis(parsed_files, zip_path):
     if not isinstance(parsed_files, list):
         return
 
@@ -41,11 +41,11 @@ def run_llm_analysis(parsed_files, zip_path):
         linguistic = analyze_linguistic_complexity(text)
 
         # LLM calls
-        summary = generate_llm_summary(text)
-        skills = generate_llm_skills(text)
-        success = generate_llm_success_factors(text, linguistic)
+        summary = generate_text_llm_summary(text)
+        skills = generate_text_llm_skills(text)
+        success = generate_text_llm_success_factors(text, linguistic)
 
-        display_llm_results(filename, linguistic, summary, skills, success)
+        display_text_llm_results(filename, linguistic, summary, skills, success)
 
     print(f"\n{'='*80}")
     print("PROJECT SUMMARY - (LLM-based results: summaries, skills, and success factors)")
@@ -54,7 +54,7 @@ def run_llm_analysis(parsed_files, zip_path):
     print(f"\n{'='*80}\n")
 
 
-def display_llm_results(filename, linguistic, summary, skills, success):
+def display_text_llm_results(filename, linguistic, summary, skills, success):
     print(f"Processing: {filename}")
     print("  Linguistic & Readability:")
     print(f"    Word Count: {linguistic['word_count']}, Sentences: {linguistic['sentence_count']}")
@@ -74,7 +74,7 @@ def display_llm_results(filename, linguistic, summary, skills, success):
     print(f"    Overall Evaluation: {success['score']}\n")
 
 
-def generate_llm_summary(text):
+def generate_text_llm_summary(text):
     text = text[:6000]
     prompt = (
         "You are analyzing a document that could be any type of written work — "
@@ -110,7 +110,7 @@ def generate_llm_summary(text):
         return "[Summary unavailable due to API error]"
 
 
-def generate_llm_skills(text):
+def generate_text_llm_skills(text):
     text = text[:6000]
     prompt = (
         "From the following text, infer 3–5 key *skills* demonstrated by the author or creator. "
@@ -153,7 +153,7 @@ def generate_llm_skills(text):
         return ["[Skills unavailable due to API error]"]
 
 
-def generate_llm_success_factors(text, linguistic):
+def generate_text_llm_success_factors(text, linguistic):
     """Generate concise, context-aware success factors that adapt to different text types."""
     text = text[:6000]
     readability = linguistic.get("reading_level", "N/A")

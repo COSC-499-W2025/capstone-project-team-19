@@ -9,7 +9,8 @@ Collaborative projects - processed to extract individual user contributions
 
 import sqlite3
 from alt_analyze import alternative_analysis
-from llm_analyze import run_llm_analysis
+from text_llm_analyze import run_text_llm_analysis
+from code_llm_analyze import run_code_llm_analysis
 from helpers import _fetch_files
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -263,12 +264,11 @@ def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     Individual TEXT project → pull files from DB and analyze.
 
     """
-
     parsed_files = _fetch_files(conn, user_id, project_name, only_text=True)
     if not parsed_files:
         print(f"[INDIVIDUAL-TEXT] No text files found for '{project_name}'.")
         return
-    analyze_files(conn, user_id, current_ext_consent, parsed_files, zip_path)
+    analyze_files(conn, user_id, current_ext_consent, parsed_files, zip_path, only_text=True)
 
     pass
 
@@ -277,15 +277,27 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     """
     Placeholder for individual code project analysis.
     """
+    parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
+    if not parsed_files:
+        print(f"[INDIVIDUAL-CODE] No code files found for '{project_name}'.")
+        return
+    analyze_files(conn, user_id, current_ext_consent, parsed_files, zip_path, only_text=False)
     pass
 
 
 
 # From LLMs and alternative analysis
 
-def analyze_files(conn, user_id, external_consent, parsed_files, zip_path):
-    if external_consent=='accepted':
-        run_llm_analysis(parsed_files, zip_path)
-    else:
-        alternative_analysis(parsed_files, zip_path)
+def analyze_files(conn, user_id, external_consent, parsed_files, zip_path, only_text):
+    if only_text:
+        if external_consent=='accepted':
+            run_text_llm_analysis(parsed_files, zip_path)
+        else:
+            alternative_analysis(parsed_files, zip_path)
+
+    elif not only_text:
+        if external_consent=='accepted':
+            run_code_llm_analysis(parsed_files, zip_path)
+        else:
+            print("Feature coming soon. We will analyze your code files locally.")
   
