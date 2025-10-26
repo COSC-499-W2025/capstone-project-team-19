@@ -6,6 +6,7 @@ to the appropriate individual-contribution analyzers.
 Individual projects - sent directly to analysis
 Collaborative projects - processed to extract individual user contributions
 """
+from language_detector import detect_languages
 
 import sqlite3
 from alt_analyze import alternative_analysis
@@ -277,6 +278,8 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     """
     Placeholder for individual code project analysis.
     """
+    languages = detect_languages(conn, project_name)
+    print(f"Languages detected in {project_name}: {languages}")
     pass
 
 
