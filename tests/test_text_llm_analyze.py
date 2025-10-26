@@ -1,8 +1,7 @@
 import os
-import tempfile
 import pytest
 from unittest.mock import patch, MagicMock
-from src import llm_analyze
+from src import text_llm_analyze
 
 @pytest.fixture
 def mock_parsed_files():
@@ -17,9 +16,9 @@ def mock_text_file(tmp_path):
     return str(f)
 
 @pytest.fixture(autouse=True)
-def patch_extractfile_and_metrics(mock_text_file):
-    with patch("src.llm_analyze.extractfile", return_value="Sample text content."), \
-         patch("src.llm_analyze.analyze_linguistic_complexity", return_value={
+def patch_extract_text_file_and_metrics(mock_text_file):
+    with patch("src.text_llm_analyze.extract_text_file", return_value="Sample text content."), \
+         patch("src.text_llm_analyze.analyze_linguistic_complexity", return_value={
              "word_count": 10,
              "sentence_count": 2,
              "reading_level": "High School",
@@ -38,7 +37,7 @@ def mock_llm_responses():
         return mock_response
     return fake_completion
 
-@patch("src.llm_analyze.client")
+@patch("src.text_llm_analyze.client")
 def test_run_llm_analysis_basic(mock_client, mock_parsed_files, tmp_path, mock_llm_responses, capsys):
     # Fake the Groq API responses
     mock_client.chat.completions.create.side_effect = [
@@ -52,7 +51,7 @@ def test_run_llm_analysis_basic(mock_client, mock_parsed_files, tmp_path, mock_l
     os.makedirs(zip_dir, exist_ok=True)
     (zip_dir / "sample.txt").write_text("This is a sample document.")
 
-    llm_analyze.run_llm_analysis(mock_parsed_files, str(tmp_path / "Archive.zip"))
+    text_llm_analyze.run_text_llm_analysis(mock_parsed_files, str(tmp_path / "Archive.zip"))
 
     captured = capsys.readouterr()
 
@@ -62,25 +61,25 @@ def test_run_llm_analysis_basic(mock_client, mock_parsed_files, tmp_path, mock_l
     assert "Success Factors:" in captured.out
     assert "8.2 / 10" in captured.out
 
-@patch("src.llm_analyze.client")
+@patch("src.text_llm_analyze.client")
 def test_generate_llm_summary(mock_client, mock_llm_responses):
     mock_client.chat.completions.create.return_value = mock_llm_responses("A project proposal that outlines a sustainable design solution.")
-    result = llm_analyze.generate_llm_summary("Text about sustainability.")
+    result = text_llm_analyze.generate_text_llm_summary("Text about sustainability.")
     assert "project proposal" in result.lower()
 
-@patch("src.llm_analyze.client")
+@patch("src.text_llm_analyze.client")
 def test_generate_llm_skills(mock_client, mock_llm_responses):
     mock_client.chat.completions.create.return_value = mock_llm_responses("- Research\n- Writing\n- Analysis")
-    result = llm_analyze.generate_llm_skills("Some text about research and writing.")
+    result = text_llm_analyze.generate_text_llm_skills("Some text about research and writing.")
     assert isinstance(result, list)
     assert "Research" in result[0]
 
-@patch("src.llm_analyze.client")
+@patch("src.text_llm_analyze.client")
 def test_generate_llm_success_factors(mock_client, mock_llm_responses):
     fake_json = '{"strengths": "clear structure", "weaknesses": "minor redundancy", "score": "8.1 / 10 (Good clarity)"}'
     mock_client.chat.completions.create.return_value = mock_llm_responses(fake_json)
 
     linguistic = {"reading_level": "College", "lexical_diversity": 0.4, "word_count": 500}
-    result = llm_analyze.generate_llm_success_factors("Some academic text.", linguistic)
+    result = text_llm_analyze.generate_text_llm_success_factors("Some academic text.", linguistic)
     assert result["strengths"].startswith("clear")
     assert "8.1" in result["score"]
