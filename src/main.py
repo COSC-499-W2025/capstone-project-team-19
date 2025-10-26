@@ -87,26 +87,32 @@ def prompt_and_store():
     elif prev_consent and prev_ext:
         print(f"\nWelcome back, {username}!")
         print(f"Your previous configuration: user consent = {prev_consent}, external service consent = {prev_ext}.")
-        reuse = input("Would you like to continue with this configuration? (y/n): ").strip().lower()
+        while True: 
+            reuse = input("Would you like to continue with this configuration? (y/n): ").strip().lower()
 
-        if reuse == "y":
-            reused = True
-            record_consent(conn, prev_consent, user_id=user_id)
-            record_external_consent(conn, prev_ext, user_id=user_id)
-            current_consent = prev_consent
-            current_ext_consent = prev_ext
-        else:
-            print("\nAlright, let's review your consents again.\n")
-            print(CONSENT_TEXT)
-            status = get_user_consent()
-            record_consent(conn, status, user_id=user_id)
-            current_consent = status
-            if status != "accepted":
-                print("\nConsent declined. Exiting.")
-                return
-            ext_status = get_external_consent()
-            record_external_consent(conn, ext_status, user_id=user_id)
-            current_ext_consent = ext_status
+            if reuse == "y":
+                reused = True
+                record_consent(conn, prev_consent, user_id=user_id)
+                record_external_consent(conn, prev_ext, user_id=user_id)
+                current_consent = prev_consent
+                current_ext_consent = prev_ext
+                break
+            elif reuse=="n":
+                print("\nAlright, let's review your consents again.\n")
+                print(CONSENT_TEXT)
+                status = get_user_consent()
+                record_consent(conn, status, user_id=user_id)
+                current_consent = status
+                if status != "accepted":
+                    print("\nConsent declined. Exiting.")
+                    return
+                ext_status = get_external_consent()
+                record_external_consent(conn, ext_status, user_id=user_id)
+                current_ext_consent = ext_status
+                break
+            else:
+                print("\nEnter either 'y' or 'n'")
+
 
     # --- Brand new user ---
     else:
