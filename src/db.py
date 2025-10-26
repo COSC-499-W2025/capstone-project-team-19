@@ -139,6 +139,17 @@ def init_schema(conn: sqlite3.Connection) -> None:
     """)
 
     cur.execute("""
+    CREATE TABLE IF NOT EXISTS config_files (
+        config_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id       INTEGER NOT NULL,
+        project_name  TEXT,
+        file_name     TEXT NOT NULL,
+        file_path     TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
+    """)
+
+    cur.execute("""
     CREATE INDEX IF NOT EXISTS idx_project_classifications_lookup
         ON project_classifications(user_id, zip_name);
     """)
@@ -189,29 +200,46 @@ def get_latest_external_consent(conn: sqlite3.Connection, user_id: int) -> Optio
     return row[0] if row else None
 
 def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id: int) -> None:
-    # Insert parsed metadata into the 'files' table
-    # Each file is linked to the user
+    """
+    Insert parsed metadata into the 'files' table.
+    Config files are inserted into 'config_files' instead.
+    Each file is linked to the user.
+    """
 
     if not files_info:
         return # nothing to insert
     
     cur = conn.cursor()
     for f in files_info:
-        cur.execute("""
-            INSERT INTO files (
-                user_id, file_name, file_path, extension, file_type, size_bytes, created, modified, project_name
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            user_id,
-            f.get("file_name"),
-            f.get("file_path"),
-            f.get("extension"),
-            f.get("file_type"),
-            f.get("size_bytes"),
-            f.get("created"),
-            f.get("modified"),
-            f.get("project_name"),
-        ))
+        # Store config files in config_files table
+        if f.get("file_type") == "config":
+            cur.execute("""
+                INSERT INTO config_files (
+                    user_id, project_name, file_name, file_path
+                ) VALUES (?, ?, ?, ?)
+            """, (
+                user_id,
+                f.get("project_name"),
+                f.get("file_name"),
+                f.get("file_path"),
+            ))
+        else:
+            #Store regular files in files table
+            cur.execute("""
+                INSERT INTO files (
+                    user_id, file_name, file_path, extension, file_type, size_bytes, created, modified, project_name
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                user_id,
+                f.get("file_name"),
+                f.get("file_path"),
+                f.get("extension"),
+                f.get("file_type"),
+                f.get("size_bytes"),
+                f.get("created"),
+                f.get("modified"),
+                f.get("project_name"),
+            ))
     
     conn.commit()
 
