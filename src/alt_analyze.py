@@ -159,9 +159,16 @@ def topic_extraction(text: str, n_topics: int=5, n_words: int=10)->List[Dict[str
     if not text:
         return[]
     stop_words=set(stopwords.words('english'))
-    words=word_tokenize(text.lower())
-    words=[w for w in words if w.isalpha() and w not in stop_words and len(w)>2]
-    
+    tokens = word_tokenize(text.lower())
+    pos_tags = nltk.pos_tag(tokens)
+    words = [
+        word for word, pos in pos_tags
+        if (pos.startswith('NN') or pos.startswith('JJ'))
+        and word.isalpha()
+        and word not in stop_words
+        and len(word) >2
+    ]
+
     clean_text=' '.join(words)
 
     vectorizer=CountVectorizer(max_features=1000, min_df=1, max_df=1.0)
