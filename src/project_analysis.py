@@ -279,9 +279,6 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     """
     Placeholder for individual code project analysis.
     """
-    languages = detect_languages(conn, project_name)
-    print(f"Languages detected in {project_name}: {languages}")
-    
     parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
     if not parsed_files:
         print(f"[INDIVIDUAL-CODE] No code files found for '{project_name}'.")
