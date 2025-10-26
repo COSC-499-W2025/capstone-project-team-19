@@ -3,7 +3,6 @@ import textwrap
 from alt_analyze import analyze_linguistic_complexity, extractfile
 from dotenv import load_dotenv
 from groq import Groq
-from tqdm import tqdm
 
 load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
@@ -27,9 +26,11 @@ def run_llm_analysis(parsed_files, zip_path):
     print(f"Analyzing {len(text_files)} file(s) using LLM-based analysis...")
     print(f"{'='*80}\n")
 
-    for file_info in tqdm(text_files, desc="Processing files", unit="file"):
+    total_files = len(text_files)
+    for idx, file_info in enumerate(text_files, start=1):
         file_path = os.path.join(base_path, file_info["file_path"])
         filename = file_info["file_name"]
+        print(f"[{idx}/{total_files}] Processing: {filename}")
 
         text = extractfile(file_path)
         if not text:
