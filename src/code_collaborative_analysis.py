@@ -511,21 +511,21 @@ def _ext_to_lang(ext: str) -> str:
 # -------------------------------------------------------------------------
 # CLI printing
 # -------------------------------------------------------------------------
-
 def _print_project_card(m: dict) -> None:
-    h = m["history"]
-    t = m["totals"]
-    l = m["loc"]
-    f = m["focus"]
+    h = m.get("history", {})
+    t = m.get("totals", {})
+    l = m.get("loc", {})
+    f = m.get("focus", {})
 
     def dt_str(x):
-        if not x:
+        try:
+            return x.astimezone().strftime("%Y-%m-%d") if x else "—"
+        except Exception:
             return "—"
-        return x.astimezone().strftime("%Y-%m-%d")
 
-    langs     = ", ".join(f["languages"]) if f["languages"] else "—"
-    folders   = ", ".join(f["folders"]) if f["folders"] else "—"
-    top_files = ", ".join(f["top_files"]) if f["top_files"] else "—"
+    langs     = ", ".join(f.get("languages", [])) or "—"
+    folders   = ", ".join(f.get("folders", [])) or "—"
+    top_files = ", ".join(f.get("top_files", [])) or "—"
 
     # Active days (inclusive)
     active_days = None
@@ -537,17 +537,20 @@ def _print_project_card(m: dict) -> None:
 
     # Extract top 1–2 language names (strip %)
     def _primary_langs():
-        names = []
+        out = []
         for item in f.get("languages", [])[:2]:
-            names.append(item.split()[0])
-        return names
+            # item like "Python 72%" or "Python (from DB)"
+            name = item.split()[0] if isinstance(item, str) and item else ""
+            if name:
+                out.append(name)
+        return out
 
     prim = _primary_langs()
 
     # One-line summary for this project
     bits = [
-        f"You made {t['commits_yours']} of {t['commits_all']} commits",
-        f"({l['net']:+,} net lines)"
+        f"You made {t.get('commits_yours', 0)} of {t.get('commits_all', 0)} commits",
+        f"({l.get('net', 0):+,.0f} net lines)"
     ]
     if prim:
         bits.append("mainly in " + " and ".join(prim[:2]))
@@ -556,60 +559,16 @@ def _print_project_card(m: dict) -> None:
     summary_line = "💡 Summary: " + ", ".join(bits) + "."
 
     print(f"""
-Project: {m['project']}
+Project: {m.get('project','—')}
 ------------------------------------
-Commits: {t['commits_all']} (You: {t['commits_yours']} | Co-authored: {t['commits_coauth']} | Merges: {t['merges']})
-Lines: +{l['added']:,} / -{l['deleted']:,}  →  Net {('+' if l['net']>=0 else '')}{l['net']:,}
-Files: changed {l['files_touched']}  |  new {l['new_files']}  |  renames {l['renames']}
+Commits: {t.get('commits_all',0)} (You: {t.get('commits_yours',0)} | Co-authored: {t.get('commits_coauth',0)} | Merges: {t.get('merges',0)})
+Lines: +{l.get('added',0):,} / -{l.get('deleted',0):,}  →  Net {('+' if l.get('net',0)>=0 else '')}{l.get('net',0):,}
+Files: changed {l.get('files_touched',0)}  |  new {l.get('new_files',0)}  |  renames {l.get('renames',0)}
 
-Active: {dt_str(h['first'])} → {dt_str(h['last'])}   |   L30: {h['L30']}  L90: {h['L90']}  L365: {h['L365']}
-Streaks: longest {h['longest_streak']} days   |   current {h['current_streak']} days
+Active: {dt_str(h.get('first'))} → {dt_str(h.get('last'))}   |   L30: {h.get('L30',0)}  L90: {h.get('L90',0)}  L365: {h.get('L365',0)}
+Streaks: longest {h.get('longest_streak',0)} days   |   current {h.get('current_streak',0)} days
 Focus: {langs}
 Top folders: {folders}
 Top files: {top_files}
-{summary_line}
-""".rstrip())
-
-def _print_global_summary(all_metrics: list[dict]) -> None:
-    if not all_metrics:
-        return
-
-    projects = len(all_metrics)
-    your_commits = sum(m["totals"]["commits_yours"] for m in all_metrics)
-    total_commits = sum(m["totals"]["commits_all"] for m in all_metrics)
-    added = sum(m["loc"]["added"] for m in all_metrics)
-    deleted = sum(m["loc"]["deleted"] for m in all_metrics)
-    net = added - deleted
-
-    # Most active project by your commits
-    most_active = max(all_metrics, key=lambda m: m["totals"]["commits_yours"])
-    most_active_name = most_active["project"]
-    most_active_count = most_active["totals"]["commits_yours"]
-
-    # Aggregate “focus” by counting how many projects list each top language
-    from collections import Counter
-    lang_counter = Counter()
-    for m in all_metrics:
-        for item in m["focus"]["languages"]:
-            # item like "Python 72%"; take the name part
-            lang_name = item.split()[0]
-            lang_counter[lang_name] += 1
-    top_langs = [ln for ln, _ in lang_counter.most_common(2)]
-    top_langs_str = " and ".join(top_langs) if top_langs else "—"
-
-    # Portfolio one-liner
-    summary_line = (
-        f"💡 Portfolio: You made {your_commits} of {total_commits} commits across {projects} project"
-        f"{'s' if projects != 1 else ''} ({net:+,} net lines), "
-        f"mostly in {top_langs_str}; most active: {most_active_name} ({most_active_count} commits)."
-    )
-
-    print(f"""
-Summary (all collaborative code projects)
-------------------------------------
-Projects: {projects}
-Your commits: {your_commits} / {total_commits}
-Lines changed: +{added:,} / -{deleted:,}  →  Net {('+' if net>=0 else '')}{net:,}
-Most active project: {most_active_name} ({most_active_count} your commits)
 {summary_line}
 """.rstrip())
