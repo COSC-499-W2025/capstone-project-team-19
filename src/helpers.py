@@ -20,10 +20,6 @@ def _fetch_files(conn: sqlite3.Connection, user_id: int, project_name: str, only
     rows = conn.execute(query, params).fetchall()
     return [{"file_name": r[0], "file_type": r[1], "file_path": r[2]} for r in rows]
 
-import os
-import sqlite3
-from typing import Tuple, Optional, List
-
 def zip_paths(zip_path: str) -> Tuple[str, str, str]:
     """
     Returns (zip_data_dir, zip_name, base_path)
