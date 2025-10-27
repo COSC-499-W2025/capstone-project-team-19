@@ -35,4 +35,4 @@ Week recap: implemented the alternative analyses, did some research about the fu
 ## (Week 8) Monday 20th October - Sunday 26th October
 ![Screenshot of week 7 peer eval](./screenshots/Johanes-Oct20-26.PNG)
 
-Week recap: continued implementing the alternative analysis, reviewed some teammate PRs, get some feedback from teammate, did a minor fix for reusing configuration, but wont be merged this week.
+Week recap: continued implementing the alternative analysis, reviewed some teammate PRs, get some feedback from teammate, did a minor fix for reusing configuration, but wont be merged this week. Next week i plan to start the implementation of alternative analysis on code files.
