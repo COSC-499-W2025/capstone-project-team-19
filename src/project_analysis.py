@@ -13,6 +13,10 @@ from alt_analyze import alternative_analysis
 from llm_analyze import run_llm_analysis
 from helpers import _fetch_files
 
+from code_collaborative_analysis import analyze_project_commits, print_project_card
+
+
+
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     """
     Determine if each project is code or text by examining files from the 'files' table
@@ -255,7 +259,12 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent)
     Check for a .git folder (which should have commits), or connect to git using OAuth, etc. 
     User can also be prompted, or key words can be used.
     """
-    pass
+    try:
+        metrics = analyze_project_commits(conn, user_id, project_name, zip_path)
+        if metrics:
+            print_project_card(metrics)
+    except NameError:
+        print(f"[WARN] zip_path not available in current scope for {project_name}")
 
 
 def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path):
