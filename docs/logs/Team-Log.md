@@ -196,7 +196,7 @@ This week, the team focused on improving the analysis pipeline, database consist
 
 ### Burnup chart
 
-![Burnup chart for Oct 20 - 26]()
+![Burnup chart for Oct 20 - 26](screenshots/week8-burnupchart.png)
 
 ### Github usernames
 
@@ -213,12 +213,12 @@ This week, the team focused on improving the analysis pipeline, database consist
 
 | GitHub Username | Screenshot                                                                  |
 | --------------- | --------------------------------------------------------------------------- |
-| `AdaraPutri`    | ![Completed tasks for Adara]()   |
-| `ammaarkhan`    | ![Completed tasks for Ammaar]() |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct20-Oct26.png)   |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct20-Oct26.png) |
 | `ivonanicetin`  | ![Completed tasks for Ivona]()   |
-| `johaneshp`     | ![Completed tasks for Johanes]() |
-| `salmavkh`      | ![Completed tasks for Salma]()   |
-| `taoTimTim`     | ![Completed tasks for Timmi]()   |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Oct20-Oct26.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct20-Oct26.png)   |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct20-Oct26.png)   |
 
 ### Table view of in progress tasks by username
 
