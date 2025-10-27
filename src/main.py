@@ -13,6 +13,7 @@ from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
 from project_analysis import detect_project_type, send_to_analysis
 from upload_checks import handle_existing_zip
+from helpers import cleanup_extracted_zip
 import os
 
 def main():
@@ -135,6 +136,7 @@ def prompt_and_store():
     # Continue to file selection
     unchecked_zip = True
     assignments = None
+    processed_zip_path = None
     
     while (unchecked_zip):
         zip_path = get_zip_path_from_user()
@@ -147,6 +149,7 @@ def prompt_and_store():
         if not result:
             print("\nNo valid files were processed. Check logs for unsupported or corrupted files.")
             continue
+        processed_zip_path = zip_path
 
         assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
         try: 
@@ -156,11 +159,25 @@ def prompt_and_store():
         except AttributeError:
             # if zip file is invalid
             print("\nInvalid ZIP file structure. Please make sure your ZIP file contains project folders where individual files are stored.")
+            if processed_zip_path:
+                # Remove any partial extraction so the next attempt starts fresh
+                cleanup_extracted_zip(processed_zip_path)
+            processed_zip_path = None
+            assignments = None
+            continue
         
-    if assignments:
-        send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path) #takes projects and sends them into the analysis flow
+    if assignments and processed_zip_path:
+        try:
+            send_to_analysis(conn, user_id, assignments, current_ext_consent, processed_zip_path) #takes projects and sends them into the analysis flow
+        finally:
+            # Always drop the extracted workspace once analysis is done
+            cleanup_extracted_zip(processed_zip_path)
     else:
-        print("No valid project analysis to send.")
+        if assignments:
+            print("No valid project analysis to send.")
+        if processed_zip_path:
+            # No analysis ran, but still remove the extracted files
+            cleanup_extracted_zip(processed_zip_path)
         
 
 def get_zip_path_from_user():
