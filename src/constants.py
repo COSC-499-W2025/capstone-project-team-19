@@ -13,4 +13,6 @@ CONFIG_FILES = {
     "setup.py",
     "Pipfile",
     "Pipfile.lock",
+    "tailwind.config.js",
+    "tailwind.config.cjs"
 }
