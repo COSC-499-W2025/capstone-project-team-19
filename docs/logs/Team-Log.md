@@ -187,3 +187,51 @@ This week, the team continued implementation work for Milestone 1, completing se
 ### Table view of in progress tasks by username
 
 Not applicable – no tasks in progress.
+
+## (Week 8) Monday 20th - Sunday 26th October
+
+### Week recap:
+
+This week, the team focused on improving the analysis pipeline, database consistency, and overall user experience. Ammaar implemented a fix ensuring that the program exits cleanly when a user declines consent, and updated the parsing process so that each file now stores its associated project name, making downstream grouping and analysis more reliable. Timmi developed the project-type classification feature, enabling automatic detection of whether a project is code- or text-based and routing it accordingly. She also added a safeguard to prevent duplicate ZIP uploads from being reprocessed in the database. Salma refined the send_to_analysis flow by adding user prompts between individual and collaborative analysis phases, reorganizing functions for clarity, and ensuring a smoother, more modular pipeline. Johanes improved the alternative analysis logic by refining keyword filters, applying POS tagging, and enhancing topic extraction to ensure that only meaningful terms are analyzed during local runs. Ivona refactored the language detection module to align with the new database schema, ensuring accurate identification of languages used in code projects, and added features to detect frameworks of a coding project by identifying the configuration/dependency files in a given project. Adara fixed an issue where ZIP uploads containing only files (and no folders) caused the program to stop, and added an LLM-based code analysis feature that generates resume-style summaries for entire code project by extracting README content, function definitions, and comments across each folder. 
+
+Plan for next week:
+Next week, the team plans to continue to implement the milestone 1 requirements. 
+Adara plans to keep implementing the code and text file analysis. 
+Ammaar will implement deleting the `zip_data` folder after parsing. 
+Ivona plans to implement better language/framework detection to include more languages and frameworks. 
+Timmi plans to cotinue implementing more file analysis and to add more duplications checks.
+Johanes plans to continue implementing analysis of code.
+Salma plans to continue developing the code collaborative analysis for global summaries from all projects (possibly using LLMs), refactor the code, and move on to non-code collaborative analysis.
+
+We're going to meet virtually on Monday to discuss further about our plans.
+
+### Burnup chart
+
+![Burnup chart for Oct 20 - 26](screenshots/week8-burnupchart.png)
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshot                                                                  |
+| --------------- | --------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct20-Oct26.png)   |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct20-Oct26.png) |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct20-Oct26.png)   |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Oct20-Oct26.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct20-Oct26.png)   |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct20-Oct26.png)   |
+
+### Table view of in progress tasks by username
+| GitHub Username | Screenshot                                                                  |
+| --------------- | --------------------------------------------------------------------------- |
+| `ivonanicetin`  | ![In-Progress Task for Ivona](screenshots/In-Progress-Ivona-Oct20-Oct26.png)   |
