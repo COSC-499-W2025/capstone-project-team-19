@@ -1,13 +1,7 @@
 
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 from datetime import datetime
-
-
-# Text extraction
-import docx2txt
-import fitz  # PyMuPDF
-from pypdf import PdfReader
 
 # NLP and analysis
 import nltk
@@ -18,6 +12,8 @@ import textstat
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 import numpy as np
+import parsing
+from helpers import extract_text_file
 
 ##TODO: Text Extraction (from pdf, txt, docx)✅
 ##      Linguistic + Readability analysis 
@@ -46,50 +42,6 @@ def nltk_data():
             nltk.download(package, quiet=True)
 
 nltk_data()
-
-SUPPORTED_EXTENSIONS={'.txt', '.pdf','.docx'}
-
-## Text Extraction
-
-def extractfile(filepath: str)->Optional[str]: #extract text
-    extension=os.path.splitext(filepath)[1].lower()
-    if(extension) not in SUPPORTED_EXTENSIONS:
-        return None
-    
-    try:
-        if extension=='.txt':
-            return extractfromtxt(filepath)
-        elif extension == '.pdf':
-            return extractfrompdf(filepath)
-        elif extension == '.docx':
-            return extractfromdocx(filepath)
-    except Exception as e:
-        return None  
-    return None
-
-def extractfromtxt(filepath:str)->str:
-    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-        return f.read()
-
-def extractfrompdf(filepath:str)->str:
-    text=[]
-    try:
-        pdf=fitz.open(filepath)
-        for page in pdf:
-            text.append(page.get_text())
-        pdf.close()
-        return '\n'.join(text)
-    except Exception as e:
-        print(f"Error: {e}")
-        return ""
-
-def extractfromdocx (filepath: str)->str:
-    try:
-        text=docx2txt.process(filepath)
-        if text:
-            return text
-    except Exception as e:
-        print(f"Error : {e}")
 
 #linguistic and readability analysis
 
@@ -223,7 +175,7 @@ def extract_keywords(text: str, n_words: int=20)->List[Tuple[str,float]]:
         return []
 
 def calculate_document_metrics(filepath: str)-> Dict[str, any]: 
-    text=extractfile(filepath)
+    text=extract_text_file(filepath)
     if not text:
         return{
             'file_path':filepath,
