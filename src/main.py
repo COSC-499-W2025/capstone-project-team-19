@@ -133,8 +133,14 @@ def prompt_and_store():
 
     # Continue to file selection
     unchecked_zip = True
+    assignments = None
+    
     while (unchecked_zip):
         zip_path = get_zip_path_from_user()
+        if not zip_path:
+            print("No path entered. Exiting file selection.")
+            break
+        
         print(f"\nReceived path: {zip_path}")
         result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
         if not result:
@@ -150,8 +156,11 @@ def prompt_and_store():
             # if zip file is invalid
             print("\nInvalid ZIP file structure. Please make sure your ZIP file contains project folders where individual files are stored.")
         
-    send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path) #takes projects and sends them into the analysis flow
-
+    if assignments:
+        send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path) #takes projects and sends them into the analysis flow
+    else:
+        print("No valid project analysis to send.")
+        
 
 def get_zip_path_from_user():
     path = input("Please enter the path to your ZIP file: ").strip()
