@@ -6,6 +6,7 @@ to the appropriate individual-contribution analyzers.
 Individual projects - sent directly to analysis
 Collaborative projects - processed to extract individual user contributions
 """
+from language_detector import detect_languages
 
 import sqlite3
 from alt_analyze import alternative_analysis
@@ -268,7 +269,7 @@ def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     if not parsed_files:
         print(f"[INDIVIDUAL-TEXT] No text files found for '{project_name}'.")
         return
-    analyze_files(conn, user_id, current_ext_consent, parsed_files, zip_path)
+    analyze_files(conn, user_id, current_ext_consent, parsed_files, zip_path, project_name)
 
     pass
 
@@ -277,15 +278,17 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     """
     Placeholder for individual code project analysis.
     """
+    languages = detect_languages(conn, project_name)
+    print(f"Languages detected in {project_name}: {languages}")
     pass
 
 
 
 # From LLMs and alternative analysis
 
-def analyze_files(conn, user_id, external_consent, parsed_files, zip_path):
+def analyze_files(conn, user_id, external_consent, parsed_files, zip_path, project_name=None):
     if external_consent=='accepted':
         run_llm_analysis(parsed_files, zip_path)
     else:
-        alternative_analysis(parsed_files, zip_path)
+        alternative_analysis(parsed_files, zip_path, project_name)
   
