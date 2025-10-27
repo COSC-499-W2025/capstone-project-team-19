@@ -12,6 +12,7 @@ import datetime as dt
 import subprocess
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
+from language_detector import detect_languages
 
 import sqlite3
 
@@ -26,24 +27,23 @@ DEBUG = False  # set True to troubleshoot path discovery
 
 def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: str, zip_path: str) -> Optional[dict]:
     """
-    Run collaborative code analysis for ONE project. Prints a CLI card.
-    Returns metrics dict or None if skipped.
+    Run collaborative code analysis for ONE project: resolve repo, select identity (once),
+    read commits, compute YOUR metrics, print a card, return metrics dict (or None if skipped).
     """
+    from language_detector import detect_languages  # import here to avoid top-level cross-import issues
+
     # 1) Resolve allowed base paths and find the repo root
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
     repo_dir = _resolve_project_repo(zip_data_dir, zip_name, project_name)
     if not repo_dir:
-        print(f"\n[skip] {project_name}: no Git repo found under allowed paths")
-        print("  checked:")
-        print(f"    {os.path.join(zip_data_dir, zip_name, 'collaborative', project_name)}")
-        print(f"    {os.path.join(zip_data_dir, 'collaborative', project_name)}")
-        print("  tip: zip a local clone (not GitHub 'Download ZIP') so .git is included.")
+        print(f"\n[skip] {project_name}: no Git repo found under allowed paths. "
+              f"Zip a local clone (not GitHub 'Download ZIP') so .git is included.")
         return None
 
     if DEBUG:
         print(f"[debug] repo resolved → {repo_dir}")
 
-    # 2) Ensure we have the table and load user's saved identities (emails/names)
+    # 2) Ensure identity table exists and load any saved identities
     _ensure_user_github_table(conn)
     aliases = _load_user_github(conn, user_id)
 
@@ -51,7 +51,7 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
     if not aliases["emails"] and not aliases["names"]:
         author_list = _collect_repo_authors(repo_dir)
         if not author_list:
-            print("\n[skip] No authors found in this repo. Is history present?")
+            print(f"\n[skip] {project_name}: no authors found in Git history.")
             return None
         selected_emails, selected_names = _prompt_user_identity_choice(author_list)
         if not selected_emails and not selected_names:
@@ -66,8 +66,16 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
         print(f"\n[skip] {project_name}: no commits detected.")
         return None
 
-    # 4) Compute metrics for YOUR contributions and print a card
+    # 4) Compute metrics for YOUR contributions
     metrics = _compute_metrics(project_name, repo_dir, commits, aliases)
+
+    # 5) If Git-based language focus is empty, fall back to DB-based detector
+    if not metrics.get("focus", {}).get("languages"):
+        langs_from_db = detect_languages(conn, project_name) or []
+        if langs_from_db:
+            metrics["focus"]["languages"] = [f"{lang} (from DB)" for lang in langs_from_db]
+
+    # 6) Print the card and return metrics
     _print_project_card(metrics)
     return metrics
 
@@ -515,9 +523,37 @@ def _print_project_card(m: dict) -> None:
             return "—"
         return x.astimezone().strftime("%Y-%m-%d")
 
-    langs = ", ".join(f["languages"]) if f["languages"] else "—"
-    folders = ", ".join(f["folders"]) if f["folders"] else "—"
+    langs     = ", ".join(f["languages"]) if f["languages"] else "—"
+    folders   = ", ".join(f["folders"]) if f["folders"] else "—"
     top_files = ", ".join(f["top_files"]) if f["top_files"] else "—"
+
+    # Active days (inclusive)
+    active_days = None
+    if h.get("first") and h.get("last"):
+        try:
+            active_days = (h["last"].date() - h["first"].date()).days + 1
+        except Exception:
+            active_days = None
+
+    # Extract top 1–2 language names (strip %)
+    def _primary_langs():
+        names = []
+        for item in f.get("languages", [])[:2]:
+            names.append(item.split()[0])
+        return names
+
+    prim = _primary_langs()
+
+    # One-line summary for this project
+    bits = [
+        f"You made {t['commits_yours']} of {t['commits_all']} commits",
+        f"({l['net']:+,} net lines)"
+    ]
+    if prim:
+        bits.append("mainly in " + " and ".join(prim[:2]))
+    if active_days and active_days > 0:
+        bits.append(f"over {active_days} day{'s' if active_days != 1 else ''}")
+    summary_line = "💡 Summary: " + ", ".join(bits) + "."
 
     print(f"""
 Project: {m['project']}
@@ -531,6 +567,49 @@ Streaks: longest {h['longest_streak']} days   |   current {h['current_streak']} 
 Focus: {langs}
 Top folders: {folders}
 Top files: {top_files}
+{summary_line}
+""".rstrip())
 
+def _print_global_summary(all_metrics: list[dict]) -> None:
+    if not all_metrics:
+        return
 
+    projects = len(all_metrics)
+    your_commits = sum(m["totals"]["commits_yours"] for m in all_metrics)
+    total_commits = sum(m["totals"]["commits_all"] for m in all_metrics)
+    added = sum(m["loc"]["added"] for m in all_metrics)
+    deleted = sum(m["loc"]["deleted"] for m in all_metrics)
+    net = added - deleted
+
+    # Most active project by your commits
+    most_active = max(all_metrics, key=lambda m: m["totals"]["commits_yours"])
+    most_active_name = most_active["project"]
+    most_active_count = most_active["totals"]["commits_yours"]
+
+    # Aggregate “focus” by counting how many projects list each top language
+    from collections import Counter
+    lang_counter = Counter()
+    for m in all_metrics:
+        for item in m["focus"]["languages"]:
+            # item like "Python 72%"; take the name part
+            lang_name = item.split()[0]
+            lang_counter[lang_name] += 1
+    top_langs = [ln for ln, _ in lang_counter.most_common(2)]
+    top_langs_str = " and ".join(top_langs) if top_langs else "—"
+
+    # Portfolio one-liner
+    summary_line = (
+        f"💡 Portfolio: You made {your_commits} of {total_commits} commits across {projects} project"
+        f"{'s' if projects != 1 else ''} ({net:+,} net lines), "
+        f"mostly in {top_langs_str}; most active: {most_active_name} ({most_active_count} commits)."
+    )
+
+    print(f"""
+Summary (all collaborative code projects)
+------------------------------------
+Projects: {projects}
+Your commits: {your_commits} / {total_commits}
+Lines changed: +{added:,} / -{deleted:,}  →  Net {('+' if net>=0 else '')}{net:,}
+Most active project: {most_active_name} ({most_active_count} your commits)
+{summary_line}
 """.rstrip())
