@@ -133,27 +133,35 @@ def prompt_and_store():
         print("\nContinuing with your saved configuration…\n")
 
     # Continue to file selection
-    zip_path = get_zip_path_from_user()
-    print(f"Recieved path: {zip_path}")
-
-    # Check for duplicate zip_path already stored in database
-    zip_path = handle_existing_zip(conn, user_id, zip_path)
-    if not zip_path:
-        print("Skipping parsing and analysis (reuse selected).")
-        return # user chose to reuse
-
-    result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
-    if not result:
-        print("No valid files were processed. Check logs for unsupported or corrupted files.")
-        return
-
-    # Get project classifications and send to analysis
-    assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
-    detect_project_type(conn, user_id, assignments)
-    send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path) #takes projects and sends them into the analysis flow
+    unchecked_zip = True
+    assignments = None
     
-    
+    while (unchecked_zip):
+        zip_path = get_zip_path_from_user()
+        if not zip_path:
+            print("No path entered. Exiting file selection.")
+            break
+        
+        print(f"\nReceived path: {zip_path}")
+        result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
+        if not result:
+            print("\nNo valid files were processed. Check logs for unsupported or corrupted files.")
+            continue
 
+        assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
+        try: 
+            detect_project_type(conn, user_id, assignments)
+            # if zip file is valid (has folders)
+            unchecked_zip = False
+        except AttributeError:
+            # if zip file is invalid
+            print("\nInvalid ZIP file structure. Please make sure your ZIP file contains project folders where individual files are stored.")
+        
+    if assignments:
+        send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path) #takes projects and sends them into the analysis flow
+    else:
+        print("No valid project analysis to send.")
+        
 
 def get_zip_path_from_user():
     path = input("Please enter the path to your ZIP file: ").strip()
