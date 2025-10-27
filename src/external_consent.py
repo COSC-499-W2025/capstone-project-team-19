@@ -15,7 +15,7 @@ Before continuing, please read the following terms:
 • You may withdraw consent at any time, which will prevent future external analyses.
 • Data already sent to external services cannot be recalled or deleted by this system.
 • Declining consent will not prevent you from using the system locally. 
-  Local analysis will still work with all basic features.
+  Local analysis will still work with all basic features, but may not be as accurate as the using of external service.
 
 Do you consent to send your data to external services? (y/n):
 
