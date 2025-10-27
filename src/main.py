@@ -12,15 +12,16 @@ from db import (
 from consent import CONSENT_TEXT, get_user_consent, record_consent
 from external_consent import get_external_consent, record_external_consent
 from project_analysis import detect_project_type, send_to_analysis
-from upload_checks import handle_existing_zip
 from helpers import cleanup_extracted_zip
-import os
+
 
 def main():
     print("Welcome aboard! Let's turn your work into cool insights.")
 
     # Should be called in main() not __main__ beacsue __main__ does not run during tests
-    prompt_and_store()
+    processed_zip_path = prompt_and_store()
+    if processed_zip_path:
+        cleanup_extracted_zip(processed_zip_path)
 
 def prompt_and_store():
     """Main flow: identify user, check prior consents, reuse or re-prompt."""
@@ -159,25 +160,16 @@ def prompt_and_store():
         except AttributeError:
             # if zip file is invalid
             print("\nInvalid ZIP file structure. Please make sure your ZIP file contains project folders where individual files are stored.")
-            if processed_zip_path:
-                # Remove any partial extraction so the next attempt starts fresh
-                cleanup_extracted_zip(processed_zip_path)
             processed_zip_path = None
             assignments = None
             continue
         
     if assignments and processed_zip_path:
-        try:
-            send_to_analysis(conn, user_id, assignments, current_ext_consent, processed_zip_path) #takes projects and sends them into the analysis flow
-        finally:
-            # Always drop the extracted workspace once analysis is done
-            cleanup_extracted_zip(processed_zip_path)
+        send_to_analysis(conn, user_id, assignments, current_ext_consent, processed_zip_path) #takes projects and sends them into the analysis flow
     else:
         if assignments:
             print("No valid project analysis to send.")
-        if processed_zip_path:
-            # No analysis ran, but still remove the extracted files
-            cleanup_extracted_zip(processed_zip_path)
+    return processed_zip_path
         
 
 def get_zip_path_from_user():
