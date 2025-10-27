@@ -7,6 +7,7 @@ Individual projects - sent directly to analysis
 Collaborative projects - processed to extract individual user contributions
 """
 from language_detector import detect_languages
+from framework_detector import detect_frameworks
 
 import sqlite3
 from alt_analyze import alternative_analysis
@@ -270,6 +271,10 @@ def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path
 def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path):
     languages = detect_languages(conn, project_name)
     print(f"Languages detected in {project_name}: {languages}")
+    
+    frameworks = detect_frameworks(conn, project_name,user_id,zip_path)
+    print(f"Frameworks detected in {project_name}: {frameworks}")
+
     parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
     if not parsed_files:
         print(f"[INDIVIDUAL-CODE] No code files found for '{project_name}'.")
