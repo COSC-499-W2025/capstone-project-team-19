@@ -30,3 +30,15 @@ I implemented the tests, file and updated main file to ask user's permission to 
 
 This week I worked on the feature for detecting languages and frameworks used in coding projects. I implemented the languages and framework detection and then refactored the languages to be more efficient(PR 90).
 My plan now is to do the same with the framework but there is an aditional step that needs to be done (adding config files to the database) which I discussed with the team. So I will continue to work on that next week. As well as with extracting key contributation metrics in a project (without LLM).
+
+## (Week 8) Monday 20th - Sunday 26st October
+![Screenshot of this week's peer eval](./screenshots/Ivona-Oct.20-26.PNG)
+
+This week I completed two PRs (109 and 122). 
+I reviewed a few PRs, attended team meetings and helped team members when needed.
+
+The first PR was a refactoring of the implementation of language detection, I rewrote the code to utilize the attribute project_name that was added to the files table this week instead of manually filtering out projects.
+
+The second PR, I worked on the framework detection for coding projects. I made a new table in the database, added logic for extracting config./ dep. files during the parsing process and storing them in the new table. And then using these files to find frameworks for a given project. 
+
+Next week I will continue working on the language/framework detection feature. I plan to add support for frameworks that aren't usually declared in config./dep. files. Store the languages/frameworks found in a database. And maybe expand the language detection supported files (depending on what the team decides on Monday.) And If time premits I will start working on extracting key contributation metrics in a project.
