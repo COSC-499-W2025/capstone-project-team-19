@@ -31,16 +31,53 @@ def resolve_zip_base(zip_path: str) -> str:
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     return os.path.join(zip_data_dir, zip_name)
 
-
 def find_project_dir(base_path: str, project_name: str) -> Optional[str]:
-    """Try common layouts for extracted projects; return first that exists."""
-    candidates = [
+    """
+    Find a project directory under the extracted upload base.
+
+    Supports these layouts:
+      zip_data/<zip_name>/<project_name>
+      zip_data/<zip_name>/collaborative/<project_name>
+      zip_data/<zip_name>/<root_folder>/<project_name>
+      zip_data/<zip_name>/<root_folder>/collaborative/<project_name>
+    """
+    # 1) Direct candidates (no extra root folder)
+    direct = [
         os.path.join(base_path, project_name),
         os.path.join(base_path, "collaborative", project_name),
     ]
-    for p in candidates:
+    for p in direct:
         if os.path.isdir(p):
             return p
+
+    # 2) With a single root folder between zip_name and project
+    try:
+        for root in os.listdir(base_path):
+            root_path = os.path.join(base_path, root)
+            if not os.path.isdir(root_path):
+                continue
+            cand = [
+                os.path.join(root_path, project_name),
+                os.path.join(root_path, "collaborative", project_name),
+            ]
+            for p in cand:
+                if os.path.isdir(p):
+                    return p
+    except FileNotFoundError:
+        pass
+
+    # 3) As a last resort, do a shallow walk (depth <= 3) looking for the exact folder name
+    max_depth = base_path.rstrip(os.sep).count(os.sep) + 3
+    for cur, dirs, _files in os.walk(base_path):
+        # stop walking too deep
+        if cur.count(os.sep) > max_depth:
+            continue
+        for d in dirs:
+            if d == project_name:
+                candidate = os.path.join(cur, d)
+                if os.path.isdir(candidate):
+                    return candidate
+
     return None
 
 

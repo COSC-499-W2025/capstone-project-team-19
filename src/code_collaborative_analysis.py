@@ -1,6 +1,7 @@
 # git_contrib.py
 import datetime as dt
 import sqlite3
+import os
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
 
@@ -15,61 +16,73 @@ from helpers import (
 )
 from language_detector import detect_languages  # DB-declared languages
 
+from helpers import _fetch_files
+from parsing import ZIP_DATA_DIR  
 
-# =========================
-# Public API
-# =========================
-
-def analyze_project_commits(
-    conn: sqlite3.Connection,
-    user_id: int,
-    project_name: str,
-    zip_path: str,
-) -> Optional[dict]:
+def analyze_project_commits(conn, user_id, project_name, zip_path=None):
     """
-    Resolve repo path, ensure identity aliases, read commits, compute metrics,
-    and enrich with language_detector DB languages.
-    Returns None if no repo or no commits.
+    Analyze Git commits for a collaborative project.
+    - First, try to locate the project folder via DB (_fetch_files)
+    - Fallback: try zip_path if needed
     """
-    base = resolve_zip_base(zip_path)
-    proj_dir = find_project_dir(base, project_name)
-    if not proj_dir:
-        print(f"[git] Project '{project_name}': folder not found under {base}.")
+
+    project_dir = _resolve_project_dir_from_db(conn, user_id, project_name)
+    if not project_dir:
         return None
-    if not is_git_repo(proj_dir):
-        print(f"[git] Project '{project_name}': .git not found at {proj_dir}")
+    
+    # 1️) Try to infer the project folder from DB entries
+    files = _fetch_files(conn, user_id, project_name)
+    project_dir = None
+
+    if files:
+        # get a common prefix path for all files in the project
+        paths = [f["file_path"] for f in files if f["file_path"]]
+        if paths:
+            # the directory up to project folder
+            common = os.path.commonpath(paths)
+            # walk up until you reach the project name directory
+            while common and os.path.basename(common) != project_name:
+                parent = os.path.dirname(common)
+                if parent == common:
+                    break
+                common = parent
+            if os.path.basename(common) == project_name:
+                project_dir = common
+
+    # 2️) Fallback: try to find project folder relative to zip_path if DB paths fail
+    if not project_dir and zip_path:
+        zip_base = os.path.splitext(os.path.basename(zip_path))[0]
+        guess_path = os.path.join("zip_data", zip_base)
+        for root, dirs, _ in os.walk(guess_path):
+            if os.path.basename(root) == project_name:
+                project_dir = root
+                break
+
+    if not project_dir or not os.path.isdir(project_dir):
+        print(f"[WARN] Could not locate folder for project '{project_name}'")
         return None
 
-    ensure_alias_table(conn)
-    aliases = load_aliases_for_user(conn, user_id)
-
-    # One-time identity bootstrap (only if nothing stored yet)
-    if not aliases["emails"] and not aliases["names"]:
-        author_list = collect_authors(proj_dir)
-        if author_list:
-            emails, names = prompt_user_identity_choice(author_list)
-            if emails or names:
-                save_aliases_for_user(conn, user_id, emails, names)
-                aliases = load_aliases_for_user(conn, user_id)
-
-    commits = read_git_history(proj_dir)
-    if not commits:
-        print(f"[git] Project '{project_name}': no commits detected")
+    # 3) Ensure there's a .git folder
+    if not os.path.isdir(os.path.join(project_dir, ".git")):
+        print(f"[WARN] Found folder but no .git at: {project_dir}")
         return None
 
-    metrics = compute_metrics(project_name, proj_dir, commits, aliases)
 
-    # Enrich with declared vs observed languages
-    declared_langs = set(detect_languages(conn, project_name) or [])
-    git_langs = set(_lang_labels_from_git(metrics))
-    metrics["languages"] = {
-        "declared_in_db": sorted(declared_langs),
-        "observed_in_git": sorted(git_langs),
-        "overlap": sorted(declared_langs & git_langs),
-    }
+    print(f"[git] Found project folder: {project_dir}")
 
-    return metrics
-
+    # 4️4) Run Git commands (e.g., count commits per author)
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["git", "-C", project_dir, "shortlog", "-sne"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return parse_git_shortlog(result.stdout, project_name)
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] git analysis failed for {project_name}: {e}")
+        return None
 
 def print_project_card(m: dict) -> None:
     _print_project_card(m)
@@ -169,6 +182,16 @@ def read_git_history(repo_dir: str) -> List[dict]:
     )
     return _parse_git_logs(log_numstat, log_namestatus)
 
+
+def parse_git_shortlog(output, project_name):
+    """Parse `git shortlog -sne` output into structured metrics."""
+    metrics = []
+    for line in output.strip().splitlines():
+        parts = line.strip().split("\t")
+        if len(parts) == 2:
+            commits, author = parts
+            metrics.append({"project": project_name, "author": author, "commits": int(commits)})
+    return metrics
 
 def _parse_git_logs(log_numstat: str, log_namestatus: str) -> List[dict]:
     # Map commit_hash -> name-status rows
@@ -468,3 +491,103 @@ Focus (Git churn): {langs}
 Top folders: {folders}
 Top files: {top_files}{lang_section}
 """.rstrip())
+
+# additional
+import os
+import sqlite3
+from typing import Optional, List, Dict
+
+from parsing import ZIP_DATA_DIR
+from helpers import _fetch_files
+
+def _get_zip_name_for_project(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[str]:
+    row = conn.execute(
+        """
+        SELECT zip_name
+        FROM project_classifications
+        WHERE user_id = ? AND project_name = ?
+        ORDER BY rowid DESC
+        LIMIT 1
+        """,
+        (user_id, project_name),
+    ).fetchone()
+    return row[0] if row else None
+
+
+def _resolve_project_dir_from_db(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[str]:
+    """
+    Build absolute path = ZIP_DATA_DIR / zip_name / file_path_from_db, then
+    walk upward from there until a directory containing '.git' is found.
+    Prefer a repo whose basename == project_name, but accept any '.git' root.
+    """
+    zip_name = _get_zip_name_for_project(conn, user_id, project_name)
+    if not zip_name:
+        print(f"[WARN] zip_name not found for '{project_name}'")
+        return None
+
+    files: List[Dict[str, str]] = _fetch_files(conn, user_id, project_name)
+    if not files:
+        print(f"[WARN] No files for '{project_name}' in files table")
+        return None
+
+    base = os.path.join(ZIP_DATA_DIR, zip_name)
+    samples = [f["file_path"] for f in files if f.get("file_path")]
+    samples = samples[:20] if len(samples) > 20 else samples
+
+    print(f"[DEBUG] ZIP_DATA_DIR={ZIP_DATA_DIR}")
+    print(f"[DEBUG] zip_name={zip_name}")
+    if samples:
+        print(f"[DEBUG] sample file_path[0]={samples[0]}")
+
+    any_git_root = None
+
+    for rel in samples:
+        abs_path = os.path.normpath(os.path.join(base, rel))
+        cur = abs_path if os.path.isdir(abs_path) else os.path.dirname(abs_path)
+
+        if not os.path.exists(cur):
+            print(f"[DEBUG] path does not exist: {cur}")
+            continue
+
+        # climb up until filesystem root
+        while True:
+            git_dir = os.path.join(cur, ".git")
+            if os.path.isdir(git_dir):
+                # Found a repo root. Prefer a match to project_name; else keep first seen.
+                if os.path.basename(cur) == project_name:
+                    print(f"[DEBUG] repo root (exact match): {cur}")
+                    return cur
+                if any_git_root is None:
+                    any_git_root = cur  # remember first repo root we encounter
+                break  # stop climbing for this sample; try next sample
+
+            parent = os.path.dirname(cur)
+            if parent == cur:
+                break
+            cur = parent
+
+    if any_git_root:
+        print(f"[WARN] Repo root found but folder name != '{project_name}': {any_git_root}")
+        return any_git_root
+
+    # Last resort: scan inside this upload only
+    search_root = base
+    for root, dirs, _ in os.walk(search_root):
+        # modest depth limit
+        if root.count(os.sep) - search_root.count(os.sep) > 7:
+            dirs[:] = []
+            continue
+        if os.path.isdir(os.path.join(root, ".git")):
+            # Prefer matching project_name if possible
+            if os.path.basename(root) == project_name:
+                print(f"[DEBUG] fallback repo root (exact): {root}")
+                return root
+            if any_git_root is None:
+                any_git_root = root
+
+    if any_git_root:
+        print(f"[WARN] Fallback repo root found but folder name != '{project_name}': {any_git_root}")
+        return any_git_root
+
+    print(f"[WARN] Could not locate a Git repo for project '{project_name}' under {search_root}")
+    return None

@@ -8,6 +8,7 @@ Collaborative projects - processed to extract individual user contributions
 """
 from language_detector import detect_languages
 
+import os
 import sqlite3
 from alt_analyze import alternative_analysis
 from llm_analyze import run_llm_analysis
@@ -259,12 +260,10 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent)
     Check for a .git folder (which should have commits), or connect to git using OAuth, etc. 
     User can also be prompted, or key words can be used.
     """
-    try:
-        metrics = analyze_project_commits(conn, user_id, project_name, zip_path)
-        if metrics:
-            print_project_card(metrics)
-    except NameError:
-        print(f"[WARN] zip_path not available in current scope for {project_name}")
+    metrics = analyze_project_commits(conn, user_id, project_name) 
+    if not metrics:
+        return
+    print_project_card(metrics)
 
 
 def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path):
