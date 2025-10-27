@@ -31,3 +31,8 @@ Week recap: Our team started few codings, I am in charge in creating the WBS. My
 ![Screenshot of week 7 peer eval](./screenshots/Johanes-Oct13-19.PNG)
 
 Week recap: implemented the alternative analyses, did some research about the functions to be used in the implementation. Get some feedback from teammate. Feedbacks will be discussed in class on wednesday for further update. 
+
+## (Week 8) Monday 20th October - Sunday 26th October
+![Screenshot of week 7 peer eval](./screenshots/Johanes-Oct20-26.PNG)
+
+Week recap: continued implementing the alternative analysis, reviewed some teammate PRs, get some feedback from teammate, did a minor fix for reusing configuration, but wont be merged this week.
