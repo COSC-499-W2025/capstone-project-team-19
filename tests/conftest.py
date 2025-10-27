@@ -3,6 +3,10 @@ import os
 import sqlite3
 import pytest
 import db
+import tempfile
+import shutil
+from pathlib import Path
+
 
 # Add the project root directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -48,3 +52,43 @@ def test_user_id(shared_db):
     user_id = db.get_or_create_user(conn, "test-user")
     conn.close()
     return user_id
+
+@pytest.fixture()
+def tmp_sqlite_conn():
+    """Creates an in-memory SQLite database for tests."""
+    conn = sqlite3.connect(":memory:")
+    yield conn
+    conn.close()
+
+
+@pytest.fixture()
+def temp_zip_layout(tmp_path):
+    """
+    Temporary folder layout mimicking zip_data/<zip_name>/<zip_name>/collaborative/<project>/.git
+    """
+    base = tmp_path
+    zip_data_dir = base / "zip_data"
+    zip_data_dir.mkdir()
+
+    zip_name = "real_test"
+    base_path = zip_data_dir / zip_name
+    base_path.mkdir()
+
+    nested = base_path / zip_name / "collaborative"
+    nested.mkdir(parents=True)
+
+    project_name = "ProjectA"
+    proj_dir = nested / project_name
+    proj_dir.mkdir()
+    (proj_dir / ".git").mkdir()
+
+    fake_zip = base / f"{zip_name}.zip"
+    fake_zip.write_text("")  # dummy file just to exist
+
+    return {
+        "zip_path": str(fake_zip),
+        "zip_data_dir": str(zip_data_dir),
+        "zip_name": zip_name,
+        "project_name": project_name,
+        "project_dir": str(proj_dir),
+    }
