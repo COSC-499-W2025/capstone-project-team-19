@@ -232,4 +232,6 @@ We're going to meet virtually on Monday to discuss further about our plans.
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct20-Oct26.png)   |
 
 ### Table view of in progress tasks by username
+| GitHub Username | Screenshot                                                                  |
+| --------------- | --------------------------------------------------------------------------- |
 | `ivonanicetin`  | ![In-Progress Task for Ivona](screenshots/In-Progress-Ivona-Oct20-Oct26.png)   |
