@@ -221,5 +221,5 @@ This week, the team focused on improving the analysis pipeline, database consist
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct20-Oct26.png)   |
 
 ### Table view of in progress tasks by username
-
-Not applicable – no tasks in progress.
+| `ivonanicetin`  | ![In-Progress Task for Ivona](screenshots/In-Progress-Ivona-Oct20-Oct26.png)   |
+| `salmavkh`      | ![In-Progress Task for Salma](screenshots/In-Progress-Salma-Oct20-Oct26.png)   |
