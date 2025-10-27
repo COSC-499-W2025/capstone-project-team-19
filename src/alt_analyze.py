@@ -28,7 +28,10 @@ def nltk_data():
     requireddata=[
         ('tokenizers/punkt', 'punkt'),
         ('tokenizers/punkt_tab', "punkt_tab"),
-        ('corpora/stopwords', 'stopwords')
+        ('corpora/stopwords', 'stopwords'),
+        ('taggers/averaged_perceptron_tagger', 'averaged_perceptron_tagger'),
+        ('taggers/averaged_perceptron_tagger_eng', 'averaged_perceptron_tagger_eng')
+
     ]
 
     for path, package in requireddata:
@@ -57,7 +60,8 @@ def analyze_linguistic_complexity(text: str)->Dict[str, any]:
         'reading_level': 'N/A'
         }
     
-    word_count=len(word_tokenize(text))
+    tokens = [w for w in word_tokenize(text) if w.isalpha()]
+    word_count = len(tokens)
     sentence_count=len(sent_tokenize(text))
     char_count=len(text)
 
@@ -107,15 +111,22 @@ def topic_extraction(text: str, n_topics: int=5, n_words: int=10)->List[Dict[str
     if not text:
         return[]
     stop_words=set(stopwords.words('english'))
-    words=word_tokenize(text.lower())
-    words=[w for w in words if w.isalpha() and w not in stop_words and len(w)>2]
-    
+    tokens = word_tokenize(text.lower())
+    pos_tags = nltk.pos_tag(tokens)
+    words = [
+        word for word, pos in pos_tags
+        if (pos.startswith('NN') or pos.startswith('JJ'))
+        and word.isalpha()
+        and word not in stop_words
+        and len(word) >2
+    ]
+
     clean_text=' '.join(words)
 
     vectorizer=CountVectorizer(max_features=1000, min_df=1, max_df=1.0)
     try:
         doc_term=vectorizer.fit_transform([clean_text])
-        lda=LatentDirichletAllocation(n_components=min(n_topics, 3), random_state=42)
+        lda=LatentDirichletAllocation(n_components=n_topics, random_state=42)
         lda.fit(doc_term)
         topics=[]
         featurenames=vectorizer.get_feature_names_out()
@@ -137,13 +148,22 @@ def topic_extraction(text: str, n_topics: int=5, n_words: int=10)->List[Dict[str
 
 def extract_keywords(text: str, n_words: int=20)->List[Tuple[str,float]]:
     stop_words=set(stopwords.words('english'))
+    stop_words.update({'al', 'et', 'etc', 'ie', 'eg', 'cf'})
     try:
+        tokens = word_tokenize(text.lower())
+        pos_tags = nltk.pos_tag(tokens)
+        noun_adj_tokens = [
+            word for word, pos in pos_tags
+            if pos.startswith('NN') or pos.startswith('JJ')
+        ]
+        filtered_text = ' '.join(noun_adj_tokens)
         vectorizer=TfidfVectorizer(
             max_features=100,
             stop_words=list(stop_words),
-            ngram_range=(1,2)
+            ngram_range=(1,2),
+            #token_pattern=r'(?u)\b[a-z]{3,}\b'
         )
-        tfidf_mat=vectorizer.fit_transform([text])
+        tfidf_mat=vectorizer.fit_transform([filtered_text])
         feature_names=vectorizer.get_feature_names_out()
 
         scores=tfidf_mat.toarray()[0]
@@ -153,8 +173,6 @@ def extract_keywords(text: str, n_words: int=20)->List[Tuple[str,float]]:
     except Exception as e:
         print(f"Error:{e}")
         return []
-
-##      Metrics to be produced: Summary, Project Ranking, Activity frequency timeline, Key skills, Success indicators, Work type breakdown, collaboration share
 
 def calculate_document_metrics(filepath: str)-> Dict[str, any]: 
     text=extract_text_file(filepath)
@@ -186,7 +204,7 @@ def calculate_project_metrics(documents_metrics: List[Dict])->Dict[str,any]:
 
     if not valid_docs:
         return {'error':'No documents processed'}
-    
+
     total_word_count=sum(d['linguistic_metrics']['word_count'] for d in valid_docs)
     total_docs=len(valid_docs)
     reading_level_average=np.mean([d['linguistic_metrics']['flesch_kincaid_grade'] for d in valid_docs])
@@ -195,7 +213,7 @@ def calculate_project_metrics(documents_metrics: List[Dict])->Dict[str,any]:
     for doc in valid_docs:
         for word, score in doc.get('keywords', []):
             all_keywords[word]=all_keywords.get(word, 0)+score
-    
+
     top_keywords=sorted(all_keywords.items(), key=lambda x: x[1], reverse=True)[:20]
     return{
         'summary':{
@@ -207,10 +225,16 @@ def calculate_project_metrics(documents_metrics: List[Dict])->Dict[str,any]:
         'keywords': [{'word': word, 'score': round(score, 3)} for word, score in top_keywords]
     }
 
+def alternative_analysis(parsed_files, zip_path, project_name=None):
+    """
+    Main analysis function for alternative (non-LLM) analysis.
+    Analyzes the provided files (already grouped by project from project_analysis.py).
 
-# moved these functions here from main.py
-
-def alternative_analysis(parsed_files, zip_path):
+    Args:
+        parsed_files: List of file info dicts for a single project
+        zip_path: Path to the ZIP file
+        project_name: Optional name of the project being analyzed
+    """
     if not isinstance(parsed_files, list):
         return
 
@@ -225,8 +249,21 @@ def alternative_analysis(parsed_files, zip_path):
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     base_path = os.path.join(ZIP_DATA_DIR, zip_name)
 
+    # Ask user for project summary (optional)
+    user_summary = None
+    if project_name:
+        print(f"\n{'─'*80}")
+        print(f"Project: {project_name}")
+        summary_input = input("  Brief summary of this project (press Enter to skip): ").strip()
+        if summary_input:
+            user_summary = summary_input
+            print("  ✓ Summary saved")
+        else:
+            print("  ⊗ Skipped")
+        print(f"{'─'*80}\n")
+
     print(f"\n{'='*80}")
-    print(f"Analyzing {len(text_files)} file(s)...")
+    print(f"ANALYZING {len(text_files)} FILE(S)")
     print(f"{'='*80}\n")
 
     # Calculate metrics for each document
@@ -239,18 +276,26 @@ def alternative_analysis(parsed_files, zip_path):
         doc_metrics = calculate_document_metrics(file_path)
 
         if doc_metrics.get('processed'):
-            # Add filename for reference
             doc_metrics['filename'] = filename
             all_document_metrics.append(doc_metrics)
             display_individual_results(filename, doc_metrics)
         else:
             print(f"Failed to process: {doc_metrics.get('error', 'Unknown error')}\n")
 
-    # Display project-wide summary
+    # Display project summary
     if all_document_metrics:
         print(f"\n{'='*80}")
-        print("PROJECT SUMMARY - Aggregated Metrics Across All Files")
+        if project_name:
+            print(f"PROJECT SUMMARY - {project_name}")
+        else:
+            print("PROJECT SUMMARY")
         print(f"{'='*80}\n")
+
+        if user_summary:
+            print(f"Your Summary:")
+            print(f"  {user_summary}\n")
+            print(f"{'─'*80}\n")
+
         display_project_summary(calculate_project_metrics(all_document_metrics))
     else:
         print("\nNo files were successfully processed.")
@@ -296,10 +341,43 @@ def display_project_summary(project_metrics: dict):
     print("-" * 50)
     keywords = project_metrics.get('keywords', [])
     if keywords:
-        for i, kw in enumerate(keywords[:15], 1):
+        for i, kw in enumerate(keywords[:5], 1):
             print(f"{i:2d}. {kw['word']:30s} (score: {kw['score']:.3f})")
     else:
         print("No keywords found")
 
     print(f"\n{'='*80}\n")
-  
+
+def display_all_projects_summary(all_projects_results: List[Dict]):
+    """Display an overall summary comparing all analyzed projects."""
+    print(f"\n{'='*80}")
+    print("OVERALL SUMMARY - All Projects Combined")
+    print(f"{'='*80}\n")
+
+    print(f"Total Projects Analyzed: {len(all_projects_results)}\n")
+
+    # Calculate totals across all projects
+    total_files = sum(p['file_count'] for p in all_projects_results)
+    total_words_all = sum(p['summary']['summary']['total_words'] for p in all_projects_results)
+
+    print(f"Combined Statistics:")
+    print(f"  Total Files Processed:      {total_files}")
+    print(f"  Total Words Across Projects: {total_words_all:,}")
+
+    print(f"\nPer-Project Breakdown:")
+    print("-" * 80)
+
+    for project_result in all_projects_results:
+        project_name = project_result['project_name']
+        summary = project_result['summary']['summary']
+        file_count = project_result['file_count']
+
+        print(f"\n  Project: {project_name}")
+        print(f"    Files:         {file_count}")
+        print(f"    Total Words:   {summary['total_words']:,}")
+        print(f"    Reading Level: {summary['reading_level_label']} (Grade {summary['reading_level_average']})")
+
+    print(f"\n{'='*80}\n")
+
+
+

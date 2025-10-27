@@ -27,11 +27,11 @@ def test_main_prints_message(monkeypatch, capsys):
 
     main.main()
     captured = capsys.readouterr()
-    assert "Welcome aboard! Let’s turn your work into cool insights." in captured.out
+    assert "Welcome aboard! Let's turn your work into cool insights." in captured.out
 
 
 def test_main_prints_error(monkeypatch, capsys):
-    inputs = iter(['jane', 'non-existent.zip'])
+    inputs = iter(['jane', 'non-existent.zip', ''])
     monkeypatch.setattr('builtins.input', lambda _: next(inputs))
 
     monkeypatch.setattr('src.main.get_user_consent', lambda: 'accepted')
