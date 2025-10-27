@@ -8,13 +8,11 @@ Collaborative projects - processed to extract individual user contributions
 """
 from language_detector import detect_languages
 
-import os
 import sqlite3
 from alt_analyze import alternative_analysis
 from llm_analyze import run_llm_analysis
 from helpers import _fetch_files
-
-from code_collaborative_analysis import analyze_project_commits, print_project_card
+from code_collaborative_analysis import analyze_code_project
 
 
 
@@ -163,7 +161,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
         print("\n[COLLABORATIVE] Running collaborative projects...")
         for project_name, project_type in collaborative:
             print(f"  → {project_name} ({project_type})")
-            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent)
+            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path)
         return True
 
     # Track pending phases
@@ -213,7 +211,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
 
 
 
-def get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent):
+def get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path):
     """
     Analyze collaborative projects to get specific user contributions in a collaborative project.
     The process used to get the individual contributions changes depending on the type of project (code/text).
@@ -224,7 +222,7 @@ def get_individual_contributions(conn, user_id, project_name, project_type, curr
     if project_type == "text":
         analyze_text_contributions(conn, user_id, project_name, current_ext_consent)
     elif project_type == "code":
-        analyze_code_contributions(conn, user_id, project_name, current_ext_consent)
+        analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path)
     else:
         print(f"[COLLABORATIVE] Unknown project type for '{project_name}', skipping.")
 
@@ -252,7 +250,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent)
     pass
 
 
-def analyze_code_contributions(conn, user_id, project_name, current_ext_consent):
+def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path):
     """
     Placeholder for future collaborative code contribution analysis.
 
@@ -260,10 +258,7 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent)
     Check for a .git folder (which should have commits), or connect to git using OAuth, etc. 
     User can also be prompted, or key words can be used.
     """
-    metrics = analyze_project_commits(conn, user_id, project_name) 
-    if not metrics:
-        return
-    print_project_card(metrics)
+    analyze_code_project(conn, user_id, project_name, zip_path)
 
 
 def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path):
