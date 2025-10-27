@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import json
 
-from src.parsing import parse_zip_file, collect_file_info, UNSUPPORTED_LOG_PATH, DUPLICATE_LOG_PATH
+from src.parsing import parse_zip_file, collect_file_info, UNSUPPORTED_LOG_PATH, DUPLICATE_LOG_PATH, CONFIG_FILES
 
 # Helper
 def create_sample_zip_with_various_types(tmp_dir):
@@ -224,3 +224,31 @@ def test_parse_zip_file_assigns_project_names(tmp_path, test_user_id):
     """).fetchall()
     assert ("solo-notes",) in project_rows
 
+#Tests for config files inside ZIP
+def test_parse_zip_file_stores_config_files(tmp_path, test_user_id):
+    """Config files extracted from a ZIP should be inserted into config_files table."""
+    zip_path = tmp_path / "config_zip.zip"
+    content_dir = tmp_path / "cfg_content"
+    content_dir.mkdir()
+    (content_dir / "requirements.txt").write_text("flask\n")
+    (content_dir / "package.json").write_text('{"dependencies": {"react": "17.0.0"}}')
+
+    with zipfile.ZipFile(zip_path, "w") as z:
+        z.write(content_dir / "requirements.txt", "requirements.txt")
+        z.write(content_dir / "package.json", "package.json")
+
+    result = parse_zip_file(str(zip_path), user_id=test_user_id)
+    assert isinstance(result, list)
+    from src.db import connect
+    conn = connect()
+    cfg_rows = conn.execute("SELECT file_name FROM config_files").fetchall()
+    cfg_names = {r[0] for r in cfg_rows}
+    assert "requirements.txt" in cfg_names
+    assert "package.json" in cfg_names
+
+    # Ensure config files were NOT added to the regular files table
+    file_rows = conn.execute(
+        "SELECT file_name FROM files WHERE file_name IN (?, ?)",
+        ("requirements.txt", "package.json")
+    ).fetchall()
+    assert len(file_rows) == 0

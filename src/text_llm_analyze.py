@@ -1,15 +1,15 @@
 import os
 import textwrap
-from alt_analyze import analyze_linguistic_complexity, extractfile
+from alt_analyze import analyze_linguistic_complexity
+from helpers import extract_text_file
 from dotenv import load_dotenv
 from groq import Groq
-from tqdm import tqdm
 
 load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
-def run_llm_analysis(parsed_files, zip_path):
+def run_text_llm_analysis(parsed_files, zip_path):
     if not isinstance(parsed_files, list):
         return
 
@@ -27,11 +27,13 @@ def run_llm_analysis(parsed_files, zip_path):
     print(f"Analyzing {len(text_files)} file(s) using LLM-based analysis...")
     print(f"{'='*80}\n")
 
-    for file_info in tqdm(text_files, desc="Processing files", unit="file"):
+    total_files = len(text_files)
+    for idx, file_info in enumerate(text_files, start=1):
         file_path = os.path.join(base_path, file_info["file_path"])
         filename = file_info["file_name"]
+        print(f"[{idx}/{total_files}] Processing: {filename}")
 
-        text = extractfile(file_path)
+        text = extract_text_file(file_path)
         if not text:
             print(f"Skipping {filename}: failed to extract text.\n")
             continue
@@ -40,11 +42,11 @@ def run_llm_analysis(parsed_files, zip_path):
         linguistic = analyze_linguistic_complexity(text)
 
         # LLM calls
-        summary = generate_llm_summary(text)
-        skills = generate_llm_skills(text)
-        success = generate_llm_success_factors(text, linguistic)
+        summary = generate_text_llm_summary(text)
+        skills = generate_text_llm_skills(text)
+        success = generate_text_llm_success_factors(text, linguistic)
 
-        display_llm_results(filename, linguistic, summary, skills, success)
+        display_text_llm_results(filename, linguistic, summary, skills, success)
 
     print(f"\n{'='*80}")
     print("PROJECT SUMMARY - (LLM-based results: summaries, skills, and success factors)")
@@ -53,7 +55,7 @@ def run_llm_analysis(parsed_files, zip_path):
     print(f"\n{'='*80}\n")
 
 
-def display_llm_results(filename, linguistic, summary, skills, success):
+def display_text_llm_results(filename, linguistic, summary, skills, success):
     print(f"Processing: {filename}")
     print("  Linguistic & Readability:")
     print(f"    Word Count: {linguistic['word_count']}, Sentences: {linguistic['sentence_count']}")
@@ -73,7 +75,7 @@ def display_llm_results(filename, linguistic, summary, skills, success):
     print(f"    Overall Evaluation: {success['score']}\n")
 
 
-def generate_llm_summary(text):
+def generate_text_llm_summary(text):
     text = text[:6000]
     prompt = (
         "You are analyzing a document that could be any type of written work — "
@@ -109,7 +111,7 @@ def generate_llm_summary(text):
         return "[Summary unavailable due to API error]"
 
 
-def generate_llm_skills(text):
+def generate_text_llm_skills(text):
     text = text[:6000]
     prompt = (
         "From the following text, infer 3–5 key *skills* demonstrated by the author or creator. "
@@ -152,7 +154,7 @@ def generate_llm_skills(text):
         return ["[Skills unavailable due to API error]"]
 
 
-def generate_llm_success_factors(text, linguistic):
+def generate_text_llm_success_factors(text, linguistic):
     """Generate concise, context-aware success factors that adapt to different text types."""
     text = text[:6000]
     readability = linguistic.get("reading_level", "N/A")

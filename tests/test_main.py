@@ -31,7 +31,7 @@ def test_main_prints_message(monkeypatch, capsys):
 
 
 def test_main_prints_error(monkeypatch, capsys):
-    inputs = iter(['jane', 'non-existent.zip'])
+    inputs = iter(['jane', 'non-existent.zip', ''])
     monkeypatch.setattr('builtins.input', lambda _: next(inputs))
 
     monkeypatch.setattr('src.main.get_user_consent', lambda: 'accepted')

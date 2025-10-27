@@ -3,6 +3,8 @@ import zipfile
 import time
 import mimetypes
 import shutil
+from constants import CONFIG_FILES
+
 
 import warnings
 warnings.filterwarnings("ignore", message="Duplicate name:")
@@ -166,7 +168,21 @@ def collect_file_info(root_dir):
 
         for file in files:
             full_path = os.path.join(folder, file)
-            extension = os.path.splitext(file)[1].lower()    
+            extension = os.path.splitext(file)[1].lower() 
+
+            # detect configuration/dependency files
+            if file in CONFIG_FILES:
+                collected.append({
+                    "file_path": os.path.relpath(full_path, root_dir),
+                    "file_name": file,
+                    "extension": extension,
+                    "file_type": "config",  # you can use a special type
+                    "size_bytes": os.stat(full_path).st_size,
+                    "created": time.ctime(os.stat(full_path).st_ctime),
+                    "modified": time.ctime(os.stat(full_path).st_mtime)
+                })
+                #skip storing config files in files table
+                continue   
 
             if extension not in SUPPORTED_EXTENSIONS or not is_valid_mime(full_path, extension):
                 print(f"Unsupported file skipped: {file}")

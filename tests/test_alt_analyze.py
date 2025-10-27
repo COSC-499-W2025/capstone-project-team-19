@@ -4,13 +4,15 @@ from pathlib import Path
 import pytest
 from unittest.mock import patch, MagicMock
 from src.alt_analyze import (
-    extractfile,
     analyze_linguistic_complexity,
     topic_extraction,
     extract_keywords,
     _interpret_reading_level,
     calculate_document_metrics,
     calculate_project_metrics,
+)
+from src.helpers import (
+    extract_text_file,
     extractfromtxt,
     extractfrompdf,
     extractfromdocx,
@@ -22,7 +24,7 @@ def test_extractfromtxt():
         temp_path=f.name
 
     try:
-        text=extractfile(temp_path)
+        text=extract_text_file(temp_path)
         assert text is not None
         assert "test document." in text
         assert "second line" in text
@@ -34,7 +36,7 @@ def test_extractfromtxt_empty():
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
             temp_path=f.name
         try:
-             text=extractfile(temp_path)
+             text=extract_text_file(temp_path)
              assert text==""
         finally:
              os.unlink(temp_path)
@@ -99,13 +101,13 @@ def test_extractfile_unsupported_format():
         temp_path = f.name
 
     try:
-        text = extractfile(temp_path)
+        text = extract_text_file(temp_path)
         assert text is None
     finally:
         os.unlink(temp_path)
 
 def test_extractfile_nonexistent():
-    result = extractfile("/nonexistent/path/file.txt")
+    result = extract_text_file("/nonexistent/path/file.txt")
     assert result is None
 
 def test_extractfromtxt_specific():

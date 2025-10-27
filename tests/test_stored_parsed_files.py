@@ -51,3 +51,30 @@ def test_files_linked_to_correct_user(conn, tmp_path):
     db_user_id = conn.execute("SELECT user_id FROM files").fetchone()[0]
 
     assert db_user_id == user2
+
+#Tests for config file handling
+def test_config_files_inserted_into_config_table(conn, tmp_path):
+    """Config files (e.g., requirements.txt) should be stored in config_files,
+       and not in the files table."""
+    cfg = tmp_path / "requirements.txt"
+    cfg.write_text("flask\n")
+
+    files_info = collect_file_info(tmp_path)
+    user_id = get_or_create_user(conn, "ConfigUser")
+
+    store_parsed_files(conn, files_info, user_id)
+
+    # Ensure config file is NOT in files table
+    file_rows = conn.execute(
+        "SELECT file_name FROM files WHERE file_name = ?", ("requirements.txt",)
+    ).fetchall()
+    assert len(file_rows) == 0
+
+    # Ensure config file is in config_files table
+    cfg_row = conn.execute(
+        "SELECT file_name, user_id, project_name FROM config_files WHERE file_name = ?", ("requirements.txt",)
+    ).fetchone()
+    assert cfg_row is not None
+    assert cfg_row[0] == "requirements.txt"
+    assert cfg_row[1] == user_id
+    assert cfg_row[2] is None
