@@ -14,7 +14,7 @@ def github_oauth(conn, user_id):
     print("\nGitHub Login Starting...")
 
     # request device code from GitHub
-    auth = request_device_code(scope="repo read:user")
+    auth = request_device_code(scope="repo read:user read:org")
 
     print("\nGo to this page in your browser:")
     print(auth["verification_uri"])
