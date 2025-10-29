@@ -154,6 +154,32 @@ def init_schema(conn: sqlite3.Connection) -> None:
         ON project_classifications(user_id, zip_name);
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS user_tokens(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        provider TEXT NOT NULL,
+        access_token TEXT,
+        refresh_token TEXT,
+        expires_at TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(user_id, provider)
+    );
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS project_repos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        project_name TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        repo_url TEXT NOT NULL,
+        linked_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(user_id, project_name, provider),
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
+    """)
+
     conn.commit()
 
 # ----------------------------------------------------------
@@ -310,3 +336,33 @@ def get_project_classifications(
     ).fetchall()
     return {project_name: classification for project_name, classification in rows}
     
+def save_token_placeholder(conn: sqlite3.Connection, user_id: int):
+    conn.execute("""
+        INSERT OR IGNORE INTO user_tokens (user_id, provider, access_token)
+        VALUES (?, 'github', 'PENDING_OAUTH')
+    """, (user_id,))
+
+    conn.commit()
+
+def save_project_repo(conn: sqlite3.Connection, user_id: int, project_name: str, repo_url: str, provider="github"):
+    # Store which GitHub repository corresponds to a given collaborative project
+    
+    conn.execute("""
+        INSERT OR REPLACE INTO project_repos (user_id, project_name, provider, repo_url)
+        VALUES (?, ?, ?, ?)
+    """, (user_id, project_name, provider, repo_url))
+
+    conn.commit()
+
+
+def get_project_repo(conn: sqlite3.Connection, user_id: int, project_name: str, provider="github") -> Optional[str]:
+    # Fetch mapped GitHub repo URL for this project, if exists
+    
+    row = conn.execute("""
+        SELECT repo_url FROM project_repos
+        WHERE user_id=? AND project_name=? AND provider=?
+        LIMIT 1
+    """, (user_id, project_name, provider)).fetchone()
+
+    return row[0] if row else None
+

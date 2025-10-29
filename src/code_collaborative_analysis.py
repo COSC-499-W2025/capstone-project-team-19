@@ -13,7 +13,7 @@ import subprocess
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
 from language_detector import detect_languages
-from github_oauth_flow import github_oauth
+from github_auth.github_oauth import github_oauth
 
 import sqlite3
 
@@ -40,7 +40,7 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
         print(f"\nNo .git repo found in {project_name}.")
         ans = input("Connect GitHub to analyze this project? (y/n): ").strip().lower()
         if ans in {"y", "yes"}:
-            github_oauth(user_id, project_name)
+            github_oauth(conn, user_id)
             return None
         else:
             print("Skipping collaborative analysis for this project")
