@@ -13,6 +13,7 @@ import subprocess
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
 from language_detector import detect_languages
+from github_oauth_flow import github_oauth
 
 import sqlite3
 
@@ -36,9 +37,14 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
     repo_dir = _resolve_project_repo(zip_data_dir, zip_name, project_name)
     if not repo_dir:
-        print(f"\n[skip] {project_name}: no Git repo found under allowed paths. "
-              f"Zip a local clone (not GitHub 'Download ZIP') so .git is included.")
-        return None
+        print(f"\nNo .git repo found in {project_name}.")
+        ans = input("Connect GitHub to analyze this project? (y/n): ").strip().lower()
+        if ans in {"y", "yes"}:
+            github_oauth(user_id, project_name)
+            return None
+        else:
+            print("Skipping collaborative analysis for this project")
+            return None
 
     if DEBUG:
         print(f"[debug] repo resolved → {repo_dir}")
