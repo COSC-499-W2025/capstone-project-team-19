@@ -1,6 +1,10 @@
 import requests
 
-import requests
+"""
+Takes GitHub OAuth token as input
+Makes authenticated API requests
+Returns a sorted, deduplicated list of repositories attached to the user's GitHub account
+"""
 
 def list_user_repos(token):
     headers = {"Authorization": f"Bearer {token}"}

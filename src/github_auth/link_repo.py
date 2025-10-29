@@ -5,6 +5,15 @@ from .token_store import save_github_token, get_github_token
 from src.db import connect
 import sqlite3
 
+"""
+GitHub repository linking utilities.
+
+Supports associating a local project entry in the database with a GitHub repository (chosen by user).
+Retrieves the user's GitHub repositories by using their stored OAuth token
+It attempts to match a repo to a project automatically based on project name, otherwise it prompts the user to choose a repo
+The matched/selected repo URL is saved tot he database
+"""
+
 
 def ensure_repo_link(conn, user_id, project_name, token):
     """
