@@ -1,8 +1,8 @@
 # src/github_oauth.py
 
 import webbrowser
-from github_device_flow import request_device_code, poll_for_token
-from token_store import save_github_token
+from .github_device_flow import request_device_code, poll_for_token
+from .token_store import save_github_token
 from src.db import get_or_create_user
 
 def github_oauth(conn, username):
@@ -33,7 +33,7 @@ def github_oauth(conn, username):
     return token
 
 if __name__ == "__main__":
-    from db import connect, init_schema, get_or_create_user
+    from src.db import connect, init_schema, get_or_create_user
 
     conn = connect()
     init_schema(conn)

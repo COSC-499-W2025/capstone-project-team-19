@@ -12,13 +12,15 @@ import datetime as dt
 import subprocess
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
-from language_detector import detect_languages
-from github_auth.github_oauth import github_oauth
+from src.language_detector import detect_languages
+from src.github_auth.github_oauth import github_oauth
+from src.github_auth.token_store import get_github_token
+from src.github_auth.link_repo import ensure_repo_link, select_and_store_repo
 
 import sqlite3
 
 # Local helpers
-from helpers import zip_paths, is_git_repo, bfs_find_repo, ensure_table
+from src.helpers import zip_paths, is_git_repo, bfs_find_repo, ensure_table
 
 DEBUG = False  # set True to troubleshoot path discovery
 
@@ -31,20 +33,47 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
     Run collaborative code analysis for ONE project: resolve repo, select identity (once),
     read commits, compute YOUR metrics, print a card, return metrics dict (or None if skipped).
     """
-    from language_detector import detect_languages  # import here to avoid top-level cross-import issues
+    from src.language_detector import detect_languages  # import here to avoid top-level cross-import issues
 
     # 1) Resolve allowed base paths and find the repo root
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
     repo_dir = _resolve_project_repo(zip_data_dir, zip_name, project_name)
     if not repo_dir:
         print(f"\nNo .git repo found in {project_name}.")
-        ans = input("Connect GitHub to analyze this project? (y/n): ").strip().lower()
-        if ans in {"y", "yes"}:
-            github_oauth(conn, user_id)
-            return None
+
+        token = get_github_token(conn, user_id)
+
+        if token:
+            print("GitHub already connected.")
+
+            if ensure_repo_link(conn, user_id, project_name, token):
+                return None
+        
         else:
-            print("Skipping collaborative analysis for this project")
-            return None
+            ans = input("Connect GitHub to analyze this project? (y/n): ").strip().lower()
+            if ans in {"y", "yes"}:
+                token = github_oauth(conn, user_id)
+                select_and_store_repo(conn, user_id, project_name, token)
+                return None
+
+        print("Skipping collaborative analysis for this project")
+        return None
+    
+    # local repo exists - ask user if they want GitHub too
+    print(f"Found local Git repo for {project_name}")
+    token = get_github_token(conn, user_id)
+
+    if token:
+        ans = input("Enhance with GitHub data (stars, issues, PRs, repo metadata)? (y/n): ").strip().lower()
+        if ans in {"y", "yes"}:
+            if not ensure_repo_link(conn, user_id, project_name, token):
+                # token is good but repo isn't linked yet
+                select_and_store_repo(conn, user_id, project_name, token)
+    else:
+        ans = input("Enhance with GitHub data? (y/n): ").strip().lower()
+        if ans in {"y", "yes"}:
+            token = github_oauth(conn, user_id)
+            select_and_store_repo(conn, user_id, project_name, token)
 
     if DEBUG:
         print(f"[debug] repo resolved → {repo_dir}")
@@ -168,7 +197,7 @@ def _save_user_github(conn: sqlite3.Connection, user_id: int, emails: List[str],
     for nm in set(n.strip() for n in names if n.strip()):
         cur.execute("INSERT OR IGNORE INTO user_github(user_id, email, name) VALUES (?, NULL, ?)", (user_id, nm))
     conn.commit()
-    print("\nSaved your identity for future runs ✅")
+    print("\nSaved your identity for future runs")
 
 
 # -------------------------------------------------------------------------

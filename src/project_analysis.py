@@ -6,15 +6,15 @@ to the appropriate individual-contribution analyzers.
 Individual projects - sent directly to analysis
 Collaborative projects - processed to extract individual user contributions
 """
-from language_detector import detect_languages
-from framework_detector import detect_frameworks
+from src.language_detector import detect_languages
+from src.framework_detector import detect_frameworks
 
 import sqlite3
-from alt_analyze import alternative_analysis
-from text_llm_analyze import run_text_llm_analysis
-from code_llm_analyze import run_code_llm_analysis
-from helpers import _fetch_files
-from code_collaborative_analysis import analyze_code_project
+from src.alt_analyze import alternative_analysis
+from src.text_llm_analyze import run_text_llm_analysis
+from src.code_llm_analyze import run_code_llm_analysis
+from src.helpers import _fetch_files
+from src.code_collaborative_analysis import analyze_code_project
 
 
 
