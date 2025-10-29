@@ -1,6 +1,6 @@
 import webbrowser
 from .github_device_flow import request_device_code, poll_for_token
-from .token_store import save_github_token
+from .token_store import save_github_token, mask_token
 from src.db import get_or_create_user
 
 """
@@ -10,7 +10,7 @@ Launches the GitHub device login process, opens the verification page in the use
 Once the user is authorized, it retrieves the access token from GitHub and securely stores it in the local database, associated with the given username.
 """
 
-def github_oauth(conn, username):
+def github_oauth(conn, user_id):
     print("\nGitHub Login Starting...")
 
     # request device code from GitHub
@@ -31,10 +31,9 @@ def github_oauth(conn, username):
     print("GitHub Authorized!")
 
     # save token in DB
-    user_id = get_or_create_user(conn, username)
     save_github_token(conn, user_id, token)
 
-    print("Token saved to database!")
+    print(f"Token saved to database: {mask_token(token)}")
     return token
 
 if __name__ == "__main__":

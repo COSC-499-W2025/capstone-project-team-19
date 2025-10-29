@@ -1,3 +1,5 @@
+from src.security.crypto_utils import encrypt_token, decrypt_token
+
 def save_github_token(conn, user_id, token):
     """
     The token is saved in the `user_tokens` table and associated with the given user_id. 
@@ -5,10 +7,12 @@ def save_github_token(conn, user_id, token):
     This allows future authenticated GitHub API calls without requiring the user to re-authorize.
     """
 
+    encrypted = encrypt_token(token)
+
     conn.execute("""
         INSERT OR REPLACE INTO user_tokens (user_id, provider, access_token)
         VALUES (?, 'github', ?)
-    """, (user_id, token))
+    """, (user_id, encrypted))
     conn.commit()
 
 
@@ -25,4 +29,22 @@ def get_github_token(conn, user_id):
         WHERE user_id=? AND provider='github'
     """, (user_id,)).fetchone()
 
-    return row[0] if row else None
+    return decrypt_token(row[0]) if row else None
+
+# if token is ever printed, mask it so the full token is not printed
+def mask_token(token: str) -> str:
+    if len(token) <= 9:
+        return "*" * len(token)
+    
+    return token[:4] + "****" + token[-4:]
+
+def revoke_github_token(conn, user_id):
+    conn.execute("""
+        DELETE FROM user_tokens
+        WHERE user_id = ? AND provider = 'github'    
+    """, (user_id,))
+
+    conn.commit()
+    print("GitHub token removed locally.")
+    print("TO fully revoke GitHub access, visit: ")
+    print("https://github.com/settings/applications")

@@ -365,4 +365,3 @@ def get_project_repo(conn: sqlite3.Connection, user_id: int, project_name: str, 
     """, (user_id, project_name, provider)).fetchone()
 
     return row[0] if row else None
-
