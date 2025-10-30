@@ -85,6 +85,8 @@ def test_analyze_code_project_happy_path(tmp_sqlite_conn, temp_zip_layout, monke
     # Fake git history
     monkeypatch.setattr(cc, "_read_git_history", lambda repo: _fake_commits())
 
+    monkeypatch.setattr("builtins.input", lambda _="": "n")
+
     # Run
     m = cc.analyze_code_project(
         conn=tmp_sqlite_conn,
@@ -117,6 +119,8 @@ def test_no_repo_found_prints_skip(tmp_sqlite_conn, temp_zip_layout, monkeypatch
         return (temp_zip_layout["zip_data_dir"], "nonexistent_zip",
                 os.path.join(temp_zip_layout["zip_data_dir"], "nonexistent_zip"))
     monkeypatch.setattr(cc, "zip_paths", fake_zip_paths)
+
+    monkeypatch.setattr("builtins.input", lambda _="": "n")
 
     m = cc.analyze_code_project(
         conn=tmp_sqlite_conn,
@@ -151,7 +155,7 @@ def test_identity_prompt_and_persist(tmp_sqlite_conn, temp_zip_layout, monkeypat
     monkeypatch.setattr(cc, "_collect_repo_authors", lambda _repo: authors)
 
     # Simulate user selecting "1" (Me Dev), then no extra emails
-    inputs = iter(["1", ""])
+    inputs = iter(["n", "1", ""])
     monkeypatch.setattr("builtins.input", lambda _prompt="": next(inputs))
 
     # Git history where our selected author has 2 commits
