@@ -39,39 +39,12 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
     repo_dir = _resolve_project_repo(zip_data_dir, zip_name, project_name)
     if not repo_dir:
-        print(f"\nNo .git repo found in {project_name}.")
-
-        token = get_github_token(conn, user_id)
-
-        # no repo AND no GitHub token, skip automatically
-        if not token:
-            print(f"[skip] Skipping collaborative analysis for this project")
-            return None
-
-        print("GitHub already connected.")
-
-        if ensure_repo_link(conn, user_id, project_name, token):
-            return None
-        
-        ans = input("Connect GitHub to analyze this project? (y/n): ").strip().lower()
-        if ans in {"y", "yes"}:
-            select_and_store_repo(conn, user_id, project_name, token)
-
-        return None
+        print(f"\nNo local Git repo found under allowed paths. "
+              f"Zip a local clone (not GitHub 'Download ZIP') so .git is included.")
+        return _handle_no_git_repo(conn, user_id, project_name)
     
-    # local repo exists - ask user if they want GitHub too
     print(f"Found local Git repo for {project_name}")
-    token = get_github_token(conn, user_id)
-
-    if token:
-        try:
-            ans = input("Enhance with GitHub data (stars, issues, PRs, repo metadata)? (y/n): ").strip().lower()
-            if ans in {"y", "yes"}:
-                if not ensure_repo_link(conn, user_id, project_name, token):
-                    select_and_store_repo(conn, user_id, project_name, token)
-        except Exception:
-            # Test / non-interactive mode — do NOT block
-            pass
+    _enhance_with_github(conn, user_id, project_name, repo_dir)
 
     if DEBUG:
         print(f"[debug] repo resolved → {repo_dir}")
@@ -112,6 +85,53 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
     _print_project_card(metrics)
     return metrics
 
+# user has already connected to github
+def _handle_no_git_repo(conn, user_id, project_name):
+    token = get_github_token(conn, user_id)
+
+    # user has the token already, allowing link only (no authentication)
+    if token:
+        print(f"\nNo local .git found for {project_name}, but a GitHub login already exists.")
+
+        # just link repo by name 
+        if ensure_repo_link(conn, user_id, project_name, token):
+            print(f"[info] GitHub repo already linked for {project_name}")
+            return None
+        
+
+        ans = input("Link this project to GitHub? (y/n): ").strip().lower() 
+        if ans in {"y", "yes"}:
+            select_and_store_repo(conn, user_id, project_name, token)
+
+        return None
+        
+    # offer GitHub auth flow, so project can be analyzed even without .git file
+    ans = input(
+        f"No .git detected for {project_name}.\n"
+        "Connect GitHub to analyze this project? (y/n): "
+    ).strip().lower()
+
+    if ans in {"y", "yes"}:
+        token = github_oauth(conn, user_id)
+        select_and_store_repo(conn, user_id, project_name, token)
+        return None
+    
+    print(f"[skip] Skipping collaborative analysis for {project_name}")
+    return None
+
+# ask user if they would like to cvonnect to github
+def _enhance_with_github(conn, user_id, project_name, repo_dir):
+    token = get_github_token(conn, user_id)
+    if not token:
+        ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
+        if ans in {"y", "yes"}:
+            token = github_oauth(conn, user_id)
+            select_and_store_repo(conn, user_id, project_name, token)
+    else:
+        ans = input("Enhance with GitHub data? (y/n): ").strip().lower()
+        if ans in {"y", "yes"}:
+            if not ensure_repo_link(conn, user_id, project_name, token):
+                select_and_store_repo(conn, user_id, project_name, token)
 
 # -------------------------------------------------------------------------
 # Repo resolution (two allowed bases + shallow nested scan)

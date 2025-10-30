@@ -58,8 +58,15 @@ def select_and_store_repo(conn, user_id, project_name, token):
     for i, r in enumerate(repos, start=1):
         print(f"{i}) {r}")
 
+    print("\nPress Enter to skip linking a repo for this project.")
+
     while True:
         choice = input("\nEnter number: ").strip()
+
+        if choice == "":
+            print(f"[skip] No GitHub repo linked for {project_name}")
+            return
+
         if choice.isdigit() and 1 <= int(choice) <= len(repos):
             repo = repos[int(choice) - 1]
             _store_repo(conn, user_id, project_name, repo)
