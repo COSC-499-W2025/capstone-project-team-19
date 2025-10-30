@@ -31,5 +31,11 @@ def list_user_repos(token):
                     if repo.get("permissions", {}).get("push"):
                         repos.append(repo["full_name"])
 
+    deduplicated = {}
+    for r in repos:
+        key = r.lower()
+        if key not in deduplicated:
+            deduplicated[key] = r
+
     # Deduplicate and sort
-    return sorted(set(repos), key=lambda s: s.lower())
+    return sorted(deduplicated.values(), key=lambda s: s.lower())

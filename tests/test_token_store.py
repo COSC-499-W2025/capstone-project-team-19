@@ -34,11 +34,11 @@ def test_tokens_are_user_isolated(monkeypatch, conn):
     u1 = get_or_create_user(conn, "Led Zeppelin")
     u2 = get_or_create_user(conn, "Lynyrd Skynyrd")
 
-    token_store.save_github_token(conn, u1, "tok1")
-    token_store.save_github_token(conn, u2, "tok2")
+    token_store.save_github_token(conn, u1, "token1")
+    token_store.save_github_token(conn, u2, "token2")
 
-    assert token_store.get_github_token(conn, u1) == "tok1"
-    assert token_store.get_github_token(conn, u2) == "tok2"
+    assert token_store.get_github_token(conn, u1) == "token1"
+    assert token_store.get_github_token(conn, u2) == "token2"
 
 def test_mask_token():
     assert token_store.mask_token("1234567890") == "1234****7890"

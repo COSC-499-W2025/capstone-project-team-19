@@ -20,7 +20,10 @@ def github_oauth(conn, user_id):
     print(auth["verification_uri"])
     print(f"Enter this code: {auth['user_code']}\n")
 
-    webbrowser.open(auth["verification_uri"])
+    try:
+        webbrowser.open(auth["verification_uri"])
+    except Exception:
+        print("Warning: Could not open browser automatically. Please open the link manually.")
 
     input("Press Enter after authorizing in GitHub...")
 

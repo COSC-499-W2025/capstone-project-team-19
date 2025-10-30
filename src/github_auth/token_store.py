@@ -6,6 +6,7 @@ def save_github_token(conn, user_id, token):
     If a GitHub token already exists for this user, it is replaced. 
     This allows future authenticated GitHub API calls without requiring the user to re-authorize.
     """
+    _ensure_user_tokens_table(conn)
 
     encrypted = encrypt_token(token)
 
@@ -23,6 +24,8 @@ def get_github_token(conn, user_id):
     Looks up the most recent GitHub access token associated with the given user_id. 
     Returns the token string if found, otherwise None.
     """
+
+    _ensure_user_tokens_table(conn)
 
     row = conn.execute("""
         SELECT access_token FROM user_tokens
@@ -48,3 +51,19 @@ def revoke_github_token(conn, user_id):
     print("GitHub token removed locally.")
     print("TO fully revoke GitHub access, visit: ")
     print("https://github.com/settings/applications")
+
+def _ensure_user_tokens_table(conn):
+    """
+    Ensure the user_tokens table exists.
+    Called automatically by save/get token functions to avoid crashes.
+    """
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS user_tokens (
+            user_id TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            access_token TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, provider)
+        )
+    """)
+    conn.commit()

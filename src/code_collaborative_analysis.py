@@ -43,20 +43,20 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
 
         token = get_github_token(conn, user_id)
 
-        if token:
-            print("GitHub already connected.")
+        # no repo AND no GitHub token, skip automatically
+        if not token:
+            print(f"[skip] Skipping collaborative analysis for this project")
+            return None
 
-            if ensure_repo_link(conn, user_id, project_name, token):
-                return None
+        print("GitHub already connected.")
+
+        if ensure_repo_link(conn, user_id, project_name, token):
+            return None
         
-        else:
-            ans = input("Connect GitHub to analyze this project? (y/n): ").strip().lower()
-            if ans in {"y", "yes"}:
-                token = github_oauth(conn, user_id)
-                select_and_store_repo(conn, user_id, project_name, token)
-                return None
+        ans = input("Connect GitHub to analyze this project? (y/n): ").strip().lower()
+        if ans in {"y", "yes"}:
+            select_and_store_repo(conn, user_id, project_name, token)
 
-        print("Skipping collaborative analysis for this project")
         return None
     
     # local repo exists - ask user if they want GitHub too
@@ -64,16 +64,14 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
     token = get_github_token(conn, user_id)
 
     if token:
-        ans = input("Enhance with GitHub data (stars, issues, PRs, repo metadata)? (y/n): ").strip().lower()
-        if ans in {"y", "yes"}:
-            if not ensure_repo_link(conn, user_id, project_name, token):
-                # token is good but repo isn't linked yet
-                select_and_store_repo(conn, user_id, project_name, token)
-    else:
-        ans = input("Enhance with GitHub data? (y/n): ").strip().lower()
-        if ans in {"y", "yes"}:
-            token = github_oauth(conn, user_id)
-            select_and_store_repo(conn, user_id, project_name, token)
+        try:
+            ans = input("Enhance with GitHub data (stars, issues, PRs, repo metadata)? (y/n): ").strip().lower()
+            if ans in {"y", "yes"}:
+                if not ensure_repo_link(conn, user_id, project_name, token):
+                    select_and_store_repo(conn, user_id, project_name, token)
+        except Exception:
+            # Test / non-interactive mode — do NOT block
+            pass
 
     if DEBUG:
         print(f"[debug] repo resolved → {repo_dir}")
