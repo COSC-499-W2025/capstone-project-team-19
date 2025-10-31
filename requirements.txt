@@ -9,6 +9,7 @@ pymupdf
 docx2txt
 openpyxl
 pypdf
+pygments
 
 nltk
 textstat

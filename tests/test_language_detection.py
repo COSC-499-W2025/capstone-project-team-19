@@ -76,5 +76,17 @@ def test_detect_languages_case_insensitive():
     languages = detect_languages(conn, project_name)
     assert set(languages) == {"Python", "JavaScript"}
 
+def test_detect_languages_with_extended_extensions():
+    """Supports additional extensions sourced from Pygments."""
+    conn = setup_in_memory_db()
+    user_id = 1
+    project_name = "projExtended"
+
+    insert_file(conn, user_id, project_name, "lib.rs", "code", ".rs")
+    insert_file(conn, user_id, project_name, "main.go", "code", ".go")
+
+    languages = detect_languages(conn, project_name)
+    assert "Rust" in languages
+    assert "Go" in languages
 
 

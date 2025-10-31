@@ -109,6 +109,18 @@ def test_collect_file_info_returns_metadata(tmp_path):
     assert "created" in info
     assert "modified" in info
 
+def test_collect_file_info_detects_additional_code_extensions(tmp_path):
+    rust = tmp_path / "main.rs"
+    rust.write_text("fn main() { println!(\"hi\"); }")
+    go_file = tmp_path / "main.go"
+    go_file.write_text("package main\nfunc main() {}")
+
+    result = collect_file_info(str(tmp_path))
+    types = {entry["file_name"]: entry["file_type"] for entry in result}
+
+    assert types["main.rs"] == "code"
+    assert types["main.go"] == "code"
+
 # testing empty zip file
 def test_parse_zip_file_empty_zip(tmp_path, test_user_id):
     #Create empty zip file
