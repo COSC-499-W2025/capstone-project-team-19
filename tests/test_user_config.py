@@ -1,14 +1,14 @@
 # tests/test_user_config.py
 import builtins
 from src import main
-from db import (
+from src.db import (
     connect, init_schema,
     get_or_create_user,
     get_latest_consent,
     get_latest_external_consent,
 )
-from consent import record_consent
-from external_consent import record_external_consent
+from src.consent import record_consent
+from src.external_consent import record_external_consent
 
 _FAKE_FILES_INFO = [
     {"file_path": "project_one/main.py", "file_name": "main.py"},

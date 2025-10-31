@@ -3,7 +3,7 @@ Contains all required functions to check for duplicate ZIP files or projects in 
 """
 
 import os
-from db import connect
+from src.db import connect
 
 def handle_existing_zip(conn, user_id, zip_path):
     cursor = conn.cursor()

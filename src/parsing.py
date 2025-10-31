@@ -3,15 +3,15 @@ import zipfile
 import time
 import mimetypes
 import shutil
-from constants import CONFIG_FILES
-from extension_catalog import code_extensions as pygments_code_extensions
+from src.constants import CONFIG_FILES
+from src.extension_catalog import code_extensions as pygments_code_extensions
 
 
 import warnings
 warnings.filterwarnings("ignore", message="Duplicate name:")
 # This is just to silence the warning in unit test (system doesn't know that we purposefully created a duplicate file for testing)
 
-from db import connect, store_parsed_files, get_or_create_user
+from src.db import connect, store_parsed_files, get_or_create_user
 
 CURR_DIR = os.path.dirname(os.path.abspath(__file__)) # Gives the location of the script itself, not where user is running the command from
 REPO_ROOT = os.path.abspath(os.path.join(CURR_DIR, "..")) # Moves up one level into main repository directory

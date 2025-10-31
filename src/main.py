@@ -1,7 +1,7 @@
 import os
 
-from parsing import parse_zip_file, analyze_project_layout
-from db import (
+from src.parsing import parse_zip_file, analyze_project_layout
+from src.db import (
     connect,
     init_schema,
     get_or_create_user,
@@ -9,11 +9,11 @@ from db import (
     get_latest_external_consent,
     record_project_classifications,
 )
-from consent import CONSENT_TEXT, get_user_consent, record_consent
-from external_consent import get_external_consent, record_external_consent
-from project_analysis import detect_project_type, send_to_analysis
-from helpers import cleanup_extracted_zip
-
+from src.consent import CONSENT_TEXT, get_user_consent, record_consent
+from src.external_consent import get_external_consent, record_external_consent
+from src.project_analysis import detect_project_type, send_to_analysis
+from src.upload_checks import handle_existing_zip
+from src.helpers import cleanup_extracted_zip
 
 def main():
     print("Welcome aboard! Let's turn your work into cool insights.")

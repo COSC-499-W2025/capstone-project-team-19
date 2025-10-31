@@ -12,12 +12,15 @@ import datetime as dt
 import subprocess
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
-from language_detector import detect_languages
+from src.language_detector import detect_languages
+from src.github_auth.github_oauth import github_oauth
+from src.github_auth.token_store import get_github_token
+from src.github_auth.link_repo import ensure_repo_link, select_and_store_repo
 
 import sqlite3
 
 # Local helpers
-from helpers import zip_paths, is_git_repo, bfs_find_repo, ensure_table
+from src.helpers import zip_paths, is_git_repo, bfs_find_repo, ensure_table
 
 DEBUG = False  # set True to troubleshoot path discovery
 
@@ -30,15 +33,18 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
     Run collaborative code analysis for ONE project: resolve repo, select identity (once),
     read commits, compute YOUR metrics, print a card, return metrics dict (or None if skipped).
     """
-    from language_detector import detect_languages  # import here to avoid top-level cross-import issues
+    from src.language_detector import detect_languages  # import here to avoid top-level cross-import issues
 
     # 1) Resolve allowed base paths and find the repo root
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
     repo_dir = _resolve_project_repo(zip_data_dir, zip_name, project_name)
     if not repo_dir:
-        print(f"\n[skip] {project_name}: no Git repo found under allowed paths. "
+        print(f"\nNo local Git repo found under allowed paths. "
               f"Zip a local clone (not GitHub 'Download ZIP') so .git is included.")
-        return None
+        return _handle_no_git_repo(conn, user_id, project_name)
+    
+    print(f"Found local Git repo for {project_name}")
+    _enhance_with_github(conn, user_id, project_name, repo_dir)
 
     if DEBUG:
         print(f"[debug] repo resolved → {repo_dir}")
@@ -79,6 +85,53 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
     _print_project_card(metrics)
     return metrics
 
+# user has already connected to github
+def _handle_no_git_repo(conn, user_id, project_name):
+    token = get_github_token(conn, user_id)
+
+    # user has the token already, allowing link only (no authentication)
+    if token:
+        print(f"\nNo local .git found for {project_name}, but a GitHub login already exists.")
+
+        # just link repo by name 
+        if ensure_repo_link(conn, user_id, project_name, token):
+            print(f"[info] GitHub repo already linked for {project_name}")
+            return None
+        
+
+        ans = input("Link this project to GitHub? (y/n): ").strip().lower() 
+        if ans in {"y", "yes"}:
+            select_and_store_repo(conn, user_id, project_name, token)
+
+        return None
+        
+    # offer GitHub auth flow, so project can be analyzed even without .git file
+    ans = input(
+        f"No .git detected for {project_name}.\n"
+        "Connect GitHub to analyze this project? (y/n): "
+    ).strip().lower()
+
+    if ans in {"y", "yes"}:
+        token = github_oauth(conn, user_id)
+        select_and_store_repo(conn, user_id, project_name, token)
+        return None
+    
+    print(f"[skip] Skipping collaborative analysis for {project_name}")
+    return None
+
+# ask user if they would like to cvonnect to github
+def _enhance_with_github(conn, user_id, project_name, repo_dir):
+    token = get_github_token(conn, user_id)
+    if not token:
+        ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
+        if ans in {"y", "yes"}:
+            token = github_oauth(conn, user_id)
+            select_and_store_repo(conn, user_id, project_name, token)
+    else:
+        ans = input("Enhance with GitHub data? (y/n): ").strip().lower()
+        if ans in {"y", "yes"}:
+            if not ensure_repo_link(conn, user_id, project_name, token):
+                select_and_store_repo(conn, user_id, project_name, token)
 
 # -------------------------------------------------------------------------
 # Repo resolution (two allowed bases + shallow nested scan)
@@ -162,7 +215,7 @@ def _save_user_github(conn: sqlite3.Connection, user_id: int, emails: List[str],
     for nm in set(n.strip() for n in names if n.strip()):
         cur.execute("INSERT OR IGNORE INTO user_github(user_id, email, name) VALUES (?, NULL, ?)", (user_id, nm))
     conn.commit()
-    print("\nSaved your identity for future runs ✅")
+    print("\nSaved your identity for future runs")
 
 
 # -------------------------------------------------------------------------

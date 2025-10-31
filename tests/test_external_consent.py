@@ -2,8 +2,8 @@ import pytest
 import os
 import sqlite3
 from pathlib import Path
-from external_consent import get_external_consent, record_external_consent
-from db import connect, init_schema
+from src.external_consent import get_external_consent, record_external_consent
+from src.db import connect, init_schema
 
 
 @pytest.fixture()
