@@ -4,6 +4,7 @@ import time
 import mimetypes
 import shutil
 from src.constants import CONFIG_FILES
+from src.extension_catalog import code_extensions as pygments_code_extensions
 
 
 import warnings
@@ -19,7 +20,7 @@ ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
 RAWDATA_DIR = os.path.join(ZIP_DATA_DIR, "parsed_zip_rawdata")
 
 TEXT_EXTENSIONS = {".txt", ".csv", ".docx", ".pdf", ".xlsx", ".md"}
-CODE_EXTENSIONS = {".py", ".java", ".js", ".html", ".css", ".c", ".cpp", ".h"}
+CODE_EXTENSIONS = frozenset(pygments_code_extensions() - TEXT_EXTENSIONS)
 SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS.union(CODE_EXTENSIONS)
 UNSUPPORTED_LOG_PATH = os.path.join(ZIP_DATA_DIR, "unsupported_files.json")
 DUPLICATE_LOG_PATH = os.path.join(ZIP_DATA_DIR, "duplicate_files.json")
@@ -141,17 +142,8 @@ def is_valid_mime(file_path, extension):
 
     # Code formats
     if extension in CODE_EXTENSIONS:
-        valid_code_mimes = {
-            "text/x-python",
-            "text/x-c",
-            "text/x-c++",
-            "text/x-java-source",
-            "application/javascript",
-            "text/javascript",
-            "text/html",
-            "text/css",
-        }
-        return mime.startswith("text") or mime in valid_code_mimes
+        # Pygments told us this is a code suffix, accept it.
+        return True
     return False
 
 
