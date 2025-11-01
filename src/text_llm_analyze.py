@@ -27,26 +27,54 @@ def run_text_llm_analysis(parsed_files, zip_path):
     print(f"Analyzing {len(text_files)} file(s) using LLM-based analysis...")
     print(f"{'='*80}\n")
 
-    total_files = len(text_files)
-    for idx, file_info in enumerate(text_files, start=1):
-        file_path = os.path.join(base_path, file_info["file_path"])
-        filename = file_info["file_name"]
-        print(f"[{idx}/{total_files}] Processing: {filename}")
+    # group text files by project folder name
+    projects = {}
+    for f in text_files:
+        if not f.get("file_path"):
+            continue
+        project_name = f["file_path"].split(os.sep)[0]
+        projects.setdefault(project_name, []).append(f)
 
-        text = extract_text_file(file_path)
-        if not text:
-            print(f"Skipping {filename}: failed to extract text.\n")
+    # process each folder as one project
+    for project_name, files in projects.items():
+        print(f"\n→ {project_name}")
+        files_sorted = sorted(files, key=lambda x: x["file_name"])
+
+        # ask user to identify main file
+        if len(files_sorted) == 1:
+            main_file = files_sorted[0]
+            print(f"Only one text file detected: {main_file['file_name']}")
+        else:
+            print("\nSelect the MAIN (final) file for this project:")
+            for idx, f in enumerate(files_sorted, start=1):
+                print(f"  {idx}. {f['file_name']}")
+            choice = input("Enter number of main file (or press Enter to auto-select largest): ").strip()
+
+            if choice.isdigit() and 1 <= int(choice) <= len(files_sorted):
+                main_file = files_sorted[int(choice) - 1]
+            else:
+                # fallback: pick largest file by size
+                main_file = max(
+                    files_sorted,
+                    key=lambda f: os.path.getsize(os.path.join(base_path, f["file_path"]))
+                )
+                print(f"Auto-selected: {main_file['file_name']}")
+
+        main_path = os.path.join(base_path, main_file["file_path"])
+        main_text = extract_text_file(main_path)
+        if not main_text:
+            print("Failed to extract main file text. Skipping project.\n")
             continue
 
         # baseline metrics
-        linguistic = analyze_linguistic_complexity(text)
+        linguistic = analyze_linguistic_complexity(main_text)
 
         # LLM calls
-        summary = generate_text_llm_summary(text)
-        skills = generate_text_llm_skills(text)
-        success = generate_text_llm_success_factors(text, linguistic)
+        summary = generate_text_llm_summary(main_text)
+        skills = generate_text_llm_skills(main_text)
+        success = generate_text_llm_success_factors(main_text, linguistic)
 
-        display_text_llm_results(filename, linguistic, summary, skills, success)
+        display_text_llm_results(main_file["file_name"], linguistic, summary, skills, success)
 
     print(f"\n{'='*80}")
     print("PROJECT SUMMARY - (LLM-based results: summaries, skills, and success factors)")
