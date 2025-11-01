@@ -65,6 +65,20 @@ def run_text_llm_analysis(parsed_files, zip_path):
         if not main_text:
             print("Failed to extract main file text. Skipping project.\n")
             continue
+        
+        # gather supporting text (outlines, drafts, etc)
+        supporting_files = [f for f in files_sorted if f != main_file]
+        supporting_texts = []
+        for f in supporting_files:
+            path = os.path.join(base_path, f["file_path"])
+            text = extract_text_file(path)
+            if text:
+                supporting_texts.append({
+                    "filename": f["file_name"],
+                    "text": text
+                })
+
+        print(f"  Found {len(supporting_texts)} supporting file(s).")
 
         # baseline metrics
         linguistic = analyze_linguistic_complexity(main_text)
