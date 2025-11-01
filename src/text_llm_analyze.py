@@ -74,17 +74,18 @@ def run_text_llm_analysis(parsed_files, zip_path):
         skills = generate_text_llm_skills(main_text)
         success = generate_text_llm_success_factors(main_text, linguistic)
 
-        display_text_llm_results(main_file["file_name"], linguistic, summary, skills, success)
+        display_text_llm_results(project_name, main_file["file_name"], linguistic, summary, skills, success)
 
     print(f"\n{'='*80}")
     print("PROJECT SUMMARY - (LLM-based results: summaries, skills, and success factors)")
     print(f"{'='*80}\n")
-    print("All insights successfully generated for eligible text files.")
+    print("All insights successfully generated for eligible text projects.")
     print(f"\n{'='*80}\n")
 
 
-def display_text_llm_results(filename, linguistic, summary, skills, success):
-    print(f"Processing: {filename}")
+def display_text_llm_results(project_name, main_file_name, linguistic, summary, skills, success):
+    print(f"\nProject: {project_name}")
+    print(f"[Main File] {main_file_name}")
     print("  Linguistic & Readability:")
     print(f"    Word Count: {linguistic['word_count']}, Sentences: {linguistic['sentence_count']}")
     print(f"    Reading Level: {linguistic['reading_level']} (Grade {linguistic['flesch_kincaid_grade']})")
@@ -183,7 +184,6 @@ def generate_text_llm_skills(text):
 
 
 def generate_text_llm_success_factors(text, linguistic):
-    """Generate concise, context-aware success factors that adapt to different text types."""
     text = text[:6000]
     readability = linguistic.get("reading_level", "N/A")
     diversity = linguistic.get("lexical_diversity", "N/A")
