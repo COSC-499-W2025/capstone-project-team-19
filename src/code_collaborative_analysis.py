@@ -12,11 +12,11 @@ import datetime as dt
 import subprocess
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
-from src.language_detector import detect_languages
 from src.github_auth.github_oauth import github_oauth
 from src.github_auth.token_store import get_github_token
 from src.github_auth.link_repo import ensure_repo_link, select_and_store_repo
 from src.extension_catalog import get_languages_for_extension
+from src.framework_detector import detect_frameworks
 
 import sqlite3
 
@@ -81,6 +81,11 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
         langs_from_db = detect_languages(conn, project_name) or []
         if langs_from_db:
             metrics["focus"]["languages"] = [f"{lang} (from DB)" for lang in langs_from_db]
+    
+    # 5b) Always try to detect frameworks from config files (even if langs already found)
+    frameworks = detect_frameworks(conn, project_name, user_id, zip_path)
+    if frameworks:
+        metrics.setdefault("focus", {})["frameworks"] = sorted(frameworks)
 
     # 6) Print the card and return metrics
     _print_project_card(metrics)
@@ -549,6 +554,8 @@ def _top_folder(path: str) -> str:
 
 
 def _ext_to_lang(ext: str) -> str:
+    # Fast per-file mapping: use extension_catalog first, but keep this local
+    # helper so we don’t hit the DB or do heavier detection inside the LOC loop.
     langs = get_languages_for_extension(ext)
     if langs:
         # pick first (Pygments usually returns nice names like 'Python', 'C++', etc.)
@@ -574,6 +581,7 @@ def _print_project_card(m: dict) -> None:
     langs     = ", ".join(f.get("languages", [])) or "—"
     folders   = ", ".join(f.get("folders", [])) or "—"
     top_files = ", ".join(f.get("top_files", [])) or "—"
+    frameworks = ", ".join(f.get("frameworks", [])) or "—"
 
     # Active days (inclusive)
     active_days = None
@@ -616,6 +624,7 @@ Files: changed {l.get('files_touched',0)}  |  new {l.get('new_files',0)}  |  ren
 Active: {dt_str(h.get('first'))} → {dt_str(h.get('last'))}   |   L30: {h.get('L30',0)}  L90: {h.get('L90',0)}  L365: {h.get('L365',0)}
 Streaks: longest {h.get('longest_streak',0)} days   |   current {h.get('current_streak',0)} days
 Focus: {langs}
+Frameworks: {frameworks}
 Top folders: {folders}
 Top files: {top_files}
 {summary_line}
