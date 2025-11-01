@@ -39,6 +39,26 @@ def analyze_code_project(conn: sqlite3.Connection, user_id: int, project_name: s
     # 1) Resolve allowed base paths and find the repo root
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
     repo_dir = _resolve_project_repo(zip_data_dir, zip_name, project_name)
+
+    # Fallback 2: try other names marked collaborative+code in DB
+    if not repo_dir:
+        candidates = _get_collab_code_projects(conn)
+
+        # If current name wasn’t in DB, still try DB-listed names (bounded)
+        # Put the original name first (no-op if already tried), then others
+        ordered = [project_name] + [n for n in sorted(candidates) if n != project_name]
+
+        tried = set()
+        for name in ordered:
+            if name in tried:
+                continue
+            tried.add(name)
+            repo_dir = _resolve_project_repo(zip_data_dir, zip_name, name)
+            if repo_dir:
+                # If we matched a different DB name, adopt it so downstream labels are correct
+                project_name = name
+                break
+            
     if not repo_dir:
         print(f"\nNo local Git repo found under allowed paths. "
               f"Zip a local clone (not GitHub 'Download ZIP') so .git is included.")
@@ -629,3 +649,22 @@ Top folders: {folders}
 Top files: {top_files}
 {summary_line}
 """.rstrip())
+    
+
+def _get_collab_code_projects(conn: sqlite3.Connection) -> set[str]:
+    """
+    Return project names marked collaborative+code in DB.
+    """
+    try:
+        cur = conn.execute(
+            """
+            SELECT DISTINCT project_name
+            FROM project_classifications
+            WHERE classification = 'collaborative'
+              AND project_type = 'code'
+            """
+        )
+        return {row[0] for row in cur.fetchall() if row and row[0]}
+    except Exception as e:
+        print(f"[warn] project_classifications lookup failed: {e}")
+        return set()
