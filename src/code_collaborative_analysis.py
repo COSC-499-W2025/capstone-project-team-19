@@ -16,6 +16,7 @@ from src.language_detector import detect_languages
 from src.github_auth.github_oauth import github_oauth
 from src.github_auth.token_store import get_github_token
 from src.github_auth.link_repo import ensure_repo_link, select_and_store_repo
+from src.extension_catalog import get_languages_for_extension
 
 import sqlite3
 
@@ -546,20 +547,14 @@ def _top_folder(path: str) -> str:
     parts = path.replace("\\", "/").split("/")
     return parts[0] if parts else ""
 
-def _ext_to_lang(ext: str) -> str:
-    m = {
-        ".py": "Python", ".ipynb": "Jupyter", ".js": "JS", ".ts": "TS",
-        ".tsx": "TSX", ".jsx": "JSX", ".java": "Java", ".cs": "C#",
-        ".cpp": "C++", ".cxx": "C++", ".cc": "C++", ".c": "C",
-        ".rs": "Rust", ".go": "Go", ".rb": "Ruby", ".php": "PHP",
-        ".kt": "Kotlin", ".swift": "Swift", ".m": "Obj-C",
-        ".h": "Header", ".hpp": "Header", ".hh": "Header",
-        ".sql": "SQL", ".html": "HTML", ".css": "CSS", ".scss": "SCSS",
-        ".md": "Markdown", ".yml": "YAML", ".yaml": "YAML",
-        ".sh": "Shell", ".ps1": "Powershell",
-    }
-    return m.get(ext, ext.replace(".", "").upper() or "Other")
 
+def _ext_to_lang(ext: str) -> str:
+    langs = get_languages_for_extension(ext)
+    if langs:
+        # pick first (Pygments usually returns nice names like 'Python', 'C++', etc.)
+        return next(iter(langs))
+    # fallback for anything Pygments doesn't know
+    return ext.replace(".", "").upper() or "Other"
 
 # -------------------------------------------------------------------------
 # CLI printing
