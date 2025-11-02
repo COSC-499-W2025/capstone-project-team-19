@@ -15,6 +15,7 @@ from src.project_analysis import detect_project_type, send_to_analysis
 from src.upload_checks import handle_existing_zip
 from src.helpers import cleanup_extracted_zip
 
+
 def main():
     print("Welcome aboard! Let's turn your work into cool insights.")
 
@@ -22,6 +23,7 @@ def main():
     processed_zip_path = prompt_and_store()
     if processed_zip_path:
         cleanup_extracted_zip(processed_zip_path)
+
 
 def prompt_and_store():
     """Main flow: identify user, check prior consents, reuse or re-prompt."""
@@ -138,14 +140,21 @@ def prompt_and_store():
     unchecked_zip = True
     assignments = None
     processed_zip_path = None
-    
-    while (unchecked_zip):
+
+    while unchecked_zip:
         zip_path = get_zip_path_from_user()
         if not zip_path:
             print("No path entered. Exiting file selection.")
             break
-        
+
         print(f"\nReceived path: {zip_path}")
+
+        # --- Restored duplicate zip check ---
+        zip_path = handle_existing_zip(conn, user_id, zip_path)
+        if not zip_path:
+            print("Skipping parsing and analysis (reuse selected).")
+            return  # user chose to reuse
+
         result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
         if not result:
             print("\nNo valid files were processed. Check logs for unsupported or corrupted files.")
@@ -153,7 +162,7 @@ def prompt_and_store():
         processed_zip_path = zip_path
 
         assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
-        try: 
+        try:
             detect_project_type(conn, user_id, assignments)
             # if zip file is valid (has folders)
             unchecked_zip = False
@@ -163,14 +172,14 @@ def prompt_and_store():
             processed_zip_path = None
             assignments = None
             continue
-        
+
     if assignments and processed_zip_path:
-        send_to_analysis(conn, user_id, assignments, current_ext_consent, processed_zip_path) #takes projects and sends them into the analysis flow
+        send_to_analysis(conn, user_id, assignments, current_ext_consent, processed_zip_path)  # takes projects and sends them into the analysis flow
     else:
         if assignments:
             print("No valid project analysis to send.")
     return processed_zip_path
-        
+
 
 def get_zip_path_from_user():
     path = input("Please enter the path to your ZIP file: ").strip()
@@ -256,5 +265,7 @@ def ask_project_classification(project_name: str) -> str:
             return "collaborative"
         print("Please respond with 'i' for individual or 'c' for collaborative.")
 
+
 if __name__ == "__main__":
     main()
+
