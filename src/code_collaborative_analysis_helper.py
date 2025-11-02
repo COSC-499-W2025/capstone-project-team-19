@@ -19,14 +19,15 @@ DEBUG = False
 def resolve_repo_for_project(conn: sqlite3.Connection,
                              zip_data_dir: str,
                              zip_name: str,
-                             project_name: str) -> Optional[str]:
+                             project_name: str,
+                             user_id: int | str) -> Optional[str]:
     # 1) ./zip_data/.../collaborative/<project>
     repo = _resolve_from_collaborative_folder(zip_data_dir, zip_name, project_name)
     if repo:
         return repo
 
     # 2) project_classifications (collaborative+code)
-    repo = _resolve_from_db_classification(conn, zip_data_dir, zip_name, project_name)
+    repo = _resolve_from_db_classification(conn, zip_data_dir, zip_name, project_name, user_id)
     if repo:
         return repo
 
@@ -68,25 +69,31 @@ def _resolve_from_collaborative_folder(zip_data_dir: str,
 def _resolve_from_db_classification(conn: sqlite3.Connection,
                                     zip_data_dir: str,
                                     zip_name: str,
-                                    wanted: str) -> Optional[str]:
+                                    wanted: str,
+                                    user_id: int | str) -> Optional[str]:
     try:
         rows = conn.execute(
             """
             SELECT DISTINCT project_name
             FROM project_classifications
-            WHERE classification='collaborative'
-              AND project_type='code'
-            """
+            WHERE classification = 'collaborative'
+              AND project_type   = 'code'
+              AND user_id        = ?
+              AND zip_name       = ?
+            """,
+            (user_id, zip_name)
         ).fetchall()
     except Exception:
         rows = []
 
     names = [r[0] for r in rows if r and r[0]]
+    # Prefer the explicitly requested/wanted project first.
     ordered = [wanted] + [n for n in names if n != wanted]
 
     base_root = os.path.join(zip_data_dir, zip_name)
 
     for name in ordered:
+        # quick exact-path candidates
         simple_candidates = [
             os.path.join(zip_data_dir, zip_name, name),
             os.path.join(zip_data_dir, name),
