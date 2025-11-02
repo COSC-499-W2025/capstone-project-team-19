@@ -1,5 +1,6 @@
 import os
 import textwrap
+import json
 from src.alt_analyze import analyze_linguistic_complexity
 from src.helpers import extract_text_file
 from dotenv import load_dotenv
@@ -85,8 +86,8 @@ def run_text_llm_analysis(parsed_files, zip_path):
 
         # LLM calls
         summary = generate_text_llm_summary(main_text)
-        skills = generate_text_llm_skills(main_text)
-        success = generate_text_llm_success_factors(main_text, linguistic)
+        skills = generate_text_llm_skills(main_text, supporting_texts)
+        success = generate_text_llm_success_factors(main_text, linguistic, supporting_texts)
 
         display_text_llm_results(project_name, main_file["file_name"], linguistic, summary, skills, success)
 
@@ -113,9 +114,33 @@ def display_text_llm_results(project_name, main_file_name, linguistic, summary, 
         print(f"    - {skill}")
 
     print("\n  Success Factors:")
-    print(f"    Strengths: {success['strengths']}")
-    print(f"    Weaknesses: {success['weaknesses']}")
-    print(f"    Overall Evaluation: {success['score']}\n")
+    
+    # format strengths and weaknesses nicely
+    def print_list_or_str(label, content):
+        print(f"    {label}:")
+        if isinstance(content, list):
+            for item in content:
+                print(f"      - {item}")
+        elif isinstance(content, str):
+            # Handle case where LLM returns comma-separated strings
+            if content.startswith("[") and content.endswith("]"):
+                try:
+                    parsed = json.loads(content)
+                    for item in parsed:
+                        print(f"      - {item}")
+                except Exception:
+                    print(f"      {content}")
+            elif "," in content:
+                for part in [x.strip() for x in content.split(",") if x.strip()]:
+                    print(f"      - {part}")
+            else:
+                print(f"      - {content}")
+        else:
+            print(f"      - {str(content)}")
+
+    print_list_or_str("Strengths", success.get("strengths", "None"))
+    print_list_or_str("Weaknesses", success.get("weaknesses", "None"))
+    print(f"    Overall Evaluation: {success.get('score', 'None')}\n")
 
 
 def generate_text_llm_summary(text):
@@ -154,18 +179,27 @@ def generate_text_llm_summary(text):
         return "[Summary unavailable due to API error]"
 
 
-def generate_text_llm_skills(text):
-    text = text[:6000]
+def generate_text_llm_skills(main_text, supporting_texts=None):
+    main_text = main_text[:6000]
+    merged_supporting = ""
+
+    if supporting_texts:
+        for s in supporting_texts:
+            merged_supporting += f"\n\n### {s['filename']} ###\n{s['text'][:1500]}"
+            
     prompt = (
-        "From the following text, infer 3–5 key *skills* demonstrated by the author or creator. "
-        "Think broadly — the text might show analytical reasoning, storytelling, design thinking, data analysis, "
-        "communication, project planning, teamwork, or creativity. "
-        "Write each skill as a short phrase suitable for a résumé (no numbering, just bullet-style lines).\n\n"
-        f"Text:\n{text}\n\n"
-        "Output example:\n"
-        "- Analytical reasoning and synthesis\n"
-        "- Structured argumentation and clarity\n"
-        "- Creative expression through dialogue\n\n"
+        "You are analyzing a writing project composed of a main document and optional supporting materials "
+        "(e.g., outlines, drafts, notes, reflections). Together they demonstrate both writing skill and process.\n\n"
+        "Step 1: Consider the main document as the final polished work — it shows core writing quality, clarity, and organization.\n"
+        "Step 2: Consider the supporting materials as evidence of process skills — planning, structuring ideas, research, or revision.\n\n"
+        "Infer 3–6 résumé-ready skills that the author demonstrates across all materials. "
+        "Be concrete and skill-oriented (e.g., 'Analytical reasoning', 'Structured argumentation', 'Creative development', "
+        "'Research synthesis', 'Iterative editing and reflection').\n\n"
+        "Output one skill per line (no numbering, no extra text).\n\n"
+        "MAIN DOCUMENT:\n"
+        f"{main_text}\n\n"
+        "SUPPORTING MATERIALS:\n"
+        f"{merged_supporting}\n\n"
         "Now list the most relevant skills:"
     )
 
@@ -178,6 +212,7 @@ def generate_text_llm_skills(text):
                     "content": (
                         "You identify and phrase professional or academic skills demonstrated through written work. "
                         "Keep them concise and skill-oriented."
+                        "taking into account both final work and process evidence."
                     ),
                 },
                 {"role": "user", "content": prompt},
@@ -197,34 +232,42 @@ def generate_text_llm_skills(text):
         return ["[Skills unavailable due to API error]"]
 
 
-def generate_text_llm_success_factors(text, linguistic):
-    text = text[:6000]
+def generate_text_llm_success_factors(main_text, linguistic, supporting_texts=None):
+    main_text = main_text[:6000]
     readability = linguistic.get("reading_level", "N/A")
     diversity = linguistic.get("lexical_diversity", "N/A")
     word_count = linguistic.get("word_count", "N/A")
+    
+    merged_supporting = ""
+    if supporting_texts:
+        for s in supporting_texts:
+            merged_supporting += f"\n\n### {s['filename']} ###\n{s['text'][:1200]}"
 
     prompt = (
-        f"You are evaluating a piece of writing. Here are some details:\n"
+        "You are evaluating a complete writing project that includes both a final document "
+        "and supporting materials such as outlines, drafts, and notes. "
+        "The final document shows end quality, while the supporting files reveal process, planning, and revision.\n\n"
+        f"Here are some metrics from the main document:\n"
         f"- Reading level: {readability}\n"
         f"- Lexical diversity: {diversity}\n"
         f"- Word count: {word_count}\n\n"
-        "Different kinds of text require different evaluation criteria:\n"
-        "- Academic or analytical works → clarity of argument, evidence use, structure, originality.\n"
-        "- Creative or narrative works → storytelling, emotional depth, imagery, originality.\n"
-        "- Functional or professional texts (e.g., project proposals, itineraries, reports, resumes) → clarity, organization, tone, usefulness, professionalism.\n\n"
-        "Tailor your assessment accordingly.\n\n"
-        "Write three brief parts:\n"
-        "1. **Strengths:** 2–4 short, specific phrases (no full sentences).\n"
-        "2. **Weaknesses:** 2–4 short, specific phrases (avoid generic terms like 'needs improvement').\n"
-        "3. **Overall Evaluation:** Give a score from 1 to 10, with a 3–5 word summary in parentheses "
-        "(e.g., '8.3 / 10 (Strong clarity)').\n\n"
-        "Keep the total response under 30 words and respond *only* in JSON format like this:\n"
+        "Assess both the final quality *and* the creative or analytical process using these criteria:\n"
+        "- Clarity and organization in the final text\n"
+        "- Depth of ideas and originality\n"
+        "- Writing craftsmanship (tone, coherence, structure)\n"
+        "- Evidence of iteration, planning, or critical reflection in supporting materials\n\n"
+        "Base your feedback on both kinds of evidence. "
+        "If supporting materials show strong planning or revisions, highlight that explicitly as a strength. "
+        "If they show gaps or lack of reflection, include that in weaknesses.\n\n"
+        "Write your response in clean JSON with three fields:\n"
         "{\n"
-        '  "strengths": "clear layout, consistent tone, relevant examples",\n'
-        '  "weaknesses": "minor redundancy, limited depth",\n'
-        '  "score": "8.1 / 10 (Well-organized work)"\n'
+        '  "strengths": "3–5 concise phrases (≤8 words each)",\n'
+        '  "weaknesses": "3–5 concise phrases (≤8 words each)",\n'
+        '  "score": "score like 8.4 / 10 (clear process and quality)"\n'
         "}\n\n"
-        f"Text:\n{text}\n\n"
+        "Keep total response under 50 words. Avoid full sentences, markdown, or bullet formatting."
+        f"MAIN DOCUMENT:\n{main_text}\n\n"
+        f"SUPPORTING MATERIALS:\n{merged_supporting}\n\n"
         "Your response:"
     )
 
@@ -235,8 +278,8 @@ def generate_text_llm_success_factors(text, linguistic):
                 {
                     "role": "system",
                     "content": (
-                        "You are a concise evaluator who adapts your judgment based on the document type. "
-                        "Avoid repeating stock phrases and keep the tone professional."
+                        "You are an academic evaluator who assesses both final writing quality and process evidence. "
+                        "Respond only in clean JSON (no markdown or commentary)."
                     ),
                 },
                 {"role": "user", "content": prompt},
@@ -245,22 +288,34 @@ def generate_text_llm_success_factors(text, linguistic):
             max_tokens=200,
         )
 
-        import json
-        raw_output = completion.choices[0].message.content.strip()
+        raw = completion.choices[0].message.content.strip()
+
+        # clean markdown or prefix lines but preserve JSON
+        if "```" in raw:
+            parts = raw.split("```")
+            raw = max(parts, key=len)  # keep the largest chunk (likely the JSON)
+            
+        # remove stray explanations or headers (###, etc.)
+        raw = "\n".join(
+            line for line in raw.splitlines()
+            if not line.strip().startswith(("###", "**", "Final", "Part", "json"))
+        ).strip()
+
+        # extract only the JSON-like section
+        if "{" in raw and "}" in raw:
+            raw = raw[raw.find("{") : raw.rfind("}") + 1]
 
         try:
-            data = json.loads(raw_output)
-            return {
-                "strengths": data.get("strengths", "None"),
-                "weaknesses": data.get("weaknesses", "None"),
-                "score": data.get("score", "None"),
-            }
+            data = json.loads(raw)
         except json.JSONDecodeError:
-            return {
-                "strengths": "[Parsing error: raw output below]",
-                "weaknesses": raw_output,
-                "score": "None",
-            }
+            print("\n Could not parse model response:\n", raw[:500])
+            raise
+
+        return {
+            "strengths": data.get("strengths", "None"),
+            "weaknesses": data.get("weaknesses", "None"),
+            "score": data.get("score", "None"),
+        }
 
     except Exception as e:
         print(f"Error generating success factors: {e}")
