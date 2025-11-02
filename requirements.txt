@@ -4,11 +4,15 @@ pandas
 requests
 python-dotenv>=1.0.1
 
+# Security
+cryptography>=41.0.0
+
 # File parsing
 pymupdf
 docx2txt
 openpyxl
 pypdf
+pygments
 
 nltk
 textstat

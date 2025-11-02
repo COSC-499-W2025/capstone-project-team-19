@@ -1,15 +1,4 @@
-import os
-
-EXTENSION_TO_LANGUAGE = {
-    ".py": "Python",
-    ".java": "Java",
-    ".js": "JavaScript",
-    ".html": "HTML",
-    ".css": "CSS",
-    ".c": "C",
-    ".cpp": "C++",
-    ".h": "C/C++ Header"
-}
+from extension_catalog import get_languages_for_extension
 
 
 def detect_languages(conn, project_name):
@@ -27,12 +16,10 @@ def detect_languages(conn, project_name):
 
     languages = set()
 
-    #look up languages based on extensions
+    # look up languages based on extensions (case-insensitive)
     for row in results:
-        ext = row[0]
-        language = EXTENSION_TO_LANGUAGE.get(ext.lower())
-        if language:
-            languages.add(language)
+        ext = row[0] or ""
+        languages.update(get_languages_for_extension(ext))
 
-    return list(languages)
+    return sorted(languages)
     

@@ -1,4 +1,5 @@
 import sqlite3
+import shutil
 from typing import List, Dict, Optional, Tuple
 import os
 import subprocess
@@ -37,6 +38,26 @@ def zip_paths(zip_path: str) -> Tuple[str, str, str]:
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     base_path = os.path.join(zip_data_dir, zip_name)
     return zip_data_dir, zip_name, base_path
+
+def cleanup_extracted_zip(zip_path: str) -> None:
+    """
+    Remove the entire ./zip_data workspace created for a ZIP upload.
+    Safe to call multiple times; silently skips missing paths.
+    """
+    if not zip_path:
+        return
+
+    try:
+        zip_data_dir, _, _ = zip_paths(zip_path)
+    except Exception:
+        return
+
+    if os.path.isdir(zip_data_dir):
+        try:
+            shutil.rmtree(zip_data_dir)
+            print(f"\nCleaned up extracted files at: {zip_data_dir}")
+        except OSError as exc:
+            print(f"\nWarning: Could not remove extracted files at {zip_data_dir}: {exc}")
 
 def ensure_table(conn: sqlite3.Connection, table: str, ddl: str) -> None:
     conn.execute(ddl)
