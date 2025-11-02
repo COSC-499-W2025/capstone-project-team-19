@@ -108,22 +108,28 @@ def bfs_find_repo(root: str, max_depth: int = 2) -> Optional[str]:
 
 ## Text Extraction
 
-SUPPORTED_TEXT_EXTENSIONS={'.txt', '.pdf','.docx'}
+SUPPORTED_TEXT_EXTENSIONS = {'.txt', '.pdf', '.docx', '.md'}
 
-def extract_text_file(filepath: str)->Optional[str]: #extract text
-    extension=os.path.splitext(filepath)[1].lower()
-    if(extension) not in SUPPORTED_TEXT_EXTENSIONS:
+def extract_text_file(filepath: str) -> Optional[str]:
+    """
+    Extract readable text from .txt, .md, .pdf, or .docx files.
+    """
+    extension = os.path.splitext(filepath)[1].lower()
+    if extension not in SUPPORTED_TEXT_EXTENSIONS:
         return None
     
     try:
-        if extension=='.txt':
+        if extension in {'.txt', '.md'}:
+            # Treat Markdown as plain text (UTF-8)
             return extractfromtxt(filepath)
         elif extension == '.pdf':
             return extractfrompdf(filepath)
         elif extension == '.docx':
             return extractfromdocx(filepath)
     except Exception as e:
-        return None  
+        print(f"Error extracting from {filepath}: {e}")
+        return None
+    
     return None
 
 def extractfromtxt(filepath:str)->str:

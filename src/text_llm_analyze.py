@@ -237,17 +237,17 @@ def generate_text_llm_success_factors(main_text, linguistic, supporting_texts=No
     readability = linguistic.get("reading_level", "N/A")
     diversity = linguistic.get("lexical_diversity", "N/A")
     word_count = linguistic.get("word_count", "N/A")
-    
+
     merged_supporting = ""
     if supporting_texts:
         for s in supporting_texts:
-            merged_supporting += f"\n\n### {s['filename']} ###\n{s['text'][:1200]}"
+            merged_supporting += f"\n\n### FILE: {s['filename']} ###\n{s['text'][:1200]}"
 
     prompt = (
         "You are evaluating a complete writing project that includes both a final document "
         "and supporting materials such as outlines, drafts, and notes. "
         "The final document shows end quality, while the supporting files reveal process, planning, and revision.\n\n"
-        f"Here are some metrics from the main document:\n"
+        f"Here are metrics from the main document:\n"
         f"- Reading level: {readability}\n"
         f"- Lexical diversity: {diversity}\n"
         f"- Word count: {word_count}\n\n"
@@ -256,16 +256,17 @@ def generate_text_llm_success_factors(main_text, linguistic, supporting_texts=No
         "- Depth of ideas and originality\n"
         "- Writing craftsmanship (tone, coherence, structure)\n"
         "- Evidence of iteration, planning, or critical reflection in supporting materials\n\n"
-        "Base your feedback on both kinds of evidence. "
-        "If supporting materials show strong planning or revisions, highlight that explicitly as a strength. "
-        "If they show gaps or lack of reflection, include that in weaknesses.\n\n"
+        "When mentioning any strength or weakness that clearly relates to a supporting file, "
+        "include the exact filename in parentheses — e.g. 'Strong revision notes (draft_v2.docx)' or "
+        "'Effective note-taking and summaries (notes.md)'. "
+        "Do NOT use vague phrases like 'in supporting files' or 'in drafts' — always specify the file name if available.\n\n"
         "Write your response in clean JSON with three fields:\n"
         "{\n"
-        '  "strengths": "3–5 concise phrases (≤8 words each)",\n'
-        '  "weaknesses": "3–5 concise phrases (≤8 words each)",\n'
-        '  "score": "score like 8.4 / 10 (clear process and quality)"\n'
+        '  \"strengths\": [\"3–5 concise phrases (≤8 words each)\"],\n'
+        '  \"weaknesses\": [\"3–5 concise phrases (≤8 words each)\"],\n'
+        '  \"score\": \"score like 8.4 / 10 (clear process and quality)\"\n'
         "}\n\n"
-        "Keep total response under 50 words. Avoid full sentences, markdown, or bullet formatting."
+        "Keep total response under 50 words. Avoid full sentences, markdown, or bullet formatting.\n\n"
         f"MAIN DOCUMENT:\n{main_text}\n\n"
         f"SUPPORTING MATERIALS:\n{merged_supporting}\n\n"
         "Your response:"
@@ -285,23 +286,23 @@ def generate_text_llm_success_factors(main_text, linguistic, supporting_texts=No
                 {"role": "user", "content": prompt},
             ],
             temperature=0.45,
-            max_tokens=200,
+            max_tokens=250,
         )
 
         raw = completion.choices[0].message.content.strip()
 
-        # clean markdown or prefix lines but preserve JSON
+        # Clean markdown fences
         if "```" in raw:
             parts = raw.split("```")
-            raw = max(parts, key=len)  # keep the largest chunk (likely the JSON)
-            
-        # remove stray explanations or headers (###, etc.)
+            raw = max(parts, key=len)
+
+        # Remove stray headers
         raw = "\n".join(
             line for line in raw.splitlines()
             if not line.strip().startswith(("###", "**", "Final", "Part", "json"))
         ).strip()
 
-        # extract only the JSON-like section
+        # Extract JSON substring
         if "{" in raw and "}" in raw:
             raw = raw[raw.find("{") : raw.rfind("}") + 1]
 
