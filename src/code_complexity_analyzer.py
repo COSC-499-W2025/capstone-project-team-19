@@ -93,8 +93,6 @@ def analyze_code_complexity(conn, user_id: int, project_name: str, zip_path: str
         if not languages:
             continue
 
-        print(f"Analyzing: {file_name}...")
-
         # Analyze with Radon (Python only)
         is_python = 'Python' in languages
         radon_data = analyze_with_radon(full_path, file_name, is_python)
