@@ -140,9 +140,12 @@ def test_no_repo_found_prints_skip(tmp_sqlite_conn, temp_zip_layout, monkeypatch
 
 def test_identity_prompt_and_persist(tmp_sqlite_conn, temp_zip_layout, monkeypatch, capsys):
     """
-    checks the first-run flow: no identity yet, we prompt, save the chosen author,
+    First-run flow: no identity yet -> prompt, save chosen author,
     then run analysis and print the card.
     """
+    import os
+
+    # zip paths -> fixed temp layout
     def fake_zip_paths(_zip_path):
         return (
             temp_zip_layout["zip_data_dir"],
@@ -151,6 +154,7 @@ def test_identity_prompt_and_persist(tmp_sqlite_conn, temp_zip_layout, monkeypat
         )
     monkeypatch.setattr(cc, "zip_paths", fake_zip_paths)
 
+    # repo resolver -> point to collaborative/<project_name>
     monkeypatch.setattr(
         cc,
         "resolve_repo_for_project",
@@ -163,20 +167,28 @@ def test_identity_prompt_and_persist(tmp_sqlite_conn, temp_zip_layout, monkeypat
         ),
     )
 
-
-    # ✅ mock frameworks
+    # frameworks off
     monkeypatch.setattr(cc, "detect_frameworks", lambda *args, **kwargs: set())
 
     cc.ensure_user_github_table(tmp_sqlite_conn)
 
+    # authors found in repo
     authors = [("Me Dev", "me@example.com", 10), ("Teammate", "teammate@example.com", 8)]
     monkeypatch.setattr(cc, "collect_repo_authors", lambda _repo: authors)
 
-    inputs = iter(["n", "1", ""])
-    monkeypatch.setattr("builtins.input", lambda _prompt="": next(inputs))
+    # robust input mock: provide three answers; return "" if more prompts appear
+    answers = iter(["n", "1", ""])  # enhance? -> n, pick author -> 1, extra emails -> ""
+    def safe_input(_prompt=""):
+        try:
+            return next(answers)
+        except StopIteration:
+            return ""  # fallback for unexpected extra prompt(s), e.g., description
+    monkeypatch.setattr("builtins.input", safe_input)
 
+    # commits authored by me@example.com
     monkeypatch.setattr(cc, "read_git_history", lambda _repo: _fake_commits("me@example.com"))
 
+    # run
     m = cc.analyze_code_project(
         conn=tmp_sqlite_conn,
         user_id=7,
@@ -184,9 +196,11 @@ def test_identity_prompt_and_persist(tmp_sqlite_conn, temp_zip_layout, monkeypat
         zip_path=temp_zip_layout["zip_path"],
     )
 
+    # assert
     out = capsys.readouterr().out
     assert m is not None
     assert "Saved your identity for future runs" in out
+
     rows = tmp_sqlite_conn.execute(
         "SELECT email, name FROM user_github WHERE user_id = ?", (7,)
     ).fetchall()
