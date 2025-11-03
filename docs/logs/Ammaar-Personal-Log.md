@@ -57,3 +57,19 @@ As for PR reviews, I reviewed Timmi’s parsing to DB PR to make sure the new sc
 Week recap: I merged the Store Raw Project Info PR (#117) so every parsed file now gets saved with its project name. That change means downstream analysis can group artifacts without re-checking folder paths. I linked the parser straight into the `projects` table and updated the schema. I also worked on the “reject consent first” bug (#116). I wrote a regression test, and confirmed the UI flow is accurate to the logic we intended.
 
 Next week’s focus: implement the cleanup that deletes `zip_data/` right after parsing and analysis (this was agreed upon by the team).
+
+## (Week 9) Monday 27th October - Sunday 2nd November
+
+![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Oct27-Nov2.png)
+
+Week recap: This week I worked on two features and reviewed two PRs. I also updated the team log with everyone's contributions.
+
+For my first PR (#140), I added cleanup functionality to delete the `zip_data/` folder after parsing is done. Timmi suggested moving the cleanup call from `prompt_and_store()` to `main()` to keep responsibilities separate, which made sense. I refactored it and added unit tests. 
+
+For my second PR (#142), I replaced our hard-coded language detection with Pygments so we can now recognize way more file types: Rust, Go, Kotlin, TypeScript, Swift, and others. This really broadens what our system can analyze for building portfolios and resumes later on.
+
+On the PR review side, I reviewed Timmi's GitHub OAuth PR (#152). Found a few issues during testing. Timmi fixed everything quickly and got it working smoothly.
+
+I also reviewed Adara's text analysis refactoring PR (#160). I noticed analysis only worked for PDFs initially and project names weren't displaying correctly. She fixed both issues, added markdown support, and synced with the main branch. Everything passed after her changes.
+
+Next week's focus: I'll be working on updating the database schema and connecting the Google Drive API.
