@@ -10,9 +10,6 @@ from src.google_drive_auth.file_selector import (
     browse_all_files,
 )
 
-pytestmark = pytest.mark.no_shared_db
-
-
 def test_select_from_matches_valid_and_invalid(monkeypatch):
     """Covers valid, invalid, and out-of-range selections."""
     maybe_matches = [

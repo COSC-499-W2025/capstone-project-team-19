@@ -111,9 +111,6 @@ def find_maybe_matches(local_file_name: str, project_name: Optional[str], drive_
         file_id = drive_file['id']
         mime_type = drive_file['mimeType']
         
-        # Debug: print what we're comparing
-        print(f"  Comparing: local_base='{local_base}' vs drive_base='{drive_base}' (drive_name='{drive_name}')")
-        
         # Check case-insensitive base name match OR project name in drive file name
         if local_base == drive_base or (project_lower and project_lower in drive_lower):
             print(f"  [POTENTIAL MATCH] '{local_file_name}' -> '{drive_name}'")
