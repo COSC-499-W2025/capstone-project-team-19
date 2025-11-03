@@ -74,6 +74,8 @@ My PR's:
 
 ![Screenshot of this week's peer evaluation]()
 
+NOTE: The peer evaluation for this week closed at 7:50am this morning, November 2nd. Usually it closes at 11:59pm. I have emailed the professor and my TA about this. Until the peer evaluation is opened up, or I am informed that it was closed at that time on purpose, I won't be uploading a screenshot because I don't have one.
+
 Week Recap: This week I worked on implementing the GitHub OAuth to further the collaboration analysis. Although no metrics have been pulled from GitHub yet, I worked on setting up the authentication flow through GitHub. If the user agrees, they can connect their project to a GitHub repository, which will allow us to analyze more individual contributions to a collaborative project. I included various tests, and ensured any tokens were securely stored in the local database.
 
 Next week, I plan to extend the individual contributions to a collaboratvie project by actually requesting and recieving dating via the GitHub API once the user has linked a project to its GitHub repository. I also began refactoring the main flow (specifically the file `main.py`), but because of how messy the file is it is taking me longer than expected. Thus, I will continue my refactoring and hope to have this PR done early next week.
