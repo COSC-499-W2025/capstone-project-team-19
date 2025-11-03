@@ -4,6 +4,7 @@ from src.parsing import parse_zip_file, analyze_project_layout
 from src.db import (
     connect,
     init_schema,
+    get_user_by_username,
     get_or_create_user,
     get_latest_consent,
     get_latest_external_consent,
@@ -30,34 +31,47 @@ def prompt_and_store():
     conn = connect()
     init_schema(conn)
 
-    username = input("Enter your username: ").strip()
-    user_id = get_or_create_user(conn, username)
+    # defensive, but not technically necessary
+    consent_status = None
+    external_consent_status = None
 
-    # get the stored consent from the database, which decides which flow the user is sent through (can not use helper functions for this)
+    username = input("Enter your username: ").strip()
+    existing_user = get_user_by_username(conn, username)
+
+    if existing_user is None:
+        # user does not exist
+        user_id = get_or_create_user(conn, username)
+        is_new_user = True
+    else:
+        user_id = existing_user[0]
+        is_new_user = False
+
     stored_user_consent = get_latest_consent(conn, user_id)
     stored_external_consent = get_latest_external_consent(conn, user_id)
 
-    if stored_user_consent == "rejected":
-        print(f"\nHeads up, {username}: you previously declined consent, so we can't reuse that configuration.")
+    if is_new_user:
         stored_user_consent = None
         stored_external_consent = None
-
-    # Edge case 1: user exists but no consents yet
-    if not stored_user_consent and not stored_external_consent:
-        consent_status, external_consent_status = handle_existing_user_without_consents(conn, username, user_id)
-
-    # Edge case 2: partial configuration 
-    # The user will never make it this far if they decline user consent no matter what, only need to consider a declined external consent
-    elif (stored_user_consent and not stored_external_consent):
-        consent_status, external_consent_status = resolve_missing_external_consent(conn, username, user_id, stored_user_consent, stored_external_consent)
-
-    # --- Returning user with full configuration ---
-    elif stored_user_consent and stored_external_consent:
-        consent_status, external_consent_status = confirm_or_update_consent(conn, username, user_id, stored_user_consent, stored_external_consent)        
-
-    # --- Brand new user ---
-    else:
         consent_status, external_consent_status = create_new_user(conn, username, user_id)
+
+    else: 
+        if stored_user_consent == "rejected":
+            print(f"\nHeads up, {username}: you previously declined consent, so we can't reuse that configuration.")
+            stored_user_consent = None
+            stored_external_consent = None
+
+        # Edge case 1: user exists but no consents yet
+        if not stored_user_consent and not stored_external_consent:
+            consent_status, external_consent_status = handle_existing_user_without_consents(conn, username, user_id)
+
+        # Edge case 2: partial configuration 
+        # The user will never make it this far if they decline user consent no matter what, only need to consider a declined external consent
+        elif (stored_user_consent and not stored_external_consent):
+            consent_status, external_consent_status = resolve_missing_external_consent(conn, username, user_id, stored_user_consent, stored_external_consent)
+
+        # Returning user with full configuration
+        elif stored_user_consent and stored_external_consent:
+            consent_status, external_consent_status = confirm_or_update_consent(conn, username, user_id, stored_user_consent, stored_external_consent)        
 
     if consent_status is None:
         return None
