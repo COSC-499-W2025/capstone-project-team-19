@@ -46,7 +46,7 @@ def analyze_code_project(conn: sqlite3.Connection,
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
 
     # 2) find repo (collaborative/ → DB classifications → files.file_path)
-    repo_dir = resolve_repo_for_project(conn, zip_data_dir, zip_name, project_name)
+    repo_dir = resolve_repo_for_project(conn, zip_data_dir, zip_name, project_name, user_id)
     if not repo_dir:
         print(
             f"\nNo local Git repo found under allowed paths. "
