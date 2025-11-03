@@ -33,6 +33,14 @@ Week recap: Our team started few codings, I am in charge in creating the WBS. My
 Week recap: implemented the alternative analyses, did some research about the functions to be used in the implementation. Get some feedback from teammate. Feedbacks will be discussed in class on wednesday for further update. 
 
 ## (Week 8) Monday 20th October - Sunday 26th October
-![Screenshot of week 7 peer eval](./screenshots/Johanes-Oct20-26.PNG)
+![Screenshot of week 8 peer eval](./screenshots/Johanes-Oct20-26.PNG)
 
 Week recap: continued implementing the alternative analysis, reviewed some teammate PRs, get some feedback from teammate, did a minor fix for reusing configuration, but wont be merged this week. Next week i plan to start the implementation of alternative analysis on code files.
+
+## (Week 9) Monday 27th October - Sunday 2nd November
+
+![Screenshot of week 9 peer eval](./screenshots/Johanes-Oct27-Nov2.PNG)
+
+Week recap: Implementing the individual metrics analysis necessary for code project (non-llm). Reviewed some teammate PRs, get feedback from Salma and Timmi about branching from main branch, etc.
+
+Next week i plan to implement saving project metrics that was produced, into database. Might have to discussed further with teammates on incoming team meeting.
