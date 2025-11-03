@@ -279,7 +279,7 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
         parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
         if parsed_files:
             print(f"\n[COLLABORATIVE-CODE] Running LLM-based summary for '{project_name}'...")
-            run_code_llm_analysis(parsed_files, zip_path)
+            run_code_llm_analysis(parsed_files, zip_path, project_name)
         else:
             print(f"[COLLABORATIVE-CODE] No code files found for '{project_name}'.")
 
@@ -305,16 +305,13 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
         print(f"[INDIVIDUAL-CODE] No code files found for '{project_name}'.")
         return
 
-    # --- Run main code + Git analysis first ---
+    # --- Run main code + Git analysis ---
     analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=False)
-
-    print(f"\n[INDIVIDUAL-CODE] Running Git-based repository analysis for '{project_name}'...")
-    analyze_code_project(conn, user_id, project_name, zip_path)
 
     # --- Run LLM summary LAST, and only once ---
     if current_ext_consent == "accepted":
         print(f"\n[INDIVIDUAL-CODE] Running LLM-based summary for '{project_name}'...")
-        run_code_llm_analysis(parsed_files, zip_path)
+        run_code_llm_analysis(parsed_files, zip_path, project_name)
     else:
         print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")
     
@@ -328,7 +325,5 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
             alternative_analysis(parsed_files, zip_path, project_name)
 
     elif not only_text:
-        if external_consent=='accepted':
-            run_code_llm_analysis(parsed_files, zip_path)
-        else:
-            run_code_non_llm_analysis(conn, user_id, project_name, zip_path)
+        # Run non-LLM code analysis (static + Git metrics)
+        run_code_non_llm_analysis(conn, user_id, project_name, zip_path)

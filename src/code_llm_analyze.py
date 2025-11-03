@@ -8,7 +8,7 @@ from groq import Groq
 load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-def run_code_llm_analysis(parsed_files, zip_path):    
+def run_code_llm_analysis(parsed_files, zip_path, project_name=None):
     if not isinstance(parsed_files, list):
         return
         
@@ -50,7 +50,8 @@ def run_code_llm_analysis(parsed_files, zip_path):
     
     # get the top-level folder name where the code files live
     project_folders = sorted(set(os.path.dirname(f["file_path"]).split(os.sep)[0] for f in code_files))
-    project_name = project_folders[0] if project_folders else zip_name
+    if not project_name:
+        project_name = project_folders[0] if project_folders else zip_name
     
     # split summary into project + contribution sections
     project_summary = generate_code_llm_project_summary(readme_text, project_context)
