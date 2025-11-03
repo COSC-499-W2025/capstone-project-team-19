@@ -235,3 +235,51 @@ We're going to meet virtually on Monday to discuss further about our plans.
 | GitHub Username | Screenshot                                                                  |
 | --------------- | --------------------------------------------------------------------------- |
 | `ivonanicetin`  | ![In-Progress Task for Ivona](screenshots/In-Progress-Ivona-Oct20-Oct26.png)   |
+
+## (Week 9) Monday 27th October – Sunday 2nd November
+
+### Week recap
+
+The team focused on improving project-level analysis and expanding what data we can work with. Adara refactored both text and code LLM pipelines so each project now produces git-aware metrics, project summaries, and contribution highlights, all organized by project folder. Ammaar added cleanup functionality to delete the extracted ZIP workspace after processing and switched our language detector to Pygments, which lets us support way more programming languages. Ivona set up the Google Drive OAuth flow so users can authorize and pull their cloud documents directly into our analysis pipeline. Johanes built the first version of individual code metrics that work outside the LLM path, giving us consistent baselines even when users don't consent to LLM usage. Salma streamlined the collaborative code analyzer by reusing our language and framework detectors and improving the non-LLM summaries we generate from git history. Timmi implemented the GitHub OAuth handshake so collaborative projects can connect to repositories for better contribution breakdowns later on.
+
+### Plan for the next cycle
+
+- Adara will improve the code LLM flow by handling repos without git data and better README ingestion, plus align text output formatting with the code analyzer.
+- Ammaar will start updating the database schema to store metrics and help with the external API data analysis.
+- Ivona will keep expanding framework detection coverage and look into contribution metrics from the newly fetched Drive files.
+- Johanes will save the new project metrics into the database so they can power future dashboards.
+- Salma will iterate on the non-LLM collaborative summaries by adding NLP cleanup and storage based on team feedback.
+- Timmi will use the new OAuth flow to pull contribution data from GitHub and continue refactoring the main CLI flow.
+
+### Burnup chart
+
+![Burnup chart for Oct 27 - Nov 2](screenshots/week9-burnupchart.png)
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshot |
+| --------------- | ---------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct27-Nov2.png) |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct27-Nov2.png) |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct27-Nov2.png) |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Oct27-Nov2.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct27-Nov2.png) |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct27-Nov2.png) |
+
+### Table view of in progress tasks by username
+
+| GitHub Username | Screenshot |
+| --------------- | ---------- |
+| `ivonanicetin`  | ![In-progress tasks for Ivona](screenshots/In-Progress-Ivona-Oct27-Nov2.png) |
+| `taoTimTim`     | ![In-progress tasks for Timmi](screenshots/In-Progress-Timmi-Oct27-Nov2.png) |
