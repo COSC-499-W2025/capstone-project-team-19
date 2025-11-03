@@ -71,11 +71,10 @@ def test_analyze_code_project_happy_path(tmp_sqlite_conn, temp_zip_layout, monke
         )
     monkeypatch.setattr(cc, "zip_paths", fake_zip_paths)
 
-    # force repo
     monkeypatch.setattr(
         cc,
         "resolve_repo_for_project",
-        lambda conn, zd, zn, pn: os.path.join(
+        lambda *args, **kwargs: os.path.join(
             temp_zip_layout["zip_data_dir"],
             temp_zip_layout["zip_name"],
             temp_zip_layout["zip_name"],
@@ -84,7 +83,8 @@ def test_analyze_code_project_happy_path(tmp_sqlite_conn, temp_zip_layout, monke
         ),
     )
 
-    # ✅ mock frameworks so it doesn’t hit DB
+
+    # mock frameworks so it doesn’t hit DB
     monkeypatch.setattr(cc, "detect_frameworks", lambda *args, **kwargs: set())
 
     cc.ensure_user_github_table(tmp_sqlite_conn)
@@ -154,7 +154,7 @@ def test_identity_prompt_and_persist(tmp_sqlite_conn, temp_zip_layout, monkeypat
     monkeypatch.setattr(
         cc,
         "resolve_repo_for_project",
-        lambda conn, zd, zn, pn: os.path.join(
+        lambda *args, **kwargs: os.path.join(
             temp_zip_layout["zip_data_dir"],
             temp_zip_layout["zip_name"],
             temp_zip_layout["zip_name"],
@@ -162,6 +162,7 @@ def test_identity_prompt_and_persist(tmp_sqlite_conn, temp_zip_layout, monkeypat
             temp_zip_layout["project_name"],
         ),
     )
+
 
     # ✅ mock frameworks
     monkeypatch.setattr(cc, "detect_frameworks", lambda *args, **kwargs: set())
