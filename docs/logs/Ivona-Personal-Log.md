@@ -42,3 +42,15 @@ The first PR was a refactoring of the implementation of language detection, I re
 The second PR, I worked on the framework detection for coding projects. I made a new table in the database, added logic for extracting config./ dep. files during the parsing process and storing them in the new table. And then using these files to find frameworks for a given project. 
 
 Next week I will continue working on the language/framework detection feature. I plan to add support for frameworks that aren't usually declared in config./dep. files. Store the languages/frameworks found in a database. And maybe expand the language detection supported files (depending on what the team decides on Monday.) And If time premits I will start working on extracting key contributation metrics in a project.
+
+## (Week 9) Monday October 27th - Sunday November 2nd 
+![Screenshot of this week's peer eval](./screenshots/Ivona-Oct.27-Nov.2.PNG)
+
+This week I completed the PR 168.
+I reviewed teammate's PRs and attended team meeting.
+
+My PR this week was connecting Google Drive to our project. I did some learning on how to set up a Google Drive API and connect it with Oauth. I then focused on integrating the files selected from the user's Google Drive account to match the files they want to provide us with. This was an approached my team discussed doing so that we can extract better contributation metric for non-coding files. 
+
+I originally didn't plan to work on this week but at the Wednesday meeting we discussed this is useful to get done since we walk to be able to get contributation analysis feature done.
+
+Next Week: I plan to either go back to explanding the framework detector as I originally planned to last week or/and to get contributation metrics from the Google Drive files.
