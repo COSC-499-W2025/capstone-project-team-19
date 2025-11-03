@@ -33,62 +33,54 @@ def prompt_and_store():
     username = input("Enter your username: ").strip()
     user_id = get_or_create_user(conn, username)
 
-    prev_consent = get_latest_consent(conn, user_id)
-    prev_ext = get_latest_external_consent(conn, user_id)
+    # get the stored consent from the database, which decides which flow the user is sent through (can not use helper functions for this)
+    stored_user_consent = get_latest_consent(conn, user_id)
+    stored_external_consent = get_latest_external_consent(conn, user_id)
 
-    reused = False  # track reuse
-    current_consent = prev_consent
-    current_ext_consent = prev_ext
-
-    if current_consent == "rejected":
+    if stored_user_consent == "rejected":
         print(f"\nHeads up, {username}: you previously declined consent, so we can't reuse that configuration.")
-        prev_consent = None
-        prev_ext = None
+        stored_user_consent = None
+        stored_external_consent = None
 
     # Edge case 1: user exists but no consents yet
-    if not prev_consent and not prev_ext:
+    if not stored_user_consent and not stored_external_consent:
         consent_status, external_consent_status = handle_existing_user_without_consents(conn, username, user_id)
 
-    # Edge case 2: partial configuration (only one consent found)
-    elif (prev_consent and not prev_ext) or (not prev_consent and prev_ext):
-        consent_status, external_consent_status = handle_partial_consent(conn, username, user_id, prev_consent, prev_ext)
+    # Edge case 2: partial configuration 
+    # The user will never make it this far if they decline user consent no matter what, only need to consider a declined external consent
+    elif (stored_user_consent and not stored_external_consent):
+        consent_status, external_consent_status = resolve_missing_external_consent(conn, username, user_id, stored_user_consent, stored_external_consent)
 
     # --- Returning user with full configuration ---
-    elif prev_consent and prev_ext:
-        consent_status, external_consent_status = handle_existing_consent(conn, username, user_id, prev_consent, prev_ext)        
+    elif stored_user_consent and stored_external_consent:
+        consent_status, external_consent_status = confirm_or_update_consent(conn, username, user_id, stored_user_consent, stored_external_consent)        
 
     # --- Brand new user ---
     else:
         consent_status, external_consent_status = create_new_user(conn, username, user_id)
 
-    current_consent = consent_status
-    current_ext_consent = external_consent_status
-
-    if current_consent != "accepted":
-        print("\nConsent declined. Exiting.")
+    if consent_status is None:
         return None
 
     print("\nConsent recorded. Proceeding to file selection…\n")
 
     # Continue to file selection
-    processed_zip_path = run_zip_ingestion_flow(conn, user_id, current_ext_consent)
+    processed_zip_path = run_zip_ingestion_flow(conn, user_id, external_consent_status)
     return processed_zip_path
        
 
 def create_new_user(conn, username, user_id):
     print(f"\nNice to meet you, {username}!\n")
     print(CONSENT_TEXT)
-    status = get_user_consent()
-    record_consent(conn, status, user_id=user_id)
-    current_consent = status
-    if status != "accepted":
-        print("\nConsent declined. Exiting.")
+    
+    consent_status = collect_user_consent(conn, user_id)
+    if abort_on_declined_consent(consent_status):
         return None, None
-    ext_status = get_external_consent()
-    record_external_consent(conn, ext_status, user_id=user_id)
-    current_ext_consent = ext_status
 
-    return status, ext_status
+    external_consent_status = get_external_consent()
+    record_external_consent(conn, external_consent_status, user_id=user_id)
+
+    return consent_status, external_consent_status
 
 def handle_existing_user_without_consents(conn, username, user_id):
     print(f"\nWelcome back, {username}!")
@@ -96,85 +88,67 @@ def handle_existing_user_without_consents(conn, username, user_id):
     print("Let's complete your setup.\n")
     print(CONSENT_TEXT)
 
-    status = get_user_consent()
-    record_consent(conn, status, user_id=user_id)
-    current_consent = status
-    if status != "accepted":
-        print("\nConsent declined. Exiting.")
+    consent_status = collect_user_consent(conn, user_id)
+    if abort_on_declined_consent(consent_status):
         return None, None
-    ext_status = get_external_consent()
-    record_external_consent(conn, ext_status, user_id=user_id)
-    current_ext_consent = ext_status
     
-    return status, ext_status
+    external_consent_status = get_external_consent()
+    record_external_consent(conn, external_consent_status, user_id=user_id)
+    
+    return consent_status, external_consent_status
 
-def handle_partial_consent(conn, username, user_id, prev_consent, prev_ext):
+def resolve_missing_external_consent(conn, username, user_id, consent_status, external_consent_status):
     print(f"\nWelcome back, {username}!")
     print("We found a partial configuration:")
-    print(f"  • User consent = {prev_consent or 'none'}")
-    print(f"  • External service consent = {prev_ext or 'none'}")
+    print(f"  • User consent = {consent_status or 'none'}")
+    print(f"  • External service consent = {external_consent_status or 'none'}")
     print("Let's complete your setup.\n")
 
-    status = prev_consent
-    ext_status = prev_ext
+    external_consent_status = collect_external_consent(conn, user_id)
 
-    # Only ask for the missing one
-    if not prev_consent:
-        print(CONSENT_TEXT)
-        status = get_user_consent()
-        record_consent(conn, status, user_id=user_id)
-        current_consent = status
-        if status != "accepted":
-            print("\nConsent declined. Exiting.")
-            return None, None
-    # Although this is not necessary because you have to answer user consent before going to external consent
-    if not prev_ext:
-        ext_status = get_external_consent()
-        record_external_consent(conn, ext_status, user_id=user_id)
-        current_ext_consent = ext_status
+    return consent_status, external_consent_status
 
-    return status, ext_status
-
-def handle_existing_consent(conn, username, user_id, prev_consent, prev_ext):
+def confirm_or_update_consent(conn, username, user_id, consent_status, external_consent_status):
     print(f"\nWelcome back, {username}!")
-    print(f"Your previous configuration: user consent = {prev_consent}, external service consent = {prev_ext}.")
+    print(f"Your previous configuration: user consent = {consent_status}, external service consent = {external_consent_status}.")
     reuse = input("Would you like to continue with this configuration? (y/n): ").strip().lower()
 
-    status = prev_consent
-    ext_status = prev_ext
-
     if reuse == "y":
-        reused = True
         print("\nContinuing with your saved configuration…\n")
-        record_consent(conn, prev_consent, user_id=user_id)
-        record_external_consent(conn, prev_ext, user_id=user_id)
-        current_consent = prev_consent
-        current_ext_consent = prev_ext
+        record_consent(conn, consent_status, user_id=user_id)
+        record_external_consent(conn, external_consent_status, user_id=user_id)
     else:
         print("\nAlright, let's review your consents again.\n")
         print(CONSENT_TEXT)
-        status = get_user_consent()
-        record_consent(conn, status, user_id=user_id)
-        current_consent = status
-        if status != "accepted":
-            print("\nConsent declined. Exiting.")
+
+        consent_status = collect_user_consent(conn, user_id)
+        
+        if abort_on_declined_consent(consent_status):
             return None, None
-        ext_status = get_external_consent()
-        record_external_consent(conn, ext_status, user_id=user_id)
-        current_ext_consent = ext_status
 
-    return status, ext_status
+        external_consent_status = get_external_consent()
+        record_external_consent(conn, external_consent_status, user_id=user_id)
 
-def abort_on_declined_consent():
-    pass
+    return consent_status, external_consent_status
 
-def collect_user_consent():
-    pass
+def abort_on_declined_consent(consent_status):
+    if consent_status != "accepted":
+        print("\nConsent declined. Exiting.")
+        return True # tells caller to stop
+    
+    return False
 
-def collect_external_consent():
-    pass
+def collect_user_consent(conn, user_id):
+    consent_status = get_user_consent()
+    record_consent(conn, consent_status, user_id)
+    return consent_status
 
-def run_zip_ingestion_flow(conn, user_id, current_ext_consent):
+def collect_external_consent(conn, user_id):
+    external_consent_status = get_external_consent()
+    record_external_consent(conn, external_consent_status, user_id)
+    return external_consent_status
+
+def run_zip_ingestion_flow(conn, user_id, external_consent_status):
     unchecked_zip = True
     assignments = None
     processed_zip_path = None
@@ -212,7 +186,7 @@ def run_zip_ingestion_flow(conn, user_id, current_ext_consent):
             continue
         
     if assignments and processed_zip_path:
-        send_to_analysis(conn, user_id, assignments, current_ext_consent, processed_zip_path)  # takes projects and sends them into the analysis flow
+        send_to_analysis(conn, user_id, assignments, external_consent_status, processed_zip_path)  # takes projects and sends them into the analysis flow
     else:
         if assignments:
             print("No valid project analysis to send.")
