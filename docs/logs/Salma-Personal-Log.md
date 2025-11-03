@@ -63,3 +63,15 @@ Week Recap:
 - Worked on code collaborative analysis to detect .git folders and generate metrics like the number of commits and overall summary per project.
 
 Next steps: continue developing the code collaborative analysis for global summaries from all projects (possibly using LLMs), refactor the code, and move on to non-code collaborative analysis.
+
+## (Week 9) Monday 27th October - Sunday 2nd November
+
+![Screenshot of week 9 peer eval](./screenshots/Salma-Oct27-Nov2.PNG)
+
+Week Recap:
+
+- Refactored code_collaborative_analysis.py to reuse language and framework detection functionality, separate core logic from helpers, and integrate project classifications (classification = collaborative, type = code).
+- Reviewed and provided feedback on some PRs (e.g. Ammaar’s and Johanes’s) to make the language/framework detection and metrics output more user-friendly.
+- Worked on generating summaries for all code-collaborative projects using Git metrics and user input (without LLM).
+
+Next Steps: improve the non-LLM summary generation for code-collaborative analysis based on feedback from Johanes and Timmi e.g. use NLTK for stopword removal and provide a user input template. If time allows, I also plan to store the metrics into the DB.
