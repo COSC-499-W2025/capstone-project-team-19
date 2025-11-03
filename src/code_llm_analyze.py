@@ -54,7 +54,7 @@ def run_code_llm_analysis(parsed_files, zip_path):
     project_name = project_folders[0] if project_folders else zip_name
     
     summary = generate_code_llm_summary(project_context)
-    display_code_llm_results(project_name, summary)
+    display_code_llm_results(project_name, summary, mode="COLLABORATIVE" if "collab" in project_name.lower() else "INDIVIDUAL")
         
     print(f"\n{'='*80}")
     print("PROJECT SUMMARY - (LLM-based results: summaries)")
@@ -63,12 +63,11 @@ def run_code_llm_analysis(parsed_files, zip_path):
     print(f"\n{'='*80}\n")
 
 
-def display_code_llm_results(project_name, summary):
-    print(f"Project: {project_name}")
+def display_code_llm_results(project_name, summary, mode="INDIVIDUAL"):
+    print(f"\n[{mode}-CODE] Project: {project_name}")
     print("\n  Summary:")
     print(textwrap.fill(summary, width=80, subsequent_indent="    "))
-    print("\n" + "-"*80 + "\n")
-
+    print("\n" + "-" * 80 + "\n")
     
 
 def generate_code_llm_summary(project_context):
