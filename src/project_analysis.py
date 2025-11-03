@@ -17,7 +17,6 @@ from src.code_non_llm_analysis import run_code_non_llm_analysis
 from src.helpers import _fetch_files
 from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
 
-
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     """
     Determine if each project is code or text by examining files from the 'files' table
@@ -318,8 +317,8 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
         run_code_llm_analysis(parsed_files, zip_path)
     else:
         print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")
+    
         
-
 # From LLMs and alternative analysis
 def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text):
     if only_text:

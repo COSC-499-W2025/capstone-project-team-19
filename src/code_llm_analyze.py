@@ -37,7 +37,6 @@ def run_code_llm_analysis(parsed_files, zip_path):
     if readme_text:
         project_context_parts.append(f"README:\n{readme_text}")
 
-    #loops over all code files in the folder so summary is on each project rather than file
     for file_info in code_files:
         file_path = os.path.join(base_path, file_info["file_path"])
         code_context = extract_code_file(file_path)
@@ -196,4 +195,5 @@ def _sanitize_resume_paragraph(text: str) -> str:
         text = re.sub(r"^As\s+an?\s+[^,]+,\s*", "", text)
 
     return text
+
 
