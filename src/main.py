@@ -180,6 +180,31 @@ def prompt_and_store():
             print("No valid project analysis to send.")
     return processed_zip_path
 
+def get_or_create_user_interactively():
+    pass
+
+def handle_new_user_consent():
+    pass
+
+def handle_partial_consent():
+    pass
+
+def handle_existing_consent():
+    pass
+
+def abort_on_declined_consent():
+    pass
+
+def collect_user_consent():
+    pass
+
+def collect_external_consent():
+    pass
+
+def run_zip_ingestion_flow():
+    pass
+
+
 
 def get_zip_path_from_user():
     path = input("Please enter the path to your ZIP file: ").strip()
