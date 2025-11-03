@@ -609,7 +609,7 @@ def _ext_to_lang(ext: str) -> str:
 # 5. printing
 # ------------------------------------------------------------
 def print_project_card(m: dict) -> None:
-    # NEW: description block (one line)
+    display_name = m.get("project_name") or m.get("project", "—")
     desc = m.get("desc")
 
     h = m.get("history", {})
@@ -656,7 +656,7 @@ def print_project_card(m: dict) -> None:
     summary_line = "💡 Summary: " + ", ".join(bits) + "."
 
     print(f"""
-Project: {m.get('project','—')}
+Project: {display_name}
 ------------------------------------
 Description: {desc}\n
 Commits: {t.get('commits_all',0)} (You: {t.get('commits_yours',0)} | Co-authored: {t.get('commits_coauth',0)} | Merges: {t.get('merges',0)})
@@ -719,47 +719,46 @@ def print_portfolio_summary(all_metrics: list[dict]) -> None:
     if not all_metrics:
         return
 
-    # totals
+    def _commits(m: dict) -> int:
+        return int(((m.get("totals") or {}).get("commits_all") or 0))
+
     n_projects = len(all_metrics)
-    total_commits = sum(int(m.get("num_commits") or 0) for m in all_metrics)
+    total_commits = sum(_commits(m) for m in all_metrics)
     avg_commits = round(total_commits / n_projects, 1) if n_projects else 0.0
 
-    # top project by commits
-    top_proj = max(all_metrics, key=lambda m: int(m.get("num_commits") or 0))
-    top_proj_name = top_proj.get("project_name") or top_proj.get("name") or "N/A"
-    top_proj_commits = int(top_proj.get("num_commits") or 0)
+    top_proj = max(all_metrics, key=_commits)
+    top_proj_name = top_proj.get("project_name") or top_proj.get("project") or "N/A"
+    top_proj_commits = _commits(top_proj)
 
-    # aggregate langs/frameworks (simple counts by mention)
-    lang_counts = Counter()
-    fw_counts = Counter()
+    from collections import Counter
+    def _lang_name(s: str) -> str:
+        return str(s).split()[0] if s else "Other"
+
+    lang_counts, fw_counts = Counter(), Counter()
     for m in all_metrics:
-        langs = m.get("focus", {}).get("languages") or []
+        langs = (m.get("focus", {}) or {}).get("languages") or []
         if isinstance(langs, dict):
             for lang in langs.keys():
                 lang_counts[lang] += 1
         else:
             for lang in langs:
-                lang_counts[str(lang)] += 1
-        for fw in m.get("focus", {}).get("frameworks") or []:
+                lang_counts[_lang_name(lang)] += 1
+        for fw in (m.get("focus", {}) or {}).get("frameworks") or []:
             fw_counts[str(fw)] += 1
 
     top_langs = ", ".join([x for x,_ in lang_counts.most_common(3)]) or "—"
     top_fws  = ", ".join([x for x,_ in fw_counts.most_common(3)]) or "—"
 
-    # gather descriptions
     descs = []
     for m in all_metrics:
         d = m.get("desc")
         if not d:
-            # fallback: try first line of readme if your metrics carry it; otherwise skip
             d = (m.get("desc_readme") or "").splitlines()[0] if m.get("desc_readme") else ""
-        if d:
-            descs.append(d)
+        if d: descs.append(d)
 
     top_keywords = _top_keywords_from_descriptions(descs, k=5)
 
-    # print
-    print("\nPortfolio Summary")
+    print("\nCode Collaborative Analysis Summary")
     print("------------------------------------")
     print(f"Total projects: {n_projects}")
     print(f"Total commits: {total_commits}   |   Avg per project: {avg_commits}")

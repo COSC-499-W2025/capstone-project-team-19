@@ -20,8 +20,23 @@ from src.code_collaborative_analysis_helper import (
     read_git_history,
     compute_metrics,
     print_project_card,
+    print_portfolio_summary,
 )
 
+
+
+_CODE_RUN_METRICS: list[dict] = []
+
+def print_code_portfolio_summary() -> None:
+    """
+    Print a single combined portfolio summary for all code projects
+    analyzed so far in this run, then clear the accumulator.
+    Call this from project_analysis.py after your last code project.
+    """
+    if not _CODE_RUN_METRICS:
+        return
+    print_portfolio_summary(_CODE_RUN_METRICS)
+    _CODE_RUN_METRICS.clear()
 
 def analyze_code_project(conn: sqlite3.Connection,
                          user_id: int,
@@ -70,6 +85,7 @@ def analyze_code_project(conn: sqlite3.Connection,
 
     # 5) compute metrics
     metrics = compute_metrics(project_name, repo_dir, commits, aliases)
+    metrics["project_name"] = project_name
 
     # 6) fill langs from DB if empty
     if not metrics.get("focus", {}).get("languages"):
@@ -85,7 +101,7 @@ def analyze_code_project(conn: sqlite3.Connection,
     # 7.5) NEW — prompt for a one-line description (stored for printing/summary)
     try:
         user_desc = input(
-            f"Description for {project_name} (one line — what it does + your contribution): "
+            f"Description for {project_name} (what the code does + your contribution): "
         ).strip()
     except EOFError:
         user_desc = ""
@@ -94,6 +110,9 @@ def analyze_code_project(conn: sqlite3.Connection,
 
     # 8) print
     print_project_card(metrics)
+    # accumulate for portfolio summary
+    _CODE_RUN_METRICS.append(metrics)
+
     return metrics
 
 
