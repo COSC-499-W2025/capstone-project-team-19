@@ -17,7 +17,6 @@ from src.code_non_llm_analysis import run_code_non_llm_analysis
 from src.helpers import _fetch_files
 from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
 
-
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     """
     Determine if each project is code or text by examining files from the 'files' table
@@ -282,15 +281,19 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent)
 
 
 def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path):
-    """
-    Placeholder for future collaborative code contribution analysis.
+    """Collaborative code analysis: Git data + LLM summary."""
+    print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' (code)")
 
-    This function should figure out which parts of a coding collaborative project were done by the user.
-    Check for a .git folder (which should have commits), or connect to git using OAuth, etc. 
-    User can also be prompted, or key words can be used.
-    """
     analyze_code_project(conn, user_id, project_name, zip_path)
     
+
+    if current_ext_consent == 'accepted':
+        parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
+        if parsed_files:
+            print(f"\n[COLLABORATIVE-CODE] Running LLM-based summary for '{project_name}'...")
+            run_code_llm_analysis(parsed_files, zip_path, project_name)
+        else:
+            print(f"[COLLABORATIVE-CODE] No code files found for '{project_name}'.")
 
 
 def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path):
@@ -302,6 +305,7 @@ def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path
 
 
 def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path):
+    """Runs full analysis on individual code projects (static metrics + Git + optional LLM)."""
     languages = detect_languages(conn, project_name)
     print(f"Languages detected in {project_name}: {languages}")
 
@@ -312,9 +316,18 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     if not parsed_files:
         print(f"[INDIVIDUAL-CODE] No code files found for '{project_name}'.")
         return
+
+    # --- Run main code + Git analysis ---
     analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=False)
 
-
+    # --- Run LLM summary LAST, and only once ---
+    if current_ext_consent == "accepted":
+        print(f"\n[INDIVIDUAL-CODE] Running LLM-based summary for '{project_name}'...")
+        run_code_llm_analysis(parsed_files, zip_path, project_name)
+    else:
+        print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")
+    
+        
 # From LLMs and alternative analysis
 def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text):
     if only_text:
@@ -324,7 +337,5 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
             alternative_analysis(parsed_files, zip_path, project_name)
 
     elif not only_text:
-        if external_consent=='accepted':
-            run_code_llm_analysis(parsed_files, zip_path)
-        else:
-            run_code_non_llm_analysis(conn, user_id, project_name, zip_path)
+        # Run non-LLM code analysis (static + Git metrics)
+        run_code_non_llm_analysis(conn, user_id, project_name, zip_path)

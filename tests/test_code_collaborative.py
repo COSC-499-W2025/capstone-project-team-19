@@ -74,6 +74,7 @@ def test_analyze_code_project_happy_path(tmp_sqlite_conn, temp_zip_layout, monke
     monkeypatch.setattr(
         cc,
         "resolve_repo_for_project",
+
         lambda *args, **kwargs: os.path.join(
             temp_zip_layout["zip_data_dir"],
             temp_zip_layout["zip_name"],
