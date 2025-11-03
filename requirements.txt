@@ -19,6 +19,10 @@ textstat
 scikit-learn
 numpy
 
+# Code complexity and metrics
+radon
+lizard
+
 # Media Processing
 ffmpeg-python
 opencv-python
