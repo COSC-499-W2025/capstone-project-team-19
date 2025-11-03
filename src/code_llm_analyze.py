@@ -100,7 +100,10 @@ Focus ONLY on:
 - the general technologies/frameworks mentioned
 - avoid specific function names or file references
 
-Do NOT mention individual contributors or personal achievements.
+Do NOT:
+- mention individual contributors, commits, or versions
+- use phrases like "is being developed", "is under development", or "aims to"
+
 Use the README as the main source; refer to the code context only for support.
 
 README:
@@ -109,7 +112,7 @@ README:
 Supplemental code context (for background only):
 {project_context[:2000]}
 
-Output one concise paragraph (80–100 words) starting with "A project that..." or "An application that...".
+Output one concise paragraph (80–100 words) written in PRESENT TENSE starting with "A project that..." or "An application that...".
 """
     try:
         completion = client.chat.completions.create(
