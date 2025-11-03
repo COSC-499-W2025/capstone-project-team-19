@@ -9,12 +9,164 @@ Provides comprehensive code quality metrics for individual coding projects.
 """
 
 import os
+import re
 from typing import Dict, List, Optional
 from radon.complexity import cc_visit, cc_rank
 from radon.metrics import mi_visit, mi_rank
 from radon.raw import analyze as raw_analyze
 import lizard
 from src.extension_catalog import get_languages_for_extension
+
+# Directories to exclude from analysis (third-party dependencies, build artifacts, etc.)
+EXCLUDE_DIRECTORIES = {
+    # JavaScript/TypeScript/Node.js
+    'node_modules',
+    'bower_components',
+    '.next',
+    '.nuxt',
+
+    # Python
+    'venv',
+    'env',
+    '.venv',
+    'virtualenv',
+    '__pycache__',
+    '.pytest_cache',
+    'site-packages',
+    '.tox',
+    '.eggs',
+
+    # PHP
+    'vendor',
+
+    # Ruby
+    'bundle',
+
+    # Java/Kotlin/Scala
+    '.gradle',
+    '.m2',
+    'gradle',
+
+    # C#/.NET
+    'obj',
+    'packages',
+    '.nuget',
+
+    # Swift/Objective-C/iOS
+    'Pods',
+    'Carthage',
+    'DerivedData',
+    '.swiftpm',
+
+    # Rust
+    'target',
+
+    # Go
+    'pkg',
+
+    # General build/dist directories
+    'dist',
+    'build',
+    'out',
+    'bin',
+    'debug',
+    'release',
+    'cmake-build-debug',
+    'cmake-build-release',
+
+    # Version control
+    '.git',
+    '.svn',
+    '.hg',
+
+    # IDE/Editor
+    '.idea',
+    '.vscode',
+    '.vs',
+    '.eclipse',
+    '.settings',
+
+    # Misc
+    '.cache',
+    'temp',
+    'tmp',
+}
+
+# File patterns to exclude (minified files, bundles, etc.)
+EXCLUDE_FILE_PATTERNS = [
+    # JavaScript/TypeScript minified and bundled files
+    r'\.min\.js$',
+    r'\.min\.css$',
+    r'-min\.js$',
+    r'\.bundle\.js$',
+    r'\.chunk\.js$',
+    r'\.compiled\.js$',
+    r'\.production\.js$',
+    r'\.development\.js$',
+
+    # Source maps
+    r'\.map$',
+    r'\.js\.map$',
+    r'\.css\.map$',
+
+    # Lock files (all languages)
+    r'package-lock\.json$',
+    r'yarn\.lock$',
+    r'pnpm-lock\.yaml$',
+    r'Gemfile\.lock$',
+    r'poetry\.lock$',
+    r'Pipfile\.lock$',
+    r'Cargo\.lock$',
+    r'go\.sum$',
+    r'composer\.lock$',
+
+    # Compiled/binary files
+    r'\.o$',           # C/C++ object files
+    r'\.a$',           # C/C++ static libraries
+    r'\.so$',          # Shared libraries
+    r'\.dll$',         # Windows DLLs
+    r'\.exe$',         # Windows executables
+    r'\.class$',       # Java compiled classes
+    r'\.jar$',         # Java archives
+    r'\.war$',         # Java web archives
+    r'\.pyc$',         # Python compiled
+    r'\.pyo$',         # Python optimized
+
+    # Git internals
+    r'\.pack$',
+    r'\.idx$',
+    r'\.sample$',
+
+    # Android
+    r'\.apk$',
+    r'\.dex$',
+    r'-release\.aab$',
+
+    # iOS
+    r'\.ipa$',
+    r'\.dSYM$',
+]
+
+
+def should_exclude_file(file_path: str, file_name: str) -> tuple[bool, str]:
+    """
+    Determine if a file should be excluded from analysis.
+
+    Returns:
+        (should_exclude: bool, reason: str)
+    """
+    # Check if file is in an excluded directory
+    path_parts = file_path.split(os.sep)
+    for part in path_parts:
+        if part in EXCLUDE_DIRECTORIES:
+            return True, f"in excluded directory '{part}'"
+
+    # Check if filename matches excluded patterns
+    for pattern in EXCLUDE_FILE_PATTERNS:
+        if re.search(pattern, file_name, re.IGNORECASE):
+            return True, f"matches excluded pattern '{pattern}'"
+
+    return False, ""
 
 
 def analyze_code_complexity(conn, user_id: int, project_name: str, zip_path: str) -> Dict:
@@ -54,28 +206,20 @@ def analyze_code_complexity(conn, user_id: int, project_name: str, zip_path: str
     print(f"Analyzing Code Complexity and Structure for: {project_name}")
     print(f"{'='*80}\n")
 
-    # Files to skip (Git internals, binaries, etc.)
-    skip_extensions = {'.pack', '.idx', '.sample', '.git', '.lock'}
-    skip_patterns = {'pack-', 'idx-'}
-
     for file_name, file_path in files:
         full_path = os.path.join(base_path, file_path)
 
         if not os.path.exists(full_path):
             continue
 
+        # Check if file should be excluded (dependencies, minified files, etc.)
+        exclude, reason = should_exclude_file(file_path, file_name)
+        if exclude:
+            print(f"Skipping {file_name}: {reason}")
+            continue
+
         # Get file extension and detect languages
         file_ext = os.path.splitext(file_name)[1].lower()
-
-        # Skip Git internal files and other non-code files
-        if file_ext in skip_extensions:
-            print(f"Skipping Git internal file: {file_name}")
-            continue
-
-        # Skip files with certain name patterns
-        if any(pattern in file_name.lower() for pattern in skip_patterns):
-            print(f"Skipping Git internal file: {file_name}")
-            continue
 
         # Skip very large files (> 5MB) to avoid hangs
         try:
@@ -342,6 +486,28 @@ def aggregate_complexity_metrics(radon_results: List[Dict], lizard_results: List
     return summary
 
 
+def interpret_ccn(avg_ccn: float) -> tuple[str, str]:
+    if avg_ccn < 10:
+        return "LOW", "Simple, easy to test and maintain"
+    elif avg_ccn < 30:
+        return "MODERATE", "Acceptable complexity"
+    elif avg_ccn < 50:
+        return "HIGH", "Consider refactoring to reduce complexity"
+    else:
+        return "VERY HIGH", "Refactoring strongly recommended"
+
+
+def interpret_token_count(avg_tokens: float) -> tuple[str, str]:
+    if avg_tokens < 50:
+        return "LOW", "Very concise functions"
+    elif avg_tokens < 100:
+        return "MODERATE", "Well-sized functions"
+    elif avg_tokens < 200:
+        return "HIGH", "Dense functions, consider simplification"
+    else:
+        return "VERY HIGH", "Overly complex functions, refactoring recommended"
+
+
 def display_complexity_results(complexity_data: Dict) -> None:
     """
     Display complexity analysis results in a readable, actionable format.
@@ -378,16 +544,51 @@ def display_complexity_results(complexity_data: Dict) -> None:
     elif summary.get('total_functions', 0) > 0:
         # Show Lizard metrics if no Radon data
         lizard_details = summary.get('lizard_details', {})
+        avg_ccn = lizard_details.get('average_ccn', 0)
+        ccn_level, ccn_message = interpret_ccn(avg_ccn)
         print("QUALITY METRICS:")
-        print(f"  Average Complexity (CCN): {lizard_details.get('average_ccn', 0)}")
+        print(f"  Average Complexity (CCN): {avg_ccn} [{ccn_level}] - {ccn_message}")
         print()
     lizard_details = summary.get('lizard_details', {})
     if lizard_details:
         print("ADDITIONAL METRICS:")
-        print(f"  Average CCN: {lizard_details.get('average_ccn', 0)}")
-        print(f"  Average Token Count: {lizard_details.get('average_token_count', 0)}")
+
+        # Average CCN with interpretation
+        avg_ccn = lizard_details.get('average_ccn', 0)
+        ccn_level, ccn_message = interpret_ccn(avg_ccn)
+        print(f"  Average CCN: {avg_ccn} [{ccn_level}] - {ccn_message}")
+
+        # Average Token Count with interpretation
+        avg_tokens = lizard_details.get('average_token_count', 0)
+        token_level, token_message = interpret_token_count(avg_tokens)
+        print(f"  Average Token Count: {avg_tokens} [{token_level}] - {token_message}")
+
         print(f"  Average Parameters: {lizard_details.get('average_parameters', 0)}")
         print(f"  Longest Function: {lizard_details.get('longest_function', 0)} lines")
         print()
+
+    # Actionable insights
+    print("ACTIONABLE INSIGHTS:")
+    functions_needing_refactor = summary.get('functions_needing_refactor', 0)
+    high_complexity_files = summary.get('high_complexity_files', 0)
+    low_maintainability_files = summary.get('low_maintainability_files', 0)
+
+    if functions_needing_refactor > 0:
+        print(f"  [WARNING] {functions_needing_refactor} function(s) need refactoring (high complexity)")
+    elif summary.get('total_functions', 0) > 0:
+        print(f"  [OK] All functions have acceptable complexity")
+
+    if high_complexity_files > 0:
+        print(f"  [WARNING] {high_complexity_files} file(s) have high average complexity")
+
+    if low_maintainability_files > 0:
+        print(f"  [WARNING] {low_maintainability_files} file(s) have low maintainability (<65)")
+    elif radon_details:  # Only show this for Python projects
+        print(f"  [OK] All files have good maintainability")
+
+    # Show note if no functions found
+    if summary.get('total_functions', 0) == 0:
+        print(f"  [INFO] No functions detected in code files")
+    print()
 
     print(f"{'='*80}\n")
