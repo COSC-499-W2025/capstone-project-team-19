@@ -72,9 +72,7 @@ My PR's:
 
 ## (Week 9) Monday October 27 - Sunday November 2
 
-![Screenshot of this week's peer evaluation]()
-
-NOTE: The peer evaluation for this week closed at 7:50am this morning, November 2nd. Usually it closes at 11:59pm. I have emailed the professor and my TA about this. Until the peer evaluation is opened up, or I am informed that it was closed at that time on purpose, I won't be uploading a screenshot because I don't have one.
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Oct27-Nov2.PNG)
 
 Week Recap: This week I worked on implementing the GitHub OAuth to further the collaboration analysis. Although no metrics have been pulled from GitHub yet, I worked on setting up the authentication flow through GitHub. If the user agrees, they can connect their project to a GitHub repository, which will allow us to analyze more individual contributions to a collaborative project. I included multiple tests and ensured the GitHub tokens were securely stored in the local database.
 
