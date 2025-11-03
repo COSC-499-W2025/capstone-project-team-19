@@ -261,12 +261,24 @@ def run_individual_analysis(conn, user_id, project_name, project_type, current_e
 
 def analyze_text_contributions(conn, user_id, project_name, current_ext_consent):
     """
-    Placeholder for future collaborative text contribution analysis.
-
-    This function should figure out which parts of a textual collaborative project were done by the user.
-    Various analysis techniques will probably need to be used, and if necessary the user can be prompted to specify which parts they did.
+    Analyze collaborative text projects by connecting to Google Drive.
+    
+    This function orchestrates the Google Drive setup and file linking process.
+    The actual contribution analysis will be done in a later phase.
+    Adding option for skipping connecting to Google Drive needs to be added later.
     """
-    pass
+    from src.google_drive_auth.text_project_setup import setup_text_project_drive_connection
+    
+    # Set up Google Drive connection and link files
+    result = setup_text_project_drive_connection(conn, user_id, project_name)
+    
+    if not result['success']:
+        # Setup failed - error messages already printed by setup function
+        return
+    
+    # TODO: Future - perform actual contribution analysis here
+    # For now, we just set up the connection and file mappings
+    print("Note: Actual contribution analysis will be performed in a future update.")
 
 
 def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path):
