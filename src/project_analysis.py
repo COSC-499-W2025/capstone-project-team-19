@@ -15,7 +15,7 @@ from src.text_llm_analyze import run_text_llm_analysis
 from src.code_llm_analyze import run_code_llm_analysis
 from src.code_non_llm_analysis import run_code_non_llm_analysis
 from src.helpers import _fetch_files
-from src.code_collaborative_analysis import analyze_code_project
+from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -160,10 +160,27 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
         if not collaborative:
             print("\n[COLLABORATIVE] No collaborative projects.")
             return False
+
         print("\n[COLLABORATIVE] Running collaborative projects...")
-        for project_name, project_type in collaborative:
+
+        # split: code first, then text
+        code_collab = [(n, t) for (n, t) in collaborative if t == "code"]
+        text_collab = [(n, t) for (n, t) in collaborative if t == "text"]
+
+        # 1) run all CODE collab
+        for project_name, project_type in code_collab:
             print(f"  → {project_name} ({project_type})")
             get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path)
+
+        # print summary right after all CODE collab finished
+        if code_collab:
+            print_code_portfolio_summary()
+
+        # 2) run all TEXT collab
+        for project_name, project_type in text_collab:
+            print(f"  → {project_name} ({project_type})")
+            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path)
+
         return True
 
     # Track pending phases
@@ -261,6 +278,7 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
     User can also be prompted, or key words can be used.
     """
     analyze_code_project(conn, user_id, project_name, zip_path)
+    
 
 
 def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path):
