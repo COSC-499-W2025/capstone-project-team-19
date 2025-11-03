@@ -2,13 +2,15 @@ from __future__ import annotations
 import os
 import datetime as dt
 import subprocess
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import Dict, List, Optional, Tuple
 import sqlite3
 
 from src.extension_catalog import get_languages_for_extension
 from src.helpers import ensure_table 
 # zip_paths stays in the main file because only the entrypoint needs it
+
+import re
 
 DEBUG = False
 
@@ -669,3 +671,100 @@ Top folders: {folders}
 Top files: {top_files}
 {summary_line}
 """.rstrip())
+
+# ------------------------------------------------------------
+# 6. cumulative metrics (from all code)
+# ------------------------------------------------------------
+
+STOP = {
+    "the","a","an","and","or","to","of","for","in","on","with","by","from","at",
+    "is","are","this","that","it","its","my","our","your","we","i","you",
+    "app","project","repo","readme","code","using","built","build"
+}
+
+def _tokens(s: str) -> list[str]:
+    s = (s or "").lower()
+    s = re.sub(r"https?://\S+"," ", s)
+    s = re.sub(r"[^\w\s+-]"," ", s)
+    return [t for t in s.split() if t and t not in STOP and len(t) > 2]
+
+def _try_yake_topk(text: str, k: int = 5) -> list[str]:
+    try:
+        import yake
+        extr = yake.KeywordExtractor(lan="en", n=3, top=k*3)
+        cands = [kw for kw,_ in extr.extract_keywords(text)]
+        out = []
+        for c in cands:
+            c = c.strip(" :;.,#'\"()[]{}")
+            if c and c not in out:
+                out.append(c)
+            if len(out) >= k:
+                break
+        return out
+    except Exception:
+        return []
+
+def _top_keywords_from_descriptions(descs: list[str], k: int = 5) -> list[str]:
+    text = "\n".join(descs).strip()
+    if not text:
+        return []
+    # prefer YAKE if available; otherwise use a simple word counter
+    kw = _try_yake_topk(text, k=k)
+    if kw:
+        return kw
+    cnt = Counter(_tokens(text))
+    return [w for w,_ in cnt.most_common(k)]
+
+def print_portfolio_summary(all_metrics: list[dict]) -> None:
+    if not all_metrics:
+        return
+
+    # totals
+    n_projects = len(all_metrics)
+    total_commits = sum(int(m.get("num_commits") or 0) for m in all_metrics)
+    avg_commits = round(total_commits / n_projects, 1) if n_projects else 0.0
+
+    # top project by commits
+    top_proj = max(all_metrics, key=lambda m: int(m.get("num_commits") or 0))
+    top_proj_name = top_proj.get("project_name") or top_proj.get("name") or "N/A"
+    top_proj_commits = int(top_proj.get("num_commits") or 0)
+
+    # aggregate langs/frameworks (simple counts by mention)
+    lang_counts = Counter()
+    fw_counts = Counter()
+    for m in all_metrics:
+        langs = m.get("focus", {}).get("languages") or []
+        if isinstance(langs, dict):
+            for lang in langs.keys():
+                lang_counts[lang] += 1
+        else:
+            for lang in langs:
+                lang_counts[str(lang)] += 1
+        for fw in m.get("focus", {}).get("frameworks") or []:
+            fw_counts[str(fw)] += 1
+
+    top_langs = ", ".join([x for x,_ in lang_counts.most_common(3)]) or "—"
+    top_fws  = ", ".join([x for x,_ in fw_counts.most_common(3)]) or "—"
+
+    # gather descriptions
+    descs = []
+    for m in all_metrics:
+        d = m.get("desc")
+        if not d:
+            # fallback: try first line of readme if your metrics carry it; otherwise skip
+            d = (m.get("desc_readme") or "").splitlines()[0] if m.get("desc_readme") else ""
+        if d:
+            descs.append(d)
+
+    top_keywords = _top_keywords_from_descriptions(descs, k=5)
+
+    # print
+    print("\nPortfolio Summary")
+    print("------------------------------------")
+    print(f"Total projects: {n_projects}")
+    print(f"Total commits: {total_commits}   |   Avg per project: {avg_commits}")
+    print(f"Top project by commits: {top_proj_name} ({top_proj_commits} commits)")
+    print(f"Top languages overall: {top_langs}")
+    print(f"Top frameworks: {top_fws}")
+    if top_keywords:
+        print(f"Top keywords from your descriptions: {', '.join(top_keywords)}")
