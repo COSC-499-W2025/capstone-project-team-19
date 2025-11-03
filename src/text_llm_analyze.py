@@ -257,9 +257,8 @@ def generate_text_llm_success_factors(main_text, linguistic, supporting_texts=No
         "- Writing craftsmanship (tone, coherence, structure)\n"
         "- Evidence of iteration, planning, or critical reflection in supporting materials\n\n"
         "When mentioning any strength or weakness that clearly relates to a supporting file, "
-        "include the exact filename in parentheses — e.g. 'Strong revision notes (draft_v2.docx)' or "
-        "'Effective note-taking and summaries (notes.md)'. "
-        "Do NOT use vague phrases like 'in supporting files' or 'in drafts' — always specify the file name if available.\n\n"
+        "include the exact filename in parentheses ONLY IF THEY EXIST. "
+        "Do NOT use vague phrases like 'in supporting files' or 'in drafts' — always specify the file name if available AND ONLY IF AVAILABLE.\n\n"
         "Write your response in clean JSON with three fields:\n"
         "{\n"
         '  \"strengths\": [\"3–5 concise phrases (≤8 words each)\"],\n'
