@@ -79,6 +79,16 @@ my-workspace/
 
 After arranging your files, zip the root folder (e.g., zip `my-workspace/` into `my-workspace.zip`) and provide that ZIP file path to the CLI when prompted.
 
+### Google Drive Setup
+Currently each team member is added as a test user for the Google Drive API with the email associated with our "COSC 499 - GROUP 19" Google Drive folder
+
+1. Receive `credentials.json` from your team lead (via secure method)
+2. Place the file at: `src/google_drive_auth/credentials.json`
+3. Verify the path:
+
+**Note:** `credentials.json` contains sensitive OAuth credentials and is already in `.gitignore`.Never commit this file to version control.
+
+
 ## System Architecture Diagram
 
 ![System Architecture Diagram](docs/plan/Updated-System-Architecture-Diagram.png)
