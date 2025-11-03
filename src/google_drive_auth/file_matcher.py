@@ -4,6 +4,7 @@ File matching module for finding ZIP files in Google Drive.
 Implements matching strategies to automatically link files from the uploaded ZIP
 with files in the user's Google Drive based on name similarity.
 """
+import os
 from typing import Optional, Dict, List, Tuple
 try:
     from googleapiclient.discovery import Resource
@@ -28,28 +29,30 @@ def match_zip_files_to_drive(
     project_name: Optional[str] = None
 ) -> Dict[str, Optional[Tuple[str, str, str]]]:
     """
-    Match ZIP file names to Google Drive files using case-insensitive name match OR project name in drive file name.
+    Match ZIP file names to Google Drive files using:
+    - Case-insensitive base name match (ignores extensions)
     """
-    # Get all supported files from Drive
     drive_files = _list_supported_drive_files(service)
-    
     matches = {}
     project_lower = project_name.lower() if project_name else None
-    
+
     for local_file_name in zip_files:
-        local_lower = local_file_name.lower()
+        local_base = os.path.splitext(local_file_name)[0].lower()
         match = None
-        
+
         for drive_file in drive_files:
-            drive_name_lower = drive_file['name'].lower()
-            
-            # Check: case-insensitive name match OR project name in drive file name
-            if local_lower == drive_name_lower or (project_lower and project_lower in drive_name_lower):
+            drive_lower = drive_file['name'].lower()
+            drive_base = os.path.splitext(drive_file['name'])[0].lower()
+
+            # Check: case-insensitive base name match OR project name in drive file name
+            if local_base == drive_base or (project_lower and project_lower in drive_lower):
                 match = (drive_file['id'], drive_file['name'], drive_file['mimeType'])
                 break
-        
+  
+        if match is None:
+            print(f"  [NO MATCH] '{local_file_name}'")
         matches[local_file_name] = match
-    
+
     return matches
 
 
@@ -90,25 +93,30 @@ def _list_supported_drive_files(service: Resource) -> List[Dict]:
     return files
 
 
-def find_maybe_matches(local_file_name: str,project_name: Optional[str],drive_files: List[Dict]) -> List[Tuple[str, str, str]]:
+def find_maybe_matches(local_file_name: str, project_name: Optional[str], drive_files: List[Dict]) -> List[Tuple[str, str, str]]:
     """
     Find potential matches for a single file.
     Looks for:
-    - Case-insensitive exact name matches
+    - Case-insensitive base name matches (ignores extensions)
     - Files containing the project name in their name
     """
     maybe_matches = []
-    local_lower = local_file_name.lower()
+    local_base = os.path.splitext(local_file_name)[0].lower()
     project_lower = project_name.lower() if project_name else None
     
     for drive_file in drive_files:
         drive_name = drive_file['name']
         drive_lower = drive_name.lower()
+        drive_base = os.path.splitext(drive_name)[0].lower()
         file_id = drive_file['id']
         mime_type = drive_file['mimeType']
         
-        # Check case-insensitive exact match OR project name in drive file name
-        if local_lower == drive_lower or (project_lower and project_lower in drive_lower):
+        # Debug: print what we're comparing
+        print(f"  Comparing: local_base='{local_base}' vs drive_base='{drive_base}' (drive_name='{drive_name}')")
+        
+        # Check case-insensitive base name match OR project name in drive file name
+        if local_base == drive_base or (project_lower and project_lower in drive_lower):
+            print(f"  [POTENTIAL MATCH] '{local_file_name}' -> '{drive_name}'")
             maybe_matches.append((file_id, drive_name, mime_type))
     
     # Remove duplicates (by file_id) and sort by relevance
@@ -124,6 +132,9 @@ def find_maybe_matches(local_file_name: str,project_name: Optional[str],drive_fi
         x[1].lower() != local_file_name.lower(),  # Exact matches first
         abs(len(x[1]) - len(local_file_name))  # Then by length similarity
     ))
+    
+    if not unique_matches:
+        print(f"  [NO MATCHES] '{local_file_name}'")
     
     return unique_matches
 
