@@ -69,3 +69,13 @@ My PR's:
 - 104 (Refactor/remove zip data saving) - closed, unmerged
 - 118 (Project type classification)
 - 127 (Fix/duplicate zip path)
+
+## (Week 9) Monday October 27 - Sunday November 2
+
+![Screenshot of this week's peer evaluation]()
+
+Week Recap: This week I worked on implementing the GitHub OAuth to further the collaboration analysis. Although no metrics have been pulled from GitHub yet, I worked on setting up the authentication flow through GitHub. If the user agrees, they can connect their project to a GitHub repository, which will allow us to analyze more individual contributions to a collaborative project. I included various tests, and ensured any tokens were securely stored in the local database.
+
+Next week, I plan to extend the individual contributions to a collaboratvie project by actually requesting and recieving dating via the GitHub API once the user has linked a project to its GitHub repository. I also began refactoring the main flow (specifically the file `main.py`), but because of how messy the file is it is taking me longer than expected. Thus, I will continue my refactoring and hope to have this PR done early next week.
+
+Last week, I had planned on extending the duplication techniques, but the team discussed this and realized any further duplication checks are not a requirement until Milestone 2. Saving this for the next milestone will allow us to focus more on the Milestone 1 requirements.
