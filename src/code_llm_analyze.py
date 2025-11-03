@@ -53,8 +53,16 @@ def run_code_llm_analysis(parsed_files, zip_path):
     project_folders = sorted(set(os.path.dirname(f["file_path"]).split(os.sep)[0] for f in code_files))
     project_name = project_folders[0] if project_folders else zip_name
     
-    summary = generate_code_llm_summary(project_context)
-    display_code_llm_results(project_name, summary, mode="COLLABORATIVE" if "collab" in project_name.lower() else "INDIVIDUAL")
+    # split summary into project + contribution sections
+    project_summary = generate_code_llm_project_summary(readme_text, project_context)
+    contribution_summary = generate_code_llm_contribution_summary(project_context)
+
+    display_code_llm_results(
+        project_name,
+        project_summary,
+        contribution_summary,
+        mode="COLLABORATIVE" if "collab" in project_name.lower() else "INDIVIDUAL",
+    )
         
     print(f"\n{'='*80}")
     print("PROJECT SUMMARY - (LLM-based results: summaries)")
@@ -63,40 +71,85 @@ def run_code_llm_analysis(parsed_files, zip_path):
     print(f"\n{'='*80}\n")
 
 
-def display_code_llm_results(project_name, summary, mode="INDIVIDUAL"):
+def display_code_llm_results(project_name, project_summary, contribution_summary, mode="INDIVIDUAL"):
     print(f"\n[{mode}-CODE] Project: {project_name}")
-    print("\n  Summary:")
-    print(textwrap.fill(summary, width=80, subsequent_indent="    "))
+
+    print("\n  Project Summary:")
+    print(textwrap.fill(project_summary, width=80, subsequent_indent="    "))
+
+    print("\n  Contribution Summary:")
+    print(textwrap.fill(contribution_summary, width=80, subsequent_indent="    "))
+
     print("\n" + "-" * 80 + "\n")
     
 
-def generate_code_llm_summary(project_context):
+def generate_code_llm_project_summary(readme_text, project_context):
     """
-    Produce ONE first-person, resume-ready paragraph (≈80–120 words)
-    with this flow: purpose → what I built/did → real tech used → impact.
-    Start with a strong past-tense action verb (Built/Developed/Designed/Implemented).
+    Produce a high-level project description (not tied to a single contributor).
+    Emphasizes purpose, functionality, and scope — uses README primarily.
+    """
+    if not readme_text:
+        readme_text = "No README content was found for this project."
+
+    prompt = f"""
+You are describing a software project at a high level for documentation.
+
+Focus ONLY on:
+- what the project is for (purpose, goals, and end users)
+- what major features or modules exist
+- the general technologies/frameworks mentioned
+- avoid specific function names or file references
+
+Do NOT mention individual contributors or personal achievements.
+Use the README as the main source; refer to the code context only for support.
+
+README:
+{readme_text[:5000]}
+
+Supplemental code context (for background only):
+{project_context[:2000]}
+
+Output one concise paragraph (80–100 words) starting with "A project that..." or "An application that...".
+"""
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You write concise, factual project summaries based on technical documentation.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+            max_tokens=180,
+        )
+        return _sanitize_resume_paragraph(completion.choices[0].message.content.strip())
+    except Exception as e:
+        print(f"Error generating project summary: {e}")
+        return "[Project summary unavailable due to API error]"
+
+def generate_code_llm_contribution_summary(project_context):
+    """
+    Produce a first-person contribution paragraph with implementation detail.
+    Focus on what was built, key files, and impact.
     """
     prompt = f"""
-You are a technical résumé writer. Based ONLY on the provided context (README + headers/docstrings/comments),
-write ONE concise paragraph (80–120 words) in FIRST PERSON ("I ...") that follows this flow:
-- the project's purpose and what it enables,
-- what I specifically designed/implemented/tested/optimized,
-- the key technologies/patterns that are actually evident in the context,
-- the impact for users or stakeholders (performance, reliability, usability, insight).
+You are describing ONE contributor’s personal role in building this project.
 
-Style rules (must follow):
-- Start the paragraph with a strong past-tense action verb (e.g., Built, Developed, Designed, Implemented).
-- Do NOT use bullets, numbering, headings, or markdown.
-- Do NOT list file or function names (refer generically, e.g., "the application", "the pipeline").
-- Do NOT invent libraries or tools that are not present in the context.
-- Professional, concrete, impact-oriented tone. One paragraph only.
+Write a short, first-person paragraph (≈80–120 words) covering:
+- what I designed or implemented (based on evident code, comments, or structure)
+- key technical aspects (libraries, methods, or pipelines actually present)
+- the results or impact (performance, usability, automation, etc.)
 
-Context:
-{project_context[:12000]}
+Be specific to implementation. You may mention code patterns or technologies if visible.
+Do NOT restate the high-level project purpose.
 
-Output: one paragraph, first person, 80–120 words, starting with a past-tense action verb.
+Context (from source code & comments):
+{project_context[:8000]}
+
+Output one strong paragraph starting with a past-tense action verb (e.g., Implemented, Designed, Developed).
 """
-
     try:
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant",
@@ -104,21 +157,20 @@ Output: one paragraph, first person, 80–120 words, starting with a past-tense 
                 {
                     "role": "system",
                     "content": (
-                        "You are a precise technical résumé writer. "
-                        "Always return one first-person paragraph (no lists/markdown). "
-                        "Mention only technologies present in the provided context."
+                        "You are a precise technical résumé writer focusing on contributions "
+                        "within collaborative codebases."
                     ),
                 },
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.15,   # tighter for consistency
+            temperature=0.15,
             max_tokens=220,
         )
         raw = completion.choices[0].message.content.strip()
         return _sanitize_resume_paragraph(raw)
     except Exception as e:
-        print(f"Error generating project summary: {e}")
-        return "[Summary unavailable due to API error]"
+        print(f"Error generating contribution summary: {e}")
+        return "[Contribution summary unavailable due to API error]"
     
 
 def _sanitize_resume_paragraph(text: str) -> str:
