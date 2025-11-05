@@ -170,7 +170,7 @@ def generate_text_llm_summary(text):
                 },
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.25,
+            temperature=0.2,
             max_tokens=150,
         )
         return completion.choices[0].message.content.strip()
@@ -204,20 +204,20 @@ def generate_text_llm_skills(main_text, supporting_texts=None):
                 merged_supporting += str(content)[:1000]
             
     prompt = (
-    "You are analyzing a writing or research project composed of a main document and optional supporting materials "
-    "(e.g., outlines, drafts, notes, reflections, or small datasets in CSV format). "
-    "Together they demonstrate both writing skill and process.\n\n"
-    "Step 1: Consider the main document as the final polished work — it shows core writing quality, clarity, and organization.\n"
-    "Step 2: Consider the supporting materials as evidence of process skills — planning, structuring ideas, research, data handling, or revision.\n\n"
-    "Infer 3–6 résumé-ready skills that the author demonstrates across all materials. "
-    "Be concrete and skill-oriented (e.g., 'Analytical reasoning', 'Structured argumentation', 'Creative development', "
-    "'Research synthesis', 'Data organization and analysis', 'Iterative editing and reflection').\n\n"
-    "Output one skill per line (no numbering, no extra text).\n\n"
-    "MAIN DOCUMENT:\n"
-    f"{main_text}\n\n"
-    "SUPPORTING MATERIALS:\n"
-    f"{merged_supporting}\n\n"
-    "Now list the most relevant skills:"
+        "You are analyzing a writing or research project composed of a main document and optional supporting materials "
+        "(e.g., outlines, drafts, notes, reflections, or small datasets in CSV format). "
+        "Together they demonstrate both writing skill and process.\n\n"
+        "Step 1: Consider the main document as the final polished work — it shows core writing quality, clarity, and organization.\n"
+        "Step 2: Consider the supporting materials as evidence of process skills — planning, structuring ideas, research, data handling, or revision.\n\n"
+        "Infer 3–6 résumé-ready skills that the author demonstrates across all materials. "
+        "Be concrete and skill-oriented (e.g., 'Analytical reasoning', 'Structured argumentation', 'Creative development', "
+        "'Research synthesis', 'Data organization and analysis', 'Iterative editing and reflection').\n\n"
+        "Output one skill per line (no numbering, no extra text).\n\n"
+        "MAIN DOCUMENT:\n"
+        f"{main_text}\n\n"
+        "SUPPORTING MATERIALS:\n"
+        f"{merged_supporting}\n\n"
+        "Now list the most relevant skills:"
     )
 
     try:
@@ -233,7 +233,7 @@ def generate_text_llm_skills(main_text, supporting_texts=None):
             },
             {"role": "user", "content": prompt},
         ],
-        temperature=0.3,
+        temperature=0.2,
         max_tokens=220,
     )
         raw_output = completion.choices[0].message.content.strip()
@@ -273,36 +273,36 @@ def generate_text_llm_success_factors(main_text, linguistic, supporting_texts=No
             else:
                 merged_supporting += str(content)[:1000]
 
-        prompt = (
-        "You are evaluating a complete writing or research project that includes a final written document "
-        "and optional supporting materials such as outlines, drafts, notes, reflections, or small datasets (CSV files).\n\n"
-        "The main document represents the finished deliverable — it shows writing quality, clarity, and organization. "
-        "Supporting files reveal the process, planning, revision, data work, or analysis behind it.\n\n"
-        f"Main document metrics:\n"
-        f"- Reading level: {readability}\n"
-        f"- Lexical diversity: {diversity}\n"
-        f"- Word count: {word_count}\n\n"
-        "If any supporting files are CSV datasets, ALWAYS evaluate the following:\n"
-        "- Row and column counts (a larger dataset suggests more complex analysis)\n"
-        "- Data completeness (less than 10% missing = complete; more than 10% = incomplete)\n\n"
-        "Assess both the final quality *and* the creative or analytical process (but do not restate or judge the scientific findings themselves) using these criteria:\n"
-        "- Clarity and organization in the final main text\n"
-        "- Depth of ideas and originality\n"
-        "- Writing craftsmanship (tone, coherence, structure)\n"
-        "- Evidence of iteration, planning, critical reflection, or data-informed process in supporting materials\n\n"
-        "When mentioning any strength or weakness that clearly relates to a supporting file, "
-        "include the exact filename in parentheses ONLY IF THEY EXIST. "
-        "Do NOT use vague phrases like 'in supporting files' or 'in drafts' — always specify the file name if available AND ONLY IF AVAILABLE.\n\n"
-        "Respond in clean JSON with three fields:\n"
-        "{\n"
-        '  \"strengths\": [\"3–5 concise phrases (≤8 words each)\"],\n'
-        '  \"weaknesses\": [\"3–5 concise phrases (≤8 words each)\"],\n'
-        '  \"score\": \"score like 8.4 / 10 (clear process and quality)\"\n'
-        "}\n\n"
-        "Keep total response under 50 words. Avoid full sentences, markdown, or bullet formatting.\n\n"
-        f"MAIN DOCUMENT:\n{main_text}\n\n"
-        f"SUPPORTING MATERIALS:\n{merged_supporting}\n\n"
-        "Your response:"
+    prompt = (
+            "You are evaluating a complete writing or research project that includes a final written document "
+            "and optional supporting materials such as outlines, drafts, notes, reflections, or small datasets (CSV files).\n\n"
+            "The main document represents the finished deliverable — it shows writing quality, clarity, and organization. "
+            "Supporting files reveal the process, planning, revision, data work, or analysis behind it.\n\n"
+            f"Main document metrics:\n"
+            f"- Reading level: {readability}\n"
+            f"- Lexical diversity: {diversity}\n"
+            f"- Word count: {word_count}\n\n"
+            "If any supporting files are CSV datasets, ALWAYS evaluate the following and mention it:\n"
+            "- Size of dataset (based on row and column counts)\n"
+            "- Data completeness (explicitly state if there are any missing data based on missing_pct), if there are any missing it should always go in weakness\n\n"
+            "Assess both the final quality *and* the creative or analytical process (but do not restate or judge the scientific findings themselves) using these criteria:\n"
+            "- Clarity and organization in the final main text\n"
+            "- Depth of ideas and originality\n"
+            "- Writing craftsmanship (tone, coherence, structure)\n"
+            "- Evidence of iteration, planning, critical reflection, or data-informed process in supporting materials\n\n"
+            "When mentioning any strength or weakness that clearly relates to a supporting file, "
+            "include the exact filename in parentheses ONLY IF THEY EXIST. "
+            "Do NOT use vague phrases like 'in supporting files' or 'in drafts' — always specify the file name if available AND ONLY IF AVAILABLE.\n\n"
+            "Respond in clean JSON with three fields:\n"
+            "{\n"
+            '  \"strengths\": [\"3–5 concise phrases (≤8 words each)\"],\n'
+            '  \"weaknesses\": [\"3–5 concise phrases (≤8 words each)\"],\n'
+            '  \"score\": \"score like 8.4 / 10 (clear process and quality)\"\n'
+            "}\n\n"
+            "Keep total response under 50 words. Avoid full sentences, markdown, or bullet formatting.\n\n"
+            f"MAIN DOCUMENT:\n{main_text}\n\n"
+            f"SUPPORTING MATERIALS:\n{merged_supporting}\n\n"
+            "Your response:"
     )
 
     try:
@@ -318,7 +318,7 @@ def generate_text_llm_success_factors(main_text, linguistic, supporting_texts=No
                 },
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.45,
+            temperature=0.2,
             max_tokens=250,
         )
 
