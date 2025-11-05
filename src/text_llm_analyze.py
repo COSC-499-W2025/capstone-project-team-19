@@ -67,7 +67,7 @@ def run_text_llm_analysis(parsed_files, zip_path):
             print("Failed to extract main file text. Skipping project.\n")
             continue
         
-        # gather supporting text (outlines, drafts, etc)
+        # gather supporting text (outlines, drafts, data collection, etc)
         supporting_files = [f for f in files_sorted if f != main_file]
         supporting_texts = []
         for f in supporting_files:
@@ -185,41 +185,57 @@ def generate_text_llm_skills(main_text, supporting_texts=None):
 
     if supporting_texts:
         for s in supporting_texts:
-            merged_supporting += f"\n\n### {s['filename']} ###\n{s['text'][:1500]}"
+            merged_supporting += f"\n\n### {s['filename']} ###\n"
+            content = s["text"]
+            # handle CSV metadata dicts
+            if isinstance(content, dict) and "headers" in content:
+                merged_supporting += (
+                    f"[CSV DATA SUMMARY]\n"
+                    f"Columns: {', '.join(content['headers'])}\n"
+                    f"Data types: {json.dumps(content['dtypes'], indent=2)}\n"
+                    f"Row count: {content['row_count']}, "
+                    f"Column count: {content['col_count']}, "
+                    f"Missing: {content['missing_pct']}%\n"
+                    f"Sample rows: {json.dumps(content['sample_rows'], indent=2)}\n"
+                )
+            elif isinstance(content, str):
+                merged_supporting += content[:2500]
+            else:
+                merged_supporting += str(content)[:1000]
             
     prompt = (
-        "You are analyzing a writing project composed of a main document and optional supporting materials "
-        "(e.g., outlines, drafts, notes, reflections). Together they demonstrate both writing skill and process.\n\n"
-        "Step 1: Consider the main document as the final polished work — it shows core writing quality, clarity, and organization.\n"
-        "Step 2: Consider the supporting materials as evidence of process skills — planning, structuring ideas, research, or revision.\n\n"
-        "Infer 3–6 résumé-ready skills that the author demonstrates across all materials. "
-        "Be concrete and skill-oriented (e.g., 'Analytical reasoning', 'Structured argumentation', 'Creative development', "
-        "'Research synthesis', 'Iterative editing and reflection').\n\n"
-        "Output one skill per line (no numbering, no extra text).\n\n"
-        "MAIN DOCUMENT:\n"
-        f"{main_text}\n\n"
-        "SUPPORTING MATERIALS:\n"
-        f"{merged_supporting}\n\n"
-        "Now list the most relevant skills:"
+    "You are analyzing a writing or research project composed of a main document and optional supporting materials "
+    "(e.g., outlines, drafts, notes, reflections, or small datasets in CSV format). "
+    "Together they demonstrate both writing skill and process.\n\n"
+    "Step 1: Consider the main document as the final polished work — it shows core writing quality, clarity, and organization.\n"
+    "Step 2: Consider the supporting materials as evidence of process skills — planning, structuring ideas, research, data handling, or revision.\n\n"
+    "Infer 3–6 résumé-ready skills that the author demonstrates across all materials. "
+    "Be concrete and skill-oriented (e.g., 'Analytical reasoning', 'Structured argumentation', 'Creative development', "
+    "'Research synthesis', 'Data organization and analysis', 'Iterative editing and reflection').\n\n"
+    "Output one skill per line (no numbering, no extra text).\n\n"
+    "MAIN DOCUMENT:\n"
+    f"{main_text}\n\n"
+    "SUPPORTING MATERIALS:\n"
+    f"{merged_supporting}\n\n"
+    "Now list the most relevant skills:"
     )
 
     try:
         completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You identify and phrase professional or academic skills demonstrated through written work. "
-                        "Keep them concise and skill-oriented."
-                        "taking into account both final work and process evidence."
-                    ),
-                },
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.3,
-            max_tokens=200,
-        )
+        model="llama-3.1-8b-instant",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You identify and phrase professional or academic skills demonstrated through written and analytical work. "
+                    "Keep them concise and skill-oriented, drawing from both the final document and any supporting or data materials."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.3,
+        max_tokens=220,
+    )
         raw_output = completion.choices[0].message.content.strip()
         skills = [
             line.lstrip("-• ").strip()
@@ -241,25 +257,43 @@ def generate_text_llm_success_factors(main_text, linguistic, supporting_texts=No
     merged_supporting = ""
     if supporting_texts:
         for s in supporting_texts:
-            merged_supporting += f"\n\n### FILE: {s['filename']} ###\n{s['text'][:1200]}"
+            merged_supporting += f"\n\n### FILE: {s['filename']} ###\n"
+            content = s["text"]
+            if isinstance(content, dict) and "headers" in content:
+                merged_supporting += (
+                    f"[CSV DATA SUMMARY]\n"
+                    f"Columns: {', '.join(content['headers'])}\n"
+                    f"Row count: {content['row_count']}, "
+                    f"Column count: {content['col_count']}, "
+                    f"Missing: {content['missing_pct']}%\n"
+                    f"Data types: {json.dumps(content['dtypes'], indent=2)}\n"
+                )
+            elif isinstance(content, str):
+                merged_supporting += content[:2000]
+            else:
+                merged_supporting += str(content)[:1000]
 
-    prompt = (
-        "You are evaluating a complete writing project that includes both a final document "
-        "and supporting materials such as outlines, drafts, and notes. "
-        "The final document shows end quality, while the supporting files reveal process, planning, and revision.\n\n"
-        f"Here are metrics from the main document:\n"
+        prompt = (
+        "You are evaluating a complete writing or research project that includes a final written document "
+        "and optional supporting materials such as outlines, drafts, notes, reflections, or small datasets (CSV files).\n\n"
+        "The main document represents the finished deliverable — it shows writing quality, clarity, and organization. "
+        "Supporting files reveal the process, planning, revision, data work, or analysis behind it.\n\n"
+        f"Main document metrics:\n"
         f"- Reading level: {readability}\n"
         f"- Lexical diversity: {diversity}\n"
         f"- Word count: {word_count}\n\n"
+        "If any supporting files are CSV datasets, also consider the following when relevant:\n"
+        "- Row and column counts (a larger dataset suggests more complex analysis)\n"
+        "- Data completeness (less than 10% missing = complete; more than 10% = incomplete)\n\n"
         "Assess both the final quality *and* the creative or analytical process using these criteria:\n"
-        "- Clarity and organization in the final text\n"
+        "- Clarity and organization in the final main text\n"
         "- Depth of ideas and originality\n"
         "- Writing craftsmanship (tone, coherence, structure)\n"
-        "- Evidence of iteration, planning, or critical reflection in supporting materials\n\n"
+        "- Evidence of iteration, planning, critical reflection, or data-informed process in supporting materials\n\n"
         "When mentioning any strength or weakness that clearly relates to a supporting file, "
         "include the exact filename in parentheses ONLY IF THEY EXIST. "
         "Do NOT use vague phrases like 'in supporting files' or 'in drafts' — always specify the file name if available AND ONLY IF AVAILABLE.\n\n"
-        "Write your response in clean JSON with three fields:\n"
+        "Respond in clean JSON with three fields:\n"
         "{\n"
         '  \"strengths\": [\"3–5 concise phrases (≤8 words each)\"],\n'
         '  \"weaknesses\": [\"3–5 concise phrases (≤8 words each)\"],\n'
