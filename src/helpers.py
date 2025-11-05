@@ -3,6 +3,7 @@ import shutil
 from typing import List, Dict, Optional, Tuple
 import os
 import subprocess
+import pandas as pd
 
 # Text extraction
 import docx2txt
@@ -108,12 +109,9 @@ def bfs_find_repo(root: str, max_depth: int = 2) -> Optional[str]:
 
 ## Text Extraction
 
-SUPPORTED_TEXT_EXTENSIONS = {'.txt', '.pdf', '.docx', '.md'}
+SUPPORTED_TEXT_EXTENSIONS = {'.txt', '.pdf', '.docx', '.md', '.csv'}
 
 def extract_text_file(filepath: str) -> Optional[str]:
-    """
-    Extract readable text from .txt, .md, .pdf, or .docx files.
-    """
     extension = os.path.splitext(filepath)[1].lower()
     if extension not in SUPPORTED_TEXT_EXTENSIONS:
         return None
@@ -126,6 +124,8 @@ def extract_text_file(filepath: str) -> Optional[str]:
             return extractfrompdf(filepath)
         elif extension == '.docx':
             return extractfromdocx(filepath)
+        elif extension == '.csv':
+            return extractfromcsv(filepath)
     except Exception as e:
         print(f"Error extracting from {filepath}: {e}")
         return None
@@ -156,6 +156,31 @@ def extractfromdocx (filepath: str)->str:
     except Exception as e:
         print(f"Error : {e}")
         
+
+def extractfromcsv(filepath: str, sample_rows: int = 5) -> dict:
+    try:
+        df = pd.read_csv(filepath, nrows=sample_rows)
+        full_df = pd.read_csv(filepath)
+        total_rows = len(full_df)
+        total_cols = len(full_df.columns)
+        null_ratio = (full_df.isnull().sum().sum() / (total_rows * total_cols)) * 100
+        dtypes = full_df.dtypes.astype(str).to_dict()
+        headers = list(full_df.columns)
+
+        #extracts the column headers, data types, sample rows, total rows, total columns, and missing value percentage
+        return {
+            "filename": os.path.basename(filepath),
+            "headers": headers,
+            "dtypes": dtypes,
+            "sample_rows": df.head(sample_rows).to_dict(orient="records"),
+            "row_count": total_rows,
+            "col_count": total_cols,
+            "missing_pct": round(null_ratio, 2),
+        }
+    except Exception as e:
+        print(f"Error reading CSV {filepath}: {e}")
+        return None
+
         
 
 ## Code extraction
