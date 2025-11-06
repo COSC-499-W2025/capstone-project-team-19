@@ -139,7 +139,7 @@ def test_auto_select_largest_file(mock_client, mock_getsize, mock_input, tmp_pat
     assert mock_getsize.called
     
     
-@patch("builtins.input", return_value="1")
+@patch("builtins.input", return_value="2")
 @patch("src.text_llm_analyze.client")
 
 # tests if supporting files are detected and included in skills and success factors prompts
