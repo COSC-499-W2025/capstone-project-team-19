@@ -33,7 +33,7 @@ def run_text_llm_analysis(parsed_files, zip_path):
     for f in text_files:
         if not f.get("file_path"):
             continue
-        project_name = f["file_path"].split(os.sep)[0]
+        project_name = os.path.basename(os.path.dirname(f["file_path"]))
         projects.setdefault(project_name, []).append(f)
 
     # process each folder as one project
@@ -208,10 +208,8 @@ def generate_text_llm_skills(main_text, supporting_texts=None):
         "(e.g., outlines, drafts, notes, reflections, or small datasets in CSV format). "
         "Together they demonstrate both writing skill and process.\n\n"
         "Step 1: Consider the main document as the final polished work — it shows core writing quality, clarity, and organization.\n"
-        "Step 2: Consider the supporting materials as evidence of process skills — planning, structuring ideas, research, data handling, or revision.\n\n"
+        "Step 2: Consider the supporting materials as evidence of process skills — planning, structuring ideas, research, or revision.\n\n"
         "Infer 3–6 résumé-ready skills that the author demonstrates across all materials. "
-        "Be concrete and skill-oriented (e.g., 'Analytical reasoning', 'Structured argumentation', 'Creative development', "
-        "'Research synthesis', 'Data organization and analysis', 'Iterative editing and reflection').\n\n"
         "Output one skill per line (no numbering, no extra text).\n\n"
         "MAIN DOCUMENT:\n"
         f"{main_text}\n\n"
@@ -282,14 +280,14 @@ def generate_text_llm_success_factors(main_text, linguistic, supporting_texts=No
             f"- Reading level: {readability}\n"
             f"- Lexical diversity: {diversity}\n"
             f"- Word count: {word_count}\n\n"
-            "If any supporting files are CSV datasets, ALWAYS evaluate the following and mention it:\n"
+            "If there is [CSV DATA SUMMARY] in SUPPORTING MATERIALS, evaluate the following bullet points and mention it. Otherwise if there is no [CSV DATA SUMMARY] in SUPPORTING MATERIALS, then DO NOT mention anything related to the two bullet points below.:\n"
             "- Size of dataset (based on row and column counts)\n"
-            "- Data completeness (explicitly state if there are any missing data based on missing_pct), if there are any missing it should always go in weakness\n\n"
+            "- Data completeness (explicitly state if there are any missing data based on missing_pct only if there is [CSV DATA SUMMARY] in SUPPORTING MATERIALS), if there are any missing it should always go in weakness but only if there is [CSV DATA SUMMARY] in SUPPORTING MATERIALS, otherwise do not include it anywhere.\n\n"
             "Assess both the final quality *and* the creative or analytical process (but do not restate or judge the scientific findings themselves) using these criteria:\n"
             "- Clarity and organization in the final main text\n"
             "- Depth of ideas and originality\n"
             "- Writing craftsmanship (tone, coherence, structure)\n"
-            "- Evidence of iteration, planning, critical reflection, or data-informed process in supporting materials\n\n"
+            "- Evidence of iteration, planning, or critical reflection\n\n"
             "When mentioning any strength or weakness that clearly relates to a supporting file, "
             "include the exact filename in parentheses ONLY IF THEY EXIST. "
             "Do NOT use vague phrases like 'in supporting files' or 'in drafts' — always specify the file name if available AND ONLY IF AVAILABLE.\n\n"
