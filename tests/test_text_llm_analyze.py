@@ -217,3 +217,23 @@ def test_generate_llm_success_factors(mock_client, mock_llm_responses):
     result = text_llm_analyze.generate_text_llm_success_factors("Some academic text.", linguistic)
     assert result["strengths"].startswith("clear")
     assert "8.1" in result["score"]
+    
+# tests if output prints the right project_name
+def test_project_name_extraction_correctness(tmp_path, capsys):
+    base = tmp_path / "zip_data" / "Archive" / "projects-root" / "Study Notes"
+    os.makedirs(base, exist_ok=True)
+    (base / "essay.txt").write_text("Essay content here.")
+
+    parsed_files = [
+        {"file_path": "projects-root/Study Notes/essay.txt", "file_name": "essay.txt", "file_type": "text"},
+    ]
+
+    # patch extract_text_file so it doesn’t actually read files (not necessary for this test)
+    with patch("src.text_llm_analyze.extract_text_file", return_value="Dummy text"):
+        text_llm_analyze.run_text_llm_analysis(parsed_files, str(tmp_path / "Archive.zip"))
+
+    captured = capsys.readouterr().out
+
+    assert "→ Study Notes" in captured or "Project: Study Notes" in captured
+    assert "projects-root" not in captured
+
