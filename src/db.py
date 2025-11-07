@@ -196,6 +196,20 @@ def init_schema(conn: sqlite3.Connection) -> None:
     );
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS github_accounts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        github_username TEXT NOT NULL,
+        github_id INTEGER NOT NULL,
+        github_name TEXT NOT NULL,
+        github_email TEXT,
+        github_profile_url TEXT,
+        UNIQUE (user_id, github_username),
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
+    """)
+
     conn.commit()
 
 # ----------------------------------------------------------
@@ -446,3 +460,13 @@ def get_unlinked_project_files(conn: sqlite3.Connection, user_id: int, project_n
     """, (user_id, project_name)).fetchall()
     
     return [row[0] for row in rows]
+
+def store_github_account(conn, user_id, github_user):
+    conn.execute("""
+        INSERT OR REPLACE INTO github_accounts
+        (user_id, github_username, github_id, github_name, github_email, github_profile_url)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        user_id, github_user["login"], github_user["id"], github_user["name"], github_user["email"], github_user["profile_url"]
+    ))
+    conn.commit()

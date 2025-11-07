@@ -2,9 +2,11 @@ from __future__ import annotations
 import sqlite3
 from typing import Optional, Dict
 
+from src.db import store_github_account
 from src.github_auth.github_oauth import github_oauth
 from src.github_auth.token_store import get_github_token
 from src.github_auth.link_repo import ensure_repo_link, select_and_store_repo
+from src.github_auth.github_api import get_authenticated_user
 from src.framework_detector import detect_frameworks
 from src.language_detector import detect_languages
 from src.helpers import zip_paths  
@@ -137,6 +139,11 @@ def _handle_no_git_repo(conn, user_id, project_name):
 
     if ans in {"y", "yes"}:
         token = github_oauth(conn, user_id)
+
+        # get user's GitHub account info
+        github_user = get_authenticated_user(token)
+        store_github_account(conn, user_id, github_user)
+
         select_and_store_repo(conn, user_id, project_name, token)
         return None
 
@@ -150,6 +157,12 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir):
         ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
         if ans in {"y", "yes"}:
             token = github_oauth(conn, user_id)
+
+            # TODO: check that their github info is already stored, if not then store it
+            # get user's GitHub account info
+            github_user = get_authenticated_user(token)
+            store_github_account(conn, user_id, github_user)
+
             select_and_store_repo(conn, user_id, project_name, token)
     else:
         ans = input("Enhance with GitHub data? (y/n): ").strip().lower()

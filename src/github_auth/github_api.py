@@ -39,3 +39,28 @@ def list_user_repos(token):
 
     # Deduplicate and sort
     return sorted(deduplicated.values(), key=lambda s: s.lower())
+
+def get_authenticated_user(token):
+    # https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user
+    # Use the curl example to build request
+    print(f"BELLO {token}")
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json"
+    }
+    
+    r = requests.get("https://api.github.com/user", headers=headers)
+
+    # check for 200
+    if r.status_code != 200:
+        raise RuntimeError(f"GitHub /user call failed: {r.status_code}, {r.text}")
+
+    data = r.json()
+
+    return {
+        "login": data.get("login"),
+        "id": data.get("id"),
+        "name": data.get("name"),
+        "email": data.get("email"),
+        "profile_url": data.get("html_url")
+    }
