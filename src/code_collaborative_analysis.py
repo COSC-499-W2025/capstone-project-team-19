@@ -27,7 +27,7 @@ from src.code_collaborative_analysis_helper import (
 
 
 _CODE_RUN_METRICS: list[dict] = []
-_MANUAL_DESCS: Dict[str, str] = {}  # filled once per run for collab projects
+_manual_descs_store: dict[str, str] = {}  # filled once per run for collab projects
 
 def set_manual_descs_store(descs: dict[str, str] | None) -> None:
     """Store user-provided project descriptions for this analysis run."""
@@ -102,6 +102,26 @@ def analyze_code_project(conn: sqlite3.Connection,
 
     # 5.1) attach manual description if it was collected up-front
     desc = get_manual_desc(project_name)
+
+    if not desc:
+        # Try to read external_consent; ignore errors if table/row doesn't exist.
+        try:
+            consent_row = conn.execute(
+                "SELECT status FROM external_consent WHERE user_id = ?", (user_id,)
+            ).fetchone()
+            external_consent = consent_row[0] if consent_row else None
+        except Exception:
+            external_consent = None
+
+        if external_consent != "accepted":
+            try:
+                user_desc = input(
+                    f"Description for {project_name} (what the code does + your contribution): "
+                )
+            except EOFError:
+                user_desc = ""
+            desc = (user_desc or "").strip()
+            
     if desc:
         metrics["desc"] = desc.strip()
 
