@@ -174,6 +174,11 @@ def init_schema(conn: sqlite3.Connection) -> None:
         project_name TEXT NOT NULL,
         provider TEXT NOT NULL,
         repo_url TEXT NOT NULL,
+        repo_full_name TEXT,
+        repo_owner TEXT,
+        repo_name TEXT,
+        repo_id INTEGER,
+        default_branch TEXT,
         linked_at TEXT DEFAULT (datetime('now')),
         UNIQUE(user_id, project_name, provider),
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
@@ -374,13 +379,23 @@ def save_token_placeholder(conn: sqlite3.Connection, user_id: int):
 
     conn.commit()
 
-def save_project_repo(conn: sqlite3.Connection, user_id: int, project_name: str, repo_url: str, provider="github"):
+def save_project_repo(conn: sqlite3.Connection, user_id: int, project_name: str, repo_url: str, repo_full_name: str, repo_owner: str, repo_name: str, repo_id: int, default_branch: str, provider="github"):
     # Store which GitHub repository corresponds to a given collaborative project
     
     conn.execute("""
-        INSERT OR REPLACE INTO project_repos (user_id, project_name, provider, repo_url)
-        VALUES (?, ?, ?, ?)
-    """, (user_id, project_name, provider, repo_url))
+        INSERT OR REPLACE INTO project_repos (
+            user_id, 
+            project_name, 
+            provider, 
+            repo_url,
+            repo_full_name,
+            repo_owner,
+            repo_name,
+            repo_id,
+            default_branch
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (user_id, project_name, provider, repo_url, repo_full_name, repo_owner, repo_name, repo_id, default_branch))
 
     conn.commit()
 

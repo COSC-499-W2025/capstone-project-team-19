@@ -43,7 +43,6 @@ def list_user_repos(token):
 def get_authenticated_user(token):
     # https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user
     # Use the curl example to build request
-    print(f"BELLO {token}")
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json"
@@ -64,3 +63,20 @@ def get_authenticated_user(token):
         "email": data.get("email"),
         "profile_url": data.get("html_url")
     }
+
+def get_gh_repo_metadata(owner, repo, token):
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json"
+    }
+
+    url = f"https://api.github.com/repos/{owner}/{repo}"
+
+    r = requests.get(url, headers = headers)
+
+    if r.status_code != 200:
+        raise RuntimeError(f"Github /repos call failed: {r.status_code}, {r.text}")
+
+    data = r.json()
+
+    return data.get("id"), data.get("default_branch")
