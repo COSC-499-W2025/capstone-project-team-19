@@ -196,6 +196,28 @@ def init_schema(conn: sqlite3.Connection) -> None:
     );
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS llm_text (
+        text_metric_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        classification_id INTEGER NOT NULL,
+        file_path TEXT,
+        file_name TEXT,
+        project_name TEXT,
+        word_count INTEGER,
+        sentence_count INTEGER,
+        flesch_kincaid_grade REAL,
+        lexical_diversity REAL
+        summary TEXT NOT NULL,
+        skills_json JSON,
+        strength_json JSON,
+        weaknesses_json JSON,
+        overall_score TEXT,
+        processed_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(text_metric_id),
+        FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
+        )
+""")
+
     conn.commit()
 
 # ----------------------------------------------------------
@@ -352,6 +374,20 @@ def get_project_classifications(
     ).fetchall()
     return {project_name: classification for project_name, classification in rows}
     
+def store_text_llm_metrics(conn: sqlite3.Connection, classification_id: int, project_name: str, file_name:str, file_path:str, linguistic:dict, summary: str, skills: list, success: dict )-> None:
+    skills_json=json.dumps(skills)
+    strength_json=json.dumps(success.get("strengths", []))
+    weaknesses_json=json.dumps(success.get("weaknesses", []))
+    conn.execute(
+        """
+        INSERT INTO llm_text(
+        classification_id, file_path, file_name, project_name, word_count, sentence_count, flesch_kincaid_grade, lexical_diversity, summary, skills_json, strength_json, weaknesses_json, overall_score)
+        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, 
+        classification_id, file_path, file_name, project_name, linguistic.get("word_count"), linguistic.get("sentence_count"),linguistic.get("sentence_count"), linguistic.get("flesch_kincaid_grade"), linguistic.get("lexical_diversity"), summary, skills_json, strength_json, weaknesses_json, success.get("score")
+        )
+    conn.commit()
+
 def save_token_placeholder(conn: sqlite3.Connection, user_id: int):
     conn.execute("""
         INSERT OR IGNORE INTO user_tokens (user_id, provider, access_token)
