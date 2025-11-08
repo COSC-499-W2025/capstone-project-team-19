@@ -739,8 +739,8 @@ DOMAIN_STOP = {
 # If NLTK stopwords are available, use them + domain words.
 # Otherwise, fall back to a minimal manual list (includes domain words).
 STOP = (NLTK_STOP | DOMAIN_STOP) or {
-    "the","a","an","and","or","to","of","for","in","on","with","by","from","at",
-    "is","are","this","that","it","its","my","our","your","we","i","you",
+    "the","a","an","and","or","to","of","for","in","on","with","by","from","at", "did",
+    "is","are","this","that","it","its","my","our","your","we","i","you", "which", "will",
     "app","project","repo","readme","code","using","built","build"
 }
 
