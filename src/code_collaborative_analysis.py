@@ -24,8 +24,7 @@ from src.code_collaborative_analysis_helper import (
     read_git_history,
     compute_metrics,
     print_project_card,
-    print_portfolio_summary,
-    print_github_metrics
+    print_portfolio_summary
 )
 
 
