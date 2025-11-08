@@ -87,7 +87,6 @@ def _store_repo(conn, user_id, project_name, repo_url):
 
 def get_github_repo_metadata(user_id, project_name, repo_url, token):
     # parse url for repo_owner and repo_name
-    print("repo_url:", repo_url)
     repo_parts = repo_url.split("/")
     repo_owner = repo_parts[0]
     repo_name = repo_parts[1]

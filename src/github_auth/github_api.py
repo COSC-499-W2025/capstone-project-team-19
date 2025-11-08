@@ -79,12 +79,6 @@ def get_gh_repo_commit_activity(token, owner, repo, username):
 
     return dict(daily)
 
-def get_gh_repo_language_breakdown(token, owner, repo):
-    pass
-
-def get_gh_repo_lines_added_and_deleted(token, owner, repo):
-    pass
-
 # gets PRs and issues, so aggregate this function to only get issues
 def get_gh_repo_issues(token, owner, repo, github_username):    
     page = 1
@@ -125,6 +119,8 @@ def get_gh_repo_issues(token, owner, repo, github_username):
                     "created_at": created_at,
                     "closed_at": closed_at.split("T")[0] if closed_at else None
                 })
+
+        if len(data) < 100: break # break if no more pages
 
         page += 1
     
@@ -174,6 +170,7 @@ def get_gh_repo_prs(token, owner, repo, github_username):
                 "state": pr.get("state"),
                 "merged": bool(merged_at)
             })
+        if len(data) < 100: break # break if no more pages
 
         page += 1
 
@@ -234,3 +231,5 @@ def get_gh_repo_readme(token, owner, repo): pass
 def get_gh_repo_content_analysis(token, owner, repo): pass
 def get_gh_repo_pulls(token, owner, repo): pass
 def get_gh_repo_reviews(token, owner, repo): pass
+def get_gh_repo_language_breakdown(token, owner, repo): pass
+def get_gh_repo_lines_added_and_deleted(token, owner, repo): pass

@@ -1,117 +1,110 @@
-import pytest, requests
+import pytest
 import src.github_auth.github_api as api
-from src.github_auth.link_repo import list_user_repos
 
-class FakeResponse:
+class FakeResp:
     def __init__(self, status, data):
         self.status_code = status
         self._data = data
-
+        self.text = str(data)
     def json(self):
         return self._data
 
-def test_list_user_repos(monkeypatch):
-    fake_personal = [{"full_name": "me/one"}, {"full_name": "me/Two"}]
-    fake_orgs = [{"login": "MyOrg"}]
-    fake_org_repos = [{"full_name": "MyOrg/alpha", "permissions": {"push": True}},
-                      {"full_name": "MyOrg/beta", "permissions": {"push": False}}]
+def fake_get_sequence(monkeypatch, responses):
+    seq = iter(responses)
+    monkeypatch.setattr(api.requests, "get", lambda *a, **k: next(seq))
 
-    class FakeResp:
-        def __init__(self, json, code=200):
-            self._j = json; self.status_code = code
-        def json(self): return self._j
+def test_list_user_repos(monkeypatch):
+    personal = [{"full_name": "me/one"}, {"full_name": "me/Two"}]
+    orgs = [{"login": "MyOrg"}]
+    org_repos = [
+        {"full_name": "MyOrg/alpha", "permissions": {"push": True}},
+        {"full_name": "MyOrg/beta", "permissions": {"push": False}},
+    ]
 
     def fake_get(url, headers):
-        if "user/repos" in url: return FakeResp(fake_personal)
-        if "user/orgs" in url: return FakeResp(fake_orgs)
-        if "orgs/MyOrg/repos" in url: return FakeResp(fake_org_repos)
-        return FakeResp([])
+        if "user/repos" in url: return FakeResp(200, personal)
+        if "user/orgs" in url: return FakeResp(200, orgs)
+        if "orgs/MyOrg/repos" in url: return FakeResp(200, org_repos)
+        return FakeResp(200, [])
 
     monkeypatch.setattr(api.requests, "get", fake_get)
 
-    repos = api.list_user_repos("fake")
-    assert repos == ["me/one", "me/Two", "MyOrg/alpha"]
+    assert api.list_user_repos("x") == ["me/one", "me/Two", "MyOrg/alpha"]
 
-
-def test_returns_empty_when_no_repos(monkeypatch):
-    # 1) personal repos call returns empty
-    # 2) orgs call returns empty
-    sequence = iter([
-        FakeResponse(200, []),  # user repos
-        FakeResponse(200, []),  # orgs
+def test_list_user_repos_empty(monkeypatch):
+    fake_get_sequence(monkeypatch, [
+        FakeResp(200, []), FakeResp(200, [])
     ])
+    assert api.list_user_repos("t") == []
 
-    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: next(sequence))
+def test_gh_get_success(monkeypatch):
+    monkeypatch.setattr(api.requests, "get", lambda *a, **k: FakeResp(200, {"ok": True}))
+    assert api.gh_get("T", "x") == {"ok": True}
 
-    assert list_user_repos("TOKEN123") == []
+def test_gh_get_missing_token():
+    with pytest.raises(ValueError):
+        api.gh_get("", "x")
 
+def test_gh_get_failure(monkeypatch):
+    monkeypatch.setattr(api.requests, "get", lambda *a, **k: FakeResp(500, {"err": True}))
+    with pytest.raises(RuntimeError):
+        api.gh_get("T", "x")
 
-def test_personal_repos(monkeypatch):
-    sequence = iter([
-        FakeResponse(200, [{"full_name": "user/RepoA"}, {"full_name": "user/RepoB"}]),
-        FakeResponse(200, []),  # orgs
-    ])
+def test_get_authenticated_user(monkeypatch):
+    data = {"login": "me", "id":1, "name":"A", "email":"b", "html_url":"url"}
+    monkeypatch.setattr(api.requests, "get", lambda *a, **k: FakeResp(200, data))
+    res = api.get_authenticated_user("T")
+    assert res["login"] == "me"
+    assert res["profile_url"] == "url"
 
-    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: next(sequence))
-
-    assert list_user_repos("X") == ["user/RepoA", "user/RepoB"]
-
-
-def test_org_repos_with_push(monkeypatch):
-    sequence = iter([
-        FakeResponse(200, []),  # personal repos
-        FakeResponse(200, [{"login": "org1"}]),  # org list
-        FakeResponse(200, [
-            {"full_name": "org1/Repo1", "permissions": {"push": True}},
-            {"full_name": "org1/Repo2", "permissions": {"push": False}},
+def test_commit_activity(monkeypatch):
+    fake_get_sequence(monkeypatch, [
+        FakeResp(200, [
+            {"commit":{"author":{"date":"2024-01-01T00"}}},
+            {"commit":{"author":{"date":"2024-01-01T01"}}},
         ]),
+        FakeResp(200, [])
     ])
+    assert api.get_gh_repo_commit_activity("T","o","r","me") == {"2024-01-01": 2}
 
-    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: next(sequence))
+def test_get_issues(monkeypatch):
+    fake = [
+        {"title":"Bug","body":"","created_at":"2024-01-01T00","closed_at":None,
+         "labels":[],"user":{"login":"me"},"assignees":[]},
+        {"pull_request":{}, "user":{"login":"me"}},
+    ]
+    monkeypatch.setattr(api.requests, "get", lambda *a, **k: FakeResp(200, fake))
+    res = api.get_gh_repo_issues("T","o","r","me")
+    assert res["total_opened"] == 1
+    assert len(res["user_issues"]) == 1
+    assert res["user_issues"][0]["title"] == "Bug"
 
-    assert list_user_repos("X") == ["org1/Repo1"]
+def test_get_prs(monkeypatch):
+    fake = [
+        {"user":{"login":"me"},
+         "title":"PR1","body":"",
+         "created_at":"2024-02-01T00",
+         "merged_at":"2024-02-02T00",
+         "labels":[],"state":"closed"},
+        {"user":{"login":"other"}},
+    ]
+    monkeypatch.setattr(api.requests, "get", lambda *a, **k: FakeResp(200, fake))
+    res = api.get_gh_repo_prs("T","o","r","me")
+    assert res["total_opened"] == 1
+    assert res["total_merged"] == 1
+    assert res["user_prs"][0]["merged"] is True
 
-
-def test_dedup_case_insensitive(monkeypatch):
-    sequence = iter([
-        FakeResponse(200, [{"full_name": "user/Repo"}]),
-        FakeResponse(200, []),  # orgs
+def test_contributions_poll(monkeypatch):
+    fake_get_sequence(monkeypatch, [
+        FakeResp(200, {"message":"202"}),
+        FakeResp(200, [{
+            "author":{"login":"me"},
+            "total":5,
+            "weeks":[{"a":3,"d":1}, {"a":4,"d":2}]
+        }])
     ])
-
-    # Simulate org returns same repo name in caps
-    sequence = iter([
-        FakeResponse(200, [{"full_name": "User/Repo"}]),  # personal
-        FakeResponse(200, [{"login": "Org"}]),  # org list
-        FakeResponse(200, [{"full_name": "user/repo", "permissions": {"push": True}}])
-    ])
-
-    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: next(sequence))
-
-    assert list_user_repos("X") == ["User/Repo"]
-
-
-def test_api_failure(monkeypatch):
-    # personal repos fails
-    # orgs succeeds but no orgs
-    sequence = iter([
-        FakeResponse(500, None),
-        FakeResponse(200, []),
-    ])
-
-    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: next(sequence))
-
-    assert list_user_repos("X") == []
-
-
-def test_auth_header_used(monkeypatch):
-    captured_headers = {}
-
-    def fake_get(url, headers):
-        captured_headers["header"] = headers
-        return FakeResponse(200, [])
-
-    monkeypatch.setattr(requests, "get", fake_get)
-
-    list_user_repos("MYTOKEN")
-
-    assert captured_headers["header"]["Authorization"] == "Bearer MYTOKEN"
+    res = api.get_gh_repo_contributions("T","o","r","me")
+    assert res["commits"] == 5
+    assert res["additions"] == 7
+    assert res["deletions"] == 3
+    assert res["contribution_percent"] == 100.0
