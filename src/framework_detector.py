@@ -1,20 +1,189 @@
 import os
 
 FRAMEWORK_KEYWORDS = {
+    # Python Web Frameworks
     "Django": ["django"],
     "Flask": ["flask"],
     "FastAPI": ["fastapi"],
     "Pyramid": ["pyramid"],
+    "Tornado": ["tornado"],
+    "Bottle": ["bottle"],
+    "CherryPy": ["cherrypy"],
+    "Sanic": ["sanic"],
+    "Starlette": ["starlette"],
+    "Quart": ["quart"],
+    "aiohttp": ["aiohttp"],
+
+    # Python Data/ML/Visualization Frameworks
+    "Streamlit": ["streamlit"],
+    "Dash": ["dash"],
+    "Gradio": ["gradio"],
+    "Reflex": ["reflex"],
+    "Plotly": ["plotly"],
+    "Bokeh": ["bokeh"],
+
+    # Python Testing
+    "Pytest": ["pytest"],
+    "Unittest": ["unittest"],
+    "Nose": ["nose", "nose2"],
+    "Behave": ["behave"],
+    "Robot Framework": ["robotframework"],
+
+    # Python ORM/Database
+    "SQLAlchemy": ["sqlalchemy"],
+    "Django ORM": ["django.db"],
+    "Peewee": ["peewee"],
+    "Tortoise ORM": ["tortoise-orm"],
+    "Pony ORM": ["ponyorm"],
+
+    # Java/Spring Frameworks
     "Spring": ["spring-boot", "springframework"],
+    "Spring Boot": ["spring-boot"],
     "Hibernate": ["hibernate"],
-    "React": ["react", "react-dom", "react-scripts", "next", "gatsby", "remix"],
-    "Angular": ["@angular/core"],
-    "Vue": ["vue", "vite", "nuxt"],
+    "Struts": ["struts"],
+    "Play Framework": ["play-framework"],
+    "Micronaut": ["micronaut"],
+    "Quarkus": ["quarkus"],
+
+    # JavaScript/TypeScript Frontend Frameworks
+    "React": ["react", "react-dom", "react-scripts"],
     "Next.js": ["next"],
+    "Gatsby": ["gatsby"],
+    "Remix": ["@remix-run"],
+    "Angular": ["@angular/core"],
+    "Vue": ["vue"],
+    "Nuxt": ["nuxt"],
+    "Svelte": ["svelte"],
+    "SvelteKit": ["@sveltejs/kit"],
+    "SolidJS": ["solid-js"],
+    "Preact": ["preact"],
+    "Astro": ["astro"],
+    "Qwik": ["@builder.io/qwik"],
+    "Lit": ["lit"],
+    "Alpine.js": ["alpinejs"],
+    "Ember": ["ember"],
+    "Backbone": ["backbone"],
+
+    # JavaScript/TypeScript Backend Frameworks
     "Express": ["express"],
     "NestJS": ["@nestjs/core"],
-    "Tailwind CSS": ["tailwindcss", "tailwind.config.js", "tailwind.config.cjs"],
+    "Koa": ["koa"],
+    "Hapi": ["@hapi/hapi"],
+    "Fastify": ["fastify"],
+    "Adonis": ["@adonisjs/core"],
+    "Meteor": ["meteor"],
+    "Sails": ["sails"],
+    "LoopBack": ["loopback"],
+
+    # Mobile Frameworks
+    "React Native": ["react-native"],
+    "Expo": ["expo"],
+    "Flutter": ["flutter"],
+    "Ionic": ["@ionic/angular", "@ionic/react", "@ionic/vue"],
+    "Capacitor": ["@capacitor/core"],
+    "Cordova": ["cordova"],
+    "NativeScript": ["nativescript"],
+
+    # CSS Frameworks & Preprocessors
+    "Tailwind CSS": ["tailwindcss"],
     "Bootstrap": ["bootstrap"],
+    "Material-UI": ["@mui/material", "@material-ui/core"],
+    "Ant Design": ["antd"],
+    "Chakra UI": ["@chakra-ui/react"],
+    "Bulma": ["bulma"],
+    "Foundation": ["foundation-sites"],
+    "Semantic UI": ["semantic-ui"],
+    "Sass": ["sass", "node-sass"],
+    "Less": ["less"],
+    "Styled Components": ["styled-components"],
+    "Emotion": ["@emotion/react"],
+
+    # JavaScript Testing Frameworks
+    "Jest": ["jest"],
+    "Mocha": ["mocha"],
+    "Jasmine": ["jasmine"],
+    "Karma": ["karma"],
+    "Cypress": ["cypress"],
+    "Playwright": ["@playwright/test"],
+    "Puppeteer": ["puppeteer"],
+    "TestCafe": ["testcafe"],
+    "Vitest": ["vitest"],
+    "AVA": ["ava"],
+
+    # Java Testing
+    "JUnit": ["junit"],
+    "TestNG": ["testng"],
+    "Mockito": ["mockito"],
+
+    # Build Tools & Bundlers
+    "Webpack": ["webpack"],
+    "Vite": ["vite"],
+    "Rollup": ["rollup"],
+    "Parcel": ["parcel"],
+    "esbuild": ["esbuild"],
+    "Turbopack": ["turbopack"],
+    "Snowpack": ["snowpack"],
+    "Gulp": ["gulp"],
+    "Grunt": ["grunt"],
+    "Browserify": ["browserify"],
+
+    # State Management
+    "Redux": ["redux", "@reduxjs/toolkit"],
+    "MobX": ["mobx"],
+    "Zustand": ["zustand"],
+    "Recoil": ["recoil"],
+    "Jotai": ["jotai"],
+    "XState": ["xstate"],
+    "Pinia": ["pinia"],
+    "Vuex": ["vuex"],
+    "NgRx": ["@ngrx/store"],
+
+    # ORM/Database Libraries (JS/TS)
+    "Prisma": ["prisma", "@prisma/client"],
+    "TypeORM": ["typeorm"],
+    "Sequelize": ["sequelize"],
+    "Mongoose": ["mongoose"],
+    "Knex": ["knex"],
+    "Drizzle": ["drizzle-orm"],
+
+    # API & GraphQL
+    "GraphQL": ["graphql"],
+    "Apollo": ["@apollo/client", "apollo-server"],
+    "tRPC": ["@trpc/server"],
+    "Axios": ["axios"],
+    "React Query": ["@tanstack/react-query"],
+    "SWR": ["swr"],
+
+    # PHP Frameworks
+    "Laravel": ["laravel/framework"],
+    "Symfony": ["symfony"],
+    "CodeIgniter": ["codeigniter"],
+    "Yii": ["yiisoft/yii2"],
+    "CakePHP": ["cakephp"],
+
+    # Ruby Frameworks
+    "Ruby on Rails": ["rails"],
+    "Sinatra": ["sinatra"],
+    "Hanami": ["hanami"],
+
+    # .NET Frameworks
+    "ASP.NET": ["microsoft.aspnetcore"],
+    "Entity Framework": ["entityframework"],
+
+    # Other Popular Tools
+    "Electron": ["electron"],
+    "Tauri": ["tauri"],
+    "Three.js": ["three"],
+    "D3.js": ["d3"],
+    "Chart.js": ["chart.js"],
+    "Socket.io": ["socket.io"],
+    "Lodash": ["lodash"],
+    "Moment.js": ["moment"],
+    "Date-fns": ["date-fns"],
+    "Babel": ["@babel/core"],
+    "TypeScript": ["typescript"],
+    "ESLint": ["eslint"],
+    "Prettier": ["prettier"],
 }
 
 def detect_frameworks(conn, project_name, user_id,zip_path):
