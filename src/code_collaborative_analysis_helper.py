@@ -713,11 +713,27 @@ def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) ->
 # 6. cumulative metrics (from all code)
 # ------------------------------------------------------------
 
-STOP = {
+# Try to mirror the alt_analyze-style behavior: base English stopwords (if NLTK available) + domain-specific noise words
+
+try:
+    from nltk.corpus import stopwords as nltk_stopwords
+    NLTK_STOP = set(nltk_stopwords.words("english"))
+except Exception:
+    NLTK_STOP = set()
+
+DOMAIN_STOP = {
+    "app", "project", "repo", "readme", "code",
+    "using", "built", "build"
+}
+
+# If NLTK stopwords are available, use them + domain words.
+# Otherwise, fall back to a minimal manual list (includes domain words).
+STOP = (NLTK_STOP | DOMAIN_STOP) or {
     "the","a","an","and","or","to","of","for","in","on","with","by","from","at",
     "is","are","this","that","it","its","my","our","your","we","i","you",
     "app","project","repo","readme","code","using","built","build"
 }
+
 
 def _tokens(s: str) -> list[str]:
     s = (s or "").lower()
@@ -726,18 +742,40 @@ def _tokens(s: str) -> list[str]:
     return [t for t in s.split() if t and t not in STOP and len(t) > 2]
 
 def _try_yake_topk(text: str, k: int = 5) -> list[str]:
+    """
+    Prefer YAKE for keywords, but run it on text that has been cleaned
+    with our STOP set so we don't get 'project/app/code' as top phrases.
+    """
     try:
         import yake
-        extr = yake.KeywordExtractor(lan="en", n=3, top=k*3)
-        cands = [kw for kw,_ in extr.extract_keywords(text)]
-        out = []
-        for c in cands:
-            c = c.strip(" :;.,#'\"()[]{}")
-            if c and c not in out:
-                out.append(c)
+
+        # 1) Pre-clean using our token filter
+        cleaned_tokens = _tokens(text)
+        cleaned = " ".join(cleaned_tokens).strip()
+        if not cleaned:
+            return []
+
+        # 2) YAKE on cleaned text (more signal, less fluff)
+        # If your YAKE version supports stopwords=, you could also pass STOP here.
+        extr = yake.KeywordExtractor(lan="en", n=3, top=k * 4)
+        candidates = [kw for kw, _ in extr.extract_keywords(cleaned)]
+
+        out: list[str] = []
+        for c in candidates:
+            norm = c.strip(" :;.,#'\"()[]{}").lower()
+            if not norm:
+                continue
+            # Drop phrases that are still basically just stopwords
+            toks = norm.split()
+            if all(t in STOP for t in toks):
+                continue
+            if norm not in out:
+                out.append(norm)
             if len(out) >= k:
                 break
+
         return out
+
     except Exception:
         return []
 
