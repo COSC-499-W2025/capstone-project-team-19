@@ -1,4 +1,4 @@
-# src/github_auth/link_repo.py
+# src/github/link_repo.py
 
 from .github_api import list_user_repos, get_gh_repo_metadata
 from .token_store import save_github_token, get_github_token
@@ -94,3 +94,15 @@ def get_github_repo_metadata(user_id, project_name, repo_url, token):
     repo_id, default_branch = get_gh_repo_metadata(repo_owner, repo_name, token)
 
     return repo_url, repo_owner, repo_name, repo_id, default_branch
+
+def get_gh_repo_name_and_owner(conn, user_id, project_name):
+    row = conn.execute("""
+        SELECT repo_owner, repo_name
+        FROM project_repos
+        WHERE user_id = ? AND project_name = ? AND provider = 'github'
+        LIMIT 1
+    """, (user_id, project_name)).fetchone()
+
+    if not row: return None, None
+    
+    return row[0], row[1]

@@ -10,7 +10,7 @@ Returns a sorted, deduplicated list of repositories attached to the user's GitHu
 
 # Helper function for authenticated GET requests to GitHub API
 # Raises runtime error on failure and returns parsed JSON
-def gh_get(token: str, url: str):
+def gh_get(token: str, url: str, retries: int = 6, delay: int = 2):
     if not token:
         raise ValueError("GitHub token missing — user must authenticate first.")
 
@@ -19,12 +19,22 @@ def gh_get(token: str, url: str):
         "Accept": "application/vnd.github+json"
     }
 
-    r = requests.get(url, headers = headers)
+    for attempt in range(retries):
+        r = requests.get(url, headers=headers)
 
-    if r.status_code != 200:
-        raise RuntimeError(f"GitHub API request failed: {r.status_code}, {r.text}")
+        # GitHub stats endpoints sometimes return 202 while processing
+        if r.status_code == 202:
+            time.sleep(delay)
+            continue
 
-    return r.json()
+        # Any other error
+        if r.status_code != 200:
+            raise RuntimeError(f"GitHub API request failed: {r.status_code}, {r.text}")
+
+        return r.json()
+
+    # After retries, still processing
+    return None
 
 def list_user_repos(token):
     personal_repos = gh_get(token, "https://api.github.com/user/repos?per_page=200")
@@ -66,10 +76,10 @@ def get_gh_repo_commit_activity(token, owner, repo, username):
         data = gh_get(token, url)
 
         # sometimes stats take longer to get, keep retrying until github api is returns data (as stated in the GitHub REST API documentation)
-        if isinstance(data, dict) and data.get("message") == "202":
-            return {"processing": True}
+        if data is None: return {"processing": True}
 
-        if not data: break
+        # no morepages
+        if isinstance(data, list) and len(data) == 0: break
 
         for commit in data:
             date_str = commit["commit"]["author"]["date"].split("T")[0]
@@ -185,18 +195,20 @@ def get_gh_repo_prs(token, owner, repo, github_username):
 def get_gh_repo_contributions(token, owner, repo, github_username):
     url = f"https://api.github.com/repos/{owner}/{repo}/stats/contributors"
         
-    # github sometimes returns 202 while calclating, keep polling up to 6 attempts in case it is calculating (as stated in documentation)
-    for attempt in range(6): # 6 attempts
+    # Retry locally because GitHub sometimes returns {"message":"202"}
+    for _ in range(6):
         data = gh_get(token, url)
 
-        # GitHub returns a dict with message "202" while processing
-        if isinstance(data, dict) and data.get("message") == "202":
-            time.sleep(2)
+        # Still processing: gh_get returned None (HTTP 202)
+        # OR payload contains "message": "202"
+        if data is None or (isinstance(data, dict) and data.get("message") == "202"):
+            time.sleep(1)
             continue
-        
-        break # otherwise
 
-    if isinstance(data, dict) and data.get("message") == "202":
+        break
+
+    # After retries, might still not ready
+    if data is None or (isinstance(data, dict) and data.get("message") == "202"):
         return {"processing": True}
 
     user_stats = {

@@ -1,5 +1,5 @@
 import pytest
-import src.github_auth.github_api as api
+import src.github.github_api as api
 
 class FakeResp:
     def __init__(self, status, data):

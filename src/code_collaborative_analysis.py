@@ -3,13 +3,15 @@ import sqlite3
 from typing import Optional, Dict
 
 from src.db import store_github_account
-from src.github_auth.github_oauth import github_oauth
-from src.github_auth.token_store import get_github_token
-from src.github_auth.link_repo import ensure_repo_link, select_and_store_repo
-from src.github_auth.github_api import get_authenticated_user
+from src.github.github_oauth import github_oauth
+from src.github.token_store import get_github_token
+from src.github.link_repo import ensure_repo_link, select_and_store_repo, get_gh_repo_name_and_owner
+from src.github.github_api import get_authenticated_user
 from src.framework_detector import detect_frameworks
 from src.language_detector import detect_languages
 from src.helpers import zip_paths  
+from src.github.github_analysis import fetch_github_metrics
+from src.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics
 
 from src.code_collaborative_analysis_helper import (
     DEBUG,
@@ -23,6 +25,7 @@ from src.code_collaborative_analysis_helper import (
     compute_metrics,
     print_project_card,
     print_portfolio_summary,
+    print_github_metrics
 )
 
 
@@ -152,20 +155,34 @@ def _handle_no_git_repo(conn, user_id, project_name):
 
 
 def _enhance_with_github(conn, user_id, project_name, repo_dir):
+    ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
+    if ans not in {"y", "yes"}:
+        return
+
+    print("Collecting GitHub repository metrics...")
+    
     token = get_github_token(conn, user_id)
+    github_user = None
+
     if not token:
-        ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
-        if ans in {"y", "yes"}:
-            token = github_oauth(conn, user_id)
-
-            # TODO: check that their github info is already stored, if not then store it
-            # get user's GitHub account info
-            github_user = get_authenticated_user(token)
-            store_github_account(conn, user_id, github_user)
-
-            select_and_store_repo(conn, user_id, project_name, token)
+        token = github_oauth(conn, user_id)
+        github_user = get_authenticated_user(token)
+        store_github_account(conn, user_id, github_user)
     else:
-        ans = input("Enhance with GitHub data? (y/n): ").strip().lower()
-        if ans in {"y", "yes"}:
-            if not ensure_repo_link(conn, user_id, project_name, token):
-                select_and_store_repo(conn, user_id, project_name, token)
+        github_user = get_authenticated_user(token)
+
+    if not ensure_repo_link(conn, user_id, project_name, token):
+        select_and_store_repo(conn, user_id, project_name, token)
+
+    # get repo url
+    owner, repo = get_gh_repo_name_and_owner(conn, user_id, project_name)
+    if not owner: return # repo doesnt exist in db, nothing to analyze
+
+    gh_username = github_user["login"]
+
+    # fetch metrics via github REST API then stoe metrics in db
+    metrics = fetch_github_metrics(token, owner, repo, gh_username)
+    store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics)
+    
+    repo_metrics = get_github_repo_metrics(conn, user_id, project_name, owner, repo)
+    print("GitHub metrics collected. Analysis to be implemented.")

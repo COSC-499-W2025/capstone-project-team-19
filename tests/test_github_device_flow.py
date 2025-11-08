@@ -1,8 +1,8 @@
 import pytest
 import requests
 import time
-from src.github_auth.github_device_flow import request_device_code, poll_for_token
-from src.github_auth.github_device_flow import GITHUB_CLIENT_ID, DEVICE_CODE_URL, TOKEN_URL
+from src.github.github_device_flow import request_device_code, poll_for_token
+from src.github.github_device_flow import GITHUB_CLIENT_ID, DEVICE_CODE_URL, TOKEN_URL
 
 
 class FakeResponse:

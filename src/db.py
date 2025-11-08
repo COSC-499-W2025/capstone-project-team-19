@@ -215,6 +215,19 @@ def init_schema(conn: sqlite3.Connection) -> None:
     );
     """)
 
+    #TODO: normalize the github metrics into reltional tables, instead of one big JSON text dump
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS github_repo_metrics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        user_id INTEGER NOT NULL,
+        project_name TEXT NOT NULL,
+        repo_owner TEXT NOT NULL,
+        repo_name TEXT NOT NULL,
+        metrics_json TEXT NOT NULL,
+        UNIQUE (user_id, project_name, repo_owner, repo_name)
+    );
+    """)
     conn.commit()
 
 # ----------------------------------------------------------

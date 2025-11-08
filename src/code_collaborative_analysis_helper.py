@@ -5,6 +5,7 @@ import subprocess
 from collections import Counter, defaultdict
 from typing import Dict, List, Optional, Tuple
 import sqlite3
+import json
 
 from src.extension_catalog import get_languages_for_extension
 from src.helpers import ensure_table 
@@ -678,6 +679,28 @@ Top folders: {folders}
 Top files: {top_files}
 {summary_line}
 """.rstrip())
+
+def print_github_metrics(metrics: dict) -> None:
+    if not metrics:
+        print("\n[info] No GitHub metrics available.\n")
+        return
+
+    print("\n===== GitHub Metrics =====")
+
+    sections = {
+        "user": "GitHub User",
+        "commit_activity_daily": "Daily Commit Activity",
+        "issues": "Issue Activity",
+        "pull_requests": "Pull Requests",
+        "contribution_stats": "Contribution Stats"
+    }
+
+    for key, label in sections.items():
+        if key in metrics:
+            print(f"\n--- {label} ---")
+            print(json.dumps(metrics[key], indent=2))
+
+    print("\n==========================\n")
 
 # ------------------------------------------------------------
 # 6. cumulative metrics (from all code)
