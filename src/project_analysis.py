@@ -15,7 +15,7 @@ from src.text_llm_analyze import run_text_llm_analysis
 from src.code_llm_analyze import run_code_llm_analysis
 from src.code_non_llm_analysis import run_code_non_llm_analysis
 from src.helpers import _fetch_files
-from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
+from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs
 from src.code_collaborative_analysis_helper import prompt_collab_descriptions
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -167,8 +167,16 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
         code_collab = [(n, t) for (n, t) in collaborative if t == "code"]
         text_collab = [(n, t) for (n, t) in collaborative if t == "text"]
 
-        # ask once for user descriptions
-        project_descs = prompt_collab_descriptions(code_collab, current_ext_consent)
+        # ask once for user descriptions for CODE collab projects (non-LLM path)
+        if code_collab:
+            # prompt_collab_descriptions expects list[(project_name, something)];
+            # it only uses the project_name, so second value can be anything.
+            projects_for_desc = [(name, "") for (name, _ptype) in code_collab]
+            project_descs = prompt_collab_descriptions(projects_for_desc, current_ext_consent)
+            set_manual_descs(project_descs)
+        else:
+            # no code collab → clear any previous state
+            set_manual_descs({})
 
         # 1) run all CODE collab
         for project_name, project_type in code_collab:

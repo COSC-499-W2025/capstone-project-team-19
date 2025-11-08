@@ -21,11 +21,18 @@ from src.code_collaborative_analysis_helper import (
     compute_metrics,
     print_project_card,
     print_portfolio_summary,
+    prompt_collab_descriptions
 )
 
 
 
 _CODE_RUN_METRICS: list[dict] = []
+_MANUAL_DESCS: Dict[str, str] = {}  # filled once per run for collab projects
+
+def set_manual_descs(descs: Dict[str, str] | None) -> None:
+    """Store user-provided descriptions so analyze_code_project can attach them."""
+    global _MANUAL_DESCS
+    _MANUAL_DESCS = descs or {}
 
 def print_code_portfolio_summary() -> None:
     """
@@ -86,6 +93,14 @@ def analyze_code_project(conn: sqlite3.Connection,
     # 5) compute metrics
     metrics = compute_metrics(project_name, repo_dir, commits, aliases)
     metrics["project_name"] = project_name
+
+    # 5.1) attach manual description if it was collected up-front
+    global _MANUAL_DESCS
+    if _MANUAL_DESCS:
+        desc = (_MANUAL_DESCS.get(project_name) or "").strip()
+        if desc:
+            metrics["desc"] = desc
+
 
     # 6) fill langs from DB if empty
     if not metrics.get("focus", {}).get("languages"):

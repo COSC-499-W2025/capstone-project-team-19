@@ -668,7 +668,7 @@ def print_project_card(m: dict) -> None:
     print(f"""
 Project: {display_name}
 ------------------------------------
-{desc_line}Commits: {t.get('commits_all',0)} (You: {t.get('commits_yours',0)} | Co-authored: {t.get('commits_coauth',0)} | Merges: {t.get('merges',0)})
+{desc_line}\nCommits: {t.get('commits_all',0)} (You: {t.get('commits_yours',0)} | Co-authored: {t.get('commits_coauth',0)} | Merges: {t.get('merges',0)})
 Lines: +{l.get('added',0):,} / -{l.get('deleted',0):,}  →  Net {('+' if l.get('net',0)>=0 else '')}{l.get('net',0):,}
 Files: changed {l.get('files_touched',0)}  |  new {l.get('new_files',0)}  |  renames {l.get('renames',0)}
 
