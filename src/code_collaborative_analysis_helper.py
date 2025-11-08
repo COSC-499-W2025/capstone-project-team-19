@@ -680,6 +680,34 @@ Top folders: {folders}
 Top files: {top_files}
 {summary_line}
 """.rstrip())
+    
+def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) -> dict[str, str]:
+    """
+    Ask once for project descriptions if LLM consent is not accepted.
+    Returns {project_name: description}.
+    """
+    if consent == "accepted" or not projects:
+        return {}
+
+    print("\nBefore running collaborative analysis, we need your project descriptions.")
+    print("📝 Description")
+    print("In one short paragraph per project, describe what each project does, what your code focuses on technically")
+    print("(e.g., architecture, optimization, data structures, abstraction), and what your main contribution was.")
+    print("Evidence from the code scan will be included automatically to support your description.\n")
+    print('Example: "This project is a movie recommendation system built with Python and Flask. '
+          'My code focuses on implementing the collaborative filtering algorithm efficiently using hash maps '
+          'and optimizing database queries with indexing. I developed the recommendation module and integrated '
+          'it into the web interface."\n')
+
+    descs = {}
+    for project_name, _ in projects:
+        try:
+            user_input = input(f"> {project_name}:\n> ").strip()
+        except EOFError:
+            user_input = ""
+        descs[project_name] = user_input
+    return descs
+
 
 # ------------------------------------------------------------
 # 6. cumulative metrics (from all code)

@@ -16,6 +16,7 @@ from src.code_llm_analyze import run_code_llm_analysis
 from src.code_non_llm_analysis import run_code_non_llm_analysis
 from src.helpers import _fetch_files
 from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
+from src.code_collaborative_analysis_helper import prompt_collab_descriptions
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     """
@@ -165,6 +166,9 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
         # split: code first, then text
         code_collab = [(n, t) for (n, t) in collaborative if t == "code"]
         text_collab = [(n, t) for (n, t) in collaborative if t == "text"]
+
+        # ask once for user descriptions
+        project_descs = prompt_collab_descriptions(code_collab, current_ext_consent)
 
         # 1) run all CODE collab
         for project_name, project_type in code_collab:
