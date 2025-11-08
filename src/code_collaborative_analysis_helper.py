@@ -689,14 +689,24 @@ def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) ->
     if consent == "accepted" or not projects:
         return {}
 
-    print("\nBefore running collaborative analysis, we need your project descriptions.")
-    print("\nDescribe what each project does, what your code focuses on technically")
-    print("(e.g., architecture, optimization, data structures, abstraction), and what your main contribution was.")
-    print("Evidence from the code scan will be included automatically to support your description.\n")
-    print('Example: "This project is a movie recommendation system built with Python and Flask. '
-          'My code focuses on implementing the collaborative filtering algorithm efficiently using hash maps '
-          'and optimizing database queries with indexing. I developed the recommendation module and integrated '
-          'it into the web interface."')
+    print(
+        "\nBefore running collaborative analysis, we need your project descriptions.\n\n"
+
+        "Because you’ve opted out of LLM-based analysis, we’ll collect short manual descriptions "
+        "for your projects instead.\nThese descriptions help summarize your technical focus and "
+        "personal contributions, while evidence (e.g. commit\nhistory, code structure, language & frameworks, "
+        "data structures, algorithm & complexity, etc) will still be\nautomatically extracted from your project "
+        "to support your summary.\n\n"
+
+        "Describe what each project does, what your code focuses on technically "
+        "(e.g., architecture, optimization,\ndata structures, abstraction), and what your main "
+        "contribution was.\n\n"
+
+        "Example: \"This project is a movie recommendation system built with Python and Flask. "
+        "My code focuses on implementing the collaborative filtering algorithm efficiently using "
+        "hash maps and optimizing database queries with indexing. I developed the recommendation "
+        "module and integrated it into the web interface.\"\n"
+    )
 
     descs = {}
     for project_name, _ in projects:
