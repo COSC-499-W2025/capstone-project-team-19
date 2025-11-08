@@ -29,10 +29,16 @@ from src.code_collaborative_analysis_helper import (
 _CODE_RUN_METRICS: list[dict] = []
 _MANUAL_DESCS: Dict[str, str] = {}  # filled once per run for collab projects
 
-def set_manual_descs(descs: Dict[str, str] | None) -> None:
-    """Store user-provided descriptions so analyze_code_project can attach them."""
-    global _MANUAL_DESCS
-    _MANUAL_DESCS = descs or {}
+def set_manual_descs_store(descs: dict[str, str] | None) -> None:
+    """Store user-provided project descriptions for this analysis run."""
+    global _manual_descs_store
+    _manual_descs_store = descs or {}
+
+def get_manual_desc(project_name: str) -> str:
+    """Retrieve a stored description for a project if available."""
+    if not _manual_descs_store:
+        return ""
+    return _manual_descs_store.get(project_name, "") or ""
 
 def print_code_portfolio_summary() -> None:
     """
@@ -95,12 +101,9 @@ def analyze_code_project(conn: sqlite3.Connection,
     metrics["project_name"] = project_name
 
     # 5.1) attach manual description if it was collected up-front
-    global _MANUAL_DESCS
-    if _MANUAL_DESCS:
-        desc = (_MANUAL_DESCS.get(project_name) or "").strip()
-        if desc:
-            metrics["desc"] = desc
-
+    desc = get_manual_desc(project_name)
+    if desc:
+        metrics["desc"] = desc.strip()
 
     # 6) fill langs from DB if empty
     if not metrics.get("focus", {}).get("languages"):
@@ -112,22 +115,6 @@ def analyze_code_project(conn: sqlite3.Connection,
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path)
     if frameworks:
         metrics.setdefault("focus", {})["frameworks"] = sorted(frameworks)
-
-    # # 7.5) Only ask for manual description if LLM consent is NOT accepted
-    # consent_row = conn.execute(
-    #     "SELECT status FROM external_consent WHERE user_id = ?", (user_id,)
-    # ).fetchone()
-    # external_consent = consent_row[0] if consent_row else None
-
-    # if external_consent != "accepted":
-    #     try:
-    #         user_desc = input(
-    #             f"Description for {project_name} (what the code does + your contribution): "
-    #         ).strip()
-    #     except EOFError:
-    #         user_desc = ""
-    #     if user_desc:
-    #         metrics["desc"] = user_desc
 
     # 8) print
     print_project_card(metrics)
