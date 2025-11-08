@@ -98,15 +98,21 @@ def analyze_code_project(conn: sqlite3.Connection,
     if frameworks:
         metrics.setdefault("focus", {})["frameworks"] = sorted(frameworks)
 
-    # 7.5) NEW — prompt for a one-line description (stored for printing/summary)
-    try:
-        user_desc = input(
-            f"Description for {project_name} (what the code does + your contribution): "
-        ).strip()
-    except EOFError:
-        user_desc = ""
-    if user_desc:
-        metrics["desc"] = user_desc
+    # 7.5) Only ask for manual description if LLM consent is NOT accepted
+    consent_row = conn.execute(
+        "SELECT status FROM external_consent WHERE user_id = ?", (user_id,)
+    ).fetchone()
+    external_consent = consent_row[0] if consent_row else None
+
+    if external_consent != "accepted":
+        try:
+            user_desc = input(
+                f"Description for {project_name} (what the code does + your contribution): "
+            ).strip()
+        except EOFError:
+            user_desc = ""
+        if user_desc:
+            metrics["desc"] = user_desc
 
     # 8) print
     print_project_card(metrics)
