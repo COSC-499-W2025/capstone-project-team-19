@@ -27,6 +27,18 @@ def _fetch_files(conn: sqlite3.Connection, user_id: int, project_name: str, only
     rows = conn.execute(query, params).fetchall()
     return [{"file_name": r[0], "file_type": r[1], "file_path": r[2]} for r in rows]
 
+def get_file_extension_from_db(conn: sqlite3.Connection, user_id: int, file_path: str) -> Optional[str]:
+    result = conn.execute("""
+        SELECT extension
+        FROM files
+        WHERE user_id = ? AND file_path = ?
+        LIMIT 1
+    """, (user_id, file_path)).fetchone()
+
+    if result and result[0]:
+        return result[0].lower()
+    return None
+
 def zip_paths(zip_path: str) -> Tuple[str, str, str]:
     """
     Returns (zip_data_dir, zip_name, base_path)
@@ -109,28 +121,29 @@ def bfs_find_repo(root: str, max_depth: int = 2) -> Optional[str]:
 
 ## Text Extraction
 
-SUPPORTED_TEXT_EXTENSIONS = {'.txt', '.pdf', '.docx', '.md', '.csv'}
-
-def extract_text_file(filepath: str) -> Optional[str]:
-    extension = os.path.splitext(filepath)[1].lower()
-    if extension not in SUPPORTED_TEXT_EXTENSIONS:
+def extract_text_file(filepath: str, conn: sqlite3.Connection, user_id: int) -> Optional[str]:
+    extension = get_file_extension_from_db(conn, user_id, filepath)
+    if not extension:
+        print(f"Warning: No extension found in DB for {filepath}, skipping.")
         return None
     
     try:
-        if extension in {'.txt', '.md'}:
-            # Treat Markdown as plain text (UTF-8)
-            return extractfromtxt(filepath)
-        elif extension == '.pdf':
-            return extractfrompdf(filepath)
-        elif extension == '.docx':
-            return extractfromdocx(filepath)
-        elif extension == '.csv':
-            return extractfromcsv(filepath)
+        match extension:
+            case '.txt' | '.md':
+                return extractfromtxt(filepath)
+            case '.pdf':
+                return extractfrompdf(filepath)
+            case '.docx':
+                return extractfromdocx(filepath)
+            case '.csv':
+                return extractfromcsv(filepath)
+            case _:
+                print(f"Unsupported text extension '{extension}' for {filepath}")
+                return None
     except Exception as e:
         print(f"Error extracting from {filepath}: {e}")
         return None
     
-    return None
 
 def extractfromtxt(filepath:str)->str:
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
@@ -185,11 +198,10 @@ def extractfromcsv(filepath: str, sample_rows: int = 5) -> dict:
 
 ## Code extraction
 
-SUPPORTED_CODE_EXTENSIONS={'.py', '.java', '.js', '.html', '.css', '.c', '.cpp', '.h'}
-
-def extract_code_file(filepath: str)->Optional[str]:
-    root, extension = os.path.splitext(filepath)
-    if extension.lower() not in SUPPORTED_CODE_EXTENSIONS:
+def extract_code_file(filepath: str, conn: sqlite3.Connection, user_id: int) -> Optional[str]:
+    extension = get_file_extension_from_db(conn, user_id, filepath)
+    if not extension:
+        print(f"Warning: No extension found in DB for {filepath}, skipping.")
         return None
     
     try:
@@ -213,7 +225,7 @@ def extract_code_file(filepath: str)->Optional[str]:
     except Exception as e:
         print(f"Error extracting code from {filepath}: {e}")
         return None
-    return None
+
 
 def extract_readme_file(base_path: str) -> Optional[str]:
     for filename in os.listdir(base_path):
