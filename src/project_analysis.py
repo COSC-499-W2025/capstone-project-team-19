@@ -328,14 +328,40 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
         print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")
     
         
-# From LLMs and alternative analysis
 def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text):
     if only_text:
-        if external_consent=='accepted':
+        # Detect whether this project consists purely of CSVs
+        has_csv = any(f.get("extension") == ".csv" for f in parsed_files)
+        all_csv = all(f.get("extension") == ".csv" for f in parsed_files)
+
+        if has_csv and all_csv:
+            print(f"\n[INDIVIDUAL-TEXT] Detected dataset-based project: {project_name}")
+            from src.csv_analyze import run_csv_analysis
+            run_csv_analysis(parsed_files, zip_path, conn, user_id, external_consent)
+            return  # Stop here; CSV analysis is complete
+
+        # Mixed project with both text + CSV supporting files:
+        elif has_csv:
+            print(f"\n[INDIVIDUAL-TEXT] Text project with CSV supporting files detected in {project_name}")
+            from src.csv_analyze import run_csv_analysis
+            run_csv_analysis(
+                [f for f in parsed_files if f.get("extension") == ".csv"],
+                zip_path,
+                conn,
+                user_id,
+                external_consent,
+            )
+            # continue to normal text analysis after CSV summaries
+
+        # Standard text flow
+        if external_consent == "accepted":
+            from src.text_llm_analyze import run_text_llm_analysis
             run_text_llm_analysis(parsed_files, zip_path, conn, user_id)
         else:
+            from src.alt_analyze import alternative_analysis
             alternative_analysis(parsed_files, zip_path, project_name)
 
     elif not only_text:
         # Run non-LLM code analysis (static + Git metrics)
         run_code_non_llm_analysis(conn, user_id, project_name, zip_path)
+
