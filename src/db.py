@@ -384,8 +384,8 @@ def store_text_llm_metrics(conn: sqlite3.Connection, classification_id: int, pro
         INSERT INTO llm_text(
         classification_id, file_path, file_name, project_name, word_count, sentence_count, flesch_kincaid_grade, lexical_diversity, summary, skills_json, strength_json, weaknesses_json, overall_score)
         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, 
-        classification_id, file_path, file_name, project_name, linguistic.get("word_count"), linguistic.get("sentence_count"),linguistic.get("sentence_count"), linguistic.get("flesch_kincaid_grade"), linguistic.get("lexical_diversity"), summary, skills_json, strength_json, weaknesses_json, success.get("score")
+        """,
+        (classification_id, file_path, file_name, project_name, linguistic.get("word_count"), linguistic.get("sentence_count"), linguistic.get("flesch_kincaid_grade"), linguistic.get("lexical_diversity"), summary, skills_json, strength_json, weaknesses_json, success.get("score"))
         )
     conn.commit()
 

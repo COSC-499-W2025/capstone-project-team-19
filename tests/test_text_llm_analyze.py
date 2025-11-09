@@ -44,8 +44,10 @@ def mock_llm_responses():
 
 
 @patch("builtins.input", return_value="1")
+@patch("src.text_llm_analyze.connect")
+@patch("src.text_llm_analyze.store_text_llm_metrics")
 @patch("src.text_llm_analyze.client")
-def test_run_llm_analysis_basic(mock_client, mock_input, mock_parsed_files, tmp_path, mock_llm_responses, capsys):
+def test_run_llm_analysis_basic(mock_client, mock_store_metrics, mock_connect, mock_input, mock_parsed_files, tmp_path, mock_llm_responses, capsys):
     # Fake the Groq API responses
     mock_client.chat.completions.create.side_effect = [
         mock_llm_responses("A research essay that explores AI ethics."),
@@ -53,13 +55,17 @@ def test_run_llm_analysis_basic(mock_client, mock_input, mock_parsed_files, tmp_
         mock_llm_responses('{"strengths": ["clear focus", "strong evidence"], "weaknesses": ["limited depth"], "score": "8.2 / 10 (Strong clarity)"}')
     ]
 
+    # Mock database connection
+    mock_conn = MagicMock()
+    mock_connect.return_value = mock_conn
+
     # Create fake zip directory structure
     zip_dir = tmp_path / "zip_data" / "Archive"
     project_dir = zip_dir / "ProjectA"
     os.makedirs(project_dir, exist_ok=True)
     (project_dir / "sample.txt").write_text("This is a sample document.")
 
-    text_llm_analyze.run_text_llm_analysis(mock_parsed_files, str(tmp_path / "Archive.zip"))
+    text_llm_analyze.run_text_llm_analysis(mock_parsed_files, str(tmp_path / "Archive.zip"), classification_id=1)
 
     captured = capsys.readouterr()
 
@@ -71,7 +77,7 @@ def test_run_llm_analysis_basic(mock_client, mock_input, mock_parsed_files, tmp_
     assert "Success Factors:" in captured.out
     assert "8.2 / 10" in captured.out
     assert "[Main File]" in captured.out
-
+    
 
 @patch("src.text_llm_analyze.client")
 def test_generate_llm_summary(mock_client, mock_llm_responses):
