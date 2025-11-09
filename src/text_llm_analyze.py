@@ -5,12 +5,12 @@ from src.alt_analyze import analyze_linguistic_complexity
 from src.helpers import extract_text_file
 from dotenv import load_dotenv
 from groq import Groq
-
+from src.db import store_text_llm_metrics, connect
 load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
-def run_text_llm_analysis(parsed_files, zip_path):
+def run_text_llm_analysis(parsed_files, zip_path, classification_id):
     if not isinstance(parsed_files, list):
         return
 
@@ -88,9 +88,11 @@ def run_text_llm_analysis(parsed_files, zip_path):
         summary = generate_text_llm_summary(main_text)
         skills = generate_text_llm_skills(main_text, supporting_texts)
         success = generate_text_llm_success_factors(main_text, linguistic, supporting_texts)
-
+        
         display_text_llm_results(project_name, main_file["file_name"], linguistic, summary, skills, success)
-
+        conn=connect()
+        store_text_llm_metrics(conn, classification_id, project_name, main_file['file_name'], main_file["file_path"], linguistic, summary, skills, success)
+        conn.close()
     print(f"\n{'='*80}")
     print("PROJECT SUMMARY - (LLM-based results: summaries, skills, and success factors)")
     print(f"{'='*80}\n")

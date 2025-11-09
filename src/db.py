@@ -1,6 +1,7 @@
 from pathlib import Path
 import sqlite3
 import os
+import json
 from typing import Optional, Tuple, Dict
 from datetime import datetime
 
@@ -206,7 +207,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         word_count INTEGER,
         sentence_count INTEGER,
         flesch_kincaid_grade REAL,
-        lexical_diversity REAL
+        lexical_diversity REAL,
         summary TEXT NOT NULL,
         skills_json JSON,
         strength_json JSON,
@@ -387,6 +388,14 @@ def store_text_llm_metrics(conn: sqlite3.Connection, classification_id: int, pro
         classification_id, file_path, file_name, project_name, linguistic.get("word_count"), linguistic.get("sentence_count"),linguistic.get("sentence_count"), linguistic.get("flesch_kincaid_grade"), linguistic.get("lexical_diversity"), summary, skills_json, strength_json, weaknesses_json, success.get("score")
         )
     conn.commit()
+
+def get_classification_id(conn: sqlite3.Connection, user_id: int, project_name: str)->Optional[int]:
+    row=conn.execute("""
+    SELECT classification_id FROM project_classifications
+    WHERE user_id=? AND project_name=?
+""", (user_id,project_name)).fetchone()
+    
+    return row[0] if row else None
 
 def save_token_placeholder(conn: sqlite3.Connection, user_id: int):
     conn.execute("""

@@ -16,6 +16,7 @@ from src.code_llm_analyze import run_code_llm_analysis
 from src.code_non_llm_analysis import run_code_non_llm_analysis
 from src.helpers import _fetch_files
 from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
+from src.db import get_classification_id
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     """
@@ -330,11 +331,12 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
         
 # From LLMs and alternative analysis
 def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text):
+    classification_id=get_classification_id(conn, user_id, project_name)
     if only_text:
         if external_consent=='accepted':
-            run_text_llm_analysis(parsed_files, zip_path)
+            run_text_llm_analysis(parsed_files, zip_path, classification_id)
         else:
-            alternative_analysis(parsed_files, zip_path, project_name)
+            alternative_analysis(parsed_files, zip_path, project_name, classification_id)
 
     elif not only_text:
         # Run non-LLM code analysis (static + Git metrics)
