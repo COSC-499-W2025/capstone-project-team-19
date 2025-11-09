@@ -25,11 +25,24 @@ from src.code_collaborative_analysis_helper import (
     compute_metrics,
     print_project_card,
     print_portfolio_summary
+    prompt_collab_descriptions
 )
 
 
 
 _CODE_RUN_METRICS: list[dict] = []
+_manual_descs_store: dict[str, str] = {}  # filled once per run for collab projects
+
+def set_manual_descs_store(descs: dict[str, str] | None) -> None:
+    """Store user-provided project descriptions for this analysis run."""
+    global _manual_descs_store
+    _manual_descs_store = descs or {}
+
+def get_manual_desc(project_name: str) -> str:
+    """Retrieve a stored description for a project if available."""
+    if not _manual_descs_store:
+        return ""
+    return _manual_descs_store.get(project_name, "") or ""
 
 def print_code_portfolio_summary() -> None:
     """
@@ -95,6 +108,31 @@ def analyze_code_project(conn: sqlite3.Connection,
     metrics = compute_metrics(project_name, repo_dir, commits, aliases)
     metrics["project_name"] = project_name
 
+    # 5.1) attach manual description if it was collected up-front
+    desc = get_manual_desc(project_name)
+
+    if not desc:
+        # Try to read external_consent; ignore errors if table/row doesn't exist.
+        try:
+            consent_row = conn.execute(
+                "SELECT status FROM external_consent WHERE user_id = ?", (user_id,)
+            ).fetchone()
+            external_consent = consent_row[0] if consent_row else None
+        except Exception:
+            external_consent = None
+
+        if external_consent != "accepted":
+            try:
+                user_desc = input(
+                    f"Description for {project_name} (what the code does + your contribution): "
+                )
+            except EOFError:
+                user_desc = ""
+            desc = (user_desc or "").strip()
+            
+    if desc:
+        metrics["desc"] = desc.strip()
+
     # 6) fill langs from DB if empty
     if not metrics.get("focus", {}).get("languages"):
         langs_from_db = detect_languages(conn, project_name) or []
@@ -105,16 +143,6 @@ def analyze_code_project(conn: sqlite3.Connection,
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path)
     if frameworks:
         metrics.setdefault("focus", {})["frameworks"] = sorted(frameworks)
-
-    # 7.5) NEW — prompt for a one-line description (stored for printing/summary)
-    try:
-        user_desc = input(
-            f"Description for {project_name} (what the code does + your contribution): "
-        ).strip()
-    except EOFError:
-        user_desc = ""
-    if user_desc:
-        metrics["desc"] = user_desc
 
     # 8) print
     print_project_card(metrics)

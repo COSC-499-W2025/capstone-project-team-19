@@ -663,11 +663,13 @@ def print_project_card(m: dict) -> None:
         bits.append(f"over {active_days} day{'s' if active_days != 1 else ''}")
     summary_line = "💡 Summary: " + ", ".join(bits) + "."
 
+    # Only shown if the user rejects the LLM consent
+    desc_line = f"Description: {desc}\n" if desc and desc.lower() != "none" else ""
+
     print(f"""
 Project: {display_name}
 ------------------------------------
-Description: {desc}\n
-Commits: {t.get('commits_all',0)} (You: {t.get('commits_yours',0)} | Co-authored: {t.get('commits_coauth',0)} | Merges: {t.get('merges',0)})
+{desc_line}\nCommits: {t.get('commits_all',0)} (You: {t.get('commits_yours',0)} | Co-authored: {t.get('commits_coauth',0)} | Merges: {t.get('merges',0)})
 Lines: +{l.get('added',0):,} / -{l.get('deleted',0):,}  →  Net {('+' if l.get('net',0)>=0 else '')}{l.get('net',0):,}
 Files: changed {l.get('files_touched',0)}  |  new {l.get('new_files',0)}  |  renames {l.get('renames',0)}
 
@@ -679,16 +681,67 @@ Top folders: {folders}
 Top files: {top_files}
 {summary_line}
 """.rstrip())
+    
+def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) -> dict[str, str]:
+    """
+    Ask once for project descriptions if LLM consent is not accepted.
+    Returns {project_name: description}.
+    """
+    if consent == "accepted" or not projects:
+        return {}
+
+    print(
+        "\nSince you’ve opted out of LLM analysis, we’ll use your manual descriptions "
+        "to summarize your focus and contributions. Evidence (e.g., commits, code structure, "
+        "languages, and algorithms) will still be extracted automatically to support your summary.\n\n"
+        "Include:\n"
+        " - What the project does\n"
+        " - Languages/frameworks used\n"
+        " - Technical focus (e.g., architecture, data structures, optimization)\n"
+        " - Your main contributions\n\n"
+        "Example: "
+        '"Movie recommendation system built with Python and Flask. '
+        "Focused on implementing collaborative filtering using hash maps for faster lookups "
+        "and optimizing SQL queries with indexing. "
+        "Developed the recommendation module and integrated it into the web interface.\""
+    )
+
+    descs = {}
+    for project_name, _ in projects:
+        print()
+        try:
+            user_input = input(f"> {project_name}:\n> ").strip()
+        except EOFError:
+            user_input = ""
+        descs[project_name] = user_input
+    return descs
+
 
 # ------------------------------------------------------------
 # 6. cumulative metrics (from all code)
 # ------------------------------------------------------------
 
-STOP = {
-    "the","a","an","and","or","to","of","for","in","on","with","by","from","at",
-    "is","are","this","that","it","its","my","our","your","we","i","you",
+# Try to mirror the alt_analyze-style behavior: base English stopwords (if NLTK available) + domain-specific noise words
+
+try:
+    from nltk.corpus import stopwords as nltk_stopwords
+    NLTK_STOP = set(nltk_stopwords.words("english"))
+except Exception:
+    NLTK_STOP = set()
+
+DOMAIN_STOP = {
+    "app", "project", "repo", "readme", "code",
+    "using", "built", "build"
+}
+
+# If NLTK stopwords are available, use them + domain words.
+# Otherwise, fall back to a minimal manual list (includes domain words).
+STOP = (NLTK_STOP | DOMAIN_STOP) or {
+    "the","a","an","and","or","to","of","for","in","on","with","by","from","at", "did",
+    "is","are","this","that","it","its","my","our","your","we","i","you", "which", "will",
     "app","project","repo","readme","code","using","built","build"
 }
+
 
 def _tokens(s: str) -> list[str]:
     s = (s or "").lower()
@@ -697,18 +750,40 @@ def _tokens(s: str) -> list[str]:
     return [t for t in s.split() if t and t not in STOP and len(t) > 2]
 
 def _try_yake_topk(text: str, k: int = 5) -> list[str]:
+    """
+    Prefer YAKE for keywords, but run it on text that has been cleaned
+    with our STOP set so we don't get 'project/app/code' as top phrases.
+    """
     try:
         import yake
-        extr = yake.KeywordExtractor(lan="en", n=3, top=k*3)
-        cands = [kw for kw,_ in extr.extract_keywords(text)]
-        out = []
-        for c in cands:
-            c = c.strip(" :;.,#'\"()[]{}")
-            if c and c not in out:
-                out.append(c)
+
+        # 1) Pre-clean using our token filter
+        cleaned_tokens = _tokens(text)
+        cleaned = " ".join(cleaned_tokens).strip()
+        if not cleaned:
+            return []
+
+        # 2) YAKE on cleaned text (more signal, less fluff)
+        # If your YAKE version supports stopwords=, you could also pass STOP here.
+        extr = yake.KeywordExtractor(lan="en", n=3, top=k * 4)
+        candidates = [kw for kw, _ in extr.extract_keywords(cleaned)]
+
+        out: list[str] = []
+        for c in candidates:
+            norm = c.strip(" :;.,#'\"()[]{}").lower()
+            if not norm:
+                continue
+            # Drop phrases that are still basically just stopwords
+            toks = norm.split()
+            if all(t in STOP for t in toks):
+                continue
+            if norm not in out:
+                out.append(norm)
             if len(out) >= k:
                 break
+
         return out
+
     except Exception:
         return []
 

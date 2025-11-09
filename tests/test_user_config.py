@@ -114,23 +114,24 @@ def test_partial_missing_external_only_prompts_external(monkeypatch):
 
 def test_partial_missing_user_only_prompts_user(monkeypatch):
     """
-    If external consent exists but user consent is missing,
-    only the user consent should be prompted and stored.
+    External consent can not exist without user consent, the system automatically exits if the user does not consent.
     """
     conn = connect(); init_schema(conn)
     user_id = get_or_create_user(conn, "bob")
     record_external_consent(conn, "accepted", user_id=user_id)  # only external consent exists
 
-    _inputs_repeat_last(monkeypatch, ["bob", "/tmp/fake.zip", "i"])
+    _inputs_repeat_last(monkeypatch, ["bob", ""])
     _stub_parse(monkeypatch)
 
     # external consent should NOT be called again
     monkeypatch.setattr("src.main.get_external_consent", _never_called)
     monkeypatch.setattr("src.main.get_user_consent", lambda: "rejected")
 
-    main.prompt_and_store()
+    result = main.prompt_and_store()
 
-    assert get_latest_consent(conn, user_id) == "rejected"          # newly recorded
+    assert result is None
+
+    assert get_latest_consent(conn, user_id) == None          # newly recorded
     assert get_latest_external_consent(conn, user_id) == "accepted" # unchanged
 
 
