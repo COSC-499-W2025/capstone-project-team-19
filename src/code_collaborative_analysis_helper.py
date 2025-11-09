@@ -690,22 +690,19 @@ def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) ->
         return {}
 
     print(
-        "\nBefore running collaborative analysis, we need your project descriptions.\n\n"
-
-        "Because you’ve opted out of LLM-based analysis, we’ll collect short manual descriptions "
-        "for your projects instead.\nThese descriptions help summarize your technical focus and "
-        "personal contributions, while evidence (e.g. commit\nhistory, code structure, language & frameworks, "
-        "data structures, algorithm & complexity, etc) will still be\nautomatically extracted from your project "
-        "to support your summary.\n\n"
-
-        "Describe what each project does, what your code focuses on technically "
-        "(e.g., architecture, optimization,\ndata structures, abstraction), and what your main "
-        "contribution was.\n\n"
-
-        "Example: \"This project is a movie recommendation system built with Python and Flask. "
-        "My code focuses on implementing the collaborative filtering algorithm efficiently using "
-        "hash maps and optimizing database queries with indexing. I developed the recommendation "
-        "module and integrated it into the web interface.\"\n"
+        "\nSince you’ve opted out of LLM analysis, we’ll use your manual descriptions "
+        "to summarize your focus and contributions. Evidence (e.g., commits, code structure, "
+        "languages, and algorithms) will still be extracted automatically to support your summary.\n\n"
+        "Include:\n"
+        " - What the project does\n"
+        " - Languages/frameworks used\n"
+        " - Technical focus (e.g., architecture, data structures, optimization)\n"
+        " - Your main contributions\n\n"
+        "Example: "
+        '"Movie recommendation system built with Python and Flask. '
+        "Focused on implementing collaborative filtering using hash maps for faster lookups "
+        "and optimizing SQL queries with indexing. "
+        "Developed the recommendation module and integrated it into the web interface.\""
     )
 
     descs = {}
