@@ -157,8 +157,6 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir):
     ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
     if ans not in {"y", "yes"}:
         return
-
-    print("Collecting GitHub repository metrics...")
     
     token = get_github_token(conn, user_id)
     github_user = None
@@ -178,6 +176,8 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir):
     if not owner: return # repo doesnt exist in db, nothing to analyze
 
     gh_username = github_user["login"]
+
+    print("Collecting GitHub repository metrics...")
 
     # fetch metrics via github REST API then stoe metrics in db
     metrics = fetch_github_metrics(token, owner, repo, gh_username)
