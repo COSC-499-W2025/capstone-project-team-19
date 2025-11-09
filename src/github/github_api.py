@@ -62,11 +62,22 @@ def list_user_repos(token):
 
 def get_authenticated_user(token):
     data = gh_get(token, "https://api.github.com/user")
+
+    login = data.get("login")
+    name = data.get("name")
+    email = data.get("email")
+
+    if not name or not str(name).strip():
+        name = login # sets the name to be th eusername if unavailable
+
+    if email is None:
+        email = "" # avoid null
+
     return {
-        "login": data.get("login"),
+        "login": login,
         "id": data.get("id"),
-        "name": data.get("name"),
-        "email": data.get("email"),
+        "name": name,
+        "email": email,
         "profile_url": data.get("html_url")
     }
 
