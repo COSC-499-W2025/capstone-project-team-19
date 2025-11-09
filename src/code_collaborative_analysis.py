@@ -162,30 +162,45 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir):
     if ans not in {"y", "yes"}:
         return
     
-    token = get_github_token(conn, user_id)
-    github_user = None
+    try:
+        token = get_github_token(conn, user_id)
+        github_user = None
 
-    if not token:
-        token = github_oauth(conn, user_id)
-        github_user = get_authenticated_user(token)
-        store_github_account(conn, user_id, github_user)
-    else:
-        github_user = get_authenticated_user(token)
+        if not token:
+            token = github_oauth(conn, user_id)
+            if not token:
+                print("[GitHub] Auth cancelled or failed. Continuing without GitHub.")
+                return
 
-    if not ensure_repo_link(conn, user_id, project_name, token):
-        select_and_store_repo(conn, user_id, project_name, token)
+            github_user = get_authenticated_user(token)
+            store_github_account(conn, user_id, github_user)
+        else:
+            github_user = get_authenticated_user(token)
 
-    # get repo url
-    owner, repo = get_gh_repo_name_and_owner(conn, user_id, project_name)
-    if not owner: return # repo doesnt exist in db, nothing to analyze
+        if not ensure_repo_link(conn, user_id, project_name, token):
+            select_and_store_repo(conn, user_id, project_name, token)
 
-    gh_username = github_user["login"]
+        # get repo url
+        owner, repo = get_gh_repo_name_and_owner(conn, user_id, project_name)
+        if not owner: 
+            print("[GitHub] No repo selected. Skipping GitHub metrics.")
+            return # repo doesnt exist in db, nothing to analyze
 
-    print("Collecting GitHub repository metrics...")
+        gh_username = github_user["login"]
 
-    # fetch metrics via github REST API then stoe metrics in db
-    metrics = fetch_github_metrics(token, owner, repo, gh_username)
-    store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics)
+        print("Collecting GitHub repository metrics...")
+
+        # fetch metrics via github REST API then stoe metrics in db
+        metrics = fetch_github_metrics(token, owner, repo, gh_username)
+        if not metrics:
+            print("[GitHub] Failed to fetch metrics. Skipping GitHub.")
+            return
+
+        store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics)
+        
+        repo_metrics = get_github_repo_metrics(conn, user_id, project_name, owner, repo)
+        print("GitHub metrics collected. Analysis to be implemented.")
     
-    repo_metrics = get_github_repo_metrics(conn, user_id, project_name, owner, repo)
-    print("GitHub metrics collected. Analysis to be implemented.")
+    except Exception as e:
+        print(f"[GitHub] Error occurred ({e}). Skipping GitHub and continuing.")
+        return

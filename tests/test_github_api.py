@@ -1,5 +1,6 @@
 import pytest
 import src.github.github_api as api
+import requests
 
 class FakeResp:
     def __init__(self, status, data):
@@ -47,8 +48,8 @@ def test_gh_get_missing_token():
 
 def test_gh_get_failure(monkeypatch):
     monkeypatch.setattr(api.requests, "get", lambda *a, **k: FakeResp(500, {"err": True}))
-    with pytest.raises(RuntimeError):
-        api.gh_get("T", "x")
+    data = api.gh_get("T", "x")
+    assert data == {}
 
 def test_get_authenticated_user(monkeypatch):
     data = {"login": "me", "id":1, "name":"A", "email":"b", "html_url":"url"}
@@ -108,3 +109,12 @@ def test_contributions_poll(monkeypatch):
     assert res["additions"] == 7
     assert res["deletions"] == 3
     assert res["contribution_percent"] == 100.0
+
+def test_gh_get_graceful_failure(monkeypatch):
+    class FakeResp:
+        status_code = 500
+        text = "server error"
+        def json(self): return {}
+    monkeypatch.setattr(requests, "get", lambda *a, **k: FakeResp())
+    data = api.gh_get("fake", "fake")
+    assert data == {}  # No crash, returns empty

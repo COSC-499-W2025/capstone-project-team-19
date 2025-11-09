@@ -23,16 +23,25 @@ def request_device_code(scope="repo"):
     }
 
     headers = {"Accept": "application/json"}
-    r = requests.post(DEVICE_CODE_URL, data=data, headers=headers)
+
+    try:
+        r = requests.post(DEVICE_CODE_URL, data=data, headers=headers)
+    except Exception as e:
+        print(f"[GitHub] Network error while requesting device code: {e}")
+        return None
 
     if r.status_code != 200:
-        raise RuntimeError(f"Failed to request device code: {r.text}")
+        print(f"[GitHub] Failed to request device code: {r.text}")
+        return None
 
     return r.json()
 
-
 def poll_for_token(device_code: str, interval: int):
     # Poll GitHub until user logs in + we receive access token.
+
+    if not device_code:
+        print("[GitHub] No device code, cannot poll.")
+        return None
     
     data = {
         "client_id": GITHUB_CLIENT_ID,
@@ -53,4 +62,5 @@ def poll_for_token(device_code: str, interval: int):
             time.sleep(interval)
             continue
 
-        raise RuntimeError(f"OAuth error: {resp}")
+        print(f"[GitHub] OAuth error: {resp}")
+        return None

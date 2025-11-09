@@ -20,21 +20,29 @@ def gh_get(token: str, url: str, retries: int = 6, delay: int = 2):
     }
 
     for attempt in range(retries):
-        r = requests.get(url, headers=headers)
+        try:
+            r = requests.get(url, headers=headers)
 
-        # GitHub stats endpoints sometimes return 202 while processing
-        if r.status_code == 202:
+            # GitHub stats endpoints sometimes return 202 while processing
+            if r.status_code == 202:
+                time.sleep(delay)
+                continue
+
+            # Any other error
+            if r.status_code != 200:
+                print(f"[GitHub] Warning: API request failed ({r.status_code}). URL: {url}")
+                print(f"[GitHub] Warning: Response: {r.text}")
+                return {}
+
+            return r.json()
+
+        except Exception as e:
+            print(f"[GitHub] Exception during API call: {e}")
             time.sleep(delay)
-            continue
 
-        # Any other error
-        if r.status_code != 200:
-            raise RuntimeError(f"GitHub API request failed: {r.status_code}, {r.text}")
-
-        return r.json()
-
-    # After retries, still processing
-    return None
+    # After retries, still processing or repeated failure
+    print(f"[GitHub] Warning: API did not return data after {retries} retries. URL: {url}")
+    return {}
 
 def list_user_repos(token):
     personal_repos = gh_get(token, "https://api.github.com/user/repos?per_page=200")

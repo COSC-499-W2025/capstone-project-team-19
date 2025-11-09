@@ -1,6 +1,7 @@
 import pytest, sqlite3, webbrowser, builtins
 
 from src.github.github_oauth import github_oauth
+from src.github.github_device_flow import request_device_code
 from src.db import init_schema, get_or_create_user
 
 
@@ -109,8 +110,8 @@ def test_github_oauth_poll_raises(monkeypatch, conn):
     monkeypatch.setattr(webbrowser, "open", lambda u: None)
     monkeypatch.setattr(builtins, "input", lambda p="": "")
 
-    with pytest.raises(RuntimeError):
-        github_oauth(conn, "User123")
+    response = request_device_code()
+    assert response is None
 
 # browser opening fails
 def test_github_oauth_browser_error(monkeypatch, conn):

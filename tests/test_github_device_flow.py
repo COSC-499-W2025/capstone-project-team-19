@@ -39,9 +39,8 @@ def test_request_device_code_failure(monkeypatch):
 
     monkeypatch.setattr(requests, "post", lambda *a, **k: fake_resp)
 
-    with pytest.raises(RuntimeError):
-        request_device_code()
-
+    result = request_device_code()
+    assert result is None
 
 # poll_for_token tests
 def test_poll_for_token_immediate_success(monkeypatch):
@@ -71,5 +70,5 @@ def test_poll_for_token_error(monkeypatch):
 
     monkeypatch.setattr(requests, "post", lambda *a, **k: fake_resp)
 
-    with pytest.raises(RuntimeError):
-        poll_for_token("abc", 1)
+    token = poll_for_token("abc", 1)
+    assert token is None
