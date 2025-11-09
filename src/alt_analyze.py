@@ -175,8 +175,8 @@ def extract_keywords(text: str, n_words: int=20)->List[Tuple[str,float]]:
         print(f"Error:{e}")
         return []
 
-def calculate_document_metrics(filepath: str)-> Dict[str, any]: 
-    text=extract_text_file(filepath)
+def calculate_document_metrics(filepath: str, conn, user_id) -> Dict[str, any]:
+    text = extract_text_file(filepath, conn, user_id)
     if not text:
         return{
             'file_path':filepath,
@@ -226,7 +226,7 @@ def calculate_project_metrics(documents_metrics: List[Dict])->Dict[str,any]:
         'keywords': [{'word': word, 'score': round(score, 3)} for word, score in top_keywords]
     }
 
-def alternative_analysis(parsed_files, zip_path, project_name=None):
+def alternative_analysis(parsed_files, zip_path, project_name, conn, user_id):
     """
     Main analysis function for alternative (non-LLM) analysis.
     Analyzes the provided files (already grouped by project from project_analysis.py).
@@ -274,7 +274,7 @@ def alternative_analysis(parsed_files, zip_path, project_name=None):
         filename = file_info['file_name']
 
         print(f"Processing: {filename}")
-        doc_metrics = calculate_document_metrics(file_path)
+        doc_metrics = calculate_document_metrics(file_path, conn, user_id)
 
         if doc_metrics.get('processed'):
             doc_metrics['filename'] = filename

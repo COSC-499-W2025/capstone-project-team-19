@@ -10,7 +10,7 @@ load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
-def run_text_llm_analysis(parsed_files, zip_path):
+def run_text_llm_analysis(parsed_files, zip_path, conn, user_id):
     if not isinstance(parsed_files, list):
         return
 
@@ -62,7 +62,7 @@ def run_text_llm_analysis(parsed_files, zip_path):
                 print(f"Auto-selected: {main_file['file_name']}")
 
         main_path = os.path.join(base_path, main_file["file_path"])
-        main_text = extract_text_file(main_path)
+        main_text = extract_text_file(main_path, conn, user_id)
         if not main_text:
             print("Failed to extract main file text. Skipping project.\n")
             continue
@@ -72,12 +72,13 @@ def run_text_llm_analysis(parsed_files, zip_path):
         supporting_texts = []
         for f in supporting_files:
             path = os.path.join(base_path, f["file_path"])
-            text = extract_text_file(path)
-            if text:
+            text_content = extract_text_file(path, conn, user_id)
+            if text_content:  # skip empty extractions
                 supporting_texts.append({
-                    "filename": f["file_name"],
-                    "text": text
+                    "filename": f.get("file_name", "Unknown File"),
+                    "text": text_content
                 })
+
 
         print(f"  Found {len(supporting_texts)} supporting file(s).")
 

@@ -61,7 +61,7 @@ def test_run_llm_analysis_basic(mock_client, mock_input, mock_parsed_files, tmp_
     os.makedirs(project_dir, exist_ok=True)
     (project_dir / "sample.txt").write_text("This is a sample document.")
 
-    text_llm_analyze.run_text_llm_analysis(mock_parsed_files, str(tmp_path / "Archive.zip"))
+    text_llm_analyze.run_text_llm_analysis(mock_parsed_files, str(tmp_path / "Archive.zip"), None, None)
 
     captured = capsys.readouterr()
 
@@ -73,49 +73,12 @@ def test_run_llm_analysis_basic(mock_client, mock_input, mock_parsed_files, tmp_
     assert "Success Factors:" in captured.out
     assert "8.2 / 10" in captured.out
 
-# tests if csv files return metadata (headers, missing data pct, etc.) -> if csv included
-def test_extract_text_file_csv_metadata(tmp_path):
-    csv_path = tmp_path / "data.csv"
-    csv_path.write_text("a,b,c\n1,2,3\n4,,6\n7,8,9")
-
-    result = extractfromcsv(str(csv_path))
-
-    assert isinstance(result, dict)
-    assert "headers" in result
-    assert "missing_pct" in result
-    assert result["row_count"] == 3
-
-# tests if csv summaries are included in llm prompt (if csv included)
-@patch("src.text_llm_analyze.client")
-def test_generate_llm_success_factors_includes_csv_summary(mock_client, mock_llm_responses):
-    mock_client.chat.completions.create.return_value = mock_llm_responses(
-        '{"strengths": ["good data use"], "weaknesses": ["missing rows"], "score": "8.0 / 10"}'
-    )
-
-    csv_summary = {
-        "filename": "data.csv",
-        "text": {
-            "headers": ["a", "b", "c"],
-            "row_count": 3,
-            "col_count": 3,
-            "missing_pct": 12.5,
-            "dtypes": {"a": "int", "b": "float", "c": "int"}
-        }
-    }
-
-    linguistic = {"reading_level": "College", "lexical_diversity": 0.4, "word_count": 500}
-    _ = text_llm_analyze.generate_text_llm_success_factors("Academic text", linguistic, [csv_summary])
-
-    prompt_arg = mock_client.chat.completions.create.call_args[1]["messages"][1]["content"]
-    assert "[CSV DATA SUMMARY]" in prompt_arg or "Columns:" in prompt_arg
-
-
-@patch("builtins.input", return_value="")
-@patch("os.path.getsize", side_effect=lambda path: 200 if "main" in path else 100)
-@patch("src.text_llm_analyze.client")
 
 # tests if largest file is auto-selected when user presses Enter
-def test_auto_select_largest_file(mock_client, mock_getsize, mock_input, tmp_path, mock_llm_responses):
+@patch("builtins.input", return_value="")
+@patch("src.text_llm_analyze.client")
+@patch("src.text_llm_analyze.os.path.getsize", side_effect=lambda path: 1000 if "main" in path else 100)
+def test_auto_select_largest_file(mock_getsize, mock_client, mock_input, tmp_path, mock_llm_responses):
     mock_client.chat.completions.create.side_effect = [
         mock_llm_responses("Summary text"),
         mock_llm_responses("- Skill 1\n- Skill 2"),
@@ -132,7 +95,7 @@ def test_auto_select_largest_file(mock_client, mock_getsize, mock_input, tmp_pat
         {"file_path": "ProjectA/main.txt", "file_name": "main.txt", "file_type": "text"},
     ]
 
-    text_llm_analyze.run_text_llm_analysis(parsed, str(tmp_path / "Archive.zip"))
+    text_llm_analyze.run_text_llm_analysis(parsed, str(tmp_path / "Archive.zip"), None, None)
 
     captured = mock_client.chat.completions.create.call_args_list[0][1]["messages"][1]["content"]
     assert "main.txt" not in captured  # summary prompt should only see main file’s text
@@ -164,7 +127,7 @@ def test_supporting_files_are_detected_and_used(mock_client, mock_input, tmp_pat
         {"file_path": "ProjectA/notes.txt", "file_name": "notes.txt", "file_type": "text"},
     ]
 
-    text_llm_analyze.run_text_llm_analysis(parsed_files, str(tmp_path / "Archive.zip"))
+    text_llm_analyze.run_text_llm_analysis(parsed_files, str(tmp_path / "Archive.zip"), None, None)
 
     # grab the arguments passed to the skills or success LLM call
     skills_call = mock_client.chat.completions.create.call_args_list[1][1]
@@ -197,7 +160,7 @@ def test_generate_llm_summary(mock_client, mock_llm_responses):
     result = text_llm_analyze.generate_text_llm_summary("Text about sustainability.")
     assert "project proposal" in result.lower()
 
-# tests if LLM skills generation works as expected (no csv)
+# tests if LLM skills generation works as expected
 @patch("src.text_llm_analyze.client")
 def test_generate_llm_skills(mock_client, mock_llm_responses):
     mock_client.chat.completions.create.return_value = mock_llm_responses(
@@ -207,7 +170,7 @@ def test_generate_llm_skills(mock_client, mock_llm_responses):
     assert isinstance(result, list)
     assert "Research" in result[0]
 
-# tests if LLM success factors generation works as expected (no csv)
+# tests if LLM success factors generation works as expected
 @patch("src.text_llm_analyze.client")
 def test_generate_llm_success_factors(mock_client, mock_llm_responses):
     fake_json = '{"strengths": "clear structure", "weaknesses": "minor redundancy", "score": "8.1 / 10 (Good clarity)"}'

@@ -16,6 +16,7 @@ from src.code_llm_analyze import run_code_llm_analysis
 from src.code_non_llm_analysis import run_code_non_llm_analysis
 from src.helpers import _fetch_files
 from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
+from src.csv_analyze import run_csv_analysis
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     """
@@ -336,14 +337,12 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
 
         if has_csv and all_csv:
             print(f"\n[INDIVIDUAL-TEXT] Detected dataset-based project: {project_name}")
-            from src.csv_analyze import run_csv_analysis
             run_csv_analysis(parsed_files, zip_path, conn, user_id, external_consent)
             return  # Stop here; CSV analysis is complete
 
         # Mixed project with both text + CSV supporting files:
         elif has_csv:
             print(f"\n[INDIVIDUAL-TEXT] Text project with CSV supporting files detected in {project_name}")
-            from src.csv_analyze import run_csv_analysis
             run_csv_analysis(
                 [f for f in parsed_files if f.get("extension") == ".csv"],
                 zip_path,
@@ -355,11 +354,9 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
 
         # Standard text flow
         if external_consent == "accepted":
-            from src.text_llm_analyze import run_text_llm_analysis
             run_text_llm_analysis(parsed_files, zip_path, conn, user_id)
         else:
-            from src.alt_analyze import alternative_analysis
-            alternative_analysis(parsed_files, zip_path, project_name)
+            alternative_analysis(parsed_files, zip_path, project_name, conn, user_id)
 
     elif not only_text:
         # Run non-LLM code analysis (static + Git metrics)

@@ -27,17 +27,41 @@ def _fetch_files(conn: sqlite3.Connection, user_id: int, project_name: str, only
     rows = conn.execute(query, params).fetchall()
     return [{"file_name": r[0], "file_type": r[1], "file_path": r[2]} for r in rows]
 
-def get_file_extension_from_db(conn: sqlite3.Connection, user_id: int, file_path: str) -> Optional[str]:
-    result = conn.execute("""
-        SELECT extension
-        FROM files
-        WHERE user_id = ? AND file_path = ?
-        LIMIT 1
-    """, (user_id, file_path)).fetchone()
+def get_file_extension_from_db(conn: sqlite3.Connection, user_id: int, filepath: str) -> str | None:
+    """Fetch file extension from DB using normalized relative path matching."""
+    try:
+        # Normalize absolute → relative path (so it matches DB file_path entries)
+        base_path = os.path.join(os.path.dirname(__file__), "..", "zip_data")
+        rel_path = os.path.relpath(filepath, base_path).replace("\\", "/")
 
-    if result and result[0]:
-        return result[0].lower()
-    return None
+        # Remove any accidental leading "zip_data/" or "./"
+        if rel_path.startswith("zip_data/"):
+            rel_path = rel_path[len("zip_data/"):]
+        if rel_path.startswith("./"):
+            rel_path = rel_path[2:]
+
+        # --- Main lookup ---
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT extension FROM files WHERE user_id = ? AND file_path = ?",
+            (user_id, rel_path),
+        )
+        result = cur.fetchone()
+
+        # --- Fallback lookup (e.g., partial match if path separators differ) ---
+        if not result:
+            cur.execute(
+                "SELECT extension FROM files WHERE user_id = ? AND file_path LIKE ?",
+                (user_id, f"%{os.path.basename(filepath)}%"),
+            )
+            result = cur.fetchone()
+
+        return result[0] if result else None
+
+    except Exception as e:
+        print(f"DB lookup failed for {filepath}: {e}")
+        return None
+
 
 def zip_paths(zip_path: str) -> Tuple[str, str, str]:
     """
@@ -122,7 +146,13 @@ def bfs_find_repo(root: str, max_depth: int = 2) -> Optional[str]:
 ## Text Extraction
 
 def extract_text_file(filepath: str, conn: sqlite3.Connection, user_id: int) -> Optional[str]:
-    extension = get_file_extension_from_db(conn, user_id, filepath)
+    # Skip DB lookup if conn or user_id not provided
+    if conn is None or user_id is None:
+        # fallback: infer from file extension
+        extension = os.path.splitext(filepath)[1].lower()
+    else:
+        extension = get_file_extension_from_db(conn, user_id, filepath)
+
     if not extension:
         print(f"Warning: No extension found in DB for {filepath}, skipping.")
         return None

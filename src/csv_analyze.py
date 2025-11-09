@@ -46,7 +46,7 @@ def run_csv_analysis(parsed_files, zip_path, conn, user_id, llm_consent="rejecte
             path = os.path.join(base_path, f["file_path"])
             df = load_csv(path)
             if df is None:
-                print(f"⚠️  Could not read {f['file_name']}. Skipping.")
+                print(f"Could not read {f['file_name']}. Skipping.")
                 continue
 
             summary = analyze_single_csv(df)
@@ -148,7 +148,7 @@ def generate_dataset_summary(df, filename, llm_consent):
 
 
 def print_dataset_summary(filename, summary, summary_text):
-    print(f"\n📄 File: {filename}")
+    print(f"\nFile: {filename}")
     print(f"Rows: {summary['row_count']:,} | Columns: {summary['col_count']}")
     print(f"Headers: {', '.join(summary['headers'])}")
     print(f"Data Types: {json.dumps(summary['dtypes'], indent=2)}")
@@ -167,7 +167,7 @@ def print_dataset_summary(filename, summary, summary_text):
 
 def print_growth_trend(growth_trend):
     """Display dataset size progression for grouped files."""
-    print("\n📈 Growth Over Time:")
+    print("\nGrowth Over Time:")
     base = growth_trend[0][1]
     for fname, rows in growth_trend:
         change = ((rows - base) / base * 100) if base else 0
