@@ -71,7 +71,7 @@ def select_and_store_repo(conn, user_id, project_name, token):
         if choice.isdigit() and 1 <= int(choice) <= len(repos):
             repo = repos[int(choice) - 1]
             repo_url, repo_owner, repo_name, repo_id, default_branch = get_github_repo_metadata(user_id, project_name, repo, token)
-            save_project_repo(conn, user_id, project_name, repo_url, choice, repo_owner, repo_name, repo_id, default_branch)
+            save_project_repo(conn, user_id, project_name, repo_url, repo, repo_owner, repo_name, repo_id, default_branch)
             return
         print("Invalid selection.")
 

@@ -56,7 +56,11 @@ def analyze_code_project(conn: sqlite3.Connection,
             f"\nNo local Git repo found under allowed paths. "
             f"Zip a local clone (not GitHub 'Download ZIP') so .git is included."
         )
-        return _handle_no_git_repo(conn, user_id, project_name)
+
+        _handle_no_git_repo(conn, user_id, project_name)
+        _enhance_with_github(conn, user_id, project_name, repo_dir)
+
+        return None
 
     print(f"Found local Git repo for {project_name}")
 
