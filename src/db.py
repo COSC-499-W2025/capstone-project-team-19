@@ -1,6 +1,7 @@
 from pathlib import Path
 import sqlite3
 import os
+import json
 from typing import Optional, Tuple, Dict
 from datetime import datetime
 
@@ -135,6 +136,21 @@ def init_schema(conn: sqlite3.Connection) -> None:
         recorded_at       TEXT NOT NULL,
         UNIQUE(user_id, zip_name, project_name),
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS text_offline_metrics (
+        metrics_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        classification_id INTEGER UNIQUE NOT NULL,
+        doc_count         INTEGER,
+        total_words       INTEGER,
+        reading_level_avg REAL,
+        reading_level_label TEXT,
+        keywords_json     TEXT,
+        summary_json      TEXT,
+        generated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
     );
     """)
 
@@ -351,6 +367,73 @@ def get_project_classifications(
         (user_id, zip_name),
     ).fetchall()
     return {project_name: classification for project_name, classification in rows}
+
+
+def get_classification_id(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[int]:
+    row = conn.execute(
+        """
+        SELECT classification_id
+        FROM project_classifications
+        WHERE user_id = ? AND project_name = ?
+        ORDER BY recorded_at DESC
+        LIMIT 1
+        """,
+        (user_id, project_name),
+    ).fetchone()
+    return row[0] if row else None
+
+
+def store_text_offline_metrics(
+    conn: sqlite3.Connection,
+    classification_id: int,
+    project_metrics: dict,
+) -> None:
+    if not classification_id or not project_metrics:
+        return
+
+    summary_block = project_metrics.get("summary", {}) or {}
+    keywords = project_metrics.get("keywords", []) or []
+
+    doc_count = summary_block.get("total_documents")
+    total_words = summary_block.get("total_words")
+    reading_level_avg = summary_block.get("reading_level_average")
+    reading_level_label = summary_block.get("reading_level_label")
+
+    summary_json = json.dumps(project_metrics, ensure_ascii=False)
+    keywords_json = json.dumps(keywords, ensure_ascii=False)
+
+    conn.execute(
+        """
+        INSERT INTO text_offline_metrics (
+            classification_id,
+            doc_count,
+            total_words,
+            reading_level_avg,
+            reading_level_label,
+            keywords_json,
+            summary_json,
+            generated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        ON CONFLICT(classification_id) DO UPDATE SET
+            doc_count = excluded.doc_count,
+            total_words = excluded.total_words,
+            reading_level_avg = excluded.reading_level_avg,
+            reading_level_label = excluded.reading_level_label,
+            keywords_json = excluded.keywords_json,
+            summary_json = excluded.summary_json,
+            generated_at = excluded.generated_at
+        """,
+        (
+            classification_id,
+            doc_count,
+            total_words,
+            reading_level_avg,
+            reading_level_label,
+            keywords_json,
+            summary_json,
+        ),
+    )
+    conn.commit()
     
 def save_token_placeholder(conn: sqlite3.Connection, user_id: int):
     conn.execute("""
