@@ -65,7 +65,7 @@ def standard_llm_side_effects(mock_llm_responses):
 @patch("src.text_llm_analyze.connect")
 @patch("src.text_llm_analyze.store_text_llm_metrics")
 @patch("src.text_llm_analyze.client")
-def test_run_llm_analysis_basic(mock_client, mock_store_metrics, mock_connect, mock_input, mock_parsed_files, fake_zip_structure, standard_llm_side_effects, capsys):
+def test_run_llm_analysis_basic(mock_client, mock_connect, mock_input, mock_parsed_files, fake_zip_structure, standard_llm_side_effects, capsys):
     # Use standard LLM responses
     mock_client.chat.completions.create.side_effect = standard_llm_side_effects
 
