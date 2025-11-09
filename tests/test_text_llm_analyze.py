@@ -65,7 +65,7 @@ def standard_llm_side_effects(mock_llm_responses):
 @patch("src.text_llm_analyze.connect")
 @patch("src.text_llm_analyze.store_text_llm_metrics")
 @patch("src.text_llm_analyze.client")
-def test_run_llm_analysis_basic(mock_client, mock_connect, mock_input, mock_parsed_files, fake_zip_structure, standard_llm_side_effects, capsys):
+def test_run_llm_analysis_basic(mock_client, mock_store_metrics, mock_connect, mock_input, mock_parsed_files, fake_zip_structure, standard_llm_side_effects, capsys):
     # Use standard LLM responses
     mock_client.chat.completions.create.side_effect = standard_llm_side_effects
 
@@ -86,6 +86,10 @@ def test_run_llm_analysis_basic(mock_client, mock_connect, mock_input, mock_pars
     assert "Success Factors:" in captured.out
     assert "8.2 / 10" in captured.out
     assert "[Main File]" in captured.out
+
+    mock_connect.assert_called_once()
+    mock_store_metrics.assert_called_once()
+    mock_conn.close.assert_called_once()
 
 @patch("builtins.input", return_value="1")
 @patch("src.text_llm_analyze.client")
