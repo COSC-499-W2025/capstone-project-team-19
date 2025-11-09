@@ -389,6 +389,35 @@ def store_text_llm_metrics(conn: sqlite3.Connection, classification_id: int, pro
         )
     conn.commit()
 
+def get_text_llm_metrics(conn: sqlite3.Connection, classification_id: int) -> Optional[dict]:
+    row = conn.execute("""
+        SELECT text_metric_id, classification_id, project_name, file_name, file_path, word_count, sentence_count, flesch_kincaid_grade, lexical_diversity,
+        summary, skills_json, strength_json, weaknesses_json, overall_score, processed_at
+        FROM llm_text
+        WHERE classification_id = ?
+    """, (classification_id,)).fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "text_metric_id": row[0],
+        "classification_id": row[1],
+        "project_name": row[2],
+        "file_name": row[3],
+        "file_path": row[4],
+        "word_count": row[5],
+        "sentence_count": row[6],
+        "flesch_kincaid_grade": row[7],
+        "lexical_diversity": row[8],
+        "summary": row[9],
+        "skills_json": row[10],
+        "strength_json": row[11],
+        "weaknesses_json": row[12],
+        "overall_score": row[13],
+        "processed_at": row[14]
+    }
+
 def get_classification_id(conn: sqlite3.Connection, user_id: int, project_name: str)->Optional[int]:
     row=conn.execute("""
     SELECT classification_id FROM project_classifications
