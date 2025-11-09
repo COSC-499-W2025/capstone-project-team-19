@@ -14,13 +14,10 @@ load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 def run_csv_analysis(parsed_files, zip_path, conn, user_id, llm_consent="rejected"):
-    """
-    Perform CSV analysis for a project.
-    Can run as:
-      1. Standalone project (only CSVs)
-      2. Supporting role (called from text_llm_analyze)
-    """
-    csv_files = [f for f in parsed_files if f.get("extension") == ".csv"]
+    csv_files = [
+        f for f in parsed_files
+        if f.get("file_name", "").lower().endswith(".csv")
+    ]
     if not csv_files:
         print("No CSV files found for analysis.")
         return
@@ -38,7 +35,7 @@ def run_csv_analysis(parsed_files, zip_path, conn, user_id, llm_consent="rejecte
     grouped = group_csv_files(csv_files)
 
     for group_name, files in grouped.items():
-        print(f"\n📂 Dataset group: {group_name} ({len(files)} file{'s' if len(files) > 1 else ''})")
+        print(f"\nDataset group: {group_name} ({len(files)} file{'s' if len(files) > 1 else ''})")
         print("-" * 80)
 
         growth_trend = []

@@ -14,7 +14,16 @@ def run_text_llm_analysis(parsed_files, zip_path, conn, user_id):
     if not isinstance(parsed_files, list):
         return
 
-    text_files = [f for f in parsed_files if f.get("file_type") == "text"]
+    text_files = [
+        f for f in parsed_files
+        if f.get("file_type") == "text" and not f.get("file_name", "").lower().endswith(".csv")
+    ]
+    
+    csv_skipped = [f["file_name"] for f in parsed_files if f["file_name"].lower().endswith(".csv")]
+    if csv_skipped:
+        print(f"Skipped {len(csv_skipped)} CSV file(s): {', '.join(csv_skipped)} (handled by CSV analyzer separately)")
+
+
     if not text_files:
         print("No text files found to analyze.")
         return
