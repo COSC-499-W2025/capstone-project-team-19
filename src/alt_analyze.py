@@ -296,9 +296,15 @@ def alternative_analysis(parsed_files, zip_path, project_name=None):
             print(f"  {user_summary}\n")
             print(f"{'─'*80}\n")
 
-        display_project_summary(calculate_project_metrics(all_document_metrics))
+        project_metrics = calculate_project_metrics(all_document_metrics)
+        display_project_summary(project_metrics)
+        return {
+            "project_summary": project_metrics,
+            "documents": all_document_metrics,
+        }
     else:
         print("\nNo files were successfully processed.")
+        return None
 
 def display_individual_results(filename: str, doc_metrics: dict):
     """Display analysis results for an individual file."""
@@ -378,6 +384,5 @@ def display_all_projects_summary(all_projects_results: List[Dict]):
         print(f"    Reading Level: {summary['reading_level_label']} (Grade {summary['reading_level_average']})")
 
     print(f"\n{'='*80}\n")
-
 
 
