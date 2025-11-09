@@ -88,12 +88,18 @@ def load_csv(path):
 
 def analyze_single_csv(df):
     """Generate non-LLM numeric and structural summary."""
+    total_rows = len(df)
+    missing_rows = df.isnull().any(axis=1).sum()
+    missing_pct = (missing_rows / total_rows * 100) if total_rows > 0 else 0
+
     summary = {
-        "row_count": len(df),
+        "row_count": total_rows,
         "col_count": len(df.columns),
         "headers": list(df.columns),
         "dtypes": df.dtypes.astype(str).to_dict(),
         "numeric_stats": {},
+        "missing_rows": missing_rows,
+        "missing_pct": round(missing_pct, 2),
     }
 
     for col in df.select_dtypes(include=[np.number]).columns:
@@ -106,7 +112,6 @@ def analyze_single_csv(df):
             }
 
     return summary
-
 
 def generate_dataset_summary(df, filename, llm_consent):
     """
@@ -147,6 +152,8 @@ def generate_dataset_summary(df, filename, llm_consent):
 def print_dataset_summary(filename, summary, summary_text):
     print(f"\nFile: {filename}")
     print(f"Rows: {summary['row_count']:,} | Columns: {summary['col_count']}")
+    print(f"Missing rows: {summary['missing_rows']:,} "
+          f"({summary['missing_pct']}% of total)")
     print(f"Headers: {', '.join(summary['headers'])}")
     print(f"Data Types: {json.dumps(summary['dtypes'], indent=2)}")
 
