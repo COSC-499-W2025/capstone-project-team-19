@@ -198,10 +198,11 @@ def extractfromcsv(filepath: str, sample_rows: int = 5) -> dict:
 
 ## Code extraction
 
-def extract_code_file(filepath: str, conn: sqlite3.Connection, user_id: int) -> Optional[str]:
-    extension = get_file_extension_from_db(conn, user_id, filepath)
-    if not extension:
-        print(f"Warning: No extension found in DB for {filepath}, skipping.")
+SUPPORTED_CODE_EXTENSIONS={'.py', '.java', '.js', '.html', '.css', '.c', '.cpp', '.h'}
+
+def extract_code_file(filepath: str)->Optional[str]:
+    root, extension = os.path.splitext(filepath)
+    if extension.lower() not in SUPPORTED_CODE_EXTENSIONS:
         return None
     
     try:
@@ -225,7 +226,7 @@ def extract_code_file(filepath: str, conn: sqlite3.Connection, user_id: int) -> 
     except Exception as e:
         print(f"Error extracting code from {filepath}: {e}")
         return None
-
+    return None
 
 def extract_readme_file(base_path: str) -> Optional[str]:
     for filename in os.listdir(base_path):

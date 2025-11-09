@@ -332,7 +332,7 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
 def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text):
     if only_text:
         if external_consent=='accepted':
-            run_text_llm_analysis(parsed_files, zip_path)
+            run_text_llm_analysis(parsed_files, zip_path, conn, user_id)
         else:
             alternative_analysis(parsed_files, zip_path, project_name)
 
