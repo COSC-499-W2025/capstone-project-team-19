@@ -73,3 +73,21 @@ On the PR review side, I reviewed Timmi's GitHub OAuth PR (#152). Found a few is
 I also reviewed Adara's text analysis refactoring PR (#160). I noticed analysis only worked for PDFs initially and project names weren't displaying correctly. She fixed both issues, added markdown support, and synced with the main branch. Everything passed after her changes.
 
 Next week's focus: I'll be working on updating the database schema and connecting the Google Drive API.
+
+## (Week 10) Monday 3rd November - Sunday 9th November
+
+![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Nov3-Nov9.png)
+
+Week recap: This week I worked on two feature PRs and reviewed three PRs from teammates.
+
+For my first feature PR (#182), I expanded our framework detection from 14 frameworks to over 100, covering Python web frameworks (Django, Flask, FastAPI, Tornado), JavaScript/TypeScript frameworks (React, Vue, Next.js), mobile frameworks (React Native, Expo), CSS frameworks (Material-UI, Sass), build tools (Vite, Webpack), ORMs (Prisma), and state management libraries (Redux, Zustand). I also refactored the test file by creating a `_test_framework_detection()` helper function to cut down on boilerplate, which made the tests way cleaner.
+
+For my second feature PR (#193), I added storage for offline text analysis metrics so we can reuse results later. I created a new `text_offline_metrics` table linked to `project_classifications`, added DB helper functions (`get_classification_id` and `store_text_offline_metrics`), and modified `alternative_analysis()` to return its summary so it can be persisted. I also added comprehensive unit tests covering upsert functionality, field preservation during partial updates, and edge cases like missing payloads. Timmi requested additional test coverage for edge cases, so I added tests to ensure existing fields aren't overwritten during updates and that empty/missing fields are handled gracefully.
+
+For PR reviews, I reviewed Salma's collaborative summary improvements (#184). She fixed a bug where manual project descriptions were being requested even when users accepted LLM consent, added a helpful template for user input, and filtered out filler words using NLTK for better keyword extraction. After Timmi's feedback about the template being too text-heavy, she shortened it into a cleaner bullet list. Everything looked good after her changes.
+
+I also reviewed Adara's CSV support PR (#179). She added CSV file handling to the text LLM analysis pipeline with metadata extraction. I noticed there were no unit tests for the new `extractfromcsv()` function and no integration tests showing how CSV metadata flows through the LLM pipeline, so I requested test coverage for these scenarios. Timmi and Ivona found additional issues with file extension validation duplication and errors when CSV was the only file type. Adara added the test cases I requested, refactored to fetch extensions from the database instead of the file path, and created a separate `csv_analyze.py` module to handle CSV files independently. Still waiting for her final updates to approve.
+
+Finally, I reviewed Timmi's GitHub metrics PR (#185). She integrated GitHub OAuth, repo linking, and metrics collection (commits, PRs, issues). The architecture was solid with clear separation between API calls, storage, and orchestration. All tests passed and the GitHub integration worked smoothly when I tested it locally.
+
+Next week's focus: I'll continue working on the database schema updates.
