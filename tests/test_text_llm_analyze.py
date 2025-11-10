@@ -73,7 +73,7 @@ def test_run_llm_analysis_basic(mock_client, mock_input, mock_parsed_files, fake
     os.makedirs(fake_zip_structure["project_dir"], exist_ok=True)
     (fake_zip_structure["project_dir"] / "sample.txt").write_text("This is a sample document.")
 
-    results = text_llm_analyze.run_text_llm_analysis(mock_parsed_files, fake_zip_structure["zip_path"])
+    results = text_llm_analyze.run_text_llm_analysis(mock_parsed_files, fake_zip_structure["zip_path"], None, None)
 
     captured = capsys.readouterr()
 
@@ -112,7 +112,7 @@ def test_run_llm_analysis_db(mock_client, mock_input, mock_parsed_files, fake_zi
     classification_id = db.get_classification_id(conn, user_id, fake_zip_structure["project_name"])
 
     # Get results from analysis
-    results = text_llm_analyze.run_text_llm_analysis(mock_parsed_files, fake_zip_structure["zip_path"])
+    results = text_llm_analyze.run_text_llm_analysis(mock_parsed_files, fake_zip_structure["zip_path"], None, None)
 
     # Store results to database (mimics what project_analysis.py does)
     for result in results:
