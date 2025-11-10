@@ -6,3 +6,4 @@ __pycache__/
 local_storage.db-shm
 local_storage.db-wal
 local_storage.db
+.env
