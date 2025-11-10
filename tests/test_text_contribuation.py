@@ -11,7 +11,7 @@ FAKE_REVISIONS = [
 ]
 
 # Mock analyze_google_doc
-def fake_analyze_google_doc(service, drive_file_id, user_email):
+def fake_analyze_google_doc(drive_service, docs_service, drive_file_id, user_email):
     return {
         "status": "analyzed",
         "revisions": FAKE_REVISIONS,
@@ -61,7 +61,7 @@ module.db.get_project_drive_files = fake_get_project_drive_files
 
 # Tests
 def test_process_project_files_stores_revisions(sqlite_conn):
-    process_project_files(sqlite_conn, service=None, user_id=1, project_name="proj", user_email="user@example.com")
+    process_project_files(sqlite_conn, drive_service=None, docs_service=None, user_id=1, project_name="proj", user_email="user@example.com")
     rows = sqlite_conn.execute("SELECT revision_id, words_added FROM text_contribution_revisions").fetchall()
     assert len(rows) == 2
     assert rows[0][0] == "rev1"
@@ -70,7 +70,7 @@ def test_process_project_files_stores_revisions(sqlite_conn):
     assert summary == (2, sum(rev["word_count"] for rev in FAKE_REVISIONS))
 
 def test_analyze_drive_file_returns_expected_structure():
-    result = analyze_drive_file(service=None, conn=None, user_id="user@example.com", project_name="proj",
+    result = analyze_drive_file(drive_service=None, docs_service=None, conn=None, user_id="user@example.com", project_name="proj",
                                 drive_file_id="file123", drive_file_name="TestDoc",
                                 mime_type="application/vnd.google-apps.document", user_email="user@example.com")
     assert result["status"] == "analyzed"

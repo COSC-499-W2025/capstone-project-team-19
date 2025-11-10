@@ -1,4 +1,4 @@
-def analyze_google_doc(service, drive_file_id, user_email):
+def analyze_google_doc(drive_service, docs_service, drive_file_id, user_email):
     """
     Analyze a Google Doc file for all revisions by a single user.
     Returns:
@@ -9,18 +9,27 @@ def analyze_google_doc(service, drive_file_id, user_email):
     from googleapiclient.errors import HttpError
 
     try:
-        revisions = service.revisions().list(fileId=drive_file_id).execute().get("revisions", [])
+        revisions = drive_service.revisions().list(
+            fileId=drive_file_id,
+            fields="revisions(id,modifiedTime,lastModifyingUser(emailAddress,displayName))"
+        ).execute().get("revisions", [])
         total_revision_count = len(revisions)
         user_revisions = []
 
+        target_email = (user_email or "").strip().lower()
+
         for rev in revisions:
             rev_id = rev.get("id")
-            rev_user_email = rev.get("lastModifyingUser", {}).get("emailAddress")
+            print("DEBUG last modifying user:", rev.get("lastModifyingUser"))
+            print("DEBUG last modifying useremail : ", rev.get("lastModifyingUser", {}).get("emailAddress"))
+            print("DEBUG user email: ", user_email)
+            #rev_user_email = rev.get("lastModifyingUser", {}).get("emailAddress")
             rev_timestamp = rev.get("modifiedTime")
+            rev_user_email = (rev.get("lastModifyingUser", {}).get("emailAddress") or "").strip().lower()
 
-            if rev_user_email == user_email:
+            if rev_user_email == target_email:
                 # Get current document content (Docs API gives current text)
-                doc_content = service.documents().get(documentId=drive_file_id).execute().get("body", {}).get("content", [])
+                doc_content = docs_service.documents().get(documentId=drive_file_id).execute().get("body", {}).get("content", [])
                 revision_text = ""
                 for element in doc_content:
                     if "paragraph" in element:

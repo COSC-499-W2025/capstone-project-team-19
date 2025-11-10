@@ -277,15 +277,23 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent)
         return
     
     # We need the Google Drive service from the setup
-    service = result.get("service")
-    if not service:
-        print("Drive connection succeeded but no service returned — skipping analysis.")
+    drive_service = result.get("drive_service")
+    docs_service = result.get("docs_service")
+    if not drive_service or not docs_service:
+        print("Drive connection succeeded but required services missing — skipping analysis.")
         return
     user_email = result.get("user_email")
     print("\n[CONTRIBUTION ANALYSIS] Beginning revision analysis on linked files...")
 
     # Main processing pipeline
-    process_project_files(conn=conn,service=service,user_id=user_id,project_name=project_name,user_email=user_email)
+    process_project_files(
+        conn=conn,
+        drive_service=drive_service,
+        docs_service=docs_service,
+        user_id=user_id,
+        project_name=project_name,
+        user_email=user_email
+    )
 
     print("Contribution analysis complete.")
     

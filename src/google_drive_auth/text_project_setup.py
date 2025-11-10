@@ -60,8 +60,8 @@ def setup_text_project_drive_connection(
     
     # Step 3: Run OAuth flow (fresh each time)
     try:
-        creds, service = google_drive_oauth()
-        if not service:
+        creds, drive_service, docs_service = google_drive_oauth()
+        if not drive_service or not docs_service:
             print("Failed to connect Google Drive. Skipping file linking.")
             return {
                 'success': False,
@@ -86,7 +86,7 @@ def setup_text_project_drive_connection(
     print(f"\nLinking files from '{project_name}' with Google Drive...")
     
     try:
-        results = find_and_link_files(service, project_name, zip_file_names, conn, user_id)
+        results = find_and_link_files(drive_service, project_name, zip_file_names, conn, user_id)
         
         # Extract results
         total_found = len(results.get('manual', []))
@@ -106,7 +106,8 @@ def setup_text_project_drive_connection(
             'files_linked': total_found,
             'files_not_found': total_not_found,
             'zip_file_names': zip_file_names,
-            'service': service,    
+            'drive_service': drive_service,
+            'docs_service': docs_service,
             'user_email': user_email,
             'error': None
         }
