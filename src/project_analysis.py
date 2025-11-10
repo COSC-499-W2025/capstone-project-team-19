@@ -1,11 +1,3 @@
-"""
-Collaborative analysis module.
-Handles project-type detection (code vs text) and routes collaborative projects
-to the appropriate individual-contribution analyzers.
-
-Individual projects - sent directly to analysis
-Collaborative projects - processed to extract individual user contributions
-"""
 from src.language_detector import detect_languages
 from src.framework_detector import detect_frameworks
 
@@ -15,8 +7,10 @@ from src.text_llm_analyze import run_text_llm_analysis
 from src.code_llm_analyze import run_code_llm_analysis
 from src.code_non_llm_analysis import run_code_non_llm_analysis
 from src.helpers import _fetch_files
-from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
+from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
+from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
 from src.csv_analyze import run_csv_analysis
+
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     """
@@ -166,6 +160,17 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
         # split: code first, then text
         code_collab = [(n, t) for (n, t) in collaborative if t == "code"]
         text_collab = [(n, t) for (n, t) in collaborative if t == "text"]
+
+        # ask once for user descriptions for CODE collab projects (non-LLM path)
+        if code_collab:
+            # prompt_collab_descriptions expects list[(project_name, something)];
+            # it only uses the project_name, so second value can be anything.
+            projects_for_desc = [(name, "") for (name, _ptype) in code_collab]
+            project_descs = prompt_collab_descriptions(projects_for_desc, current_ext_consent)
+            set_manual_descs_store(project_descs)
+        else:
+            # no code collab → clear any previous state
+            set_manual_descs_store({})
 
         # 1) run all CODE collab
         for project_name, project_type in code_collab:
@@ -330,8 +335,10 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     
         
 def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text):
+    classification_id = get_classification_id(conn, user_id, project_name)
+
     if only_text:
-        # Detect whether this project consists purely of CSVs
+        # --- Detect CSV files ---
         has_csv = any(f.get("file_name", "").lower().endswith(".csv") for f in parsed_files)
         all_csv = all(f.get("file_name", "").lower().endswith(".csv") for f in parsed_files)
 
@@ -340,20 +347,46 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
             run_csv_analysis(parsed_files, zip_path, conn, user_id, external_consent)
             return  # Stop here; CSV analysis is complete
 
-        # Mixed project with both text + CSV supporting files:
         elif has_csv:
             print(f"\n[INDIVIDUAL-TEXT] Text project with CSV supporting files detected in {project_name}")
-            run_csv_analysis(parsed_files, zip_path, conn, user_id, external_consent)
-            # continue to normal text analysis after CSV summaries
+            run_csv_analysis(
+                [f for f in parsed_files if f.get("file_name", "").lower().endswith(".csv")],
+                zip_path,
+                conn,
+                user_id,
+                external_consent,
+            )
+            # Continue to main text analysis after CSV
 
-
-        # Standard text flow
+        # --- Run Text Analyses ---
         if external_consent == "accepted":
-            run_text_llm_analysis(parsed_files, zip_path, conn, user_id)
-        else:
-            alternative_analysis(parsed_files, zip_path, project_name, conn, user_id)
+            results = run_text_llm_analysis(parsed_files, zip_path, conn, user_id)
 
-    elif not only_text:
-        # Run non-LLM code analysis (static + Git metrics)
+            # Store LLM results if returned
+            if results:
+                for result in results:
+                    store_text_llm_metrics(
+                        conn,
+                        classification_id,
+                        result.get("project_name"),
+                        result.get("file_name"),
+                        result.get("file_path"),
+                        result.get("linguistic"),
+                        result.get("summary"),
+                        result.get("skills"),
+                        result.get("success"),
+                    )
+
+        else:
+            analysis_result = alternative_analysis(parsed_files, zip_path, project_name, conn, user_id)
+            if analysis_result and classification_id:
+                store_text_offline_metrics(
+                    conn,
+                    classification_id,
+                    analysis_result.get("project_summary"),
+                )
+
+    else:
+        # --- Run non-LLM code analysis (static + Git metrics) ---
         run_code_non_llm_analysis(conn, user_id, project_name, zip_path)
 

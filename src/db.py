@@ -1,6 +1,7 @@
 from pathlib import Path
 import sqlite3
 import os
+import json
 from typing import Optional, Tuple, Dict
 from datetime import datetime
 
@@ -139,6 +140,21 @@ def init_schema(conn: sqlite3.Connection) -> None:
     """)
 
     cur.execute("""
+    CREATE TABLE IF NOT EXISTS non_llm_text (
+        metrics_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        classification_id INTEGER UNIQUE NOT NULL,
+        doc_count         INTEGER,
+        total_words       INTEGER,
+        reading_level_avg REAL,
+        reading_level_label TEXT,
+        keywords_json     TEXT,
+        summary_json      TEXT,
+        generated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
+    );
+    """)
+
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS config_files (
         config_id     INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id       INTEGER NOT NULL,
@@ -195,6 +211,28 @@ def init_schema(conn: sqlite3.Connection) -> None:
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
     );
     """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS llm_text (
+        text_metric_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        classification_id INTEGER NOT NULL,
+        file_path TEXT,
+        file_name TEXT,
+        project_name TEXT,
+        word_count INTEGER,
+        sentence_count INTEGER,
+        flesch_kincaid_grade REAL,
+        lexical_diversity REAL,
+        summary TEXT NOT NULL,
+        skills_json JSON,
+        strength_json JSON,
+        weaknesses_json JSON,
+        overall_score TEXT,
+        processed_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(text_metric_id),
+        FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
+        )
+""")
 
     conn.commit()
 
@@ -351,7 +389,169 @@ def get_project_classifications(
         (user_id, zip_name),
     ).fetchall()
     return {project_name: classification for project_name, classification in rows}
+
+
+def get_classification_id(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[int]:
+    row = conn.execute(
+        """
+        SELECT classification_id
+        FROM project_classifications
+        WHERE user_id = ? AND project_name = ?
+        ORDER BY recorded_at DESC
+        LIMIT 1
+        """,
+        (user_id, project_name),
+    ).fetchone()
+    return row[0] if row else None
+
+
+def store_text_offline_metrics(
+    conn: sqlite3.Connection,
+    classification_id: int,
+    project_metrics: dict | None,
+) -> None:
+    if not classification_id or not project_metrics:
+        return
+
+    summary_block = project_metrics.get("summary") or {}
+    keywords = project_metrics.get("keywords")
+
+    doc_count = summary_block.get("total_documents")
+    total_words = summary_block.get("total_words")
+    reading_level_avg = summary_block.get("reading_level_average")
+    reading_level_label = summary_block.get("reading_level_label")
+
+    summary_json = json.dumps(project_metrics, ensure_ascii=False)
+    keywords_json = json.dumps(keywords, ensure_ascii=False) if keywords is not None else None
+
+    existing = conn.execute(
+        """
+        SELECT doc_count,
+               total_words,
+               reading_level_avg,
+               reading_level_label,
+               keywords_json,
+               summary_json
+        FROM non_llm_text
+        WHERE classification_id = ?
+        """,
+        (classification_id,),
+    ).fetchone()
+
+    if existing:
+        doc_count = doc_count if doc_count is not None else existing[0]
+        total_words = total_words if total_words is not None else existing[1]
+        reading_level_avg = reading_level_avg if reading_level_avg is not None else existing[2]
+        reading_level_label = reading_level_label if reading_level_label is not None else existing[3]
+        keywords_json = keywords_json if keywords_json is not None else existing[4]
+        summary_json = summary_json if summary_json is not None else existing[5]
+
+        conn.execute(
+            """
+            UPDATE non_llm_text
+            SET doc_count = ?,
+                total_words = ?,
+                reading_level_avg = ?,
+                reading_level_label = ?,
+                keywords_json = ?,
+                summary_json = ?,
+                generated_at = datetime('now')
+            WHERE classification_id = ?
+            """,
+            (
+                doc_count,
+                total_words,
+                reading_level_avg,
+                reading_level_label,
+                keywords_json,
+                summary_json,
+                classification_id,
+            ),
+        )
+    else:
+        if keywords_json is None:
+            keywords_json = json.dumps([], ensure_ascii=False)
+        if summary_json is None:
+            summary_json = json.dumps({}, ensure_ascii=False)
+
+        conn.execute(
+            """
+            INSERT INTO non_llm_text (
+                classification_id,
+                doc_count,
+                total_words,
+                reading_level_avg,
+                reading_level_label,
+                keywords_json,
+                summary_json,
+                generated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            """,
+            (
+                classification_id,
+                doc_count,
+                total_words,
+                reading_level_avg,
+                reading_level_label,
+                keywords_json,
+                summary_json,
+            ),
+        )
+    conn.commit()
     
+def store_text_llm_metrics(conn: sqlite3.Connection, classification_id: int, project_name: str, file_name:str, file_path:str, linguistic:dict, summary: str, skills: list, success: dict )-> None:
+    skills_json=json.dumps(skills)
+    strength_json=json.dumps(success.get("strengths", []))
+    weaknesses_json=json.dumps(success.get("weaknesses", []))
+    conn.execute(
+        """
+        INSERT INTO llm_text(
+        classification_id, file_path, file_name, project_name, word_count, sentence_count, flesch_kincaid_grade, lexical_diversity, summary, skills_json, strength_json, weaknesses_json, overall_score)
+        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (classification_id, file_path, file_name, project_name, linguistic.get("word_count"), linguistic.get("sentence_count"), linguistic.get("flesch_kincaid_grade"), linguistic.get("lexical_diversity"), summary, skills_json, strength_json, weaknesses_json, success.get("score"))
+        )
+    conn.commit()
+
+def get_text_llm_metrics(conn: sqlite3.Connection, classification_id: int) -> Optional[dict]:
+    row = conn.execute("""
+        SELECT text_metric_id, classification_id, project_name, file_name, file_path, word_count, sentence_count, flesch_kincaid_grade, lexical_diversity,
+        summary, skills_json, strength_json, weaknesses_json, overall_score, processed_at
+        FROM llm_text
+        WHERE classification_id = ?
+    """, (classification_id,)).fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "text_metric_id": row[0],
+        "classification_id": row[1],
+        "project_name": row[2],
+        "file_name": row[3],
+        "file_path": row[4],
+        "word_count": row[5],
+        "sentence_count": row[6],
+        "flesch_kincaid_grade": row[7],
+        "lexical_diversity": row[8],
+        "summary": row[9],
+        "skills_json": row[10],
+        "strength_json": row[11],
+        "weaknesses_json": row[12],
+        "overall_score": row[13],
+        "processed_at": row[14]
+    }
+
+def get_classification_id(conn: sqlite3.Connection, user_id: int, project_name: str)->Optional[int]:
+    row=conn.execute("""
+    SELECT classification_id FROM project_classifications
+    WHERE user_id=? AND project_name=?
+    ORDER BY recorded_at DESC
+    LIMIT 1
+""", (user_id,project_name)).fetchone()
+    
+    return row[0] if row else None
+
 def save_token_placeholder(conn: sqlite3.Connection, user_id: int):
     conn.execute("""
         INSERT OR IGNORE INTO user_tokens (user_id, provider, access_token)
