@@ -11,6 +11,12 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
 def run_text_llm_analysis(parsed_files, zip_path, conn, user_id):
+        # cross-platform normalization for file paths
+    for f in parsed_files:
+        # normalize slashes for consistency (handles Windows vs macOS/Linux)
+        if "file_path" in f and isinstance(f["file_path"], str):
+            f["file_path"] = os.path.normpath(f["file_path"])
+
     if not isinstance(parsed_files, list):
         return
 
