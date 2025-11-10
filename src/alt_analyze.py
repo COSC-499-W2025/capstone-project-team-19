@@ -1,3 +1,4 @@
+#non llm text analysis
 
 import os
 from typing import Dict, List, Tuple
@@ -174,8 +175,8 @@ def extract_keywords(text: str, n_words: int=20)->List[Tuple[str,float]]:
         print(f"Error:{e}")
         return []
 
-def calculate_document_metrics(filepath: str)-> Dict[str, any]: 
-    text=extract_text_file(filepath)
+def calculate_document_metrics(filepath: str, conn, user_id) -> Dict[str, any]:
+    text = extract_text_file(filepath, conn, user_id)
     if not text:
         return{
             'file_path':filepath,
@@ -225,7 +226,7 @@ def calculate_project_metrics(documents_metrics: List[Dict])->Dict[str,any]:
         'keywords': [{'word': word, 'score': round(score, 3)} for word, score in top_keywords]
     }
 
-def alternative_analysis(parsed_files, zip_path, project_name):
+def alternative_analysis(parsed_files, zip_path, project_name, conn=None, user_id=None):
     """
     Main analysis function for alternative (non-LLM) analysis.
     Analyzes the provided files (already grouped by project from project_analysis.py).
@@ -234,11 +235,13 @@ def alternative_analysis(parsed_files, zip_path, project_name):
         parsed_files: List of file info dicts for a single project
         zip_path: Path to the ZIP file
         project_name: Optional name of the project being analyzed
+        conn: Optional database connection object (used for text extraction)
+        user_id: Optional user ID for context in DB lookups
     """
     if not isinstance(parsed_files, list):
         return
 
-    text_files=[f for f in parsed_files if f.get('file_type')=='text']
+    text_files = [f for f in parsed_files if f.get('file_type') == 'text']
 
     if not text_files:
         print("No text files found to analyze.")
@@ -273,7 +276,7 @@ def alternative_analysis(parsed_files, zip_path, project_name):
         filename = file_info['file_name']
 
         print(f"Processing: {filename}")
-        doc_metrics = calculate_document_metrics(file_path)
+        doc_metrics = calculate_document_metrics(file_path, conn, user_id)
 
         if doc_metrics.get('processed'):
             doc_metrics['filename'] = filename
@@ -305,6 +308,7 @@ def alternative_analysis(parsed_files, zip_path, project_name):
     else:
         print("\nNo files were successfully processed.")
         return None
+
 
 def display_individual_results(filename: str, doc_metrics: dict):
     """Display analysis results for an individual file."""

@@ -24,7 +24,7 @@ def test_extractfromtxt():
         temp_path=f.name
 
     try:
-        text=extract_text_file(temp_path)
+        text=extract_text_file(temp_path, None, None)
         assert text is not None
         assert "test document." in text
         assert "second line" in text
@@ -36,7 +36,7 @@ def test_extractfromtxt_empty():
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
             temp_path=f.name
         try:
-             text=extract_text_file(temp_path)
+             text=extract_text_file(temp_path, None, None)
              assert text==""
         finally:
              os.unlink(temp_path)
@@ -101,13 +101,13 @@ def test_extractfile_unsupported_format():
         temp_path = f.name
 
     try:
-        text = extract_text_file(temp_path)
+        text = extract_text_file(temp_path, None, None)
         assert text is None
     finally:
         os.unlink(temp_path)
 
 def test_extractfile_nonexistent():
-    result = extract_text_file("/nonexistent/path/file.txt")
+    result = extract_text_file("/nonexistent/path/file.txt", None, None)
     assert result is None
 
 def test_extractfromtxt_specific():
@@ -165,7 +165,7 @@ def test_calculate_document_metrics():
         temp_path = f.name
 
     try:
-        metrics = calculate_document_metrics(temp_path)
+        metrics = calculate_document_metrics(temp_path, None, None)
 
         assert metrics['processed'] == True
         assert 'linguistic_metrics' in metrics
@@ -183,7 +183,7 @@ def test_calculate_document_metrics():
         os.unlink(temp_path)
 
 def test_calculate_document_metrics_invalid_file():
-    metrics = calculate_document_metrics("/nonexistent/file.txt")
+    metrics = calculate_document_metrics("/nonexistent/file.txt", None, None)
 
     assert metrics['processed'] == False
     assert 'error' in metrics

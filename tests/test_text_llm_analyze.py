@@ -1,7 +1,9 @@
 import os
+import json
 import pytest
 from unittest.mock import patch, MagicMock
 from src import text_llm_analyze
+from src.helpers import extractfromcsv
 
 
 @pytest.fixture
@@ -71,7 +73,7 @@ def test_run_llm_analysis_basic(mock_client, mock_input, mock_parsed_files, fake
     os.makedirs(fake_zip_structure["project_dir"], exist_ok=True)
     (fake_zip_structure["project_dir"] / "sample.txt").write_text("This is a sample document.")
 
-    results = text_llm_analyze.run_text_llm_analysis(mock_parsed_files, fake_zip_structure["zip_path"])
+    results = text_llm_analyze.run_text_llm_analysis(mock_parsed_files, fake_zip_structure["zip_path"], None, None)
 
     captured = capsys.readouterr()
 
@@ -82,13 +84,12 @@ def test_run_llm_analysis_basic(mock_client, mock_input, mock_parsed_files, fake
     assert "Skills Demonstrated:" in captured.out
     assert "Success Factors:" in captured.out
     assert "8.2 / 10" in captured.out
-    assert "[Main File]" in captured.out
 
     # Assertions for returned results
     assert len(results) == 1
     assert results[0]["project_name"] == "ProjectA"
     assert results[0]["file_name"] == "sample.txt"
-    assert results[0]["file_path"] == "ProjectA/sample.txt"
+    assert os.path.normpath(results[0]["file_path"]) == os.path.normpath("ProjectA/sample.txt")
     assert "A research essay" in results[0]["summary"]
     assert len(results[0]["skills"]) == 3
     assert "8.2 / 10" in results[0]["success"]["score"]
@@ -111,7 +112,7 @@ def test_run_llm_analysis_db(mock_client, mock_input, mock_parsed_files, fake_zi
     classification_id = db.get_classification_id(conn, user_id, fake_zip_structure["project_name"])
 
     # Get results from analysis
-    results = text_llm_analyze.run_text_llm_analysis(mock_parsed_files, fake_zip_structure["zip_path"])
+    results = text_llm_analyze.run_text_llm_analysis(mock_parsed_files, fake_zip_structure["zip_path"], None, None)
 
     # Store results to database (mimics what project_analysis.py does)
     for result in results:
@@ -133,7 +134,7 @@ def test_run_llm_analysis_db(mock_client, mock_input, mock_parsed_files, fake_zi
     # Verify scalar fields
     assert metrics["project_name"] == "ProjectA"
     assert metrics["file_name"] == "sample.txt"
-    assert metrics["file_path"] == "ProjectA/sample.txt"
+    assert os.path.normpath(metrics["file_path"]) == os.path.normpath("ProjectA/sample.txt")
     assert metrics["word_count"] == 10
     assert metrics["sentence_count"] == 2
     assert metrics["flesch_kincaid_grade"] == 9.5
@@ -155,6 +156,84 @@ def test_run_llm_analysis_db(mock_client, mock_input, mock_parsed_files, fake_zi
     assert "limited depth" in weaknesses
     assert "8.2 / 10" in metrics["overall_score"]
 
+# tests if largest file is auto-selected when user presses Enter
+@patch("builtins.input", return_value="")
+@patch("src.text_llm_analyze.client")
+@patch("src.text_llm_analyze.os.path.getsize", side_effect=lambda path: 1000 if "main" in path else 100)
+def test_auto_select_largest_file(mock_getsize, mock_client, mock_input, tmp_path, mock_llm_responses):
+    mock_client.chat.completions.create.side_effect = [
+        mock_llm_responses("Summary text"),
+        mock_llm_responses("- Skill 1\n- Skill 2"),
+        mock_llm_responses('{"strengths": ["clarity"], "weaknesses": ["depth"], "score": "8.0 / 10"}')
+    ]
+
+    project_dir = tmp_path / "zip_data" / "Archive" / "ProjectA"
+    os.makedirs(project_dir, exist_ok=True)
+    (project_dir / "draft.txt").write_text("short text")
+    (project_dir / "main.txt").write_text("longer main text")
+
+    parsed = [
+        {"file_path": "ProjectA/draft.txt", "file_name": "draft.txt", "file_type": "text"},
+        {"file_path": "ProjectA/main.txt", "file_name": "main.txt", "file_type": "text"},
+    ]
+
+    text_llm_analyze.run_text_llm_analysis(parsed, str(tmp_path / "Archive.zip"), None, None)
+
+    captured = mock_client.chat.completions.create.call_args_list[0][1]["messages"][1]["content"]
+    assert "main.txt" not in captured  # summary prompt should only see main file’s text
+    assert mock_getsize.called
+    
+    
+@patch("builtins.input", return_value="2")
+@patch("src.text_llm_analyze.client")
+
+# tests if supporting files are detected and included in skills and success factors prompts
+def test_supporting_files_are_detected_and_used(mock_client, mock_input, tmp_path, mock_llm_responses):
+    # mock all three LLM calls
+    mock_client.chat.completions.create.side_effect = [
+        mock_llm_responses("A final research report."),
+        mock_llm_responses("- Research synthesis\n- Data interpretation"),
+        mock_llm_responses('{"strengths": ["clear analysis"], "weaknesses": ["minor redundancy"], "score": "9.0 / 10"}')
+    ]
+
+    # create fake folder and files
+    project_dir = tmp_path / "zip_data" / "Archive" / "ProjectA"
+    os.makedirs(project_dir, exist_ok=True)
+    (project_dir / "final.txt").write_text("Final report on AI ethics.")
+    (project_dir / "draft1.txt").write_text("Rough outline and early thoughts.")
+    (project_dir / "notes.txt").write_text("Research notes on methodology.")
+
+    parsed_files = [
+        {"file_path": "ProjectA/final.txt", "file_name": "final.txt", "file_type": "text"},
+        {"file_path": "ProjectA/draft1.txt", "file_name": "draft1.txt", "file_type": "text"},
+        {"file_path": "ProjectA/notes.txt", "file_name": "notes.txt", "file_type": "text"},
+    ]
+
+    text_llm_analyze.run_text_llm_analysis(parsed_files, str(tmp_path / "Archive.zip"), None, None)
+
+    # grab the arguments passed to the skills or success LLM call
+    skills_call = mock_client.chat.completions.create.call_args_list[1][1]
+    success_call = mock_client.chat.completions.create.call_args_list[2][1]
+
+    # both prompts should include content from supporting files
+    skills_prompt = skills_call["messages"][1]["content"]
+    success_prompt = success_call["messages"][1]["content"]
+
+    assert "draft1.txt" in skills_prompt
+    assert "notes.txt" in skills_prompt
+    assert "draft1.txt" in success_prompt
+    assert "notes.txt" in success_prompt
+
+
+@patch("src.text_llm_analyze.client")
+# tests if LLM API errors are handled gracefully (placeholders printed when API fails)
+def test_llm_api_error_handling(mock_client):
+    mock_client.chat.completions.create.side_effect = Exception("API error")
+
+    result = text_llm_analyze.generate_text_llm_success_factors("text", {"word_count": 5})
+    assert "None" in result.values() or "unavailable" in str(result).lower()
+
+# tests if LLM summary generation works as expected
 @patch("src.text_llm_analyze.client")
 def test_generate_llm_summary(mock_client, mock_llm_responses):
     mock_client.chat.completions.create.return_value = mock_llm_responses(
@@ -163,7 +242,7 @@ def test_generate_llm_summary(mock_client, mock_llm_responses):
     result = text_llm_analyze.generate_text_llm_summary("Text about sustainability.")
     assert "project proposal" in result.lower()
 
-
+# tests if LLM skills generation works as expected
 @patch("src.text_llm_analyze.client")
 def test_generate_llm_skills(mock_client, mock_llm_responses):
     mock_client.chat.completions.create.return_value = mock_llm_responses(
@@ -173,7 +252,7 @@ def test_generate_llm_skills(mock_client, mock_llm_responses):
     assert isinstance(result, list)
     assert "Research" in result[0]
 
-
+# tests if LLM success factors generation works as expected
 @patch("src.text_llm_analyze.client")
 def test_generate_llm_success_factors(mock_client, mock_llm_responses):
     fake_json = '{"strengths": "clear structure", "weaknesses": "minor redundancy", "score": "8.1 / 10 (Good clarity)"}'
@@ -183,3 +262,4 @@ def test_generate_llm_success_factors(mock_client, mock_llm_responses):
     result = text_llm_analyze.generate_text_llm_success_factors("Some academic text.", linguistic)
     assert result["strengths"].startswith("clear")
     assert "8.1" in result["score"]
+

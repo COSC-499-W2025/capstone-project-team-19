@@ -10,11 +10,26 @@ load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
-def run_text_llm_analysis(parsed_files, zip_path):
+def run_text_llm_analysis(parsed_files, zip_path, conn, user_id):
+        # cross-platform normalization for file paths
+    for f in parsed_files:
+        # normalize slashes for consistency (handles Windows vs macOS/Linux)
+        if "file_path" in f and isinstance(f["file_path"], str):
+            f["file_path"] = os.path.normpath(f["file_path"])
+
     if not isinstance(parsed_files, list):
         return []
 
-    text_files = [f for f in parsed_files if f.get("file_type") == "text"]
+    text_files = [
+        f for f in parsed_files
+        if f.get("file_type") == "text" and not f.get("file_name", "").lower().endswith(".csv")
+    ]
+    
+    csv_skipped = [f["file_name"] for f in parsed_files if f["file_name"].lower().endswith(".csv")]
+    if csv_skipped:
+        print(f"Skipped {len(csv_skipped)} CSV file(s): {', '.join(csv_skipped)} (handled by CSV analyzer separately)")
+
+
     if not text_files:
         print("No text files found to analyze.")
         return []
@@ -63,7 +78,7 @@ def run_text_llm_analysis(parsed_files, zip_path):
                 print(f"Auto-selected: {main_file['file_name']}")
 
         main_path = os.path.join(base_path, main_file["file_path"])
-        main_text = extract_text_file(main_path)
+        main_text = extract_text_file(main_path, conn, user_id)
         if not main_text:
             print("Failed to extract main file text. Skipping project.\n")
             continue
@@ -73,12 +88,13 @@ def run_text_llm_analysis(parsed_files, zip_path):
         supporting_texts = []
         for f in supporting_files:
             path = os.path.join(base_path, f["file_path"])
-            text = extract_text_file(path)
-            if text:
+            text_content = extract_text_file(path, conn, user_id)
+            if text_content:  # skip empty extractions
                 supporting_texts.append({
-                    "filename": f["file_name"],
-                    "text": text
+                    "filename": f.get("file_name", "Unknown File"),
+                    "text": text_content
                 })
+
 
         print(f"  Found {len(supporting_texts)} supporting file(s).")
 
