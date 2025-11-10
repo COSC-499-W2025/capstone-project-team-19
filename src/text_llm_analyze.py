@@ -33,7 +33,7 @@ def run_text_llm_analysis(parsed_files, zip_path, classification_id):
     for f in text_files:
         if not f.get("file_path"):
             continue
-        project_name = f["file_path"].split(os.sep)[0]
+        project_name = f["file_path"].replace("\\", "/").split("/")[0]
         projects.setdefault(project_name, []).append(f)
 
     # process each folder as one project
