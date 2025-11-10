@@ -90,6 +90,6 @@ Week recap:
 
 - Reviewed and provided some feedback on some PRs, for example:
   - Reviewed Timmi’s PR on GitHub metrics to suggest handling runtime errors (e.g., empty repos, missing GitHub client ID) gracefully by printing error messages and continuing the program instead of stopping.
-  - Suggested renaming Ammar’s non-LLM metrics table to non_llm_text for consistency with Johannes’ llm_text table.
+  - Suggested renaming Ammaar’s non-LLM metrics table to non_llm_text for consistency with Johanes’ llm_text table.
 
 Next week: I plan to store non-LLM code collaborative metrics (was unsure about the DB refactoring but now resolved). If time allows, I also plan to refactor the repo structure to include subfolders such as e.g., consent/, common/, text_individual_analysis/, etc.
