@@ -321,3 +321,4 @@ def test_portfolio_summary_keywords(tmp_sqlite_conn, temp_zip_layout, monkeypatc
     assert "grocery" in out.lower()
     # and the second description
     assert "contributions" in out.lower() or "git" in out.lower()
+
