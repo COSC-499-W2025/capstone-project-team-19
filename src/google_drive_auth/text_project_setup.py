@@ -10,7 +10,7 @@ Orchestrates the complete flow of:
 """
 from typing import Dict, Any, Optional
 from src.helpers import _fetch_files
-from src.google_drive_auth.google_drive_oauth import google_drive_oauth
+from src.google_drive_auth.google_drive_oauth import get_user_email, google_drive_oauth
 from src.google_drive_auth.link_files import find_and_link_files
 
 
@@ -80,6 +80,7 @@ def setup_text_project_drive_connection(
             'zip_file_names': zip_file_names,
             'error': str(e)
         }
+    user_email = get_user_email(creds)
     
     # Step 4: Link files
     print(f"\nLinking files from '{project_name}' with Google Drive...")
@@ -105,6 +106,8 @@ def setup_text_project_drive_connection(
             'files_linked': total_found,
             'files_not_found': total_not_found,
             'zip_file_names': zip_file_names,
+            'service': service,    
+            'user_email': user_email,
             'error': None
         }
         

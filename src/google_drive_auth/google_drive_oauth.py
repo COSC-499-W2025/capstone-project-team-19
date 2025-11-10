@@ -14,7 +14,8 @@ except ImportError:
 # Define the scopes required for contribution analysis
 SCOPES = [
     'https://www.googleapis.com/auth/drive.readonly',
-    'https://www.googleapis.com/auth/drive.metadata.readonly'
+    'https://www.googleapis.com/auth/drive.metadata.readonly',
+    'https://www.googleapis.com/auth/userinfo.email'
 ]
 
 
@@ -51,8 +52,15 @@ def google_drive_oauth(credentials_path: str = None) -> tuple:
         return None, None
 
 
+def get_user_email(creds):
+    service = build("oauth2", "v2", credentials=creds)
+    user_info = service.userinfo().get().execute()
+    return user_info["email"]
+
+
 if __name__ == "__main__":
     creds, service = google_drive_oauth()
     if service:
+        user_email = get_user_email(creds)
         print("Successfully connected to Google Drive!")
 
