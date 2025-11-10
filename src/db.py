@@ -422,6 +422,8 @@ def get_classification_id(conn: sqlite3.Connection, user_id: int, project_name: 
     row=conn.execute("""
     SELECT classification_id FROM project_classifications
     WHERE user_id=? AND project_name=?
+    ORDER BY recorded_at DESC
+    LIMIT 1
 """, (user_id,project_name)).fetchone()
     
     return row[0] if row else None

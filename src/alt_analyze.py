@@ -225,7 +225,7 @@ def calculate_project_metrics(documents_metrics: List[Dict])->Dict[str,any]:
         'keywords': [{'word': word, 'score': round(score, 3)} for word, score in top_keywords]
     }
 
-def alternative_analysis(parsed_files, zip_path, project_name, classification_id):
+def alternative_analysis(parsed_files, zip_path, project_name):
     """
     Main analysis function for alternative (non-LLM) analysis.
     Analyzes the provided files (already grouped by project from project_analysis.py).

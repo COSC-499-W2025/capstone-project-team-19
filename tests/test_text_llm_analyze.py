@@ -62,19 +62,16 @@ def standard_llm_side_effects(mock_llm_responses):
 
 
 @patch("builtins.input", return_value="1")
-@patch("src.text_llm_analyze.connect")
-@patch("src.text_llm_analyze.store_text_llm_metrics")
 @patch("src.text_llm_analyze.client")
-def test_run_llm_analysis_basic(mock_client, mock_store_metrics, mock_connect, mock_input, mock_parsed_files, fake_zip_structure, standard_llm_side_effects, capsys):
+def test_run_llm_analysis_basic(mock_client, mock_input, mock_parsed_files, fake_zip_structure, standard_llm_side_effects, capsys):
     # Use standard LLM responses
     mock_client.chat.completions.create.side_effect = standard_llm_side_effects
 
-    # Mock database connection
-    mock_conn = MagicMock()
-    mock_connect.return_value = mock_conn
+    # Create fake zip directory structure
+    os.makedirs(fake_zip_structure["project_dir"], exist_ok=True)
+    (fake_zip_structure["project_dir"] / "sample.txt").write_text("This is a sample document.")
 
-
-    text_llm_analyze.run_text_llm_analysis(mock_parsed_files, fake_zip_structure["zip_path"], classification_id=1)
+    results = text_llm_analyze.run_text_llm_analysis(mock_parsed_files, fake_zip_structure["zip_path"])
 
     captured = capsys.readouterr()
 
@@ -87,9 +84,14 @@ def test_run_llm_analysis_basic(mock_client, mock_store_metrics, mock_connect, m
     assert "8.2 / 10" in captured.out
     assert "[Main File]" in captured.out
 
-    mock_connect.assert_called_once()
-    mock_store_metrics.assert_called_once()
-    mock_conn.close.assert_called_once()
+    # Assertions for returned results
+    assert len(results) == 1
+    assert results[0]["project_name"] == "ProjectA"
+    assert results[0]["file_name"] == "sample.txt"
+    assert results[0]["file_path"] == "ProjectA/sample.txt"
+    assert "A research essay" in results[0]["summary"]
+    assert len(results[0]["skills"]) == 3
+    assert "8.2 / 10" in results[0]["success"]["score"]
 
 @patch("builtins.input", return_value="1")
 @patch("src.text_llm_analyze.client")
@@ -98,13 +100,34 @@ def test_run_llm_analysis_db(mock_client, mock_input, mock_parsed_files, fake_zi
 
     mock_client.chat.completions.create.side_effect = standard_llm_side_effects
 
+    # Create fake zip directory structure
+    os.makedirs(fake_zip_structure["project_dir"], exist_ok=True)
+    (fake_zip_structure["project_dir"] / "sample.txt").write_text("This is a sample document.")
+
     conn = db.connect()
     user_id = db.get_or_create_user(conn, "test-user-llm")
 
     db.record_project_classification(conn=conn, user_id=user_id, zip_path=fake_zip_structure["zip_path"], zip_name="Archive", project_name=fake_zip_structure["project_name"], classification="individual")
     classification_id = db.get_classification_id(conn, user_id, fake_zip_structure["project_name"])
 
-    text_llm_analyze.run_text_llm_analysis(mock_parsed_files, fake_zip_structure["zip_path"], classification_id)
+    # Get results from analysis
+    results = text_llm_analyze.run_text_llm_analysis(mock_parsed_files, fake_zip_structure["zip_path"])
+
+    # Store results to database (mimics what project_analysis.py does)
+    for result in results:
+        db.store_text_llm_metrics(
+            conn,
+            classification_id,
+            result["project_name"],
+            result["file_name"],
+            result["file_path"],
+            result["linguistic"],
+            result["summary"],
+            result["skills"],
+            result["success"]
+        )
+
+    # Retrieve and verify stored data
     metrics = db.get_text_llm_metrics(conn, classification_id)
 
     # Verify scalar fields
