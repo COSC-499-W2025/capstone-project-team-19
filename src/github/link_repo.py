@@ -1,8 +1,8 @@
-# src/github_auth/link_repo.py
+# src/github/link_repo.py
 
-from .github_api import list_user_repos
+from .github_api import list_user_repos, get_gh_repo_metadata
 from .token_store import save_github_token, get_github_token
-from src.db import connect
+from src.db import connect, save_project_repo
 import sqlite3
 
 """
@@ -50,7 +50,8 @@ def select_and_store_repo(conn, user_id, project_name, token):
         print(f"\nBest repo match: {guess}")
         ans = input("Use this repo? (y/n): ").strip().lower()
         if ans.startswith("y"):
-            _store_repo(conn, user_id, project_name, guess)
+            repo_url, repo_owner, repo_name, repo_id, default_branch = get_github_repo_metadata(user_id, project_name, guess, token)
+            save_project_repo(conn, user_id, project_name, repo_url, guess, repo_owner, repo_name, repo_id, default_branch)
             return
 
     # Manual selection
@@ -69,7 +70,8 @@ def select_and_store_repo(conn, user_id, project_name, token):
 
         if choice.isdigit() and 1 <= int(choice) <= len(repos):
             repo = repos[int(choice) - 1]
-            _store_repo(conn, user_id, project_name, repo)
+            repo_url, repo_owner, repo_name, repo_id, default_branch = get_github_repo_metadata(user_id, project_name, repo, token)
+            save_project_repo(conn, user_id, project_name, repo_url, repo, repo_owner, repo_name, repo_id, default_branch)
             return
         print("Invalid selection.")
 
@@ -82,3 +84,25 @@ def _store_repo(conn, user_id, project_name, repo_url):
     
     conn.commit()
     print(f"Linked {project_name} → {repo_url}")
+
+def get_github_repo_metadata(user_id, project_name, repo_url, token):
+    # parse url for repo_owner and repo_name
+    repo_parts = repo_url.split("/")
+    repo_owner = repo_parts[0]
+    repo_name = repo_parts[1]
+
+    repo_id, default_branch = get_gh_repo_metadata(repo_owner, repo_name, token)
+
+    return repo_url, repo_owner, repo_name, repo_id, default_branch
+
+def get_gh_repo_name_and_owner(conn, user_id, project_name):
+    row = conn.execute("""
+        SELECT repo_owner, repo_name
+        FROM project_repos
+        WHERE user_id = ? AND project_name = ? AND provider = 'github'
+        LIMIT 1
+    """, (user_id, project_name)).fetchone()
+
+    if not row: return None, None
+    
+    return row[0], row[1]

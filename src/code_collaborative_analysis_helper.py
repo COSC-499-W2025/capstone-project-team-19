@@ -5,6 +5,7 @@ import subprocess
 from collections import Counter, defaultdict
 from typing import Dict, List, Optional, Tuple
 import sqlite3
+import json
 
 from src.extension_catalog import get_languages_for_extension
 from src.helpers import ensure_table 

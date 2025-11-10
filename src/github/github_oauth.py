@@ -16,6 +16,10 @@ def github_oauth(conn, user_id):
     # request device code from GitHub
     auth = request_device_code(scope="repo read:user read:org")
 
+    if not auth:
+        print("[GitHub] Could not start OAuth. Skipping GitHub.")
+        return None
+
     print("\nGo to this page in your browser:")
     print(auth["verification_uri"])
     print(f"Enter this code: {auth['user_code']}\n")
@@ -29,7 +33,13 @@ def github_oauth(conn, user_id):
 
     # poll for token
     print("Waiting for GitHub authorization...")
-    token = poll_for_token(auth["device_code"], auth["interval"])
+    
+    try:
+        token = poll_for_token(auth["device_code"], auth["interval"])
+    except Exception as e:
+        print(f"[GitHub] OAuth error: {e}")
+        print("[GitHub] Continuing without GitHub.")
+        return None
 
     print("GitHub Authorized!")
 

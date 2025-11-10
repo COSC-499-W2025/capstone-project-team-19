@@ -190,6 +190,11 @@ def init_schema(conn: sqlite3.Connection) -> None:
         project_name TEXT NOT NULL,
         provider TEXT NOT NULL,
         repo_url TEXT NOT NULL,
+        repo_full_name TEXT,
+        repo_owner TEXT,
+        repo_name TEXT,
+        repo_id INTEGER,
+        default_branch TEXT,
         linked_at TEXT DEFAULT (datetime('now')),
         UNIQUE(user_id, project_name, provider),
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
@@ -213,6 +218,34 @@ def init_schema(conn: sqlite3.Connection) -> None:
     """)
 
     cur.execute("""
+    CREATE TABLE IF NOT EXISTS github_accounts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        github_username TEXT NOT NULL,
+        github_id INTEGER NOT NULL,
+        github_name TEXT NOT NULL,
+        github_email TEXT,
+        github_profile_url TEXT,
+        UNIQUE (user_id, github_username),
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
+    """)
+
+    #TODO: normalize the github metrics into reltional tables, instead of one big JSON text dump
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS github_repo_metrics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        user_id INTEGER NOT NULL,
+        project_name TEXT NOT NULL,
+        repo_owner TEXT NOT NULL,
+        repo_name TEXT NOT NULL,
+        metrics_json TEXT NOT NULL,
+        UNIQUE (user_id, project_name, repo_owner, repo_name)
+    );
+    """)
+    
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS llm_text (
         text_metric_id INTEGER PRIMARY KEY AUTOINCREMENT,
         classification_id INTEGER NOT NULL,
@@ -231,8 +264,8 @@ def init_schema(conn: sqlite3.Connection) -> None:
         processed_at TEXT DEFAULT (datetime('now')),
         UNIQUE(text_metric_id),
         FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
-        )
-""")
+    );
+    """)
 
     conn.commit()
 
@@ -560,13 +593,23 @@ def save_token_placeholder(conn: sqlite3.Connection, user_id: int):
 
     conn.commit()
 
-def save_project_repo(conn: sqlite3.Connection, user_id: int, project_name: str, repo_url: str, provider="github"):
+def save_project_repo(conn: sqlite3.Connection, user_id: int, project_name: str, repo_url: str, repo_full_name: str, repo_owner: str, repo_name: str, repo_id: int, default_branch: str, provider="github"):
     # Store which GitHub repository corresponds to a given collaborative project
     
     conn.execute("""
-        INSERT OR REPLACE INTO project_repos (user_id, project_name, provider, repo_url)
-        VALUES (?, ?, ?, ?)
-    """, (user_id, project_name, provider, repo_url))
+        INSERT OR REPLACE INTO project_repos (
+            user_id, 
+            project_name, 
+            provider, 
+            repo_url,
+            repo_full_name,
+            repo_owner,
+            repo_name,
+            repo_id,
+            default_branch
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (user_id, project_name, provider, repo_url, repo_full_name, repo_owner, repo_name, repo_id, default_branch))
 
     conn.commit()
 
@@ -646,3 +689,13 @@ def get_unlinked_project_files(conn: sqlite3.Connection, user_id: int, project_n
     """, (user_id, project_name)).fetchall()
     
     return [row[0] for row in rows]
+
+def store_github_account(conn, user_id, github_user):
+    conn.execute("""
+        INSERT OR REPLACE INTO github_accounts
+        (user_id, github_username, github_id, github_name, github_email, github_profile_url)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        user_id, github_user["login"], github_user["id"], github_user["name"], github_user["email"], github_user["profile_url"]
+    ))
+    conn.commit()

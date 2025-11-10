@@ -1,8 +1,8 @@
 import pytest
 import requests
 import time
-from src.github_auth.github_device_flow import request_device_code, poll_for_token
-from src.github_auth.github_device_flow import GITHUB_CLIENT_ID, DEVICE_CODE_URL, TOKEN_URL
+from src.github.github_device_flow import request_device_code, poll_for_token
+from src.github.github_device_flow import GITHUB_CLIENT_ID, DEVICE_CODE_URL, TOKEN_URL
 
 
 class FakeResponse:
@@ -39,9 +39,8 @@ def test_request_device_code_failure(monkeypatch):
 
     monkeypatch.setattr(requests, "post", lambda *a, **k: fake_resp)
 
-    with pytest.raises(RuntimeError):
-        request_device_code()
-
+    result = request_device_code()
+    assert result is None
 
 # poll_for_token tests
 def test_poll_for_token_immediate_success(monkeypatch):
@@ -71,5 +70,5 @@ def test_poll_for_token_error(monkeypatch):
 
     monkeypatch.setattr(requests, "post", lambda *a, **k: fake_resp)
 
-    with pytest.raises(RuntimeError):
-        poll_for_token("abc", 1)
+    token = poll_for_token("abc", 1)
+    assert token is None
