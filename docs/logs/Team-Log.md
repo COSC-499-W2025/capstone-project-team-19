@@ -92,14 +92,14 @@ The team focused on building the Data Flow Diagram (DFD). On Monday, we collabor
 
 ### Table view of completed tasks by username
 
-| GitHub Username | Screenshot                                                                  |
-| --------------- | --------------------------------------------------------------------------- |
-| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Sept29-Oct5.png)   |
-| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Sept29-Oct5.png) |
-| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Sept29-Oct5.png)   |
+| GitHub Username | Screenshot                                                                    |
+| --------------- | ----------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Sept29-Oct5.png)     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Sept29-Oct5.png)   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Sept29-Oct5.png)     |
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Sept29-Oct5.png) |
-| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Sept29-Oct5.png)   |
-| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Sept29-Oct5.png)   |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Sept29-Oct5.png)     |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Sept29-Oct5.png)     |
 
 ### Table view of in progress tasks by username
 
@@ -109,12 +109,11 @@ Not applicable – no tasks in progress.
 
 #### Differences/Similarities with Other Teams' DFD Diagrams
 
-| Team  | Takeaways                                                                                                                                                                                                                         |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Team 11 | Focuses on scanning file metadata rather than calculating metrics.<br>Lacks a dedicated metrics module and renders the dashboard as static HTML.<br>We still need clarity on how their data extraction supports the insights they expect to present. |
+| Team    | Takeaways                                                                                                                                                                                                                                                                   |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Team 11 | Focuses on scanning file metadata rather than calculating metrics.<br>Lacks a dedicated metrics module and renders the dashboard as static HTML.<br>We still need clarity on how their data extraction supports the insights they expect to present.                        |
 | Team 17 | Level 0 and Level 1 structures align closely with ours.<br>Introduces error logging and an artifact database, though the data ingestion flow remains unclear.<br>Aims to output a portfolio experience instead of a dashboard; users can opt out of saving to the database. |
-| Team 15 | Restricts processing to text files only, applying an ML model for every document.<br>Does not handle images or video sources.<br>Open questions on what metrics they intend to surface from the ML pipeline.                                                          |
-
+| Team 15 | Restricts processing to text files only, applying an ML model for every document.<br>Does not handle images or video sources.<br>Open questions on what metrics they intend to surface from the ML pipeline.                                                                |
 
 ## (Week 6) Monday 6th - Sunday 12th October
 
@@ -139,14 +138,14 @@ This week, the team focused on moving from design to implementation, refining bo
 
 ### Table view of completed tasks by username
 
-| GitHub Username | Screenshot                                                                  |
-| --------------- | --------------------------------------------------------------------------- |
-| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct6-12.png)   |
-| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct6-12.png) |
-| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct6-12.png)   |
+| GitHub Username | Screenshot                                                                |
+| --------------- | ------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct6-12.png)     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct6-12.png)   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct6-12.png)     |
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Oct6-12.png) |
-| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct6-12.png)   |
-| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct6-12.png)   |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct6-12.png)     |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct6-12.png)     |
 
 ### Table view of in progress tasks by username
 
@@ -175,14 +174,14 @@ This week, the team continued implementation work for Milestone 1, completing se
 
 ### Table view of completed tasks by username
 
-| GitHub Username | Screenshot                                                                  |
-| --------------- | --------------------------------------------------------------------------- |
-| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct13-Oct19.png)   |
-| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct13-Oct19.png) |
-| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct13-Oct19.png)   |
+| GitHub Username | Screenshot                                                                    |
+| --------------- | ----------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct13-Oct19.png)     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct13-Oct19.png)   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct13-Oct19.png)     |
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Oct13-Oct19.png) |
-| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct13-Oct19.png)   |
-| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct13-Oct19.png)   |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct13-Oct19.png)     |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct13-Oct19.png)     |
 
 ### Table view of in progress tasks by username
 
@@ -192,13 +191,13 @@ Not applicable – no tasks in progress.
 
 ### Week recap:
 
-This week, the team focused on improving the analysis pipeline, database consistency, and overall user experience. Ammaar implemented a fix ensuring that the program exits cleanly when a user declines consent, and updated the parsing process so that each file now stores its associated project name, making downstream grouping and analysis more reliable. Timmi developed the project-type classification feature, enabling automatic detection of whether a project is code- or text-based and routing it accordingly. She also added a safeguard to prevent duplicate ZIP uploads from being reprocessed in the database. Salma refined the send_to_analysis flow by adding user prompts between individual and collaborative analysis phases, reorganizing functions for clarity, and ensuring a smoother, more modular pipeline. Johanes improved the alternative analysis logic by refining keyword filters, applying POS tagging, and enhancing topic extraction to ensure that only meaningful terms are analyzed during local runs. Ivona refactored the language detection module to align with the new database schema, ensuring accurate identification of languages used in code projects, and added features to detect frameworks of a coding project by identifying the configuration/dependency files in a given project. Adara fixed an issue where ZIP uploads containing only files (and no folders) caused the program to stop, and added an LLM-based code analysis feature that generates resume-style summaries for entire code project by extracting README content, function definitions, and comments across each folder. 
+This week, the team focused on improving the analysis pipeline, database consistency, and overall user experience. Ammaar implemented a fix ensuring that the program exits cleanly when a user declines consent, and updated the parsing process so that each file now stores its associated project name, making downstream grouping and analysis more reliable. Timmi developed the project-type classification feature, enabling automatic detection of whether a project is code- or text-based and routing it accordingly. She also added a safeguard to prevent duplicate ZIP uploads from being reprocessed in the database. Salma refined the send_to_analysis flow by adding user prompts between individual and collaborative analysis phases, reorganizing functions for clarity, and ensuring a smoother, more modular pipeline. Johanes improved the alternative analysis logic by refining keyword filters, applying POS tagging, and enhancing topic extraction to ensure that only meaningful terms are analyzed during local runs. Ivona refactored the language detection module to align with the new database schema, ensuring accurate identification of languages used in code projects, and added features to detect frameworks of a coding project by identifying the configuration/dependency files in a given project. Adara fixed an issue where ZIP uploads containing only files (and no folders) caused the program to stop, and added an LLM-based code analysis feature that generates resume-style summaries for entire code project by extracting README content, function definitions, and comments across each folder.
 
 Plan for next week:
-Next week, the team plans to continue to implement the milestone 1 requirements. 
-Adara plans to keep implementing the code and text file analysis. 
-Ammaar will implement deleting the `zip_data` folder after parsing. 
-Ivona plans to implement better language/framework detection to include more languages and frameworks. 
+Next week, the team plans to continue to implement the milestone 1 requirements.
+Adara plans to keep implementing the code and text file analysis.
+Ammaar will implement deleting the `zip_data` folder after parsing.
+Ivona plans to implement better language/framework detection to include more languages and frameworks.
 Timmi plans to cotinue implementing more file analysis and to add more duplications checks.
 Johanes plans to continue implementing analysis of code.
 Salma plans to continue developing the code collaborative analysis for global summaries from all projects (possibly using LLMs), refactor the code, and move on to non-code collaborative analysis.
@@ -222,19 +221,20 @@ We're going to meet virtually on Monday to discuss further about our plans.
 
 ### Table view of completed tasks by username
 
-| GitHub Username | Screenshot                                                                  |
-| --------------- | --------------------------------------------------------------------------- |
-| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct20-Oct26.png)   |
-| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct20-Oct26.png) |
-| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct20-Oct26.png)   |
+| GitHub Username | Screenshot                                                                    |
+| --------------- | ----------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct20-Oct26.png)     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct20-Oct26.png)   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct20-Oct26.png)     |
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Oct20-Oct26.png) |
-| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct20-Oct26.png)   |
-| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct20-Oct26.png)   |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct20-Oct26.png)     |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct20-Oct26.png)     |
 
 ### Table view of in progress tasks by username
-| GitHub Username | Screenshot                                                                  |
-| --------------- | --------------------------------------------------------------------------- |
-| `ivonanicetin`  | ![In-Progress Task for Ivona](screenshots/In-Progress-Ivona-Oct20-Oct26.png)   |
+
+| GitHub Username | Screenshot                                                                   |
+| --------------- | ---------------------------------------------------------------------------- |
+| `ivonanicetin`  | ![In-Progress Task for Ivona](screenshots/In-Progress-Ivona-Oct20-Oct26.png) |
 
 ## (Week 9) Monday 27th October – Sunday 2nd November
 
@@ -268,18 +268,62 @@ The team focused on improving project-level analysis and expanding what data we 
 
 ### Table view of completed tasks by username
 
-| GitHub Username | Screenshot |
-| --------------- | ---------- |
-| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct27-Nov2.png) |
-| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct27-Nov2.png) |
-| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct27-Nov2.png) |
+| GitHub Username | Screenshot                                                                   |
+| --------------- | ---------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Oct27-Nov2.png)     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Oct27-Nov2.png)   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Oct27-Nov2.png)     |
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Oct27-Nov2.png) |
-| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct27-Nov2.png) |
-| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct27-Nov2.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Oct27-Nov2.png)     |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Oct27-Nov2.png)     |
 
 ### Table view of in progress tasks by username
 
-| GitHub Username | Screenshot |
-| --------------- | ---------- |
+| GitHub Username | Screenshot                                                                   |
+| --------------- | ---------------------------------------------------------------------------- |
 | `ivonanicetin`  | ![In-progress tasks for Ivona](screenshots/In-Progress-Ivona-Oct27-Nov2.png) |
 | `taoTimTim`     | ![In-progress tasks for Timmi](screenshots/In-Progress-Timmi-Oct27-Nov2.png) |
+
+## (Week 10) Monday November 3 - Sunday November 9
+
+### Week recap
+
+This week, the team focused on improving how different parts of the system work together and ensuring the analysis pipeline runs smoothly across all file types. We added support for CSV files, linked Google Drive and GitHub data more effectively, and made sure results from both LLM and non-LLM analyses are stored consistently in the database. The main workflow was cleaned up to reduce repetition and make the overall process easier to follow, while user prompts and summaries were refined to produce clearer and more useful outputs. Through code reviews, shared testing, and close collaboration, the team resolved several integration issues and strengthened the overall reliability and flow of the project.
+
+### Plan for the next cycle
+
+The team will focus on linking related modules and improving data connections across the system. The CSV analysis will be connected to text outputs to make dataset results more complete and readable, while CSV metadata extraction will be expanded to support Google Sheets through the Google Drive API. The team will continue improving collaboration analysis by refining Google Drive and GitHub integrations, adding more API calls, and fixing remaining bugs. More tables and metrics will be added to the database (e.g., non-LLM code collaborative results) to make analysis outputs easier to track and reuse. Work will also continue on refining the database structure, cleaning up code, and organizing the repo structure into subfolders and helper files for better readability and maintenance.
+
+### Burnup chart
+
+![Burnup chart for Nov 3 - Nov 9](screenshots/week10-burnupchart.png)
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshot                                                                  |
+| --------------- | --------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Nov3-Nov9.png)     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Nov3-Nov9.png)   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Nov3-Nov9.png)     |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Nov3-Nov9.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Nov3-Nov9.png)     |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Nov3-Nov9.png)     |
+
+### Table view of in progress tasks by username
+
+| GitHub Username | Screenshot                                                                  |
+| --------------- | --------------------------------------------------------------------------- |
+| `ivonanicetin`  | ![In-progress tasks for Ivona](screenshots/In-Progress-Ivona-Nov3-Nov9.png) |
+| `taoTimTim`     | ![In-progress tasks for Timmi](screenshots/In-Progress-Timmi-Nov3-Nov9.png) |
+| `salmavkh`      | ![In-progress tasks for Timmi](screenshots/In-Progress-Salma-Nov3-Nov9.png) |
