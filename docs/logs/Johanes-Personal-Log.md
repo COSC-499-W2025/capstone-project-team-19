@@ -44,3 +44,15 @@ Week recap: continued implementing the alternative analysis, reviewed some teamm
 Week recap: Implementing the individual metrics analysis necessary for code project (non-llm). Reviewed some teammate PRs, get feedback from Salma and Timmi about branching from main branch, etc.
 
 Next week i plan to implement saving project metrics that was produced, into database. Might have to discussed further with teammates on incoming team meeting.
+
+## (Week 10) Monday 3rd November - Sundah 9th November
+
+![Screenshot of week 10 peer eval](./screenshots/Johanes-Nov3-9.PNG)
+
+Week recap: This week I worked on implementing the database for llm text analysis to allow reusing of previous metrics. Created a new table to store the metrics, which linked to project_classifications, following what has been discussed with Ammaar. added get_classification_id following ammaar's PR and reusing that function. Modified run_text_llm_analysis to return the result of the analysis, so that it can be used to store in project_analysis. Previously I called the store metrics to database in the text_llm_analyze, but seeing ammaar's PR, to keep things maintainable and consistent, I moved the function to be called in project_analysis.py. Reviewed by Salma and Timmi, Timmi found the inconsistency between separator in windows and mac, which causes error in the test. I did a change based on Timmi's review.
+
+Reviewed Timmi's PR gave some feedback based on the error I found, reviewed adara and ammaar's PR.
+
+Next week plan: Continue storing other metrics result to database.
+
+
