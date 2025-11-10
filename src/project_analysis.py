@@ -15,7 +15,7 @@ from src.text_llm_analyze import run_text_llm_analysis
 from src.code_llm_analyze import run_code_llm_analysis
 from src.code_non_llm_analysis import run_code_non_llm_analysis
 from src.helpers import _fetch_files
-from src.db import get_classification_id, store_text_llm_metrics
+from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
 from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -360,7 +360,15 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
                     result["success"]
                 )
         else:
-            alternative_analysis(parsed_files, zip_path, project_name)
+            analysis_result = alternative_analysis(parsed_files, zip_path, project_name)
+            if analysis_result:
+                classification_id = get_classification_id(conn, user_id, project_name)
+                if classification_id:
+                    store_text_offline_metrics(
+                        conn,
+                        classification_id,
+                        analysis_result.get("project_summary"),
+                    )
 
     elif not only_text:
         # Run non-LLM code analysis (static + Git metrics)
