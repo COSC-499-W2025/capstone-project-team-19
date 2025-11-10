@@ -54,3 +54,18 @@ My PR this week was connecting Google Drive to our project. I did some learning 
 I originally didn't plan to work on this week but at the Wednesday meeting we discussed this is useful to get done since we walk to be able to get contributation analysis feature done.
 
 Next Week: I plan to either go back to explanding the framework detector as I originally planned to last week or/and to get contributation metrics from the Google Drive files.
+
+
+## (Week 10) Monday Nov 3rd - Sunday November 9th 
+![Screenshot of this week's peer eval](./screenshots/Ivona-Nov.3-9.PNG)
+
+This week I worked on PR[COSC-499-W2025/capstone-project-team-19#198](https://github.com/COSC-499-W2025/capstone-project-team-19/issues/198). I spent a lot of time figuring out which metrics to use so that we can accurately assess collaborative text projects. And how to represent this in the database. 
+-I made 2 tables in the database with helper methods for storing the metrics. I had Timmi help me out with how to create these tables. 
+- I added the logic for processing the google drive connected files within a project
+- I made API calls for extracting data from the Google Drive Doc files
+- I made unit tests for all of this logic
+- I integrated it into the analysis work flow
+- I ran into 2 bugs that I coulnd't end up fixing but I made it an issue for next week.
+
+Next Week:
+Continue extracting/improving Google drive collaboration data. Fix the 2 bugs. Refactor/clean code.
