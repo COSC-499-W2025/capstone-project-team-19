@@ -54,3 +54,8 @@ My PR this week was connecting Google Drive to our project. I did some learning 
 I originally didn't plan to work on this week but at the Wednesday meeting we discussed this is useful to get done since we walk to be able to get contributation analysis feature done.
 
 Next Week: I plan to either go back to explanding the framework detector as I originally planned to last week or/and to get contributation metrics from the Google Drive files.
+
+
+## (Week 10) Monday Nov 3rd - Sunday November 9th 
+![Screenshot of this week's peer eval](./screenshots/Ivona-Nov.3-9.PNG)
+
