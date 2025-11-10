@@ -7,6 +7,8 @@ from src.text_llm_analyze import run_text_llm_analysis
 from src.code_llm_analyze import run_code_llm_analysis
 from src.code_non_llm_analysis import run_code_non_llm_analysis
 from src.helpers import _fetch_files
+from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
+from src.google_drive.process_project_files import process_project_files
 from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
 from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
 from src.csv_analyze import run_csv_analysis
@@ -281,9 +283,30 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent)
         # Setup failed - error messages already printed by setup function
         return
     
-    # TODO: Future - perform actual contribution analysis here
-    # For now, we just set up the connection and file mappings
-    print("Note: Actual contribution analysis will be performed in a future update.")
+    # We need the Google Drive service from the setup
+    creds = result.get("creds")
+    drive_service = result.get("drive_service")
+    docs_service = result.get("docs_service")
+    if not drive_service or not docs_service:
+        print("Drive connection succeeded but required services missing — skipping analysis.")
+        return
+    user_email = result.get("user_email")
+    print("\n[CONTRIBUTION ANALYSIS] Beginning revision analysis on linked files...")
+
+    # Main processing pipeline
+    process_project_files(
+        conn=conn,
+        creds=creds,
+        drive_service=drive_service,
+        docs_service=docs_service,
+        user_id=user_id,
+        project_name=project_name,
+        user_email=user_email
+    )
+
+    print("Contribution analysis complete.")
+    
+   
 
 
 def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path):

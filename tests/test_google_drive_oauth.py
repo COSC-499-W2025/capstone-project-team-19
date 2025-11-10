@@ -29,8 +29,9 @@ def test_google_drive_oauth_happy_path(monkeypatch, mock_credentials_file):
     mock_creds.refresh_token = "fake_refresh_token"
     mock_creds.expiry = None
     
-    # Mock service object
-    mock_service = Mock()
+    # Mock service objects
+    mock_drive_service = Mock()
+    mock_docs_service = Mock()
     
     # Mock InstalledAppFlow
     mock_flow = Mock()
@@ -44,19 +45,24 @@ def test_google_drive_oauth_happy_path(monkeypatch, mock_credentials_file):
     )
     
     # Mock build function
-    mock_build = Mock(return_value=mock_service)
+    def mock_build(api_name, api_version, credentials=None):
+        if api_name == "drive":
+            return mock_drive_service
+        if api_name == "docs":
+            return mock_docs_service
+        raise AssertionError(f"Unexpected build call: {api_name} {api_version}")
     monkeypatch.setattr(
         "src.google_drive_auth.google_drive_oauth.build",
         mock_build
     )
     
     # Run OAuth
-    creds, service = google_drive_oauth(mock_credentials_file)
+    creds, drive_service, docs_service = google_drive_oauth(mock_credentials_file)
     
     assert creds == mock_creds
-    assert service == mock_service
+    assert drive_service == mock_drive_service
+    assert docs_service == mock_docs_service
     assert mock_flow_class.from_client_secrets_file.called
-    assert mock_build.called
 
 
 def test_google_drive_oauth_missing_credentials_file():
@@ -78,10 +84,11 @@ def test_google_drive_oauth_flow_error(monkeypatch, mock_credentials_file):
         mock_flow_class
     )
     
-    creds, service = google_drive_oauth(mock_credentials_file)
+    creds, drive_service, docs_service = google_drive_oauth(mock_credentials_file)
     
     assert creds is None
-    assert service is None
+    assert drive_service is None
+    assert docs_service is None
 
 
 def test_google_drive_oauth_default_credentials_path(monkeypatch, tmp_path):
@@ -97,7 +104,8 @@ def test_google_drive_oauth_default_credentials_path(monkeypatch, tmp_path):
     mock_creds.refresh_token = "refresh"
     mock_creds.expiry = None
     
-    mock_service = Mock()
+    mock_drive_service = Mock()
+    mock_docs_service = Mock()
     
     mock_flow = Mock()
     mock_flow.run_local_server.return_value = mock_creds
@@ -109,7 +117,12 @@ def test_google_drive_oauth_default_credentials_path(monkeypatch, tmp_path):
         mock_flow_class
     )
     
-    mock_build = Mock(return_value=mock_service)
+    def mock_build(api_name, api_version, credentials=None):
+        if api_name == "drive":
+            return mock_drive_service
+        if api_name == "docs":
+            return mock_docs_service
+        raise AssertionError(f"Unexpected build call: {api_name} {api_version}")
     monkeypatch.setattr(
         "src.google_drive_auth.google_drive_oauth.build",
         mock_build
@@ -136,9 +149,10 @@ def test_google_drive_oauth_default_credentials_path(monkeypatch, tmp_path):
     )
     
     # Call without path - should use default
-    creds, service = google_drive_oauth()
+    creds, drive_service, docs_service = google_drive_oauth()
     
     # Should attempt to use default path
     assert mock_flow_class.from_client_secrets_file.called
     assert creds == mock_creds
-    assert service == mock_service
+    assert drive_service == mock_drive_service
+    assert docs_service == mock_docs_service

@@ -14,7 +14,9 @@ except ImportError:
 # Define the scopes required for contribution analysis
 SCOPES = [
     'https://www.googleapis.com/auth/drive.readonly',
-    'https://www.googleapis.com/auth/drive.metadata.readonly'
+    'https://www.googleapis.com/auth/drive.metadata.readonly',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'openid',
 ]
 
 
@@ -43,16 +45,24 @@ def google_drive_oauth(credentials_path: str = None) -> tuple:
         
         print("Google Drive Authorized!")
         
-        # Build and return service
-        service = build('drive', 'v3', credentials=creds)
-        return creds, service
+        # Build and return services
+        drive_service = build('drive', 'v3', credentials=creds)
+        docs_service = build('docs', 'v1', credentials=creds)
+        return creds, drive_service, docs_service
     except Exception as e:
         print(f"Error during Google Drive authentication: {e}")
-        return None, None
+        return None, None, None
+
+
+def get_user_email(creds):
+    service = build("oauth2", "v2", credentials=creds)
+    user_info = service.userinfo().get().execute()
+    return user_info["email"]
 
 
 if __name__ == "__main__":
-    creds, service = google_drive_oauth()
-    if service:
+    creds, drive_service, docs_service = google_drive_oauth()
+    if drive_service:
+        user_email = get_user_email(creds)
         print("Successfully connected to Google Drive!")
 
