@@ -89,7 +89,7 @@ def test_run_llm_analysis_basic(mock_client, mock_input, mock_parsed_files, fake
     assert len(results) == 1
     assert results[0]["project_name"] == "ProjectA"
     assert results[0]["file_name"] == "sample.txt"
-    assert results[0]["file_path"] == "ProjectA/sample.txt"
+    assert os.path.normpath(results[0]["file_path"]) == os.path.normpath("ProjectA/sample.txt")
     assert "A research essay" in results[0]["summary"]
     assert len(results[0]["skills"]) == 3
     assert "8.2 / 10" in results[0]["success"]["score"]
@@ -134,7 +134,7 @@ def test_run_llm_analysis_db(mock_client, mock_input, mock_parsed_files, fake_zi
     # Verify scalar fields
     assert metrics["project_name"] == "ProjectA"
     assert metrics["file_name"] == "sample.txt"
-    assert metrics["file_path"] == "ProjectA/sample.txt"
+    assert os.path.normpath(metrics["file_path"]) == os.path.normpath("ProjectA/sample.txt")
     assert metrics["word_count"] == 10
     assert metrics["sentence_count"] == 2
     assert metrics["flesch_kincaid_grade"] == 9.5
