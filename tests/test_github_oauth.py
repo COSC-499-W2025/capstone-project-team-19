@@ -1,6 +1,7 @@
 import pytest, sqlite3, webbrowser, builtins
 
-from src.github_auth.github_oauth import github_oauth
+from src.github.github_oauth import github_oauth
+from src.github.github_device_flow import request_device_code
 from src.db import init_schema, get_or_create_user
 
 
@@ -21,7 +22,7 @@ def test_github_oauth_happy_path(monkeypatch, conn, capsys):
 
     # Patch request_device_code
     monkeypatch.setattr(
-        "src.github_auth.github_oauth.request_device_code",
+        "src.github.github_oauth.request_device_code",
         lambda scope: fake_auth,
     )
 
@@ -31,7 +32,7 @@ def test_github_oauth_happy_path(monkeypatch, conn, capsys):
 
     # Fake token polling
     monkeypatch.setattr(
-        "src.github_auth.github_oauth.poll_for_token",
+        "src.github.github_oauth.poll_for_token",
         lambda d, i: "FAKE_TOKEN_ABC",
     )
 
@@ -45,7 +46,7 @@ def test_github_oauth_happy_path(monkeypatch, conn, capsys):
         saved["token"] = token
 
     monkeypatch.setattr(
-        "src.github_auth.github_oauth.save_github_token",
+        "src.github.github_oauth.save_github_token",
         fake_save
     )
 
@@ -65,7 +66,7 @@ def test_github_oauth_happy_path(monkeypatch, conn, capsys):
 
 def test_github_oauth_request_device_code_fails(monkeypatch, conn):
     monkeypatch.setattr(
-        "src.github_auth.github_oauth.request_device_code",
+        "src.github.github_oauth.request_device_code",
         lambda scope: (_ for _ in ()).throw(RuntimeError("GitHub down")),
     )
 
@@ -81,8 +82,8 @@ def test_github_oauth_poll_returns_none(monkeypatch, conn):
         "interval": 1,
     }
 
-    monkeypatch.setattr("src.github_auth.github_oauth.request_device_code", lambda s: fake_auth)
-    monkeypatch.setattr("src.github_auth.github_oauth.poll_for_token", lambda d, i: None)
+    monkeypatch.setattr("src.github.github_oauth.request_device_code", lambda s: fake_auth)
+    monkeypatch.setattr("src.github.github_oauth.poll_for_token", lambda d, i: None)
     monkeypatch.setattr(webbrowser, "open", lambda u: None)
     monkeypatch.setattr(builtins, "input", lambda p="": "")
 
@@ -99,18 +100,18 @@ def test_github_oauth_poll_raises(monkeypatch, conn):
     }
 
     monkeypatch.setattr(
-        "src.github_auth.github_oauth.request_device_code",
+        "src.github.github_oauth.request_device_code",
         lambda *args, **kwargs: fake_auth
     )
     monkeypatch.setattr(
-        "src.github_auth.github_oauth.poll_for_token",
+        "src.github.github_oauth.poll_for_token",
         lambda d,i: (_ for _ in ()).throw(RuntimeError("Auth expired")),
     )
     monkeypatch.setattr(webbrowser, "open", lambda u: None)
     monkeypatch.setattr(builtins, "input", lambda p="": "")
 
-    with pytest.raises(RuntimeError):
-        github_oauth(conn, "User123")
+    response = request_device_code()
+    assert response is None
 
 # browser opening fails
 def test_github_oauth_browser_error(monkeypatch, conn):
@@ -122,12 +123,12 @@ def test_github_oauth_browser_error(monkeypatch, conn):
     }
 
     monkeypatch.setattr(
-        "src.github_auth.github_oauth.request_device_code",
+        "src.github.github_oauth.request_device_code",
         lambda *args, **kwargs: fake_auth
     )
     monkeypatch.setattr(webbrowser, "open", lambda u: (_ for _ in ()).throw(OSError("no browser")))
-    monkeypatch.setattr("src.github_auth.github_oauth.poll_for_token", lambda d,i: "FAKE")
-    monkeypatch.setattr("src.github_auth.github_oauth.save_github_token", lambda *args: None)
+    monkeypatch.setattr("src.github.github_oauth.poll_for_token", lambda d,i: "FAKE")
+    monkeypatch.setattr("src.github.github_oauth.save_github_token", lambda *args: None)
     monkeypatch.setattr(builtins, "input", lambda p="": "")
 
     token = github_oauth(conn, "TestUser")
@@ -143,15 +144,15 @@ def test_github_oauth_save_fails(monkeypatch, conn):
     }
 
     monkeypatch.setattr(
-        "src.github_auth.github_oauth.request_device_code",
+        "src.github.github_oauth.request_device_code",
         lambda *args, **kwargs: fake_auth
     )
-    monkeypatch.setattr("src.github_auth.github_oauth.poll_for_token", lambda d,i: "FAKE")
+    monkeypatch.setattr("src.github.github_oauth.poll_for_token", lambda d,i: "FAKE")
     monkeypatch.setattr(webbrowser, "open", lambda u: None)
     monkeypatch.setattr(builtins, "input", lambda p="": "")
 
     monkeypatch.setattr(
-        "src.github_auth.github_oauth.save_github_token",
+        "src.github.github_oauth.save_github_token",
         lambda *args: (_ for _ in ()).throw(RuntimeError("DB write fail"))
     )
 

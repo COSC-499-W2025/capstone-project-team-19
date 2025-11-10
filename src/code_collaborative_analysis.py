@@ -2,12 +2,16 @@ from __future__ import annotations
 import sqlite3
 from typing import Optional, Dict
 
-from src.github_auth.github_oauth import github_oauth
-from src.github_auth.token_store import get_github_token
-from src.github_auth.link_repo import ensure_repo_link, select_and_store_repo
+from src.db import store_github_account
+from src.github.github_oauth import github_oauth
+from src.github.token_store import get_github_token
+from src.github.link_repo import ensure_repo_link, select_and_store_repo, get_gh_repo_name_and_owner
+from src.github.github_api import get_authenticated_user
 from src.framework_detector import detect_frameworks
 from src.language_detector import detect_languages
 from src.helpers import zip_paths  
+from src.github.github_analysis import fetch_github_metrics
+from src.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics
 
 from src.code_collaborative_analysis_helper import (
     DEBUG,
@@ -65,7 +69,11 @@ def analyze_code_project(conn: sqlite3.Connection,
             f"\nNo local Git repo found under allowed paths. "
             f"Zip a local clone (not GitHub 'Download ZIP') so .git is included."
         )
-        return _handle_no_git_repo(conn, user_id, project_name)
+
+        _handle_no_git_repo(conn, user_id, project_name)
+        _enhance_with_github(conn, user_id, project_name, repo_dir)
+
+        return None
 
     print(f"Found local Git repo for {project_name}")
 
@@ -165,6 +173,11 @@ def _handle_no_git_repo(conn, user_id, project_name):
 
     if ans in {"y", "yes"}:
         token = github_oauth(conn, user_id)
+
+        # get user's GitHub account info
+        github_user = get_authenticated_user(token)
+        store_github_account(conn, user_id, github_user)
+
         select_and_store_repo(conn, user_id, project_name, token)
         return None
 
@@ -173,14 +186,71 @@ def _handle_no_git_repo(conn, user_id, project_name):
 
 
 def _enhance_with_github(conn, user_id, project_name, repo_dir):
-    token = get_github_token(conn, user_id)
-    if not token:
-        ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
-        if ans in {"y", "yes"}:
+    ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
+    if ans not in {"y", "yes"}:
+        return
+    
+    try:
+        token = get_github_token(conn, user_id)
+        github_user = None
+
+        if not token:
             token = github_oauth(conn, user_id)
+            if not token:
+                print("[GitHub] Auth cancelled or failed. Continuing without GitHub.")
+                return
+
+            github_user = get_authenticated_user(token)
+            store_github_account(conn, user_id, github_user)
+        else:
+            github_user = get_authenticated_user(token)
+
+        if not ensure_repo_link(conn, user_id, project_name, token):
             select_and_store_repo(conn, user_id, project_name, token)
-    else:
-        ans = input("Enhance with GitHub data? (y/n): ").strip().lower()
-        if ans in {"y", "yes"}:
-            if not ensure_repo_link(conn, user_id, project_name, token):
-                select_and_store_repo(conn, user_id, project_name, token)
+
+        # get repo url
+        owner, repo = get_gh_repo_name_and_owner(conn, user_id, project_name)
+        if not owner: 
+            print("[GitHub] No repo selected. Skipping GitHub metrics.")
+            return # repo doesnt exist in db, nothing to analyze
+
+        gh_username = github_user["login"]
+
+        print("Collecting GitHub repository metrics...")
+
+        # fetch metrics via github REST API then stoe metrics in db
+        metrics = fetch_github_metrics(token, owner, repo, gh_username)
+        if not metrics:
+            print("[GitHub] Failed to fetch metrics. Skipping GitHub.")
+            return
+
+        store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics)
+        
+        repo_metrics = get_github_repo_metrics(conn, user_id, project_name, owner, repo)
+
+        # If all metric sections are empty, skip
+        if _metrics_empty(repo_metrics):
+            print("No GitHub activity found for this repo.")
+        else:
+            print("GitHub metrics collected. Analysis to be implemented.")
+    
+    except Exception as e:
+        print(f"[GitHub] Error occurred ({e}). Skipping GitHub and continuing.")
+        return
+
+# Determine if all metric categories show zero activity
+def _metrics_empty(m: dict) -> bool:
+    ignore = {"repository", "username"}
+    for key, value in m.items():
+        if key in ignore:
+            continue
+
+        if isinstance(value, dict):
+            # if ANY nested field has meaningful value, activity exists
+            if any(v not in (0, {}, [], None) for v in value.values()):
+                return False
+        else:
+            if value not in (0, {}, [], None):
+                return False
+
+    return True

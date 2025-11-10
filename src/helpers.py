@@ -3,6 +3,7 @@ import shutil
 from typing import List, Dict, Optional, Tuple
 import os
 import subprocess
+import pandas as pd
 
 # Text extraction
 import docx2txt
@@ -25,6 +26,42 @@ def _fetch_files(conn: sqlite3.Connection, user_id: int, project_name: str, only
 
     rows = conn.execute(query, params).fetchall()
     return [{"file_name": r[0], "file_type": r[1], "file_path": r[2]} for r in rows]
+
+def get_file_extension_from_db(conn: sqlite3.Connection, user_id: int, filepath: str) -> str | None:
+    """Fetch file extension from DB using normalized relative path matching."""
+    try:
+        # Normalize absolute → relative path (so it matches DB file_path entries)
+        base_path = os.path.join(os.path.dirname(__file__), "..", "zip_data")
+        rel_path = os.path.relpath(filepath, base_path).replace("\\", "/")
+
+        # Remove any accidental leading "zip_data/" or "./"
+        if rel_path.startswith("zip_data/"):
+            rel_path = rel_path[len("zip_data/"):]
+        if rel_path.startswith("./"):
+            rel_path = rel_path[2:]
+
+        # --- Main lookup ---
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT extension FROM files WHERE user_id = ? AND file_path = ?",
+            (user_id, rel_path),
+        )
+        result = cur.fetchone()
+
+        # --- Fallback lookup (e.g., partial match if path separators differ) ---
+        if not result:
+            cur.execute(
+                "SELECT extension FROM files WHERE user_id = ? AND file_path LIKE ?",
+                (user_id, f"%{os.path.basename(filepath)}%"),
+            )
+            result = cur.fetchone()
+
+        return result[0] if result else None
+
+    except Exception as e:
+        print(f"DB lookup failed for {filepath}: {e}")
+        return None
+
 
 def zip_paths(zip_path: str) -> Tuple[str, str, str]:
     """
@@ -108,29 +145,35 @@ def bfs_find_repo(root: str, max_depth: int = 2) -> Optional[str]:
 
 ## Text Extraction
 
-SUPPORTED_TEXT_EXTENSIONS = {'.txt', '.pdf', '.docx', '.md'}
+def extract_text_file(filepath: str, conn: sqlite3.Connection, user_id: int) -> Optional[str]:
+    # Skip DB lookup if conn or user_id not provided
+    if conn is None or user_id is None:
+        # fallback: infer from file extension
+        extension = os.path.splitext(filepath)[1].lower()
+    else:
+        extension = get_file_extension_from_db(conn, user_id, filepath)
 
-def extract_text_file(filepath: str) -> Optional[str]:
-    """
-    Extract readable text from .txt, .md, .pdf, or .docx files.
-    """
-    extension = os.path.splitext(filepath)[1].lower()
-    if extension not in SUPPORTED_TEXT_EXTENSIONS:
+    if not extension:
+        print(f"Warning: No extension found in DB for {filepath}, skipping.")
         return None
     
     try:
-        if extension in {'.txt', '.md'}:
-            # Treat Markdown as plain text (UTF-8)
-            return extractfromtxt(filepath)
-        elif extension == '.pdf':
-            return extractfrompdf(filepath)
-        elif extension == '.docx':
-            return extractfromdocx(filepath)
+        match extension:
+            case '.txt' | '.md':
+                return extractfromtxt(filepath)
+            case '.pdf':
+                return extractfrompdf(filepath)
+            case '.docx':
+                return extractfromdocx(filepath)
+            case '.csv':
+                return extractfromcsv(filepath)
+            case _:
+                print(f"Unsupported text extension '{extension}' for {filepath}")
+                return None
     except Exception as e:
         print(f"Error extracting from {filepath}: {e}")
         return None
     
-    return None
 
 def extractfromtxt(filepath:str)->str:
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
@@ -156,6 +199,31 @@ def extractfromdocx (filepath: str)->str:
     except Exception as e:
         print(f"Error : {e}")
         
+
+def extractfromcsv(filepath: str, sample_rows: int = 5) -> dict:
+    try:
+        df = pd.read_csv(filepath, nrows=sample_rows)
+        full_df = pd.read_csv(filepath)
+        total_rows = len(full_df)
+        total_cols = len(full_df.columns)
+        null_ratio = (full_df.isnull().sum().sum() / (total_rows * total_cols)) * 100
+        dtypes = full_df.dtypes.astype(str).to_dict()
+        headers = list(full_df.columns)
+
+        #extracts the column headers, data types, sample rows, total rows, total columns, and missing value percentage
+        return {
+            "filename": os.path.basename(filepath),
+            "headers": headers,
+            "dtypes": dtypes,
+            "sample_rows": df.head(sample_rows).to_dict(orient="records"),
+            "row_count": total_rows,
+            "col_count": total_cols,
+            "missing_pct": round(null_ratio, 2),
+        }
+    except Exception as e:
+        print(f"Error reading CSV {filepath}: {e}")
+        return None
+
         
 
 ## Code extraction
