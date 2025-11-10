@@ -140,7 +140,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
     """)
 
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS text_offline_metrics (
+    CREATE TABLE IF NOT EXISTS non_llm_text (
         metrics_id        INTEGER PRIMARY KEY AUTOINCREMENT,
         classification_id INTEGER UNIQUE NOT NULL,
         doc_count         INTEGER,
@@ -410,7 +410,7 @@ def store_text_offline_metrics(
                reading_level_label,
                keywords_json,
                summary_json
-        FROM text_offline_metrics
+        FROM non_llm_text
         WHERE classification_id = ?
         """,
         (classification_id,),
@@ -426,7 +426,7 @@ def store_text_offline_metrics(
 
         conn.execute(
             """
-            UPDATE text_offline_metrics
+            UPDATE non_llm_text
             SET doc_count = ?,
                 total_words = ?,
                 reading_level_avg = ?,
@@ -454,7 +454,7 @@ def store_text_offline_metrics(
 
         conn.execute(
             """
-            INSERT INTO text_offline_metrics (
+            INSERT INTO non_llm_text (
                 classification_id,
                 doc_count,
                 total_words,

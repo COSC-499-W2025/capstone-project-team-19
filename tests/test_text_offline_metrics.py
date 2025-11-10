@@ -24,7 +24,7 @@ def _fetch_metrics(conn, classification_id):
                reading_level_avg,
                reading_level_label,
                keywords_json
-        FROM text_offline_metrics
+        FROM non_llm_text
         WHERE classification_id = ?
         """,
         (classification_id,),
@@ -100,7 +100,7 @@ def test_store_text_offline_metrics_requires_classification(shared_db):
     payload = {"summary": {"total_documents": 1}}
     db.store_text_offline_metrics(conn, None, payload)
 
-    count = conn.execute("SELECT COUNT(*) FROM text_offline_metrics").fetchone()[0]
+    count = conn.execute("SELECT COUNT(*) FROM non_llm_text").fetchone()[0]
     assert count == 0
 
 
