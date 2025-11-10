@@ -12,12 +12,12 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 def run_text_llm_analysis(parsed_files, zip_path):
     if not isinstance(parsed_files, list):
-        return
+        return []
 
     text_files = [f for f in parsed_files if f.get("file_type") == "text"]
     if not text_files:
         print("No text files found to analyze.")
-        return
+        return []
 
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
@@ -33,9 +33,10 @@ def run_text_llm_analysis(parsed_files, zip_path):
     for f in text_files:
         if not f.get("file_path"):
             continue
-        project_name = f["file_path"].split(os.sep)[0]
+        project_name = f["file_path"].replace("\\", "/").split("/")[0]
         projects.setdefault(project_name, []).append(f)
 
+    results = []
     # process each folder as one project
     for project_name, files in projects.items():
         print(f"\n→ {project_name}")
@@ -90,12 +91,23 @@ def run_text_llm_analysis(parsed_files, zip_path):
         success = generate_text_llm_success_factors(main_text, linguistic, supporting_texts)
 
         display_text_llm_results(project_name, main_file["file_name"], linguistic, summary, skills, success)
-
+        results.append({
+            "project_name": project_name,
+            "file_name": main_file["file_name"],
+            "file_path": main_file["file_path"],
+            "linguistic": linguistic,
+            "summary": summary,
+            "skills": skills,
+            "success": success
+        })
+        
     print(f"\n{'='*80}")
     print("PROJECT SUMMARY - (LLM-based results: summaries, skills, and success factors)")
     print(f"{'='*80}\n")
     print("All insights successfully generated for eligible text projects.")
     print(f"\n{'='*80}\n")
+
+    return results
 
 
 def display_text_llm_results(project_name, main_file_name, linguistic, summary, skills, success):
