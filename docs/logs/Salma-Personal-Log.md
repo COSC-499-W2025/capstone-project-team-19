@@ -75,3 +75,21 @@ Week Recap:
 - Worked on generating summaries for all code-collaborative projects using Git metrics and user input (without LLM).
 
 Next Steps: improve the non-LLM summary generation for code-collaborative analysis based on feedback from Johanes and Timmi e.g. use NLTK for stopword removal and provide a user input template. If time allows, I also plan to store the metrics into the DB.
+
+## (Week 10) Monday November 3 - Sunday November 9
+
+![Screenshot of week 10 peer eval](./screenshots/Salma-Nov3-Nov9.PNG)
+
+Week recap:
+
+- Improved the summary of non-llm code collaborative analysis:
+
+  - Provided a template to the user with clear instructions and an example input (e.g., “please include what the project does, your technical focus, your contribution,” etc.). Shortened and reformatted the template into bullet points based on Timmi’s feedback.
+  - Fixed a related bug: only asks for user input if the user rejects LLM consent, and the question is moved earlier (before any analysis) to avoid redundant prompts per project.
+  - Enhanced the stopwords filter for keyword extraction from all user inputs using NLTK.
+
+- Reviewed and provided some feedback on some PRs, for example:
+  - Reviewed Timmi’s PR on GitHub metrics to suggest handling runtime errors (e.g., empty repos, missing GitHub client ID) gracefully by printing error messages and continuing the program instead of stopping.
+  - Suggested renaming Ammaar’s non-LLM metrics table to non_llm_text for consistency with Johanes’ llm_text table.
+
+Next week: I plan to store non-LLM code collaborative metrics (was unsure about the DB refactoring but now resolved). If time allows, I also plan to refactor the repo structure to include subfolders such as e.g., consent/, common/, text_individual_analysis/, etc.
