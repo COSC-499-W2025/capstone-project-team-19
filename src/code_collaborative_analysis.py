@@ -227,8 +227,30 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir):
         store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics)
         
         repo_metrics = get_github_repo_metrics(conn, user_id, project_name, owner, repo)
-        print("GitHub metrics collected. Analysis to be implemented.")
+
+        # If all metric sections are empty, skip
+        if _metrics_empty(repo_metrics):
+            print("No GitHub activity found for this repo.")
+        else:
+            print("GitHub metrics collected. Analysis to be implemented.")
     
     except Exception as e:
         print(f"[GitHub] Error occurred ({e}). Skipping GitHub and continuing.")
         return
+
+# Determine if all metric categories show zero activity
+def _metrics_empty(m: dict) -> bool:
+    ignore = {"repository", "username"}
+    for key, value in m.items():
+        if key in ignore:
+            continue
+
+        if isinstance(value, dict):
+            # if ANY nested field has meaningful value, activity exists
+            if any(v not in (0, {}, [], None) for v in value.values()):
+                return False
+        else:
+            if value not in (0, {}, [], None):
+                return False
+
+    return True

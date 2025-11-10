@@ -49,7 +49,7 @@ def test_gh_get_missing_token():
 def test_gh_get_failure(monkeypatch):
     monkeypatch.setattr(api.requests, "get", lambda *a, **k: FakeResp(500, {"err": True}))
     data = api.gh_get("T", "x")
-    assert data == {}
+    assert data == []
 
 def test_get_authenticated_user(monkeypatch):
     data = {"login": "me", "id":1, "name":"A", "email":"b", "html_url":"url"}

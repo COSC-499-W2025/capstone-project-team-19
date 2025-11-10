@@ -30,9 +30,21 @@ def gh_get(token: str, url: str, retries: int = 6, delay: int = 2):
 
             # Any other error
             if r.status_code != 200:
-                print(f"[GitHub] Warning: API request failed ({r.status_code}). URL: {url}")
-                print(f"[GitHub] Warning: Response: {r.text}")
-                return {}
+                try:
+                    err_json = r.json()
+                    msg = err_json.get("message", "").strip() or "No details"
+                    print(f"Error fetching metrics: {msg}")
+
+                    # If JSON body is empty then it is a graceful empty, so return {}
+                    if err_json == {}:
+                        return {}
+
+                    # If JSON body has content, failure, return []
+                    return []
+                except Exception:
+                    # If body is not JSON, treat as failure, return []
+                    print("Error fetching metrics: No details")
+                    return []
 
             return r.json()
 
