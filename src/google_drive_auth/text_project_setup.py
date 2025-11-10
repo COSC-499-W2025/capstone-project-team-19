@@ -106,6 +106,7 @@ def setup_text_project_drive_connection(
             'files_linked': total_found,
             'files_not_found': total_not_found,
             'zip_file_names': zip_file_names,
+            'creds': creds,
             'drive_service': drive_service,
             'docs_service': docs_service,
             'user_email': user_email,

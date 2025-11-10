@@ -24,14 +24,14 @@ def mock_services():
 # Tests
 def test_user_revisions():
     drive_service, docs_service = mock_services()
-    result = analyze_google_doc(drive_service, docs_service, "file-id", "user@example.com")
+    result = analyze_google_doc(drive_service, docs_service, "file-id", "user@example.com", creds=None)
     assert result["status"] == "analyzed"
     assert result["revision_count"] == 2
     assert result["total_revision_count"] == 3
 
 def test_no_user_revisions():
     drive_service, docs_service = mock_services()
-    result = analyze_google_doc(drive_service, docs_service, "file-id", "nonexistent@example.com")
+    result = analyze_google_doc(drive_service, docs_service, "file-id", "nonexistent@example.com", creds=None)
     assert result["revision_count"] == 0
     assert result["revisions"] == []
 
@@ -40,5 +40,5 @@ def test_api_failure(monkeypatch):
     from googleapiclient.errors import HttpError
     mock_resp = type("Resp", (), {"status": 500, "reason": "Internal Server Error"})()
     drive_service.revisions().list.side_effect = HttpError(resp=mock_resp, content=b"error")
-    result = analyze_google_doc(drive_service, docs_service, "file-id", "user@example.com")
+    result = analyze_google_doc(drive_service, docs_service, "file-id", "user@example.com", creds=None)
     assert result["status"] == "failed"

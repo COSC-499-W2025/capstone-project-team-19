@@ -3,7 +3,7 @@ from typing import Any, Dict
 import src.db as db
 from src.google_drive.api_calls import analyze_google_doc
 
-def process_project_files(conn: sqlite3.Connection, drive_service, docs_service, user_id: int, project_name: str, user_email: str):
+def process_project_files(conn: sqlite3.Connection, creds, drive_service, docs_service, user_id: int, project_name: str, user_email: str):
     """ Process all linked Google Drive files for a given text project."""
     files = db.get_project_drive_files(conn, user_id, project_name)
 
@@ -13,6 +13,7 @@ def process_project_files(conn: sqlite3.Connection, drive_service, docs_service,
         print(f"Analyzing file: {f['drive_file_name']} ({file_id})")
 
         result = analyze_drive_file(
+            creds=creds,
             drive_service=drive_service,
             docs_service=docs_service,
             conn=conn,
@@ -55,7 +56,7 @@ def process_project_files(conn: sqlite3.Connection, drive_service, docs_service,
         # Add Store SUMMARY later
 
 
-def analyze_drive_file(drive_service, docs_service, conn, user_id, project_name, drive_file_id, drive_file_name, mime_type, user_email) -> Dict[str, Any]:
+def analyze_drive_file(creds, drive_service, docs_service, conn, user_id, project_name, drive_file_id, drive_file_name, mime_type, user_email) -> Dict[str, Any]:
     """
     Analyze a single linked Drive file.
     Routes to Google Doc analysis or non-Google Doc analysis.
@@ -63,6 +64,7 @@ def analyze_drive_file(drive_service, docs_service, conn, user_id, project_name,
     _ = (conn, user_id, project_name, drive_file_name)
     if mime_type == "application/vnd.google-apps.document":
         return analyze_google_doc(
+            creds=creds,
             drive_service=drive_service,
             docs_service=docs_service,
             drive_file_id=drive_file_id,

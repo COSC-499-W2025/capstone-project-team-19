@@ -89,6 +89,7 @@ def test_linking_success(monkeypatch):
     assert res["success"] is True
     assert res["files_linked"] == 1
     assert res["files_not_found"] == 1
+    assert "creds" in res
     assert "drive_service" in res
     assert "docs_service" in res
 

@@ -1,4 +1,6 @@
-def analyze_google_doc(drive_service, docs_service, drive_file_id, user_email):
+from typing import Optional
+
+def analyze_google_doc(drive_service, docs_service, drive_file_id, user_email, creds: Optional[object] = None):
     """
     Analyze a Google Doc file for all revisions by a single user.
     Returns:
@@ -18,24 +20,46 @@ def analyze_google_doc(drive_service, docs_service, drive_file_id, user_email):
 
         target_email = (user_email or "").strip().lower()
 
+        session = None
+        if creds is not None:
+            try:
+                from google.auth.transport.requests import AuthorizedSession
+                session = AuthorizedSession(creds)
+            except Exception:
+                session = None
+        
         for rev in revisions:
             rev_id = rev.get("id")
-            print("DEBUG last modifying user:", rev.get("lastModifyingUser"))
-            print("DEBUG last modifying useremail : ", rev.get("lastModifyingUser", {}).get("emailAddress"))
-            print("DEBUG user email: ", user_email)
-            #rev_user_email = rev.get("lastModifyingUser", {}).get("emailAddress")
             rev_timestamp = rev.get("modifiedTime")
             rev_user_email = (rev.get("lastModifyingUser", {}).get("emailAddress") or "").strip().lower()
 
             if rev_user_email == target_email:
-                # Get current document content (Docs API gives current text)
-                doc_content = docs_service.documents().get(documentId=drive_file_id).execute().get("body", {}).get("content", [])
-                revision_text = ""
-                for element in doc_content:
-                    if "paragraph" in element:
-                        for e in element["paragraph"]["elements"]:
-                            if "textRun" in e:
-                                revision_text += e["textRun"].get("content", "")
+                revision_text = None
+
+                if session:
+                    try:
+                        rev_details = drive_service.revisions().get(
+                            fileId=drive_file_id,
+                            revisionId=rev_id,
+                            fields="exportLinks"
+                        ).execute()
+                        export_url = rev_details.get("exportLinks", {}).get("text/plain")
+                        if export_url:
+                            response = session.get(export_url)
+                            response.raise_for_status()
+                            revision_text = response.text
+                    except Exception:
+                        revision_text = None
+
+                if revision_text is None:
+                    # Fallback to current document content
+                    doc_content = docs_service.documents().get(documentId=drive_file_id).execute().get("body", {}).get("content", [])
+                    revision_text = ""
+                    for element in doc_content:
+                        if "paragraph" in element:
+                            for e in element["paragraph"]["elements"]:
+                                if "textRun" in e:
+                                    revision_text += e["textRun"].get("content", "")
 
                 revision_size = len(revision_text)
 

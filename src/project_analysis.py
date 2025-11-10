@@ -277,6 +277,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent)
         return
     
     # We need the Google Drive service from the setup
+    creds = result.get("creds")
     drive_service = result.get("drive_service")
     docs_service = result.get("docs_service")
     if not drive_service or not docs_service:
@@ -288,6 +289,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent)
     # Main processing pipeline
     process_project_files(
         conn=conn,
+        creds=creds,
         drive_service=drive_service,
         docs_service=docs_service,
         user_id=user_id,

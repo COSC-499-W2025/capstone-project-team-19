@@ -63,7 +63,6 @@ def test_google_drive_oauth_happy_path(monkeypatch, mock_credentials_file):
     assert drive_service == mock_drive_service
     assert docs_service == mock_docs_service
     assert mock_flow_class.from_client_secrets_file.called
-    assert mock_flow_class.from_client_secrets_file.called
 
 
 def test_google_drive_oauth_missing_credentials_file():
