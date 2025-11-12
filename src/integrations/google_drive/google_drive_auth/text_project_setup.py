@@ -9,9 +9,9 @@ Orchestrates the complete flow of:
 5. Storing mappings in the database
 """
 from typing import Dict, Any, Optional
-from src.helpers import _fetch_files
-from src.google_drive_auth.google_drive_oauth import get_user_email, google_drive_oauth
-from src.google_drive_auth.link_files import find_and_link_files
+from src.common.helpers import _fetch_files
+from .google_drive_oauth import get_user_email, google_drive_oauth
+from .link_files import find_and_link_files
 
 
 def setup_text_project_drive_connection(
