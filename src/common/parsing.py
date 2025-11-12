@@ -4,7 +4,7 @@ import time
 import mimetypes
 import shutil
 from src.constants import CONFIG_FILES
-from src.extension_catalog import code_extensions as pygments_code_extensions
+from src.common.extension_catalog import code_extensions as pygments_code_extensions
 
 
 import warnings
