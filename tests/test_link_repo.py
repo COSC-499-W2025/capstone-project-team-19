@@ -1,6 +1,6 @@
 import sqlite3
 import pytest
-from src.github.link_repo import ensure_repo_link, select_and_store_repo
+from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo
 
 @pytest.fixture
 def conn():

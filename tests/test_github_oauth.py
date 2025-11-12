@@ -1,7 +1,7 @@
 import pytest, sqlite3, webbrowser, builtins
 
-from src.github.github_oauth import github_oauth
-from src.github.github_device_flow import request_device_code
+from src.integrations.github.github_oauth import github_oauth
+from src.integrations.github.github_device_flow import request_device_code
 from src.db import init_schema, get_or_create_user
 
 

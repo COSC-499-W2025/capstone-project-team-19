@@ -2,7 +2,7 @@ import pytest
 import sqlite3
 
 from src.db import init_schema, get_or_create_user
-from src.github import token_store
+from src.integrations.github import token_store
 
 @pytest.fixture
 def conn():

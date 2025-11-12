@@ -2,7 +2,7 @@ import os
 import re
 import pytest
 from unittest.mock import patch, MagicMock
-from src import code_llm_analyze
+from src.analysis.code_individual import code_llm_analyze
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 import sqlite3
 import pytest
-from src.upload_checks import (
+from src.common.upload_checks import (
     handle_existing_zip
 )
 from src.db import init_schema

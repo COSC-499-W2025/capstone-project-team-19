@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock
 
-from src.google_drive_auth.google_drive_oauth import google_drive_oauth
+from src.integrations.google_drive.google_drive_auth.google_drive_oauth import google_drive_oauth
 
 
 @pytest.fixture

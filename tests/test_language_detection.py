@@ -1,7 +1,7 @@
 import pytest
 import sqlite3
 from src.db import init_schema 
-from src.language_detector import detect_languages
+from src.common.language_detector import detect_languages
 
 def setup_in_memory_db():
     conn = sqlite3.connect(":memory:")

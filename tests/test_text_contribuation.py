@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime
-from src.google_drive.process_project_files import process_project_files, analyze_drive_file
+from src.integrations.google_drive.process_project_files import process_project_files, analyze_drive_file
 
 # Mock Data & Helpers
 
@@ -55,7 +55,7 @@ def sqlite_conn():
     conn.close()
 
 # Patch the original module
-import src.google_drive.process_project_files as module
+import src.integrations.google_drive.process_project_files as module
 module.analyze_google_doc = fake_analyze_google_doc
 module.db.get_project_drive_files = fake_get_project_drive_files
 

@@ -3,7 +3,7 @@ Tests for file_selector module.
 Covers main user interaction paths with mocked inputs.
 """
 import pytest
-from src.google_drive_auth.file_selector import (
+from src.integrations.google_drive.google_drive_auth.file_selector import (
     select_from_matches,
     handle_no_matches,
     search_and_select,

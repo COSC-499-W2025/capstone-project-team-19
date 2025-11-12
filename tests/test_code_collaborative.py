@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-import src.code_collaborative_analysis as cc
+import src.analysis.code_collaborative.code_collaborative_analysis as cc
 
 
 def _fake_commits(author_email="me@example.com"):

@@ -2,8 +2,8 @@ import os
 import json
 import pytest
 from unittest.mock import patch, MagicMock
-from src import text_llm_analyze
-from src.helpers import extractfromcsv
+from src.analysis.text_individual import text_llm_analyze
+from src.common.helpers import extractfromcsv
 
 
 @pytest.fixture

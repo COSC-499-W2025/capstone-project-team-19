@@ -2,10 +2,10 @@ import sqlite3
 import pytest
 import json
 
-from src.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics
-from src.github.link_repo import get_gh_repo_name_and_owner, get_github_repo_metadata
-from src.github.github_analysis import fetch_github_metrics
-from src.code_collaborative_analysis import _enhance_with_github
+from src.integrations.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics
+from src.integrations.github.link_repo import get_gh_repo_name_and_owner, get_github_repo_metadata
+from src.integrations.github.github_analysis import fetch_github_metrics
+from src.analysis.code_collaborative.code_collaborative_analysis import _enhance_with_github
 
 # constants
 USER = "u1"

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 #from src.framework_detector import detect_frameworks as fd
-from src import framework_detector as fd
+from src.common import framework_detector as fd
 
 
 @pytest.fixture

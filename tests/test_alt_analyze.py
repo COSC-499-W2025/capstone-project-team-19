@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 import pytest
 from unittest.mock import patch, MagicMock
-from src.alt_analyze import (
+from src.analysis.text_individual.alt_analyze import (
     analyze_linguistic_complexity,
     topic_extraction,
     extract_keywords,
@@ -11,7 +11,7 @@ from src.alt_analyze import (
     calculate_document_metrics,
     calculate_project_metrics,
 )
-from src.helpers import (
+from src.common.helpers import (
     extract_text_file,
     extractfromtxt,
     extractfrompdf,

@@ -3,7 +3,7 @@ import sqlite3
 from unittest.mock import Mock, patch, MagicMock
 
 from src.db import init_schema, get_or_create_user, store_file_link
-from src.google_drive_auth.link_files import find_and_link_files
+from src.integrations.google_drive.google_drive_auth.link_files import find_and_link_files
 
 
 @pytest.fixture
