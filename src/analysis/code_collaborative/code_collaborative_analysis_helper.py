@@ -7,8 +7,8 @@ from typing import Dict, List, Optional, Tuple
 import sqlite3
 import json
 
-from src.extension_catalog import get_languages_for_extension
-from src.helpers import ensure_table 
+from src.common.extension_catalog import get_languages_for_extension
+from src.common.helpers import ensure_table 
 # zip_paths stays in the main file because only the entrypoint needs it
 
 import re

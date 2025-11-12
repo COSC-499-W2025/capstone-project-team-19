@@ -3,17 +3,17 @@ import sqlite3
 from typing import Optional, Dict
 
 from src.db import store_github_account
-from src.github.github_oauth import github_oauth
-from src.github.token_store import get_github_token
-from src.github.link_repo import ensure_repo_link, select_and_store_repo, get_gh_repo_name_and_owner
-from src.github.github_api import get_authenticated_user
-from src.framework_detector import detect_frameworks
-from src.language_detector import detect_languages
-from src.helpers import zip_paths  
-from src.github.github_analysis import fetch_github_metrics
-from src.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics
+from src.integrations.github.github_oauth import github_oauth
+from src.integrations.github.token_store import get_github_token
+from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo, get_gh_repo_name_and_owner
+from src.integrations.github.github_api import get_authenticated_user
+from src.common.framework_detector import detect_frameworks
+from src.common.language_detector import detect_languages
+from src.common.helpers import zip_paths  
+from src.integrations.github.github_analysis import fetch_github_metrics
+from src.integrations.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics
 
-from src.code_collaborative_analysis_helper import (
+from .code_collaborative_analysis_helper import (
     DEBUG,
     resolve_repo_for_project,
     ensure_user_github_table,

@@ -1,5 +1,5 @@
-from src.code_complexity_analyzer import analyze_code_complexity, display_complexity_results
-from src.git_individual_analyzer import analyze_git_individual_project, display_git_results
+from .code_complexity_analyzer import analyze_code_complexity, display_complexity_results
+from .git_individual_analyzer import analyze_git_individual_project, display_git_results
 
 def run_code_non_llm_analysis(conn, user_id, project_name, zip_path):
 
