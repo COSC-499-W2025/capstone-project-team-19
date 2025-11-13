@@ -12,7 +12,7 @@ from src.google_drive.process_project_files import process_project_files
 from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
 from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
 from src.csv_analyze import run_csv_analysis
-
+from src.github_metrics_interpreter import interpret_code_contributions
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     """
@@ -324,6 +324,15 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
         else:
             print(f"[COLLABORATIVE-CODE] No code files found for '{project_name}'.")
 
+    print("\nGenerating resume highlights...")
+    result = interpret_code_contributions(conn, user_id, project_name, current_ext_consent)
+
+    if result and result["summary_points"]:
+        print("\nResume Highlights:")
+        for line in result["summary_points"]:
+            print(" - {line}")
+    else:
+        print(f"No interpretable metrics found for '{project_name}'.")
 
 def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path):
     parsed_files = _fetch_files(conn, user_id, project_name, only_text=True)
