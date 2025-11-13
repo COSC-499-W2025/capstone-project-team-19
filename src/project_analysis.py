@@ -274,7 +274,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent)
     The actual contribution analysis will be done in a later phase.
     Adding option for skipping connecting to Google Drive needs to be added later.
     """
-    from src.google_drive_auth.text_project_setup import setup_text_project_drive_connection
+    from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
     
     # Set up Google Drive connection and link files
     result = setup_text_project_drive_connection(conn, user_id, project_name)
