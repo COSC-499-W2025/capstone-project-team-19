@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import json
 
-from src.parsing import parse_zip_file, collect_file_info, UNSUPPORTED_LOG_PATH, DUPLICATE_LOG_PATH, CONFIG_FILES
+from src.common.parsing import parse_zip_file, collect_file_info, UNSUPPORTED_LOG_PATH, DUPLICATE_LOG_PATH, CONFIG_FILES
 
 # Helper
 def create_sample_zip_with_various_types(tmp_dir):

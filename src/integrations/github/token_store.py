@@ -1,4 +1,4 @@
-from src.security.crypto_utils import encrypt_token, decrypt_token
+from .security.crypto_utils import encrypt_token, decrypt_token
 
 def save_github_token(conn, user_id, token):
     """

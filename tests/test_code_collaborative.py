@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-import src.code_collaborative_analysis as cc
+import src.analysis.code_collaborative.code_collaborative_analysis as cc
 
 
 def _fake_commits(author_email="me@example.com"):
@@ -215,7 +215,7 @@ def test_portfolio_summary_keywords(tmp_sqlite_conn, temp_zip_layout, monkeypatc
     from user-provided descriptions.
     """
     import os, sys, datetime as dt
-    import src.code_collaborative_analysis as cc  # alias under test
+    import src.analysis.code_collaborative.code_collaborative_analysis as cc  # alias under test
 
     # Make stdin look interactive so description prompt runs
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True, raising=False)

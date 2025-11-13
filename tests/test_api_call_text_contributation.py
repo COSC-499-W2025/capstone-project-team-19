@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from src.google_drive.api_calls import analyze_google_doc
+from src.integrations.google_drive.api_calls import analyze_google_doc
 
 # Helper
 def mock_services():

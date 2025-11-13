@@ -1,5 +1,5 @@
 import pytest
-import src.github.github_api as api
+import src.integrations.github.github_api as api
 import requests
 
 class FakeResp:

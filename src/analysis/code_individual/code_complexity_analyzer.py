@@ -15,7 +15,7 @@ from radon.complexity import cc_visit, cc_rank
 from radon.metrics import mi_visit, mi_rank
 from radon.raw import analyze as raw_analyze
 import lizard
-from src.extension_catalog import get_languages_for_extension
+from src.common.extension_catalog import get_languages_for_extension
 
 # Directories to exclude from analysis (third-party dependencies, build artifacts, etc.)
 EXCLUDE_DIRECTORIES = {

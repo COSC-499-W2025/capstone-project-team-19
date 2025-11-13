@@ -2,7 +2,7 @@ import os
 import re
 import pytest
 from unittest.mock import patch, MagicMock
-from src import code_llm_analyze
+from src.analysis.code_individual import code_llm_analyze
 
 
 @pytest.fixture
@@ -34,9 +34,9 @@ def mock_llm_response_factory():
     return _make
 
 
-@patch("src.code_llm_analyze.client")
-@patch("src.code_llm_analyze.extract_readme_file", return_value="# Portfolio Site\nSimple portfolio.")
-@patch("src.code_llm_analyze.extract_code_file", return_value="<!-- header --><script>// nav</script>")
+@patch("src.analysis.code_individual.code_llm_analyze.client")
+@patch("src.analysis.code_individual.code_llm_analyze.extract_readme_file", return_value="# Portfolio Site\nSimple portfolio.")
+@patch("src.analysis.code_individual.code_llm_analyze.extract_code_file", return_value="<!-- header --><script>// nav</script>")
 def test_run_code_llm_analysis_basic(
     mock_extract_code, mock_extract_readme, mock_client, mock_parsed_files_single_project, mock_llm_response_factory, capsys, tmp_path
 ):
@@ -60,7 +60,7 @@ def test_run_code_llm_analysis_basic(
     assert "responsive, single-page portfolio site" in out
 
 
-@patch("src.code_llm_analyze.client")
+@patch("src.analysis.code_individual.code_llm_analyze.client")
 def test_generate_code_llm_summary_sanitization(mock_client, mock_llm_response_factory):
     # LLM returns something with role preamble + file/function names
     mock_client.chat.completions.create.return_value = mock_llm_response_factory(
@@ -79,9 +79,9 @@ def test_generate_code_llm_summary_sanitization(mock_client, mock_llm_response_f
     assert "\n" not in result.strip()
 
 
-@patch("src.code_llm_analyze.client")
-@patch("src.code_llm_analyze.extract_readme_file", return_value=None)
-@patch("src.code_llm_analyze.extract_code_file", return_value=None)
+@patch("src.analysis.code_individual.code_llm_analyze.client")
+@patch("src.analysis.code_individual.code_llm_analyze.extract_readme_file", return_value=None)
+@patch("src.analysis.code_individual.code_llm_analyze.extract_code_file", return_value=None)
 def test_run_code_llm_analysis_no_readable_context(
     mock_extract_code, mock_extract_readme, mock_client, mock_parsed_files_single_project, capsys, tmp_path
 ):
@@ -94,9 +94,9 @@ def test_run_code_llm_analysis_no_readable_context(
     assert mock_client.chat.completions.create.call_count == 0
 
 
-@patch("src.code_llm_analyze.client")
-@patch("src.code_llm_analyze.extract_readme_file", return_value="Root README")
-@patch("src.code_llm_analyze.extract_code_file", return_value="// comment\ndef foo(){}")
+@patch("src.analysis.code_individual.code_llm_analyze.client")
+@patch("src.analysis.code_individual.code_llm_analyze.extract_readme_file", return_value="Root README")
+@patch("src.analysis.code_individual.code_llm_analyze.extract_code_file", return_value="// comment\ndef foo(){}")
 def test_project_name_comes_from_folder(
     mock_extract_code, mock_extract_readme, mock_client, mock_parsed_files_single_project, mock_llm_response_factory, capsys, tmp_path
 ):
