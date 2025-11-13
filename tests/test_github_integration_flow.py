@@ -47,19 +47,19 @@ def insert_repo(conn, user=USER, proj=PROJ, owner=OWNER, repo=REPO):
 
 def mock_metrics(monkeypatch, commits=2, issues=3, prs=1, contrib=5):
     monkeypatch.setattr(
-        "src.github.github_analysis.get_gh_repo_commit_activity",
+        "src.integrations.github.github_analysis.get_gh_repo_commit_activity",
         lambda *a: {"2024-01-01": commits}
     )
     monkeypatch.setattr(
-        "src.github.github_analysis.get_gh_repo_issues",
+        "src.integrations.github.github_analysis.get_gh_repo_issues",
         lambda *a: {"total_opened": issues}
     )
     monkeypatch.setattr(
-        "src.github.github_analysis.get_gh_repo_prs",
+        "src.integrations.github.github_analysis.get_gh_repo_prs",
         lambda *a: {"total_opened": prs}
     )
     monkeypatch.setattr(
-        "src.github.github_analysis.get_gh_repo_contributions",
+        "src.integrations.github.github_analysis.get_gh_repo_contributions",
         lambda *a: {"commits": contrib}
     )
 
@@ -96,7 +96,7 @@ def test_get_gh_repo_name_and_owner_none(conn):
 # get_github_repo_metadata wrapper
 def test_get_github_repo_metadata(monkeypatch):
     monkeypatch.setattr(
-        "src.github.link_repo.get_gh_repo_metadata",
+        "src.integrations.github.link_repo.get_gh_repo_metadata",
         lambda owner, repo, token: ("id123", "main")
     )
 

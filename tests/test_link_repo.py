@@ -20,7 +20,7 @@ def conn():
 def mock_github_metadata(monkeypatch, conn):
     # Mock metadata lookup
     monkeypatch.setattr(
-        "src.github.link_repo.get_github_repo_metadata",
+        "src.integrations.github.link_repo.get_github_repo_metadata",
         lambda user, proj, repo, token: (
             repo, # repo_url
             repo.split('/')[0], # owner
@@ -32,7 +32,7 @@ def mock_github_metadata(monkeypatch, conn):
 
     # Mock save function to match test DB schema
     monkeypatch.setattr(
-        "src.github.link_repo.save_project_repo",
+        "src.integrations.github.link_repo.save_project_repo",
         lambda conn, user, proj, repo_url, *args: conn.execute(
             "INSERT OR REPLACE INTO project_repos (user_id, project_name, provider, repo_url) VALUES (?, ?, 'github', ?)",
             (user, proj, repo_url)
@@ -45,7 +45,7 @@ def mock_github_metadata(monkeypatch, conn):
 def mock_repos(monkeypatch):
     def _set(repos):
         monkeypatch.setattr(
-            "src.github.link_repo.list_user_repos",
+            "src.integrations.github.link_repo.list_user_repos",
             lambda token: repos
         )
     return _set

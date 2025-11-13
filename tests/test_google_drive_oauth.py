@@ -40,7 +40,7 @@ def test_google_drive_oauth_happy_path(monkeypatch, mock_credentials_file):
     mock_flow_class.from_client_secrets_file.return_value = mock_flow
     
     monkeypatch.setattr(
-        "src.google_drive_auth.google_drive_oauth.InstalledAppFlow",
+        "src.integrations.google_drive.google_drive_auth.google_drive_oauth.InstalledAppFlow",
         mock_flow_class
     )
     
@@ -52,7 +52,7 @@ def test_google_drive_oauth_happy_path(monkeypatch, mock_credentials_file):
             return mock_docs_service
         raise AssertionError(f"Unexpected build call: {api_name} {api_version}")
     monkeypatch.setattr(
-        "src.google_drive_auth.google_drive_oauth.build",
+        "src.integrations.google_drive.google_drive_auth.google_drive_oauth.build",
         mock_build
     )
     
@@ -80,7 +80,7 @@ def test_google_drive_oauth_flow_error(monkeypatch, mock_credentials_file):
     mock_flow_class.from_client_secrets_file.return_value = mock_flow
     
     monkeypatch.setattr(
-        "src.google_drive_auth.google_drive_oauth.InstalledAppFlow",
+        "src.integrations.google_drive.google_drive_auth.google_drive_oauth.InstalledAppFlow",
         mock_flow_class
     )
     
@@ -113,7 +113,7 @@ def test_google_drive_oauth_default_credentials_path(monkeypatch, tmp_path):
     mock_flow_class.from_client_secrets_file.return_value = mock_flow
     
     monkeypatch.setattr(
-        "src.google_drive_auth.google_drive_oauth.InstalledAppFlow",
+        "src.integrations.google_drive.google_drive_auth.google_drive_oauth.InstalledAppFlow",
         mock_flow_class
     )
     
@@ -124,7 +124,7 @@ def test_google_drive_oauth_default_credentials_path(monkeypatch, tmp_path):
             return mock_docs_service
         raise AssertionError(f"Unexpected build call: {api_name} {api_version}")
     monkeypatch.setattr(
-        "src.google_drive_auth.google_drive_oauth.build",
+        "src.integrations.google_drive.google_drive_auth.google_drive_oauth.build",
         mock_build
     )
     
@@ -136,15 +136,15 @@ def test_google_drive_oauth_default_credentials_path(monkeypatch, tmp_path):
         return str(module_dir / "__file__")
     
     monkeypatch.setattr(
-        "src.google_drive_auth.google_drive_oauth.os.path.dirname",
+        "src.integrations.google_drive.google_drive_auth.google_drive_oauth.os.path.dirname",
         mock_dirname
     )
     monkeypatch.setattr(
-        "src.google_drive_auth.google_drive_oauth.os.path.abspath",
+        "src.integrations.google_drive.google_drive_auth.google_drive_oauth.os.path.abspath",
         mock_abspath
     )
     monkeypatch.setattr(
-        "src.google_drive_auth.google_drive_oauth.os.path.exists",
+        "src.integrations.google_drive.google_drive_auth.google_drive_oauth.os.path.exists",
         lambda x: str(x) == str(creds_file)
     )
     

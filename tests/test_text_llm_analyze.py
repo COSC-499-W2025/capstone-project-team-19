@@ -31,8 +31,8 @@ def mock_text_file(tmp_path):
 
 @pytest.fixture(autouse=True)
 def patch_extract_text_file_and_metrics(mock_text_file):
-    with patch("src.text_llm_analyze.extract_text_file", return_value="Sample text content."), \
-         patch("src.text_llm_analyze.analyze_linguistic_complexity", return_value={
+    with patch("src.analysis.text_individual.text_llm_analyze.extract_text_file", return_value="Sample text content."), \
+         patch("src.analysis.text_individual.text_llm_analyze.analyze_linguistic_complexity", return_value={
              "word_count": 10,
              "sentence_count": 2,
              "reading_level": "High School",
@@ -64,7 +64,7 @@ def standard_llm_side_effects(mock_llm_responses):
 
 
 @patch("builtins.input", return_value="1")
-@patch("src.text_llm_analyze.client")
+@patch("src.analysis.text_individual.text_llm_analyze.client")
 def test_run_llm_analysis_basic(mock_client, mock_input, mock_parsed_files, fake_zip_structure, standard_llm_side_effects, capsys):
     # Use standard LLM responses
     mock_client.chat.completions.create.side_effect = standard_llm_side_effects
@@ -95,7 +95,7 @@ def test_run_llm_analysis_basic(mock_client, mock_input, mock_parsed_files, fake
     assert "8.2 / 10" in results[0]["success"]["score"]
 
 @patch("builtins.input", return_value="1")
-@patch("src.text_llm_analyze.client")
+@patch("src.analysis.text_individual.text_llm_analyze.client")
 def test_run_llm_analysis_db(mock_client, mock_input, mock_parsed_files, fake_zip_structure, standard_llm_side_effects):
     import src.db as db
 
@@ -158,8 +158,8 @@ def test_run_llm_analysis_db(mock_client, mock_input, mock_parsed_files, fake_zi
 
 # tests if largest file is auto-selected when user presses Enter
 @patch("builtins.input", return_value="")
-@patch("src.text_llm_analyze.client")
-@patch("src.text_llm_analyze.os.path.getsize", side_effect=lambda path: 1000 if "main" in path else 100)
+@patch("src.analysis.text_individual.text_llm_analyze.client")
+@patch("src.analysis.text_individual.text_llm_analyze.os.path.getsize", side_effect=lambda path: 1000 if "main" in path else 100)
 def test_auto_select_largest_file(mock_getsize, mock_client, mock_input, tmp_path, mock_llm_responses):
     mock_client.chat.completions.create.side_effect = [
         mock_llm_responses("Summary text"),
@@ -185,7 +185,7 @@ def test_auto_select_largest_file(mock_getsize, mock_client, mock_input, tmp_pat
     
     
 @patch("builtins.input", return_value="2")
-@patch("src.text_llm_analyze.client")
+@patch("src.analysis.text_individual.text_llm_analyze.client")
 
 # tests if supporting files are detected and included in skills and success factors prompts
 def test_supporting_files_are_detected_and_used(mock_client, mock_input, tmp_path, mock_llm_responses):
@@ -225,7 +225,7 @@ def test_supporting_files_are_detected_and_used(mock_client, mock_input, tmp_pat
     assert "notes.txt" in success_prompt
 
 
-@patch("src.text_llm_analyze.client")
+@patch("src.analysis.text_individual.text_llm_analyze.client")
 # tests if LLM API errors are handled gracefully (placeholders printed when API fails)
 def test_llm_api_error_handling(mock_client):
     mock_client.chat.completions.create.side_effect = Exception("API error")
@@ -234,7 +234,7 @@ def test_llm_api_error_handling(mock_client):
     assert "None" in result.values() or "unavailable" in str(result).lower()
 
 # tests if LLM summary generation works as expected
-@patch("src.text_llm_analyze.client")
+@patch("src.analysis.text_individual.text_llm_analyze.client")
 def test_generate_llm_summary(mock_client, mock_llm_responses):
     mock_client.chat.completions.create.return_value = mock_llm_responses(
         "A project proposal that outlines a sustainable design solution."
@@ -243,7 +243,7 @@ def test_generate_llm_summary(mock_client, mock_llm_responses):
     assert "project proposal" in result.lower()
 
 # tests if LLM skills generation works as expected
-@patch("src.text_llm_analyze.client")
+@patch("src.analysis.text_individual.text_llm_analyze.client")
 def test_generate_llm_skills(mock_client, mock_llm_responses):
     mock_client.chat.completions.create.return_value = mock_llm_responses(
         "- Research\n- Writing\n- Analysis"
@@ -253,7 +253,7 @@ def test_generate_llm_skills(mock_client, mock_llm_responses):
     assert "Research" in result[0]
 
 # tests if LLM success factors generation works as expected
-@patch("src.text_llm_analyze.client")
+@patch("src.analysis.text_individual.text_llm_analyze.client")
 def test_generate_llm_success_factors(mock_client, mock_llm_responses):
     fake_json = '{"strengths": "clear structure", "weaknesses": "minor redundancy", "score": "8.1 / 10 (Good clarity)"}'
     mock_client.chat.completions.create.return_value = mock_llm_responses(fake_json)
