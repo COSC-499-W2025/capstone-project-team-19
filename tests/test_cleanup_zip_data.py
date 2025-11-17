@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from src.common.helpers import cleanup_extracted_zip
+from src.utils.helpers import cleanup_extracted_zip
 
 
 def test_cleanup_extracted_zip_removes_workspace(tmp_path):

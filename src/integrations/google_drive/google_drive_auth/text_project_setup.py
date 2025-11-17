@@ -9,7 +9,7 @@ Orchestrates the complete flow of:
 5. Storing mappings in the database
 """
 from typing import Dict, Any, Optional
-from src.common.helpers import _fetch_files
+from src.utils.helpers import _fetch_files
 from .google_drive_oauth import get_user_email, google_drive_oauth
 from .link_files import find_and_link_files
 

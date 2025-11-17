@@ -11,7 +11,7 @@ from src.analysis.text_individual.alt_analyze import (
     calculate_document_metrics,
     calculate_project_metrics,
 )
-from src.common.helpers import (
+from src.utils.helpers import (
     extract_text_file,
     extractfromtxt,
     extractfrompdf,
