@@ -3,7 +3,7 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, Mock
 import subprocess
-import src.git_individual_analyzer as gia
+import src.analysis.code_individual.git_individual_analyzer as gia
 
 
 # Helper to create subprocess result

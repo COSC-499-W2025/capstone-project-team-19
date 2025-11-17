@@ -2,7 +2,7 @@ import os
 import zipfile
 from pathlib import Path
 
-from parsing import parse_zip_file, analyze_project_layout
+from src.utils.parsing import parse_zip_file, analyze_project_layout
 
 
 def _create_zip_with_markdown(tmp_path: Path) -> Path:

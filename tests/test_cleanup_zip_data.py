@@ -1,11 +1,12 @@
 from pathlib import Path
 
-from src.helpers import cleanup_extracted_zip
+from src.utils.helpers import cleanup_extracted_zip
 
 
 def test_cleanup_extracted_zip_removes_workspace(tmp_path):
-    repo_root = Path(__file__).resolve().parents[1]
-    zip_data_dir = repo_root / "zip_data"
+    project_root = Path(__file__).resolve().parents[1]  
+    src_root = project_root / "src"
+    zip_data_dir = src_root / "analysis" / "zip_data"
 
     # create a fake extracted workspace
     (zip_data_dir / "sample_project").mkdir(parents=True, exist_ok=True)

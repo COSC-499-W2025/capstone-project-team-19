@@ -4,7 +4,7 @@ import time
 import mimetypes
 import shutil
 from src.constants import CONFIG_FILES
-from src.extension_catalog import code_extensions as pygments_code_extensions
+from src.utils.extension_catalog import code_extensions as pygments_code_extensions
 
 
 import warnings
@@ -16,7 +16,7 @@ from src.db import connect, store_parsed_files, get_or_create_user
 CURR_DIR = os.path.dirname(os.path.abspath(__file__)) # Gives the location of the script itself, not where user is running the command from
 REPO_ROOT = os.path.abspath(os.path.join(CURR_DIR, "..")) # Moves up one level into main repository directory
 
-ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
+ZIP_DATA_DIR = os.path.join(REPO_ROOT, "analysis", "zip_data")
 RAWDATA_DIR = os.path.join(ZIP_DATA_DIR, "parsed_zip_rawdata")
 
 TEXT_EXTENSIONS = {".txt", ".csv", ".docx", ".pdf", ".xlsx", ".md"}
@@ -42,6 +42,8 @@ def parse_zip_file(zip_path, user_id: int | None = None, conn=None):
         return
     
     # Make sure directories exist
+    os.makedirs(os.path.join(REPO_ROOT, "analysis"), exist_ok=True)  # ensure src/analysis exists
+    os.makedirs(ZIP_DATA_DIR, exist_ok=True)                         # ensure src/analysis/zip_data exists
     os.makedirs(RAWDATA_DIR, exist_ok=True)
     
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:

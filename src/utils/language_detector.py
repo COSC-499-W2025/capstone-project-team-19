@@ -1,4 +1,4 @@
-from src.extension_catalog import get_languages_for_extension
+from src.utils.extension_catalog import get_languages_for_extension
 
 
 def detect_languages(conn, project_name):

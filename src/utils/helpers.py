@@ -85,7 +85,9 @@ def cleanup_extracted_zip(zip_path: str) -> None:
         return
 
     try:
-        zip_data_dir, _, _ = zip_paths(zip_path)
+        # Point cleanup to ./src/analysis/zip_data instead of ./src/zip_data
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        zip_data_dir = os.path.join(repo_root, "analysis", "zip_data")
     except Exception:
         return
 

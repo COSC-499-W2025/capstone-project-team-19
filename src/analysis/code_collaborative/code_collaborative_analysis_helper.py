@@ -7,8 +7,8 @@ from typing import Dict, List, Optional, Tuple
 import sqlite3
 import json
 
-from src.extension_catalog import get_languages_for_extension
-from src.helpers import ensure_table 
+from src.utils.extension_catalog import get_languages_for_extension
+from src.utils.helpers import ensure_table 
 # zip_paths stays in the main file because only the entrypoint needs it
 
 import re
@@ -24,20 +24,24 @@ def resolve_repo_for_project(conn: sqlite3.Connection,
                              zip_name: str,
                              project_name: str,
                              user_id: int | str) -> Optional[str]:
-    # 1) ./zip_data/.../collaborative/<project>
-    repo = _resolve_from_collaborative_folder(zip_data_dir, zip_name, project_name)
+    # now use ./src/analysis/zip_data
+    analysis_zip_data_dir = os.path.join(
+        os.path.dirname(zip_data_dir), "analysis", "zip_data"
+    )
+
+    # 1) ./src/analysis/zip_data/.../collaborative/<project>
+    repo = _resolve_from_collaborative_folder(analysis_zip_data_dir, zip_name, project_name)
     if repo:
         return repo
 
     # 2) project_classifications (collaborative+code)
-    repo = _resolve_from_db_classification(conn, zip_data_dir, zip_name, project_name, user_id)
+    repo = _resolve_from_db_classification(conn, analysis_zip_data_dir, zip_name, project_name, user_id)
     if repo:
         return repo
 
     # 3) files.file_path guessing
-    repo = _resolve_from_files_table(conn, zip_data_dir, project_name)
+    repo = _resolve_from_files_table(conn, analysis_zip_data_dir, project_name)
     return repo
-
 
 def _resolve_from_collaborative_folder(zip_data_dir: str,
                                        zip_name: str,
@@ -48,11 +52,16 @@ def _resolve_from_collaborative_folder(zip_data_dir: str,
     ]
 
     base_root = os.path.join(zip_data_dir, zip_name)
+    # Walk deeper under zip_data/<zip_name> to find nested repos
     if os.path.isdir(base_root):
         for root, dirs, files in os.walk(base_root):
             depth = os.path.relpath(root, base_root).count(os.sep)
-            if depth > 5:
+            if depth > 10:   # was 5; bump to handle deeper layouts
                 continue
+            # If we land exactly on a matching folder name, prefer it
+            if os.path.basename(root) == project_name and os.path.isdir(root):
+                candidates.append(root)
+            # If we land on 'collaborative', consider its child
             if os.path.basename(root) == "collaborative":
                 cand = os.path.join(root, project_name)
                 if os.path.isdir(cand):
@@ -63,11 +72,11 @@ def _resolve_from_collaborative_folder(zip_data_dir: str,
             continue
         if is_git_repo(base):
             return base
-        nested = bfs_find_repo(base, max_depth=5)
+        nested = bfs_find_repo(base, max_depth=10)  # was 5
         if nested:
             return nested
+        
     return None
-
 
 def _resolve_from_db_classification(conn: sqlite3.Connection,
                                     zip_data_dir: str,

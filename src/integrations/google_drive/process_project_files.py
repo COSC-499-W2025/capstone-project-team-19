@@ -1,7 +1,7 @@
 import sqlite3
 from typing import Any, Dict
 import src.db as db
-from src.google_drive.api_calls import analyze_google_doc
+from .api_calls import analyze_google_doc
 
 def process_project_files(conn: sqlite3.Connection, creds, drive_service, docs_service, user_id: int, project_name: str, user_email: str):
     """ Process all linked Google Drive files for a given text project."""

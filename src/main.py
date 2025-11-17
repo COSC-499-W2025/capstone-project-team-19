@@ -1,6 +1,6 @@
 import os
 
-from src.parsing import parse_zip_file, analyze_project_layout
+from src.utils.parsing import parse_zip_file, analyze_project_layout
 from src.db import (
     connect,
     init_schema,
@@ -10,11 +10,11 @@ from src.db import (
     get_latest_external_consent,
     record_project_classifications,
 )
-from src.consent import CONSENT_TEXT, get_user_consent, record_consent
-from src.external_consent import get_external_consent, record_external_consent
+from src.consent.consent import CONSENT_TEXT, get_user_consent, record_consent
+from src.consent.external_consent import get_external_consent, record_external_consent
 from src.project_analysis import detect_project_type, send_to_analysis
-from src.upload_checks import handle_existing_zip
-from src.helpers import cleanup_extracted_zip
+from src.utils.upload_checks import handle_existing_zip
+from src.utils.helpers import cleanup_extracted_zip
 
 
 def main():

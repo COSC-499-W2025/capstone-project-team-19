@@ -3,7 +3,7 @@ import sqlite3
 from unittest.mock import Mock, patch, MagicMock
 
 from src.db import init_schema, get_or_create_user, store_file_link
-from src.google_drive_auth.link_files import find_and_link_files
+from src.integrations.google_drive.google_drive_auth.link_files import find_and_link_files
 
 
 @pytest.fixture
@@ -46,11 +46,11 @@ def test_find_and_link_files_successful_matching(monkeypatch, conn, mock_service
         return None
     
     monkeypatch.setattr(
-        "src.google_drive_auth.link_files.select_from_matches",
+        "src.integrations.google_drive.google_drive_auth.link_files.select_from_matches",
         mock_select_from_matches
     )
     monkeypatch.setattr(
-        "src.google_drive_auth.link_files.handle_no_matches",
+        "src.integrations.google_drive.google_drive_auth.link_files.handle_no_matches",
         mock_handle_no_matches
     )
     
@@ -89,11 +89,11 @@ def test_find_and_link_files_partial_matching(monkeypatch, conn, mock_service):
         return None
     
     monkeypatch.setattr(
-        "src.google_drive_auth.link_files.select_from_matches",
+        "src.integrations.google_drive.google_drive_auth.link_files.select_from_matches",
         mock_select_from_matches
     )
     monkeypatch.setattr(
-        "src.google_drive_auth.link_files.handle_no_matches",
+        "src.integrations.google_drive.google_drive_auth.link_files.handle_no_matches",
         mock_handle_no_matches
     )
     
@@ -128,11 +128,11 @@ def test_no_duplicate_storage(monkeypatch, conn, mock_service):
         return None
     
     monkeypatch.setattr(
-        "src.google_drive_auth.link_files.select_from_matches",
+        "src.integrations.google_drive.google_drive_auth.link_files.select_from_matches",
         mock_select_from_matches
     )
     monkeypatch.setattr(
-        "src.google_drive_auth.link_files.handle_no_matches",
+        "src.integrations.google_drive.google_drive_auth.link_files.handle_no_matches",
         mock_handle_no_matches
     )
     

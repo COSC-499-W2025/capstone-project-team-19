@@ -13,8 +13,8 @@ import textstat
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 import numpy as np
-import src.parsing
-from src.helpers import extract_text_file
+import src.utils.parsing
+from src.utils.helpers import extract_text_file
 
 ##TODO: Text Extraction (from pdf, txt, docx)✅
 ##      Linguistic + Readability analysis 

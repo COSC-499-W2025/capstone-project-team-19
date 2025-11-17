@@ -2,7 +2,7 @@ import sqlite3
 import pytest
 
 from src.db import connect, init_schema, get_or_create_user, store_parsed_files
-from src.parsing import collect_file_info
+from src.utils.parsing import collect_file_info
 
 @pytest.fixture
 def conn(tmp_path):

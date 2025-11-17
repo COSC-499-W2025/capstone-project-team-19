@@ -1,17 +1,17 @@
-from src.language_detector import detect_languages
-from src.framework_detector import detect_frameworks
+from src.utils.language_detector import detect_languages
+from src.utils.framework_detector import detect_frameworks
 
 import sqlite3
-from src.alt_analyze import alternative_analysis
-from src.text_llm_analyze import run_text_llm_analysis
-from src.code_llm_analyze import run_code_llm_analysis
-from src.code_non_llm_analysis import run_code_non_llm_analysis
-from src.helpers import _fetch_files
-from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
-from src.google_drive.process_project_files import process_project_files
+from src.analysis.text_individual.alt_analyze import alternative_analysis
+from src.analysis.text_individual.text_llm_analyze import run_text_llm_analysis
+from src.analysis.code_individual.code_llm_analyze import run_code_llm_analysis
+from src.analysis.code_individual.code_non_llm_analysis import run_code_non_llm_analysis
+from src.utils.helpers import _fetch_files
+from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
+from src.integrations.google_drive.process_project_files import process_project_files
 from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
-from src.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
-from src.csv_analyze import run_csv_analysis
+from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
+from src.analysis.text_individual.csv_analyze import run_csv_analysis
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -274,7 +274,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent)
     The actual contribution analysis will be done in a later phase.
     Adding option for skipping connecting to Google Drive needs to be added later.
     """
-    from src.google_drive_auth.text_project_setup import setup_text_project_drive_connection
+    from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
     
     # Set up Google Drive connection and link files
     result = setup_text_project_drive_connection(conn, user_id, project_name)

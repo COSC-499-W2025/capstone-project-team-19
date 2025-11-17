@@ -1,7 +1,7 @@
 import os
 import pytest
 from unittest.mock import MagicMock, Mock, mock_open
-import src.code_complexity_analyzer as cca
+import src.analysis.code_individual.code_complexity_analyzer as cca
 
 
 def test_analyze_code_complexity_no_files(tmp_sqlite_conn, capsys):

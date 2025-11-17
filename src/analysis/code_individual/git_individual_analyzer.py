@@ -18,10 +18,10 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from collections import defaultdict, Counter
 import pandas as pd
-from src.helpers import is_git_repo, bfs_find_repo
-from src.github.github_oauth import github_oauth
-from src.github.token_store import get_github_token
-from src.github.link_repo import ensure_repo_link, select_and_store_repo
+from src.utils.helpers import is_git_repo, bfs_find_repo
+from src.integrations.github.github_oauth import github_oauth
+from src.integrations.github.token_store import get_github_token
+from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo
 
 
 def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_path: str) -> Dict:

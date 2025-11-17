@@ -4,7 +4,7 @@ import os
 import io
 import builtins
 import pytest
-from src import csv_analyze as ca
+from src.analysis.text_individual import csv_analyze as ca
 
 # analyze individual csvs
 def test_basic_numeric_dataset():

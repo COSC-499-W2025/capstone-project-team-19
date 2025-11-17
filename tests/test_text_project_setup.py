@@ -1,5 +1,5 @@
 import pytest
-MODULE = "src.google_drive_auth.text_project_setup"
+MODULE = "src.integrations.google_drive.google_drive_auth.text_project_setup"
 
 
 def _call_setup(monkeypatch, fetch_files, user_input, oauth_return=None, link_return=None, link_side_effect=None):
@@ -40,7 +40,7 @@ def _call_setup(monkeypatch, fetch_files, user_input, oauth_return=None, link_re
         monkeypatch.setattr(f"{MODULE}.find_and_link_files", lambda service, project_name, zip_file_names, conn, user_id: link_return)
 
     # call the function
-    from src.google_drive_auth.text_project_setup import setup_text_project_drive_connection
+    from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
 
     return setup_text_project_drive_connection(conn=None, user_id=1, project_name="proj")
 

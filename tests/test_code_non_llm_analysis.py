@@ -8,7 +8,7 @@ Tests the orchestration of non-LLM code analysis which combines:
 
 import pytest
 from unittest.mock import MagicMock
-import src.code_non_llm_analysis as cnlla
+import src.analysis.code_individual.code_non_llm_analysis as cnlla
 
 
 def test_run_code_non_llm_analysis_both_successful(tmp_sqlite_conn, monkeypatch, capsys):
