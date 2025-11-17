@@ -6,7 +6,7 @@ import json
 from collections import defaultdict
 from dotenv import load_dotenv
 from groq import Groq
-from src.common.helpers import _fetch_files
+from src.utils.helpers import _fetch_files
 import sqlite3
 from src.db import connect
 

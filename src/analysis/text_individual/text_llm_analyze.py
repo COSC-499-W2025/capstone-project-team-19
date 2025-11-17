@@ -2,7 +2,7 @@ import os
 import textwrap
 import json
 from .alt_analyze import analyze_linguistic_complexity
-from src.common.helpers import extract_text_file
+from src.utils.helpers import extract_text_file
 from dotenv import load_dotenv
 from groq import Groq
 

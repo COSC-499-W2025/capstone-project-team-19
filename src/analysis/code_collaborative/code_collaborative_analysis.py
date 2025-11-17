@@ -7,9 +7,9 @@ from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
 from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo, get_gh_repo_name_and_owner
 from src.integrations.github.github_api import get_authenticated_user
-from src.common.framework_detector import detect_frameworks
-from src.common.language_detector import detect_languages
-from src.common.helpers import zip_paths  
+from src.utils.framework_detector import detect_frameworks
+from src.utils.language_detector import detect_languages
+from src.utils.helpers import zip_paths  
 from src.integrations.github.github_analysis import fetch_github_metrics
 from src.integrations.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics
 

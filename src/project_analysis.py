@@ -1,12 +1,12 @@
-from src.common.language_detector import detect_languages
-from src.common.framework_detector import detect_frameworks
+from src.utils.language_detector import detect_languages
+from src.utils.framework_detector import detect_frameworks
 
 import sqlite3
 from src.analysis.text_individual.alt_analyze import alternative_analysis
 from src.analysis.text_individual.text_llm_analyze import run_text_llm_analysis
 from src.analysis.code_individual.code_llm_analyze import run_code_llm_analysis
 from src.analysis.code_individual.code_non_llm_analysis import run_code_non_llm_analysis
-from src.common.helpers import _fetch_files
+from src.utils.helpers import _fetch_files
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
 from src.integrations.google_drive.process_project_files import process_project_files
 from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics

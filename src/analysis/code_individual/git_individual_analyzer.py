@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from collections import defaultdict, Counter
 import pandas as pd
-from src.common.helpers import is_git_repo, bfs_find_repo
+from src.utils.helpers import is_git_repo, bfs_find_repo
 from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
 from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo
