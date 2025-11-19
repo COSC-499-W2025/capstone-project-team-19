@@ -1,4 +1,4 @@
-# src/summaries/metrics_model.py
+# src/summary/metrics_model.py
 
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
@@ -76,24 +76,30 @@ class CodeProjectMetrics:
     def is_collab(self) -> bool:
         return self.classification == "collaborative"
 
-
+@dataclass
 class TextProjectMetrics:
-    # TODO: complete this model once all text metrics are completed, for now this is a skeleton and is subject to change
+    """
+    A unified container for *all* text-project metrics:
+    - LLM analysis results (summary, skills, linguistic features)
+    - CSV/dataset analysis (optional)
+    - Collaborative text contributions (Google Docs revision history)
     
-    def __init__(self, project_name):
-        self.project_name = project_name
-
-        # Identification
-        self.classification = None # "individual" or "collaborative"
-        self.is_collaborative = False
-
-        # Core text-analysis placeholders (to be filled in later)
-        self.summary = None
-        self.skills = None
-        self.linguistic_features = None
-
-        # CSV / dataset analysis (optional)
-        self.csv_results = None
-
-        # Collaborative text (Google Docs) contributions
-        self.revision_history = None
+    TODO: complete this model once all text metrics are completed, for now this is a skeleton and is subject to change
+    """
+    
+    project_name: str
+    
+    # Identification
+    classification: Optional[str] = None  # "individual" or "collaborative"
+    is_collaborative: bool = False
+    
+    # Core text-analysis placeholders (to be filled in later)
+    summary: Optional[str] = None
+    skills: Optional[List[str]] = None
+    linguistic_features: Optional[Dict[str, Any]] = None
+    
+    # CSV / dataset analysis (optional)
+    csv_results: Optional[Dict[str, Any]] = None
+    
+    # Collaborative text (Google Docs) contributions
+    revision_history: Optional[List[Dict[str, Any]]] = None

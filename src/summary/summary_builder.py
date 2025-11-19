@@ -1,13 +1,17 @@
-# src/summaries/summary_builder.py
+# src/summary/summary_builder.py
+
+from src.summary.metrics_model import CodeProjectMetrics, TextProjectMetrics
 
 def build_project_summary(project_obj):
     """
     Takes a CodeProjectMetrics or TextProjectMetrics object and generates a textual summary.
     """
-    if hasattr(project_obj, "languages"):
+    if isinstance(project_obj, CodeProjectMetrics):
         return summarize_code_project(project_obj)
-    else:
+    elif isinstance(project_obj, TextProjectMetrics):
         return summarize_text_project(project_obj)
+    else:
+        raise TypeError(f"Unknown project type: {type(project_obj)}")
 
 def summarize_code_project(obj):
     """

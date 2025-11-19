@@ -3,7 +3,6 @@ from src.summary.db_access import (
     fetch_all_project_metadata,
     fetch_github_metrics_row
 )
-import json
 
 
 def build_all_project_metrics(conn, user_id):
