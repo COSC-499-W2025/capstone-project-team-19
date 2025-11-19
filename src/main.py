@@ -15,7 +15,8 @@ from src.consent.external_consent import get_external_consent, record_external_c
 from src.project_analysis import detect_project_type, send_to_analysis
 from src.utils.upload_checks import handle_existing_zip
 from src.utils.helpers import cleanup_extracted_zip
-
+from src.summary.metrics_builder import build_all_project_metrics
+from src.summary.summary_builder import build_project_summary
 
 def main():
     print("Welcome aboard! Let's turn your work into cool insights.")
@@ -201,6 +202,13 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
         
     if assignments and processed_zip_path:
         send_to_analysis(conn, user_id, assignments, external_consent_status, processed_zip_path)  # takes projects and sends them into the analysis flow
+        all_projects = build_all_project_metrics(conn, user_id)
+        
+        for project in all_projects:
+            print(f"Built metrics object for {project.project_name} ({project.__class__.__name__})")
+            summary = build_project_summary(project)
+            print(summary)
+
     else:
         if assignments:
             print("No valid project analysis to send.")
