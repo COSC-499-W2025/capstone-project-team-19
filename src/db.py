@@ -290,6 +290,20 @@ def init_schema(conn: sqlite3.Connection) -> None:
     );
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS project_skills (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        project_name TEXT NOT NULL,
+        skill_name TEXT NOT NULL,
+        level TEXT NOT NULL,
+        score REAL NOT NULL,
+        evidence_json TEXT,
+        UNIQUE(user_id, project_name, skill_name),
+        FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
+    """)
+
     conn.commit()
 
 # ----------------------------------------------------------
@@ -765,3 +779,45 @@ def store_github_account(conn, user_id, github_user):
         user_id, github_user["login"], github_user["id"], github_user["name"], github_user["email"], github_user["profile_url"]
     ))
     conn.commit()
+
+def get_project_metadata(conn, user_id, project_name):
+    """
+    Returns (classification, project_type) for a project.
+    If nothing is found, returns (None, None).
+    Reads the most recent entry from project_classifications.
+    """
+    row = conn.execute(
+        """
+        SELECT classification, project_type
+        FROM project_classifications
+        WHERE user_id = ? AND project_name = ?
+        ORDER BY recorded_at DESC
+        LIMIT 1;
+        """,
+        (user_id, project_name)
+    ).fetchone()
+
+    if not row:
+        return None, None
+
+    return row[0], row[1]
+
+def insert_project_skill(conn, user_id, project_name, skill_name, level, score, evidence):
+    """
+    Insert or update a skill entry for a project.
+    Ensures only one row per (user_id, project_name, skill_name).
+    """
+
+    conn.execute(
+        """
+        INSERT INTO project_skills (user_id, project_name, skill_name, level, score, evidence_json)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, project_name, skill_name)
+        DO UPDATE SET
+            level = excluded.level,
+            score = excluded.score,
+            evidence_json = excluded.evidence_json
+        ;
+        """,
+        (user_id, project_name, skill_name, level, score, evidence)
+    )
