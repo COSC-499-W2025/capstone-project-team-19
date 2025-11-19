@@ -27,20 +27,36 @@ GitHub's `/stats/contributors` endpoint may return `202 Accepted`. The system re
 
 ## Data Stored
 
-Metrics are stored in the local SQLite database as raw JSON for now.
+GitHub metrics are stored using a normalized schema.
 
-**Table:** `github_repo_metrics`
+### **Table: `github_repo_metrics`**
+
+Each row is uniquely identified by:
+
+- `user_id`
+- `project_name`
+- `repo_owner`
+- `repo_name`
 
 | Column | Description |
 |--------|-------------|
-user_id | Local system user ID |
-project_name | Name of project in system |
-repo_owner | GitHub repository owner |
-repo_name | GitHub repository name |
-metrics_json | Raw JSON blob containing fetched GitHub metrics |
-created_at | Timestamp of storage |
-
-This table ensures one row per user per project per repository.
+| `id` | Primary key |
+| `user_id` | Local system user ID |
+| `project_name` | Local project name |
+| `repo_owner` | GitHub owner (e.g., `octocat`) |
+| `repo_name` | GitHub repo name |
+| `total_commits` | Total commits by user |
+| `commit_days` | Number of distinct days with commits |
+| `first_commit_date` | Earliest commit timestamp |
+| `last_commit_date` | Latest commit timestamp |
+| `issues_opened` | Number of issues opened by user |
+| `issues_closed` | Number of issues closed by user |
+| `prs_opened` | Number of PRs opened by user |
+| `prs_merged` | Number of PRs merged by user |
+| `total_additions` | Lines added (from GitHub stats) |
+| `total_deletions` | Lines deleted |
+| `contribution_percent` | GitHub’s estimate of user share of repo activity |
+| `last_synced` | Timestamp of most recent sync |
 
 ---
 
@@ -63,15 +79,17 @@ The token is stored locally in the application's database and reused until revok
 
 ## Data Retrieved
 
-The following metrics are retrieved and stored:
+The system fetches and aggregates:
 
-- Commit activity by date
-- Issues opened/closed by user
-- Pull requests opened/merged by user
-- Total commits, additions, deletions
-- Contribution percentage in repo
+- Commit activity by date  
+- First/last commit timestamps  
+- Total commits by user  
+- Issues opened/closed by the user  
+- Pull requests opened/merged  
+- Total additions and deletions  
+- Contribution percentage (from `/stats/contributors`)
 
-These metrics are currently stored for future use after parsing and aggregation.
+These fields are parsed and inserted into the normalized DB.
 
 ---
 

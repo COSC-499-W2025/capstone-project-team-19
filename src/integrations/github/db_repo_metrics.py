@@ -89,3 +89,31 @@ def get_github_repo_metrics(conn, user_id, project_name, owner, repo):
 
     keys = [d[0] for d in cur.description]
     return dict(zip(keys, row))
+
+def print_github_metrics_summary(repo_metrics: dict):
+    """Pretty-print GitHub contributions for a project."""
+
+    print("\n==============================")
+    print("   GitHub Activity Summary")
+    print("==============================")
+
+    print(f"Total commits:        {repo_metrics.get('total_commits', 0)}")
+    print(f"Active commit days:   {repo_metrics.get('commit_days', 0)}")
+
+    print(f"First commit:         {repo_metrics.get('first_commit_date')}")
+    print(f"Last commit:          {repo_metrics.get('last_commit_date')}")
+
+    print("\nIssues:")
+    print(f" - Opened:            {repo_metrics.get('issues_opened', 0)}")
+    print(f" - Closed:            {repo_metrics.get('issues_closed', 0)}")
+
+    print("\nPull Requests:")
+    print(f" - Opened:            {repo_metrics.get('prs_opened', 0)}")
+    print(f" - Merged:            {repo_metrics.get('prs_merged', 0)}")
+
+    print("\nLines Changed:")
+    print(f" - Additions:         {repo_metrics.get('total_additions', 0)}")
+    print(f" - Deletions:         {repo_metrics.get('total_deletions', 0)}")
+
+    print(f"\nContribution Percent: {repo_metrics.get('contribution_percent', 0)}%")
+    print("==============================\n")
