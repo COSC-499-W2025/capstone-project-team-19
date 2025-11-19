@@ -262,7 +262,6 @@ def init_schema(conn: sqlite3.Connection) -> None:
         project_name TEXT NOT NULL,
         repo_owner TEXT NOT NULL,
         repo_name TEXT NOT NULL,
-        metrics_json TEXT NOT NULL,
 
         total_commits INTEGER,
         commit_days INTEGER,
