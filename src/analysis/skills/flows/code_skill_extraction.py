@@ -7,7 +7,7 @@ from src.analysis.skills.buckets.code_buckets import CODE_SKILL_BUCKETS
 from src.db import insert_project_skill
 
 
-def extract_code_skills(conn, user_id, project_name, files):
+def extract_code_skills(conn, user_id, project_name, classification, files):
     """
     Main entry point for extracting code-related skills from a project.
     Steps:
