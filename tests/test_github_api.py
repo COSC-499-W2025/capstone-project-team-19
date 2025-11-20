@@ -70,15 +70,29 @@ def test_commit_activity(monkeypatch):
 
 def test_get_issues(monkeypatch):
     fake = [
-        {"title":"Bug","body":"","created_at":"2024-01-01T00","closed_at":None,
-         "labels":[],"user":{"login":"me"},"assignees":[]},
-        {"pull_request":{}, "user":{"login":"me"}},
+        {
+            "number": 1,  # <-- added to match real GitHub response
+            "title":"Bug",
+            "body":"",
+            "created_at":"2024-01-01T00",
+            "closed_at":None,
+            "labels":[],
+            "user":{"login":"me"},
+            "assignees":[]
+        },
+        {"pull_request":{}, "user":{"login":"me"}}
     ]
+
     monkeypatch.setattr(api.requests, "get", lambda *a, **k: FakeResp(200, fake))
     res = api.get_gh_repo_issues("T","o","r","me")
+
     assert res["total_opened"] == 1
     assert len(res["user_issues"]) == 1
     assert res["user_issues"][0]["title"] == "Bug"
+
+    # new field should exist
+    assert "user_issue_comments" in res
+    assert isinstance(res["user_issue_comments"], list)
 
 def test_get_prs(monkeypatch):
     fake = [
@@ -105,10 +119,12 @@ def test_contributions_poll(monkeypatch):
         }])
     ])
     res = api.get_gh_repo_contributions("T","o","r","me")
-    assert res["commits"] == 5
-    assert res["additions"] == 7
-    assert res["deletions"] == 3
-    assert res["contribution_percent"] == 100.0
+
+    # updated to match new API format
+    assert res["user"]["commits"] == 5
+    assert res["user"]["additions"] == 7
+    assert res["user"]["deletions"] == 3
+    assert res["user"]["contribution_percent"] == 100.0
 
 def test_gh_get_graceful_failure(monkeypatch):
     class FakeResp:
@@ -184,3 +200,50 @@ def test_get_gh_reviews_for_repo_aggregates(monkeypatch):
         ("reviews", 2),
         ("comments", 2),
     ]
+
+
+def test_filter_user_reviews():
+    reviews = [
+        {"user": {"login": "me"}, "body": "hi", "state": "APPROVED", "submitted_at": "2024-01-01T00"},
+        {"user": {"login": "other"}, "body": "skip"},
+    ]
+
+    out = api.filter_user_reviews(reviews, "me")
+
+    assert len(out) == 1
+    assert out[0]["body"] == "hi"
+    assert out[0]["state"] == "APPROVED"
+    assert out[0]["submitted_at"] == "2024-01-01T00"
+
+
+def test_filter_user_review_comments():
+    comments = [
+        {"user": {"login": "me"}, "body": "good catch", "created_at": "2024-01-02T00"},
+        {"user": {"login": "other"}, "body": "ignore"},
+    ]
+
+    out = api.filter_user_review_comments(comments, "me")
+
+    assert len(out) == 1
+    assert out[0]["body"] == "good catch"
+    assert out[0]["created_at"] == "2024-01-02T00"
+
+
+def test_get_repo_commit_timestamps(monkeypatch):
+    # Return two commits on page 1, then empty list to stop.
+    fake_data = [
+        FakeResp(200, [
+            {"commit": {"author": {"date": "2024-03-01T12:00:00Z"}}},
+            {"commit": {"author": {"date": "2024-03-02T15:30:00Z"}}},
+        ]),
+        FakeResp(200, [])
+    ]
+
+    seq = iter(fake_data)
+    monkeypatch.setattr(api.requests, "get", lambda *a, **k: next(seq))
+
+    timestamps = api.get_repo_commit_timestamps("T", "o", "r")
+
+    assert len(timestamps) == 2
+    assert timestamps[0].year == 2024 and timestamps[0].month == 3 and timestamps[0].day == 1
+    assert timestamps[1].day == 2
