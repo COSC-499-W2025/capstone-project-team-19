@@ -4,7 +4,6 @@ This file must:
 - Decide which skill extraction function to run
 - Route to the correct skill extraction function
 - Handle missing data safely
-- Store the results in the DB
 """
 
 import sqlite3
