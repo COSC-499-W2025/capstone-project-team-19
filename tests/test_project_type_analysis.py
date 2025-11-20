@@ -12,6 +12,7 @@ def setup_in_memory_db():
             file_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             file_name TEXT,
+            file_path TEXT,
             file_type TEXT,
             project_name TEXT
         );
