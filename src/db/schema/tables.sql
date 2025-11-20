@@ -228,7 +228,6 @@ CREATE TABLE IF NOT EXISTS github_repo_metrics (
     project_name TEXT NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
-    metrics_json TEXT NOT NULL,
 
     total_commits INTEGER,
     commit_days INTEGER,
