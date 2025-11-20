@@ -118,3 +118,69 @@ def test_gh_get_graceful_failure(monkeypatch):
     monkeypatch.setattr(requests, "get", lambda *a, **k: FakeResp())
     data = api.gh_get("fake", "fake")
     assert data == {}  # No crash, returns empty
+
+def test_get_gh_pr_reviews_calls_correct_url(monkeypatch):
+    captured = {}
+
+    def fake_gh_get(token, url, retries=6, delay=2):
+        captured["token"] = token
+        captured["url"] = url
+        return ["ok"]
+
+    monkeypatch.setattr(api, "gh_get", fake_gh_get)
+
+    result = api.get_gh_pr_reviews("TOKEN", "owner", "repo", 5)
+
+    assert result == ["ok"]
+    assert captured["url"] == "https://api.github.com/repos/owner/repo/pulls/5/reviews"
+    assert captured["token"] == "TOKEN"
+
+def test_get_gh_pr_review_comments_calls_correct_url(monkeypatch):
+    captured = {}
+
+    def fake_gh_get(token, url, retries=6, delay=2):
+        captured["token"] = token
+        captured["url"] = url
+        return ["ok"]
+
+    monkeypatch.setattr(api, "gh_get", fake_gh_get)
+
+    result = api.get_gh_pr_review_comments("TOKEN", "owner", "repo", 7)
+
+    assert result == ["ok"]
+    assert captured["url"] == "https://api.github.com/repos/owner/repo/pulls/7/comments"
+    assert captured["token"] == "TOKEN"
+
+def test_get_gh_reviews_for_repo_aggregates(monkeypatch):
+    calls = []
+
+    def fake_reviews(token, owner, repo, pr):
+        calls.append(("reviews", pr))
+        return [f"review-{pr}"]
+
+    def fake_comments(token, owner, repo, pr):
+        calls.append(("comments", pr))
+        return [f"comment-{pr}"]
+
+    monkeypatch.setattr(api, "get_gh_pr_reviews", fake_reviews)
+    monkeypatch.setattr(api, "get_gh_pr_review_comments", fake_comments)
+
+    result = api.get_gh_reviews_for_repo("TOKEN", "owner", "repo", [1, 2])
+
+    assert result == {
+        1: {
+            "reviews": ["review-1"],
+            "review_comments": ["comment-1"],
+        },
+        2: {
+            "reviews": ["review-2"],
+            "review_comments": ["comment-2"],
+        },
+    }
+
+    assert calls == [
+        ("reviews", 1),
+        ("comments", 1),
+        ("reviews", 2),
+        ("comments", 2),
+    ]

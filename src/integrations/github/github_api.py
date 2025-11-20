@@ -269,3 +269,41 @@ def get_gh_repo_contributions(token, owner, repo, github_username):
         )
 
     return user_stats
+
+# review fetching
+def get_gh_pr_reviews(token, owner, repo, pull_number):
+    """
+    Fetch all review events on a pull request.
+    GitHub API: 
+    GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews
+    """
+    url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
+    return gh_get(token, url)
+
+
+def get_gh_pr_review_comments(token, owner, repo, pull_number):
+    """
+    Fetch review comments left on a pull request (inline code comments).
+    GitHub API:
+    GET /repos/{owner}/{repo}/pulls/{pull_number}/comments
+    """
+    url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/comments"
+    return gh_get(token, url)
+
+
+def get_gh_reviews_for_repo(token, owner, repo, pulls):
+    """
+    Fetch reviews + review comments for multiple PRs.
+    Returns data in a structured form for later analysis layers.
+    
+    pulls: list[int] of PR numbers
+    """
+    review_data = {}
+
+    for pr in pulls:
+        review_data[pr] = {
+            "reviews": get_gh_pr_reviews(token, owner, repo, pr),
+            "review_comments": get_gh_pr_review_comments(token, owner, repo, pr),
+        }
+
+    return review_data  
