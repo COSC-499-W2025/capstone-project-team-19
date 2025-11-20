@@ -269,10 +269,3 @@ def get_gh_repo_contributions(token, owner, repo, github_username):
         )
 
     return user_stats
-
-def get_gh_repo_readme(token, owner, repo): pass
-def get_gh_repo_content_analysis(token, owner, repo): pass
-def get_gh_repo_pulls(token, owner, repo): pass
-def get_gh_repo_reviews(token, owner, repo): pass
-def get_gh_repo_language_breakdown(token, owner, repo): pass
-def get_gh_repo_lines_added_and_deleted(token, owner, repo): pass

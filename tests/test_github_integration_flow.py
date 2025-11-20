@@ -19,14 +19,33 @@ def conn():
     conn = sqlite3.connect(":memory:")
     conn.execute("""
         CREATE TABLE github_repo_metrics (
-            user_id TEXT,
-            project_name TEXT,
-            repo_owner TEXT,
-            repo_name TEXT,
-            metrics_json TEXT,
-            PRIMARY KEY(user_id, project_name, repo_owner, repo_name)
-        )
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            project_name TEXT NOT NULL,
+            repo_owner TEXT NOT NULL,
+            repo_name TEXT NOT NULL,
+            
+            total_commits INTEGER,
+            commit_days INTEGER,
+            first_commit_date TEXT,
+            last_commit_date TEXT,
+
+            issues_opened INTEGER,
+            issues_closed INTEGER,
+
+            prs_opened INTEGER,
+            prs_merged INTEGER,
+
+            total_additions INTEGER,
+            total_deletions INTEGER,
+            contribution_percent REAL,
+
+            last_synced TEXT DEFAULT (datetime('now')),
+            
+            UNIQUE(user_id, project_name, repo_owner, repo_name)
+        );
     """)
+
     conn.execute("""
         CREATE TABLE project_repos (
             user_id TEXT,
@@ -69,14 +88,29 @@ def test_store_and_get_github_metrics(conn):
     store_github_repo_metrics(conn, USER, PROJ, OWNER, REPO, metrics)
 
     result = get_github_repo_metrics(conn, USER, PROJ, OWNER, REPO)
-    assert result == metrics
+    assert result["total_commits"] == 3
+    assert result["commit_days"] == 1
+    assert result["first_commit_date"] == "2024-01-01"
+    assert result["last_commit_date"] == "2024-01-01"
+    assert result["issues_opened"] == 1
+    assert result["issues_closed"] == 0
+    assert result["prs_opened"] == 0
+    assert result["prs_merged"] == 0
+    assert result["total_additions"] == 0
+    assert result["total_deletions"] == 0
 
 def test_update_github_metrics(conn):
-    store_github_repo_metrics(conn, USER, PROJ, OWNER, REPO, {"v": 1})
-    store_github_repo_metrics(conn, USER, PROJ, OWNER, REPO, {"v": 2})
+    store_github_repo_metrics(conn, USER, PROJ, OWNER, REPO, {
+        "commits": {"2024-01-01": 1}
+    })
 
-    result = get_github_repo_metrics(conn, USER, PROJ, OWNER, REPO)
-    assert result == {"v": 2}
+    store_github_repo_metrics(conn, USER, PROJ, OWNER, REPO, {
+        "commits": {"2024-01-01": 10}
+    })
+
+    updated = get_github_repo_metrics(conn, USER, PROJ, OWNER, REPO)
+    assert updated["total_commits"] == 10
+    assert updated["commit_days"] == 1
 
 def test_no_metrics_found_returns_none(conn):
     assert get_github_repo_metrics(conn, "x", "y", "a", "b") is None

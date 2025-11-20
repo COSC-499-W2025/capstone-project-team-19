@@ -11,7 +11,7 @@ from src.utils.framework_detector import detect_frameworks
 from src.utils.language_detector import detect_languages
 from src.utils.helpers import zip_paths  
 from src.integrations.github.github_analysis import fetch_github_metrics
-from src.integrations.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics
+from src.integrations.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics, print_github_metrics_summary
 
 from .code_collaborative_analysis_helper import (
     DEBUG,
@@ -232,8 +232,8 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir):
         if _metrics_empty(repo_metrics):
             print("No GitHub activity found for this repo.")
         else:
-            print("GitHub metrics collected. Analysis to be implemented.")
-    
+            print_github_metrics_summary(repo_metrics)
+
     except Exception as e:
         print(f"[GitHub] Error occurred ({e}). Skipping GitHub and continuing.")
         return
