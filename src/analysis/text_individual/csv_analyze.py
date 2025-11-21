@@ -1,17 +1,17 @@
+# src/analysis/text_individual/csv_analyze.py
+
 import os
 import pandas as pd
 import numpy as np
 from collections import defaultdict
 
+# NOTE: All LLM + printing helpers kept only for standalone CLI usage, not pipeline.
 
-# -------------------------------
-# INTERNAL HELPERS
-# -------------------------------
 
 def group_csv_files(csv_files):
     """
     Group CSV files that share a similar prefix.
-    e.g., data1.csv, data2.csv → one group
+    e.g., data_collection1.csv, data_collection2.csv → one group
     """
     grouped = defaultdict(list)
     for f in csv_files:
@@ -23,23 +23,24 @@ def group_csv_files(csv_files):
 
 
 def load_csv(path):
-    """Safely load CSV file into pandas DataFrame. Returns None if load fails."""
+    """Safely load CSV file into pandas DataFrame."""
     try:
         return pd.read_csv(path)
-    except Exception:
+    except Exception as e:
+        print(f"Error loading {path}: {e}")
         return None
 
 
 def analyze_single_csv(df):
     """
-    Generate clean, non-printing metadata summary.
-    (numeric statistics removed — per user instruction)
+    Generate non-LLM structural summary for a single CSV.
+    NO numeric stats (min/max/mean) – only shape + missingness + headers + dtypes.
     """
     total_rows = len(df)
     missing_rows = df.isnull().any(axis=1).sum()
     missing_pct = (missing_rows / total_rows * 100) if total_rows > 0 else 0
 
-    return {
+    summary = {
         "row_count": total_rows,
         "col_count": len(df.columns),
         "headers": list(df.columns),
@@ -47,23 +48,43 @@ def analyze_single_csv(df):
         "missing_rows": missing_rows,
         "missing_pct": round(missing_pct, 2),
     }
+    return summary
 
 
-# -------------------------------
-# MAIN NON-PRINTING ENTRY POINT
-# -------------------------------
-
-def analyze_all_csv(csv_files, zip_path):
+def analyze_all_csv(parsed_files, zip_path):
     """
-    Clean, non-printing helper for text analysis.
+    Non-printing helper used by the text analysis pipeline.
+
+    Given ALL parsed_files, filter out CSVs, load them, and return metadata.
 
     Returns:
     {
-        "files": [ {csv metadata}, ... ],
-        "growth_trend_present": bool,
-        "growth_trends": { group_name: [(filename, row_count), ...] }
+        "files": [
+            {
+              "file_name": str,
+              "file_path": str,
+              "row_count": int,
+              "col_count": int,
+              "headers": [...],
+              "dtypes": {...},
+              "missing_rows": int,
+              "missing_pct": float,
+            },
+            ...
+        ],
+        "growth_trend_present": bool,   # True if any grouped dataset grows over time
+        "growth_trends": {             # For debugging / detector evidence
+            group_name: [(filename, row_count), ...],
+            ...
+        },
     }
     """
+    # Filter CSVs only
+    csv_files = [
+        f for f in parsed_files
+        if f.get("file_name", "").lower().endswith(".csv")
+    ]
+
     if not csv_files:
         return {
             "files": [],
@@ -71,7 +92,6 @@ def analyze_all_csv(csv_files, zip_path):
             "growth_trends": {},
         }
 
-    # Locate base path
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
@@ -79,7 +99,7 @@ def analyze_all_csv(csv_files, zip_path):
 
     grouped = group_csv_files(csv_files)
 
-    all_summaries = []
+    all_file_summaries = []
     growth_trends = {}
     growth_trend_present = False
 
@@ -92,16 +112,14 @@ def analyze_all_csv(csv_files, zip_path):
                 continue
 
             summary = analyze_single_csv(df)
-
-            all_summaries.append({
+            all_file_summaries.append({
                 "file_name": f["file_name"],
                 "file_path": f["file_path"],
-                **summary
+                **summary,
             })
 
             growth.append((f["file_name"], summary["row_count"]))
 
-        # detect growth trend per group
         if len(growth) > 1:
             growth_trends[group_name] = growth
             base_rows = growth[0][1]
@@ -110,8 +128,9 @@ def analyze_all_csv(csv_files, zip_path):
                 growth_trend_present = True
 
     return {
-        "files": all_summaries,
+        "files": all_file_summaries,
         "growth_trend_present": growth_trend_present,
         "growth_trends": growth_trends,
     }
+
 

@@ -2,18 +2,21 @@ from src.utils.language_detector import detect_languages
 from src.utils.framework_detector import detect_frameworks
 
 import sqlite3
-from src.analysis.text_individual.alt_analyze import alternative_analysis
-from src.analysis.text_individual.text_llm_analyze import run_text_llm_analysis
+
+# TEXT ANALYSIS imports
+from src.analysis.text_individual.text_analyze import run_text_pipeline
+from src.analysis.text_individual.csv_analyze import analyze_all_csv
+from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
+
+
+# CODE ANALYSIS imports
 from src.analysis.code_individual.code_llm_analyze import run_code_llm_analysis
 from src.analysis.code_individual.code_non_llm_analysis import run_code_non_llm_analysis
 from src.utils.helpers import _fetch_files
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
 from src.integrations.google_drive.process_project_files import process_project_files
-from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
-from src.analysis.text_individual.csv_analyze import run_csv_analysis
 from src.analysis.skills.flows.skill_extraction import extract_skills
-
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     """
@@ -364,57 +367,42 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
     classification_id = get_classification_id(conn, user_id, project_name)
 
     if only_text:
-        # --- Detect CSV files ---
-        has_csv = any(f.get("file_name", "").lower().endswith(".csv") for f in parsed_files)
-        all_csv = all(f.get("file_name", "").lower().endswith(".csv") for f in parsed_files)
+        # ------------------------------
+        # 1. Detect CSV files
+        # ------------------------------
+        csv_files = [
+            f for f in parsed_files
+            if f.get("file_name", "").lower().endswith(".csv")
+        ]
 
-        if has_csv and all_csv:
-            print(f"\n[INDIVIDUAL-TEXT] Detected dataset-based project: {project_name}")
-            run_csv_analysis(parsed_files, zip_path, conn, user_id, external_consent)
-            return  # Stop here; CSV analysis is complete
+        # All files are CSV -> unsupported
+        if csv_files and len(csv_files) == len(parsed_files):
+            print(f"\n[INDIVIDUAL-TEXT] '{project_name}' contains only CSV files.")
+            print("Our system currently only supports CSV files as supporting files of text-based projects.\n")
+            return
 
-        elif has_csv:
-            print(f"\n[INDIVIDUAL-TEXT] Text project with CSV supporting files detected in {project_name}")
-            run_csv_analysis(
-                [f for f in parsed_files if f.get("file_name", "").lower().endswith(".csv")],
-                zip_path,
-                conn,
-                user_id,
-                external_consent,
-            )
-            # Continue to main text analysis after CSV
+        # ------------------------------
+        # 2. Load CSV metadata (not printed)
+        # ------------------------------
+        csv_metadata = analyze_all_csv(csv_files, zip_path) if csv_files else None
 
-        # --- Run Text Analyses ---
-        if external_consent == "accepted":
-            results = run_text_llm_analysis(parsed_files, zip_path, conn, user_id)
+        # ------------------------------
+        # 3. Call NEW TEXT PIPELINE
+        # ------------------------------
+        run_text_pipeline(
+            parsed_files=parsed_files,
+            zip_path=zip_path,
+            conn=conn,
+            user_id=user_id,
+            project_name=project_name,
+            consent=external_consent,
+            csv_metadata=csv_metadata
+        )
 
-            # Store LLM results if returned
-            if results:
-                for result in results:
-                    store_text_llm_metrics(
-                        conn,
-                        classification_id,
-                        result.get("project_name"),
-                        result.get("file_name"),
-                        result.get("file_path"),
-                        result.get("linguistic"),
-                        result.get("summary"),
-                        result.get("skills"),
-                        result.get("success"),
-                    )
-
-        else:
-            analysis_result = alternative_analysis(parsed_files, zip_path, project_name, conn, user_id)
-            if analysis_result and classification_id:
-                store_text_offline_metrics(
-                    conn,
-                    classification_id,
-                    analysis_result.get("project_summary"),
-                )
-
+        return
     else:
-        # --- Run non-LLM code analysis (static + Git metrics) ---
         run_code_non_llm_analysis(conn, user_id, project_name, zip_path)
+
 
 def _run_skill_extraction_for_all(conn, user_id, assignments):
     for project_name in assignments.keys():
