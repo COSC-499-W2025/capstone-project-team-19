@@ -3,7 +3,7 @@ Converts the raw GitHub API JSON from fetch_github_metrics() into the RawUserCol
 """
 from datetime import datetime
 from src.integrations.github.github_analysis import fetch_github_metrics
-from src.analysis.code_collaborative.github_collaboration.compute_gh_collaboration_profile import compute_collaboration_profile
+from src.analysis.code_collaborative.github_collaboration.compute_gh_collaboration_profile import compute_collaboration_profile, compute_skill_levels
 from .models import RawUserCollabMetrics, RawTeamCollabMetrics
 
 def build_collaboration_metrics(token, owner, repo, username):
@@ -82,4 +82,9 @@ def build_collaboration_metrics(token, owner, repo, username):
 
 def run_collaboration_analysis(token, owner, repo, username):
     user, team = build_collaboration_metrics(token, owner, repo, username)
-    return compute_collaboration_profile(user, team)
+    profile = compute_collaboration_profile(user, team)
+
+    skill_levels = compute_skill_levels(profile)
+    profile["skill_levels"] = skill_levels
+
+    return profile
