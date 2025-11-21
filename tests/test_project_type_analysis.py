@@ -26,6 +26,17 @@ def setup_in_memory_db():
             recorded_at TEXT
         );
     """)
+    conn.execute("""
+        CREATE TABLE project_summaries (
+            user_id INTEGER NOT NULL,
+            project_name TEXT NOT NULL,
+            project_type TEXT,
+            project_mode TEXT,
+            summary_json TEXT,
+            created_at TEXT,
+            PRIMARY KEY (user_id, project_name)
+        );
+    """)
     return conn
 
 

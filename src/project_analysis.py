@@ -261,7 +261,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
 
 
 
-def get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary):
+def get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary=None):
     """
     Analyze collaborative projects to get specific user contributions in a collaborative project.
     The process used to get the individual contributions changes depending on the type of project (code/text).
@@ -277,7 +277,7 @@ def get_individual_contributions(conn, user_id, project_name, project_type, curr
         print(f"[COLLABORATIVE] Unknown project type for '{project_name}', skipping.")
 
 
-def run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary):
+def run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary=None):
     """
     Run full analysis on an individual project, depending on project_type.
     """

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Optional, List, Dict, Literal
-from datetime import datetime
+from datetime import datetime, UTC
 
 @dataclass
 class ProjectSummary:
@@ -28,7 +28,7 @@ class ProjectSummary:
     errors: List[str] = field(default_factory=list)
 
     # When this summary was generated
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Optional: reference to DB project ID (useful for Save/Retrieve)
     project_id: Optional[int] = None
