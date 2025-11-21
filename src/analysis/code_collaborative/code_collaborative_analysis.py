@@ -12,6 +12,7 @@ from src.utils.language_detector import detect_languages
 from src.utils.helpers import zip_paths  
 from src.integrations.github.github_analysis import fetch_github_metrics
 from src.integrations.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics, print_github_metrics_summary
+from src.analysis.code_collaborative.github_collaboration.build_collab_metrics import run_collaboration_analysis
 
 from .code_collaborative_analysis_helper import (
     DEBUG,
@@ -220,6 +221,9 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir):
 
         # fetch metrics via github REST API then stoe metrics in db
         metrics = fetch_github_metrics(token, owner, repo, gh_username)
+        collab_profile = run_collaboration_analysis(token, owner, repo, gh_username)
+        print(collab_profile)
+
         if not metrics:
             print("[GitHub] Failed to fetch metrics. Skipping GitHub.")
             return
