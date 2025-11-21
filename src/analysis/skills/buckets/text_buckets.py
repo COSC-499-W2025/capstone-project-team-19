@@ -3,62 +3,91 @@ from .bucket_types import SkillBucket
 TEXT_SKILL_BUCKETS = [
     SkillBucket(
         name="clarity",
-        total_signals=4,
-        description="Clear, concise writing with minimal ambiguity.",
+        total_signals=1,
+        description="Clear communication",
         detectors=[
-            "detect_plain_language",
             "detect_sentence_clarity",
-            "detect_precision_keywords",
-            "detect_readability_metrics"
         ],
     ),
 
     SkillBucket(
-        name="technical_writing",
-        total_signals=5,
-        description="Ability to explain technical concepts effectively.",
+        name="structure",
+        total_signals=1,
+        description="Structured writing",
         detectors=[
-            "detect_technical_terms",
-            "detect_algorithm_descriptions",
-            "detect_system_explanations",
-            "detect_data_description",
-            "detect_correct_usage_of_CS_vocabulary"
+            "detect_paragraph_structure",
         ],
     ),
 
     SkillBucket(
-        name="organization",
-        total_signals=4,
-        description="Logical structure: intro, body, conclusion, headings, flow.",
+        name="vocabulary",
+        total_signals=1,
+        description="Strong vocabulary",
         detectors=[
-            "detect_headings",
-            "detect_document_structure",
-            "detect_logical_flow",
-            "detect_paragraph_transitions"
+            "detect_vocabulary_diversity",
         ],
     ),
 
     SkillBucket(
-        name="argumentation_and_reasoning",
-        total_signals=4,
-        description="Critical thinking, argument support, evidence use.",
+        name="argumentation",
+        total_signals=1,
+        description="Analytical writing",
         detectors=[
-            "detect_claim_evidence_pattern",
-            "detect_argument_markers",
-            "detect_cause_effect_reasoning",
-            "detect_conclusion_markers"
+            "detect_argument_structure",
         ],
     ),
 
     SkillBucket(
-        name="domain_expertise",
-        total_signals=4,
-        description="Evidence of subject-matter knowledge through vocabulary and concepts.",
+        name="depth",
+        total_signals=1,
+        description="Critical thinking",
         detectors=[
-            "detect_domain_keywords",
-            "detect_topic_model_alignment",
-            "detect_correct_use_of_theory",
-            "detect_contextual_accuracy"
+            "detect_depth_of_content",
         ],
-    )
+    ),
+    
+    SkillBucket(
+        name="process",
+        total_signals=1,
+        description="Revision & editing",
+        detectors=[
+            "detect_iterative_process",
+        ],
+    ),
+    
+    SkillBucket(
+        name="planning",
+        total_signals=1,
+        description="Planning & organization",
+        detectors=[
+            "detect_planning_behavior",
+        ],
+    ),
+    
+    SkillBucket(
+        name="research",
+        total_signals=1,
+        description="Research integration",
+        detectors=[
+            "detect_evidence_of_research",
+        ],
+    ),
+    
+    SkillBucket(
+        name="data_collection",
+        total_signals=1,
+        description="Data collection",
+        detectors=[
+            "detect_data_collection",
+        ],
+    ),
+    
+    SkillBucket(
+        name="data_analysis",
+        total_signals=1,
+        description="Data analysis",
+        detectors=[
+            "detect_data_analysis",
+        ],
+    ),
 ]
