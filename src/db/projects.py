@@ -136,3 +136,25 @@ def get_classification_id(conn: sqlite3.Connection, user_id: int, project_name: 
         (user_id, project_name),
     ).fetchone()
     return row[0] if row else None
+
+def get_project_metadata(conn, user_id, project_name):
+    """
+    Returns (classification, project_type) for a project.
+    If nothing is found, returns (None, None).
+    Reads the most recent entry from project_classifications.
+    """
+    row = conn.execute(
+        """
+        SELECT classification, project_type
+        FROM project_classifications
+        WHERE user_id = ? AND project_name = ?
+        ORDER BY recorded_at DESC
+        LIMIT 1;
+        """,
+        (user_id, project_name)
+    ).fetchone()
+
+    if not row:
+        return None, None
+
+    return row[0], row[1]
