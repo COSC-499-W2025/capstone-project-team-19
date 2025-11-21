@@ -2,14 +2,14 @@ import json
 from typing import Dict, List
 
 from src.analysis.skills.utils.skill_levels import score_to_level
-from src.analysis.skills.detectors.code.detector_registry import CODE_DETECTOR_FUNCTIONS
-from src.analysis.skills.buckets.code_buckets import CODE_SKILL_BUCKETS
+from src.analysis.skills.detectors.text.text_detector_registry import TEXT_DETECTOR_FUNCTIONS
+from src.analysis.skills.buckets.text_buckets import TEXT_SKILL_BUCKETS
 from src.db import insert_project_skill
 
 
-def extract_code_skills(conn, user_id, project_name, classification, files):
+def extract_text_skills(conn, user_id, project_name, classification, files):
     """
-    Main entry point for extracting code-related skills from a project.
+    Main entry point for extracting text-related skills from a project.
     Steps:
         1. Run detectors
         2. Aggregate results into skill buckets
@@ -17,9 +17,9 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
         4. Save results in the DB
     """
 
-    print(f"\n[SKILL EXTRACTION] Running CODE skill extraction for {project_name}")
+    print(f"\n[SKILL EXTRACTION] Running TEXT skill extraction for {project_name}")
 
-    detector_results = run_all_code_detectors(files)
+    detector_results = run_all_text_detectors(files)
 
     bucket_results = aggregate_into_buckets(detector_results)
 
@@ -36,13 +36,13 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
         )
 
     conn.commit()
-    print(f"[SKILL EXTRACTION] Completed code skill extraction for: {project_name}")
+    print(f"[SKILL EXTRACTION] Completed text skill extraction for: {project_name}")
 
 
 # detector phase
-def run_all_code_detectors(files) -> Dict[str, Dict]:
+def run_all_text_detectors(files) -> Dict[str, Dict]:
     """
-    Runs all registered detector functions over all code files.
+    Runs all registered detector functions over all text files.
 
     Returns:
         {
@@ -54,13 +54,13 @@ def run_all_code_detectors(files) -> Dict[str, Dict]:
         }
     """
 
-    results = {name: {"hits": 0, "evidence": []} for name in CODE_DETECTOR_FUNCTIONS}
+    results = {name: {"hits": 0, "evidence": []} for name in TEXT_DETECTOR_FUNCTIONS}
 
     for file in files:
         file_text = file.get("content", "")
         file_name = file.get("file_name", "")
 
-        for detector_name, detector_fn in CODE_DETECTOR_FUNCTIONS.items():
+        for detector_name, detector_fn in TEXT_DETECTOR_FUNCTIONS.items():
             hit, evidence_list = detector_fn(file_text, file_name)
 
             if hit:
@@ -76,7 +76,7 @@ def aggregate_into_buckets(detector_results: Dict[str, Dict]):
 
     bucket_output = {}
 
-    for bucket in CODE_SKILL_BUCKETS:
+    for bucket in TEXT_SKILL_BUCKETS:
         signals_found = 0
         bucket_evidence = []
 
@@ -96,7 +96,3 @@ def aggregate_into_buckets(detector_results: Dict[str, Dict]):
         }
 
     return bucket_output
-
-
-def extract_text_skills(conn, user_id, project_name, classification, files):
-    pass
