@@ -38,7 +38,7 @@ def build_collaboration_metrics(token, owner, repo, username):
         for review in pr_review_data.get("reviews", []):
             timestamp = review.get("submitted_at")
             if timestamp:
-                review_timestamps.append(timestamp)
+                review_timestamps.append(datetime.fromisoformat(timestamp.replace("Z", "")))
 
         for comment in pr_review_data.get("review_comments", []):
             review_comments.append(comment.get("body", ""))
