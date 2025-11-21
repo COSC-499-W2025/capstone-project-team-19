@@ -7,92 +7,91 @@ from src.analysis.skills.buckets.text_buckets import TEXT_SKILL_BUCKETS
 from src.db import insert_project_skill
 
 
-def extract_text_skills(conn, user_id, project_name, classification, files):
+def extract_text_skills(
+    main_text,
+    supporting_texts,
+    csv_metadata,
+    project_name,
+    user_id,
+    conn,
+):
     """
-    Main entry point for extracting text-related skills from a project.
-    Steps:
-        1. Run detectors
-        2. Aggregate results into skill buckets
-        3. Compute skill scores + levels
-        4. Save results in the DB
+    Runs all detectors, aggregates into buckets, computes overall score,
+    stores results in DB, and returns bucket summary for printing.
     """
 
-    print(f"\n[SKILL EXTRACTION] Running TEXT skill extraction for {project_name}")
+    # ------------------------------
+    # 1. Format files for detectors
+    # ------------------------------
+    files = [{"file_name": "MAIN", "content": main_text}]
+    for s in supporting_texts:
+        files.append({"file_name": s["filename"], "content": s["text"]})
 
-    detector_results = run_all_text_detectors(files)
+    # ------------------------------
+    # 2. RUN ALL DETECTORS
+    # Each detector returns:
+    #     { "score": float, "evidence": [...] }
+    # ------------------------------
+    detector_results = {}
+    for name, fn in TEXT_DETECTOR_FUNCTIONS.items():
 
-    bucket_results = aggregate_into_buckets(detector_results)
+        # Pass extra parameters only to relevant detectors
+        if name == "detect_iterative_process":
+            out = fn(main_text, "MAIN", supporting_files=supporting_texts)
+        elif name == "detect_planning_behavior":
+            out = fn(main_text, "MAIN", supporting_files=supporting_texts)
+        elif name == "detect_data_collection":
+            out = fn(main_text, "MAIN", csv_metadata=csv_metadata)
+        else:
+            out = fn(main_text, "MAIN")
 
-    # save the skills/buckets to the database
-    for bucket_name, bucket_data in bucket_results.items():
+        detector_results[name] = out
+
+    # ------------------------------
+    # 3. AGGREGATE INTO BUCKETS
+    # bucket score = average of detector scores in bucket
+    # ------------------------------
+    bucket_output = {}
+
+    for bucket in TEXT_SKILL_BUCKETS:
+        bucket_scores = []
+        bucket_evidence = []
+
+        for det in bucket.detectors:
+            if det in detector_results:
+                bucket_scores.append(detector_results[det]["score"])
+                bucket_evidence.extend(detector_results[det]["evidence"])
+
+        if bucket_scores:
+            score = sum(bucket_scores) / len(bucket_scores)
+        else:
+            score = 0
+
+        bucket_output[bucket.name] = {
+            "description": bucket.description,
+            "score": score,
+            "evidence": bucket_evidence,
+        }
+
+        # Store in DB
         insert_project_skill(
             conn=conn,
             user_id=user_id,
             project_name=project_name,
-            skill_name=bucket_name,
-            level=bucket_data["level"],
-            score=bucket_data["score"],
-            evidence=json.dumps(bucket_data["evidence"])
+            skill_name=bucket.name,
+            level=score_to_level(score),
+            score=score,
+            evidence=json.dumps(bucket_evidence),
         )
 
     conn.commit()
-    print(f"[SKILL EXTRACTION] Completed text skill extraction for: {project_name}")
 
+    # ------------------------------
+    # 4. OVERALL PROJECT SCORE
+    # ------------------------------
+    overall_score = sum(b["score"] for b in bucket_output.values()) / len(bucket_output)
 
-# detector phase
-def run_all_text_detectors(files) -> Dict[str, Dict]:
-    """
-    Runs all registered detector functions over all text files.
-
-    Returns:
-        {
-            'detector_name': {
-                'hits': int,
-                'evidence': [ { file, line, snippet }, ... ]
-            },
-            ...
-        }
-    """
-
-    results = {name: {"hits": 0, "evidence": []} for name in TEXT_DETECTOR_FUNCTIONS}
-
-    for file in files:
-        file_text = file.get("content", "")
-        file_name = file.get("file_name", "")
-
-        for detector_name, detector_fn in TEXT_DETECTOR_FUNCTIONS.items():
-            hit, evidence_list = detector_fn(file_text, file_name)
-
-            if hit:
-                results[detector_name]["hits"] += 1
-                results[detector_name]["evidence"].extend(evidence_list)
-
-    return results
-
-
-# aggregate buckets
-def aggregate_into_buckets(detector_results: Dict[str, Dict]):
-    """Convert raw detector output into bucket-level skill scores + evidence."""
-
-    bucket_output = {}
-
-    for bucket in TEXT_SKILL_BUCKETS:
-        signals_found = 0
-        bucket_evidence = []
-
-        for detector_name in bucket.detectors:
-            if detector_name in detector_results:
-                if detector_results[detector_name]["hits"] > 0:
-                    signals_found += 1
-                    bucket_evidence.extend(detector_results[detector_name]["evidence"])
-
-        score = signals_found / bucket.total_signals
-        level = score_to_level(score)
-
-        bucket_output[bucket.name] = {
-            "score": score,
-            "level": level,
-            "evidence": bucket_evidence,
-        }
-
-    return bucket_output
+    return {
+        "overall_score": overall_score,
+        "buckets": bucket_output
+    }

@@ -84,8 +84,6 @@ def run_text_pipeline(
         folder = f["file_path"].replace("\\", "/").split("/")[0]
         projects.setdefault(folder, []).append(f)
 
-    results = []
-
     for project_name, files in projects.items():
         print(f"\n→ {project_name}")
         files_sorted = sorted(files, key=lambda x: x["file_name"])
@@ -126,7 +124,7 @@ def run_text_pipeline(
             summary = prompt_manual_summary(main_file["file_name"])
 
         # --- Skill detection ---
-        skills = extract_text_skills(
+        skill_result = extract_text_skills(
             main_text=main_text,
             supporting_texts=supporting_texts,
             csv_metadata=csv_metadata,
@@ -135,19 +133,19 @@ def run_text_pipeline(
             conn=conn,
         )
 
-        # --- Final output: ONLY summary ---
+        # --- Final output: ONLY summary and skills ---
         print("\nSummary:")
         print(textwrap.fill(summary, width=80, subsequent_indent="  "))
 
-        print("\nSkills shown:")
-        for skill in skills:
-            print(f"  • {skill}")
+        print("\nSkill Scores:")
+        print("-" * 60)
 
-    print(f"\n{'=' * 80}")
-    print("Text analysis completed.")
-    print(f"{'=' * 80}\n")
+        for bucket_name, data in skill_result["buckets"].items():
+            print(f"{bucket_name:20s}  score={data['score']:.2f}   ({data['description']})")
 
-    return results
+        print("-" * 60)
+        print(f"OVERALL PROJECT SCORE: {skill_result['overall_score']:.2f}")
+        print("-" * 60)
 
 
 # ----------------- Helpers -----------------
