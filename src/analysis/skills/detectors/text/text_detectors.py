@@ -5,6 +5,8 @@ Each detector should return:
     (hit: bool, evidence: list[dict])
 """
 
+from src.analysis.text_individual.alt_analyze import analyze_linguistic_complexity
+
 
 def detect_sentence_clarity(file_text: str, file_name: str):
     """Detect clear and concise sentence structures."""

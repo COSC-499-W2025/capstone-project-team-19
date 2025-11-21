@@ -214,7 +214,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
     # If nothing left, we're done
     if not (pending_individual or pending_collab):
         print("\nAll requested analyses completed.")
-        _run_skill_extraction_for_all(conn, user_id, assignments)
+        # _run_skill_extraction_for_all(conn, user_id, assignments)
+        # commented out skill extraction after all analyses, to avoid double extraction for text files
         return
 
     # ---- Exit loop: if user chooses not to exit, run whatever is still pending ----
@@ -239,7 +240,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
                 pending_collab = False
 
     print("\nAll requested analyses completed.")
-    _run_skill_extraction_for_all(conn, user_id, assignments)
+    # _run_skill_extraction_for_all(conn, user_id, assignments)
+    # commented out skill extraction after all analyses, to avoid double extraction for text files
 
 
 

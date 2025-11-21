@@ -8,6 +8,7 @@ from src.utils.helpers import extract_text_file
 from .csv_analyze import analyze_all_csv
 from .llm_summary import generate_text_llm_summary
 from .alt_summary import prompt_manual_summary
+from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 
 
 def run_text_pipeline(
@@ -124,27 +125,23 @@ def run_text_pipeline(
         else:
             summary = prompt_manual_summary(main_file["file_name"])
 
-        # --- Skill detection (placeholder; later wired to detectors) ---
-        skills = _compute_text_skills_placeholder()
+        # --- Skill detection ---
+        skills = extract_text_skills(
+            main_text=main_text,
+            supporting_texts=supporting_texts,
+            csv_metadata=csv_metadata,
+            project_name=project_name,
+            user_id=user_id,
+            conn=conn,
+        )
 
-        # --- Final output: ONLY summary + skills ---
+        # --- Final output: ONLY summary ---
         print("\nSummary:")
         print(textwrap.fill(summary, width=80, subsequent_indent="  "))
 
         print("\nSkills shown:")
         for skill in skills:
             print(f"  • {skill}")
-
-        results.append(
-            {
-                "project_name": project_name,
-                "file_name": main_file["file_name"],
-                "file_path": main_file["file_path"],
-                "summary": summary,
-                "skills": skills,
-                # CSV metadata is available for detectors via csv_metadata if needed
-            }
-        )
 
     print(f"\n{'=' * 80}")
     print("Text analysis completed.")
