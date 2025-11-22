@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS non_llm_code_individual(
     high_complexity_files INTEGER,
     low_maintainability_files INTEGER,
     radon_details_json TEXT,
-    lizar_details_json TEXT,
+    lizard_details_json TEXT,
     generated_at TEXT DEFAULT(datetime('now')),
     UNIQUE(metrics_id),
     FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE

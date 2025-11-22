@@ -19,6 +19,7 @@ from src.analysis.code_collaborative.code_collaborative_analysis import analyze_
 from src.integrations.google_drive.process_project_files import process_project_files
 from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
 from src.db.project_summaries import save_project_summary
+from src.db.code_metrics import store_code_complexity_metrics, store_code_llm_metrics
 import json
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
 from src.models.project_summary import ProjectSummary
@@ -419,7 +420,12 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
         parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
         if parsed_files:
             print(f"\n[COLLABORATIVE-CODE] Running LLM-based summary for '{project_name}'...")
-            run_code_llm_analysis(parsed_files, zip_path, project_name)
+            classification_id = get_classification_id(conn, user_id, project_name)
+            llm_result = run_code_llm_analysis(parsed_files, zip_path, project_name)
+            if llm_result and classification_id:
+                project_summary = llm_result.get('project_summary')
+                if project_summary:
+                    store_code_llm_metrics(conn, classification_id, project_summary)
         else:
             print(f"[COLLABORATIVE-CODE] No code files found for '{project_name}'.")
 
@@ -462,9 +468,12 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     # --- Run LLM summary LAST, and only once ---
     if current_ext_consent == "accepted":
         print(f"\n[INDIVIDUAL-CODE] Running LLM-based summary for '{project_name}'...")
+        classification_id=get_classification_id(conn, user_id, project_name)
         llm_results = run_code_llm_analysis(parsed_files, zip_path, project_name)
         if summary and llm_results:
             summary.summary_text = llm_results.get("project_summary")
+            if classification_id:
+                store_code_llm_metrics(conn, classification_id, summary.summary_text) 
             summary.contributions["llm_contribution_summary"] = llm_results.get("contribution_summary")
     else:
         print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")
@@ -522,8 +531,12 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
 #commenting out to be fixed next pr
     else:
         # --- Run non-LLM code analysis (static + Git metrics) ---
-        run_code_non_llm_analysis(conn, user_id, project_name, zip_path, summary=summary)
-
+        classification_id=get_classification_id(conn, user_id, project_name)
+        code_analysis_result = run_code_non_llm_analysis(conn, user_id, project_name, zip_path)
+        if code_analysis_result and classification_id:
+            complexity_data = code_analysis_result.get('complexity_data')
+            if complexity_data and complexity_data.get('summary'):
+                store_code_complexity_metrics(conn, classification_id, complexity_data['summary'])
 
 def _run_skill_extraction_for_all(conn, user_id, assignments):
     for project_name in assignments.keys():
