@@ -8,7 +8,12 @@ from groq import Groq
 load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-def run_code_llm_analysis(parsed_files, zip_path, project_name=None):
+def run_code_llm_analysis(
+    parsed_files,
+    zip_path,
+    project_name=None
+) -> Optional[Dict[str, Any]]:
+
     if not isinstance(parsed_files, list):
         return None
         

@@ -261,6 +261,8 @@ CREATE TABLE IF NOT EXISTS project_summaries (
     created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, project_name),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS project_skills (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
