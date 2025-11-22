@@ -34,3 +34,34 @@ def compute_collaboration_profile(
             "leadership": leadership,
         }
     }
+
+def classify_level(value: float, max_value: float) -> str:
+    if max_value <= 0:
+        return "Beginner"
+    
+    ratio = value / max_value
+
+    if ratio < 0.33:
+        return "Beginner"
+    elif ratio < 0.66:
+        return "Intermediate"
+    else:
+        return "Advanced"
+    
+def compute_skill_levels(profile: dict) -> dict:
+    skills = profile["skills"]
+
+    review_q = skills["review_quality"]["score"]
+    participation = skills["participation"]["activity_score"]
+
+    c = skills["consistency"]
+    consistency_score = c["active_weeks"] - c["burstiness"]
+
+    leadership = skills["leadership"]["leadership_score"]
+
+    return {
+        "review_quality": classify_level(review_q, 5),
+        "participation": classify_level(participation, 20),
+        "consistency": classify_level(consistency_score, 12),
+        "leadership": classify_level(leadership, 20),
+    }
