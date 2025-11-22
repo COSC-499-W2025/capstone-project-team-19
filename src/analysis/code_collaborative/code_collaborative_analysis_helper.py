@@ -449,6 +449,7 @@ def compute_metrics(project: str,
     lang_loc = Counter()
     folder_loc = Counter()
     file_loc = Counter()
+    file_commits = Counter()  # Track commits per file
 
     for c in your_commits:
         ns = c.get("name_status", {})
@@ -468,6 +469,7 @@ def compute_metrics(project: str,
                 lang_loc[_ext(p)] += loc
                 folder_loc[_top_folder(p)] += loc
                 file_loc[p] += loc
+                file_commits[p] += 1  # Count this commit for this file
 
     net = add_sum - del_sum
 
@@ -526,6 +528,10 @@ def compute_metrics(project: str,
             "languages": langs_pct,
             "folders": folders_pct,
             "top_files": top_files,
+        },
+        "file_contributions": {
+            "file_loc": dict(file_loc),  # Convert Counter to dict
+            "file_commits": dict(file_commits),
         },
     }
 

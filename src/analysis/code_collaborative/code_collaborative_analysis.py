@@ -2,7 +2,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Optional, Dict
 
-from src.db import store_github_account
+from src.db import store_github_account, store_file_contributions
 from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
 from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo, get_gh_repo_name_and_owner
@@ -143,6 +143,23 @@ def analyze_code_project(conn: sqlite3.Connection,
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path)
     if frameworks:
         metrics.setdefault("focus", {})["frameworks"] = sorted(frameworks)
+
+    # 7.5) save file contributions to database for skill extraction filtering
+    file_contributions_data = metrics.get("file_contributions", {})
+    if file_contributions_data:
+        file_loc = file_contributions_data.get("file_loc", {})
+        file_commits = file_contributions_data.get("file_commits", {})
+
+        # Build the format expected by store_file_contributions
+        contributions_dict = {}
+        for file_path in file_loc.keys():
+            contributions_dict[file_path] = {
+                "lines_changed": file_loc.get(file_path, 0),
+                "commits_count": file_commits.get(file_path, 0)
+            }
+
+        if contributions_dict:
+            store_file_contributions(conn, user_id, project_name, contributions_dict)
 
     # 8) print
     print_project_card(metrics)
