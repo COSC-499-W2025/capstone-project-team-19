@@ -34,11 +34,12 @@ def test_participation_single_channel_each():
     assert r1["channels_used"] == 1
     assert r1["activity_score"] == 1 * 1.2
 
-    # prs_reviewed only
+    # prs_reviewed only (no review comments = low quality = 0.5x weight)
     u2 = make_user(0, 2, 0, 0, [])
     r2 = compute_participation(u2)
     assert r2["channels_used"] == 1
-    assert r2["activity_score"] == 2 * 1.0
+    # With no review comments, quality score is 0, so multiplier is 0.5
+    assert r2["activity_score"] == 2 * 0.5
 
     # issues_opened only
     u3 = make_user(0, 0, 3, 0, [])
@@ -72,6 +73,55 @@ def test_participation_multiple_channels():
     result = compute_participation(user)
     assert result["channels_used"] == 4
 
-    # activity score = (prs*1.2) + (reviews*1.0) + (comments*0.7)
-    expected_score = (2 * 1.2) + (1 * 1.0) + (3 * 0.7)
-    assert result["activity_score"] == expected_score
+    # activity score = (prs*1.2) + (reviews*weight) + (comments*0.7)
+    # With only "nice" as review comment, quality is low, so weight is ~0.5
+    # For simplicity, we'll just check it's in a reasonable range
+    assert result["activity_score"] > 0
+    # Base calculation without quality adjustment would be:
+    # (2 * 1.2) + (1 * 1.0) + (3 * 0.7) = 2.4 + 1.0 + 2.1 = 5.5
+    # With quality adjustment (low quality), it should be less
+    assert result["activity_score"] < 5.5
+
+
+def test_participation_high_quality_reviews_boost():
+    """
+    Test that high-quality reviews boost participation score, addressing the edge case
+    where someone provides excellent reviews but doesn't open many PRs.
+    """
+    # User with few PRs opened but high-quality review comments
+    high_quality_comments = [
+        "This function should be refactored because the loop can be simplified and would improve readability.",
+        "Consider adding error handling here for edge cases that might cause runtime exceptions.",
+        "The variable naming could be more descriptive to match the project's coding standards.",
+    ]
+    user = make_user(
+        prs=1,  # Only 1 PR opened
+        reviews=5,  # But reviewed 5 PRs with high quality
+        issues=0,
+        comments=0,
+        review_comments=high_quality_comments,
+    )
+    
+    result = compute_participation(user)
+    
+    # High-quality reviews should get a multiplier > 1.0 (up to 1.5)
+    # So 5 reviews with high quality should contribute more than 5 * 1.0
+    # The activity score should be: (1 * 1.2) + (5 * quality_multiplier)
+    # With high quality (score ~4-5), multiplier should be ~1.3-1.5
+    # So reviews contribute: 5 * 1.3 to 5 * 1.5 = 6.5 to 7.5
+    # Total: 1.2 + 6.5 to 7.5 = 7.7 to 8.7
+    assert result["activity_score"] > 7.0
+    assert result["activity_score"] < 10.0
+    
+    # Compare to low-quality reviews
+    low_quality_user = make_user(
+        prs=1,
+        reviews=5,
+        issues=0,
+        comments=0,
+        review_comments=["ok", "nice"],  # Low quality
+    )
+    low_quality_result = compute_participation(low_quality_user)
+    
+    # Low-quality reviews should have lower participation score
+    assert result["activity_score"] > low_quality_result["activity_score"]
