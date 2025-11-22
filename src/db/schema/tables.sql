@@ -249,6 +249,20 @@ CREATE TABLE IF NOT EXISTS github_repo_metrics (
     UNIQUE (user_id, project_name, repo_owner, repo_name)
 );
 
+-- PROJECT SUMMARIES
+
+CREATE TABLE IF NOT EXISTS project_summaries (
+    project_summary_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id             INTEGER NOT NULL,
+    project_name        TEXT NOT NULL,
+    project_type        TEXT,
+    project_mode        TEXT,
+    summary_json        TEXT NOT NULL,
+    created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, project_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS project_skills (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
