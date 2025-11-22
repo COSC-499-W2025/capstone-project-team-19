@@ -12,3 +12,8 @@ def run_code_non_llm_analysis(conn, user_id, project_name, zip_path):
     git_data = analyze_git_individual_project(conn, user_id, project_name, zip_path)
     if git_data and git_data.get('has_git'):
         display_git_results(git_data)
+
+    return {
+        'complexity_data': complexity_data,
+        'git_data': git_data
+    }

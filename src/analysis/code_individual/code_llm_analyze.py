@@ -63,12 +63,19 @@ def run_code_llm_analysis(parsed_files, zip_path, project_name=None):
         contribution_summary,
         mode="COLLABORATIVE" if "collab" in project_name.lower() else "INDIVIDUAL",
     )
-        
+
     print(f"\n{'='*80}")
     print("PROJECT SUMMARY - (LLM-based results: summaries)")
     print(f"{'='*80}\n")
     print(f"All insights successfully generated for: {zip_name}.")
     print(f"\n{'='*80}\n")
+
+    return {
+        "project_name": project_name,
+        "project_summary": project_summary,
+        "contribution_summary": contribution_summary,
+        "mode": "COLLABORATIVE" if "collab" in project_name.lower() else "INDIVIDUAL"
+    }
 
 
 def display_code_llm_results(project_name, project_summary, contribution_summary, mode="INDIVIDUAL"):
