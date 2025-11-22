@@ -15,6 +15,7 @@ import json
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
 from src.analysis.text_individual.csv_analyze import run_csv_analysis
 from src.models.project_summary import ProjectSummary
+from src.analysis.skills.flows.skill_extraction import extract_skills
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -234,6 +235,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
     # If nothing left, we're done
     if not (pending_individual or pending_collab):
         print("\nAll requested analyses completed.")
+        _run_skill_extraction_for_all(conn, user_id, assignments)
         return
 
     # ---- Exit loop: if user chooses not to exit, run whatever is still pending ----
@@ -258,6 +260,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
                 pending_collab = False
 
     print("\nAll requested analyses completed.")
+    _run_skill_extraction_for_all(conn, user_id, assignments)
 
 
 
@@ -459,3 +462,6 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
         # --- Run non-LLM code analysis (static + Git metrics) ---
         run_code_non_llm_analysis(conn, user_id, project_name, zip_path, summary=summary)
 
+def _run_skill_extraction_for_all(conn, user_id, assignments):
+    for project_name in assignments.keys():
+        extract_skills(conn, user_id, project_name)

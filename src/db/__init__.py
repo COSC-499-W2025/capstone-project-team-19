@@ -32,6 +32,7 @@ from .projects import (
     record_project_classifications,
     get_project_classifications,
     get_classification_id,
+    get_project_metadata
 )
 
 # GitHub repository operations
@@ -72,6 +73,9 @@ from .contributions import (
 # Token operations
 from .tokens import save_token_placeholder
 
+# skills
+from .skills import insert_project_skill
+
 __all__ = [
     "connect",
     "init_schema",
@@ -96,4 +100,6 @@ __all__ = [
     "store_text_contribution_revision",
     "store_text_contribution_summary",
     "save_token_placeholder",
+    "get_project_metadata",
+    "insert_project_skill"
 ]
