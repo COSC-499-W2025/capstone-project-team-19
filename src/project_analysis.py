@@ -16,6 +16,7 @@ from src.analysis.code_collaborative.code_collaborative_analysis import analyze_
 from src.analysis.text_individual.csv_analyze import run_csv_analysis
 from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
+from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -295,33 +296,54 @@ def run_individual_analysis(conn, user_id, project_name, project_type, current_e
 
 def analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary):
     """
-    Analyze collaborative text projects by connecting to Google Drive.
-    
-    This function orchestrates the Google Drive setup and file linking process.
-    The actual contribution analysis will be done in a later phase.
-    Adding option for skipping connecting to Google Drive needs to be added later.
+    Analyze collaborative text projects with an optional Google Drive connection.
+    If Google Drive connection is skipped or fails, fallback to manual text contribution mode.
     """
-    from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
-    
-    # Set up Google Drive connection and link files
-    result = setup_text_project_drive_connection(conn, user_id, project_name)
-    
-    if not result['success']:
-        # Setup failed - error messages already printed by setup function
+
+    print(f"[COLLABORATIVE] Preparing TEXT contribution analysis for '{project_name}'")
+
+    while True:
+        choice = input(
+            "\nThis project is TEXT-based.\n"
+            "Do you want to connect Google Drive to analyze revision history? (y/n): "
+        ).strip().lower()
+
+        if choice in {"y", "yes"}:
+            use_drive = True
+            break
+        elif choice in {"n", "no"}:
+            use_drive = False
+            break
+        else:
+            print("Please enter 'y' or 'n'.")
+
+    if not use_drive:
+        print("[TEXT-COLLAB] Google Drive connection skipped. Using manual contribution mode.")
+        _run_manual_text_contribution_flow(conn, user_id, project_name, summary)
         return
-    
-    # We need the Google Drive service from the setup
+
+    result = setup_text_project_drive_connection(conn, user_id, project_name)
+
+    if not result['success']:
+        print("\n[TEXT-COLLAB] Google Drive connection failed.")
+        print("Falling back to manual contribution mode.\n")
+        _run_manual_text_contribution_flow(conn, user_id, project_name, summary)
+        return
+
     creds = result.get("creds")
     drive_service = result.get("drive_service")
     docs_service = result.get("docs_service")
-    if not drive_service or not docs_service:
-        print("Drive connection succeeded but required services missing — skipping analysis.")
-        return
-    user_email = result.get("user_email")
-    print("\n[CONTRIBUTION ANALYSIS] Beginning revision analysis on linked files...")
 
-    # Main processing pipeline
-    result = process_project_files(
+    if not drive_service or not docs_service:
+        print("\n[TEXT-COLLAB] Google Drive connected but required services missing.")
+        print("Falling back to manual contribution mode.\n")
+        _run_manual_text_contribution_flow(conn, user_id, project_name, summary)
+        return
+
+    user_email = result.get("user_email")
+    print("\n[TEXT-COLLAB] Starting Google Drive revision analysis...")
+
+    drive_result = process_project_files(
         conn=conn,
         creds=creds,
         drive_service=drive_service,
@@ -331,10 +353,10 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
         user_email=user_email
     )
 
-    if summary and result:
-        summary.contributions["google_drive"] = result
+    if summary and drive_result:
+        summary.contributions["google_drive"] = drive_result
 
-    print("Contribution analysis complete.")
+    print("[TEXT-COLLAB] Google Drive contribution analysis complete.")
     
    
 
