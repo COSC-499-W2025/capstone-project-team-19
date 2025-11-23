@@ -19,7 +19,6 @@ from src.db import get_classification_id, store_text_offline_metrics, store_text
 from src.db.project_summaries import save_project_summary
 import json
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
-from src.analysis.text_individual.csv_analyze import run_csv_analysis
 from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
 

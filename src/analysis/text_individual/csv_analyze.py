@@ -1,5 +1,3 @@
-# src/analysis/text_individual/csv_analyze.py
-
 import os
 import pandas as pd
 import numpy as np

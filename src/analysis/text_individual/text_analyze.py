@@ -1,5 +1,3 @@
-# src/analysis/text_individual/text_analyze.py
-
 import os
 import textwrap
 from typing import List, Dict
