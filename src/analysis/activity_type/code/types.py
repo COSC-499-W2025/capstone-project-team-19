@@ -58,3 +58,4 @@ class ActivitySummary:
     # Top items
     top_file: Optional[str] = None
     top_pr: Optional[str] = None
+    top_pr_title: Optional[str] = None

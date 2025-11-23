@@ -4,10 +4,8 @@ Uses fetch.py + labeler.py to get events, then aggregates counts and top files.
 """
 
 from __future__ import annotations
-
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
-
 from .fetch import (
     get_project_classification,
     get_project_files,
@@ -19,10 +17,12 @@ from .fetch import (
 )
 from .labeler import label_file_event, label_pr_event
 from .types import ActivityEvent, ActivitySummary, ActivityType, Scope
-
+from collections import Counter
+from typing import Dict, Optional, Tuple
+from .types import ActivityType, ActivityEvent
 
 def _aggregate_per_activity(
-    events: List[ActivityEvent],
+    events: list[ActivityEvent],
 ) -> Tuple[
     Dict[ActivityType, Dict[str, Optional[str]]],  # per_activity_files
     Dict[ActivityType, Dict[str, Optional[str]]],  # per_activity_prs
@@ -31,21 +31,27 @@ def _aggregate_per_activity(
     int,                                           # total_pr_events
     Optional[str],                                 # top_file_overall
     Optional[str],                                 # top_pr_overall
+    Optional[str],                                 # top_pr_title_overall
 ]:
     """
-    Return:
-      - per-activity for files, PRs, and combined
-      - total counts for files/PRs
-      - global top file / top PR (for footer)
-    """
-    from collections import Counter
+    Aggregate events into per-activity stats for:
+      - file-only events
+      - PR-only events
+      - combined (files + PRs)
 
-    # Counts per activity
+    Also returns:
+      - total file events
+      - total PR events
+      - overall top file path
+      - overall top PR id
+      - overall top PR title
+    """
+    # Counts per activity type
     total_counts: Counter[ActivityType] = Counter()
     file_counts: Counter[ActivityType] = Counter()
     pr_counts: Counter[ActivityType] = Counter()
 
-    # File path counts per activity
+    # File paths per activity (files-only vs combined)
     file_paths_files: Dict[ActivityType, Counter[str]] = {
         at: Counter() for at in ActivityType
     }
@@ -53,20 +59,21 @@ def _aggregate_per_activity(
         at: Counter() for at in ActivityType
     }
 
-    # PR id/title counts per activity
+    # PR ids per activity
     pr_ids_per_activity: Dict[ActivityType, Counter[str]] = {
         at: Counter() for at in ActivityType
     }
 
-    # Global top file / PR
+    # Global top-tracking
     global_file_paths: Counter[str] = Counter()
     global_pr_ids: Counter[str] = Counter()
+    global_pr_titles: Dict[str, str] = {}
 
     for e in events:
         at = e.activity_type
         total_counts[at] += 1
 
-        # Any files attached to the event (mostly file-based events)
+        # Track files (for both file + PR events if they have files)
         for f in e.files:
             if not f:
                 continue
@@ -76,6 +83,7 @@ def _aggregate_per_activity(
             if e.source == "file":
                 file_paths_files[at][f] += 1
 
+        # File vs PR counts
         if e.source == "file":
             file_counts[at] += 1
         elif e.source == "pr":
@@ -84,27 +92,30 @@ def _aggregate_per_activity(
             if pr_id:
                 pr_ids_per_activity[at][pr_id] += 1
                 global_pr_ids[pr_id] += 1
+                # message_text is our best "title" for the PR
+                if e.message_text:
+                    global_pr_titles[pr_id] = e.message_text
 
     per_files: Dict[ActivityType, Dict[str, Optional[str]]] = {}
     per_prs: Dict[ActivityType, Dict[str, Optional[str]]] = {}
     per_total: Dict[ActivityType, Dict[str, Optional[str]]] = {}
 
     for at in ActivityType:
-        # Files
+        # Files-only stats
         f_count = file_counts.get(at, 0)
         f_top = None
         if file_paths_files[at]:
             f_top = file_paths_files[at].most_common(1)[0][0]
         per_files[at] = {"count": f_count, "top_file": f_top}
 
-        # PRs
+        # PR-only stats
         p_count = pr_counts.get(at, 0)
         p_top = None
         if pr_ids_per_activity[at]:
             p_top = pr_ids_per_activity[at].most_common(1)[0][0]
         per_prs[at] = {"count": p_count, "top_pr": p_top}
 
-        # Combined (files + PRs); use overall top file
+        # Combined stats (files + PRs); use overall top file per activity
         t_count = total_counts.get(at, 0)
         t_top_file = None
         if file_paths_total[at]:
@@ -114,13 +125,15 @@ def _aggregate_per_activity(
     total_file_events = sum(file_counts.values())
     total_pr_events = sum(pr_counts.values())
 
-    top_file_overall = None
+    top_file_overall: Optional[str] = None
     if global_file_paths:
         top_file_overall = global_file_paths.most_common(1)[0][0]
 
-    top_pr_overall = None
+    top_pr_overall: Optional[str] = None
+    top_pr_title_overall: Optional[str] = None
     if global_pr_ids:
         top_pr_overall = global_pr_ids.most_common(1)[0][0]
+        top_pr_title_overall = global_pr_titles.get(top_pr_overall)
 
     return (
         per_files,
@@ -130,6 +143,7 @@ def _aggregate_per_activity(
         total_pr_events,
         top_file_overall,
         top_pr_overall,
+        top_pr_title_overall,
     )
 
 def build_activity_summary(
@@ -177,6 +191,7 @@ def build_activity_summary(
         total_pr_events,
         top_file,
         top_pr,
+        top_pr_title,
     ) = _aggregate_per_activity(events)
 
     return ActivitySummary(
@@ -190,4 +205,5 @@ def build_activity_summary(
         per_activity_prs=per_activity_prs,
         top_file=top_file,
         top_pr=top_pr,
+        top_pr_title=top_pr_title,
     )
