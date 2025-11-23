@@ -34,7 +34,7 @@ def store_file_contributions(
         commits_count = stats.get("commits_count", 0)
 
         cursor.execute("""
-            INSERT OR REPLACE INTO user_file_contributions (
+            INSERT OR REPLACE INTO user_code_contributions (
                 user_id,
                 project_name,
                 file_path,
@@ -70,7 +70,7 @@ def get_user_contributed_files(
 
     cursor.execute("""
         SELECT file_path
-        FROM user_file_contributions
+        FROM user_code_contributions
         WHERE user_id = ? AND project_name = ? AND lines_changed >= ?
         ORDER BY lines_changed DESC
     """, (user_id, project_name, min_lines))
@@ -93,7 +93,7 @@ def get_file_contribution_stats(
 
     cursor.execute("""
         SELECT file_path, lines_changed, commits_count
-        FROM user_file_contributions
+        FROM user_code_contributions
         WHERE user_id = ? AND project_name = ?
     """, (user_id, project_name))
 
@@ -121,7 +121,7 @@ def has_contribution_data(
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT COUNT(*) FROM user_file_contributions
+        SELECT COUNT(*) FROM user_code_contributions
         WHERE user_id = ? AND project_name = ?
     """, (user_id, project_name))
 
