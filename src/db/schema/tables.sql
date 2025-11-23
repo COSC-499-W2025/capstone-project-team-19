@@ -405,3 +405,18 @@ CREATE TABLE IF NOT EXISTS github_pr_review_comments (
 
 CREATE INDEX IF NOT EXISTS idx_github_pr_review_comments_lookup
     ON github_pr_review_comments(user_id, project_name, repo_owner, repo_name);
+
+-- Code activity metrics (per user, project, scope, and source)
+CREATE TABLE IF NOT EXISTS code_activity_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL,     -- who + which project
+    project_name TEXT    NOT NULL,
+    scope        TEXT    NOT NULL,  -- 'individual' or 'collaborative'
+    source       TEXT    NOT NULL,  -- where this metric comes from: 'files', 'prs', or 'combined'
+    activity_type TEXT   NOT NULL,  -- 'feature_coding', 'refactoring', 'debugging', 'testing', 'documentation'
+    event_count  INTEGER NOT NULL,
+    total_events INTEGER NOT NULL,
+    percent      REAL    NOT NULL,  -- 0–100
+    recorded_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
