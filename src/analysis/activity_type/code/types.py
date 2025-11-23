@@ -37,7 +37,6 @@ class ActivityEvent:
     files: List[str]          # file paths; empty for PR-only events
     message_text: str         # filename or PR title/body extract
 
-
 @dataclass
 class ActivitySummary:
     """
@@ -45,20 +44,17 @@ class ActivitySummary:
     """
     project_name: str
     scope: Scope
-    duration_start: Optional[str]
-    duration_end: Optional[str]
 
     # Totals
-    total_events: int            # files + PRs
-    total_file_events: int       # only file-based events
-    total_pr_events: int         # only PR-based events
+    total_events: int              # files + PRs
+    total_file_events: int         # only file-based events
+    total_pr_events: int           # only PR-based events
 
-    # Per-activity breakdowns
+    # Activity breakdown
     per_activity: Dict[ActivityType, Dict[str, Optional[str]]]          # combined
     per_activity_files: Dict[ActivityType, Dict[str, Optional[str]]]
     per_activity_prs: Dict[ActivityType, Dict[str, Optional[str]]]
 
-    # Global top items (for footer)
+    # Top items
     top_file: Optional[str] = None
     top_pr: Optional[str] = None
-
