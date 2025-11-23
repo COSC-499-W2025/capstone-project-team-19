@@ -83,7 +83,6 @@ ACTIVITY_TYPES = [
             r"modified",
             r"rev[_\s]?1",
             r"revision[_\s]?1",
-            r"final(?:[_\s]?\d+)?",
             r"final[_\s]?rev"
 
         ],
