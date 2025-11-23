@@ -2,7 +2,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Optional, Dict
 
-from src.db import store_github_account
+from src.db import store_github_account, store_collaboration_profile, store_file_contributions
 from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
 from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo, get_gh_repo_name_and_owner
@@ -11,7 +11,9 @@ from src.utils.framework_detector import detect_frameworks
 from src.utils.language_detector import detect_languages
 from src.utils.helpers import zip_paths  
 from src.integrations.github.github_analysis import fetch_github_metrics
-from src.integrations.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics, print_github_metrics_summary
+from src.integrations.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics, print_github_metrics_summary, store_github_detailed_metrics
+from src.analysis.code_collaborative.github_collaboration.build_collab_metrics import run_collaboration_analysis
+from src.analysis.code_collaborative.github_collaboration.print_collaboration_summary import print_collaboration_summary
 
 from .code_collaborative_analysis_helper import (
     DEBUG,
@@ -144,6 +146,23 @@ def analyze_code_project(conn: sqlite3.Connection,
     if frameworks:
         metrics.setdefault("focus", {})["frameworks"] = sorted(frameworks)
 
+    # 7.5) save file contributions to database for skill extraction filtering
+    file_contributions_data = metrics.get("file_contributions", {})
+    if file_contributions_data:
+        file_loc = file_contributions_data.get("file_loc", {})
+        file_commits = file_contributions_data.get("file_commits", {})
+
+        # Build the format expected by store_file_contributions
+        contributions_dict = {}
+        for file_path in file_loc.keys():
+            contributions_dict[file_path] = {
+                "lines_changed": file_loc.get(file_path, 0),
+                "commits_count": file_commits.get(file_path, 0)
+            }
+
+        if contributions_dict:
+            store_file_contributions(conn, user_id, project_name, contributions_dict)
+
     # 8) print
     print_project_card(metrics)
     # accumulate for portfolio summary
@@ -220,19 +239,23 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir):
 
         # fetch metrics via github REST API then stoe metrics in db
         metrics = fetch_github_metrics(token, owner, repo, gh_username)
+        collab_profile = run_collaboration_analysis(token, owner, repo, gh_username)
+
         if not metrics:
             print("[GitHub] Failed to fetch metrics. Skipping GitHub.")
             return
 
         store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics)
-        
+        store_github_detailed_metrics(conn, user_id, project_name, owner, repo, metrics)
+        store_collaboration_profile(conn, user_id, project_name, owner, repo, collab_profile)
+
         repo_metrics = get_github_repo_metrics(conn, user_id, project_name, owner, repo)
 
         # If all metric sections are empty, skip
         if _metrics_empty(repo_metrics):
             print("No GitHub activity found for this repo.")
         else:
-            print_github_metrics_summary(repo_metrics)
+            print_collaboration_summary(collab_profile)
 
     except Exception as e:
         print(f"[GitHub] Error occurred ({e}). Skipping GitHub and continuing.")

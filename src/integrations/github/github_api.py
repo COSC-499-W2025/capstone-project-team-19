@@ -1,6 +1,7 @@
 import requests
 from collections import defaultdict
 import time
+from datetime import datetime
 
 """
 Takes GitHub OAuth token as input
@@ -126,6 +127,7 @@ def get_gh_repo_issues(token, owner, repo, github_username):
     opened = defaultdict(int)
     closed = defaultdict(int)
     user_issues = []
+    user_issue_comments = []
 
     while True:
         url = f"https://api.github.com/repos/{owner}/{repo}/issues?state=all&per_page=100&page={page}"
@@ -161,6 +163,18 @@ def get_gh_repo_issues(token, owner, repo, github_username):
                     "closed_at": closed_at.split("T")[0] if closed_at else None
                 })
 
+            issue_number = issue["number"]
+            comments = get_issue_comments(token, owner, repo, issue_number)
+
+            # extract user comments
+            for c in comments:
+                if c.get("user", {}).get("login") == github_username:
+                    user_issue_comments.append({
+                        "issue_number": issue_number,
+                        "body": c.get("body", "") or "",
+                        "created_at": c.get("created_at", "")
+                    })
+
         if len(data) < 100: break # break if no more pages
 
         page += 1
@@ -170,8 +184,22 @@ def get_gh_repo_issues(token, owner, repo, github_username):
         "closed": dict(closed),
         "total_opened": sum(opened.values()),
         "total_closed": sum(closed.values()),
-        "user_issues": user_issues
+        "user_issues": user_issues,
+        "user_issue_comments": user_issue_comments
     }
+
+def get_issue_comments(token, owner, repo, issue_number):
+    """
+    Fetch all comments on a specific issue.
+    """
+    url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments"
+    data = gh_get(token, url)
+
+    if not data or isinstance(data, dict):
+        return []
+
+    # return full comment objects for filtering later
+    return data
 
 def get_gh_repo_prs(token, owner, repo, github_username):
     page = 1
@@ -203,6 +231,7 @@ def get_gh_repo_prs(token, owner, repo, github_username):
                 merged[merged_date] += 1
 
             user_prs.append({
+                "number": pr.get("number"),
                 "title": title,
                 "body": body,
                 "labels": labels,
@@ -224,6 +253,10 @@ def get_gh_repo_prs(token, owner, repo, github_username):
     }        
 
 def get_gh_repo_contributions(token, owner, repo, github_username):
+    """
+    Return user commit stats AND team-wide additions/deletions.
+    Keeps all your existing error handling.
+    """
     url = f"https://api.github.com/repos/{owner}/{repo}/stats/contributors"
         
     # Retry locally because GitHub sometimes returns {"message":"202"}
@@ -249,11 +282,18 @@ def get_gh_repo_contributions(token, owner, repo, github_username):
         "contribution_percent": 0.0
     }
 
+    team_additions = 0
+    team_deletions = 0
     total_repo_commits = 0
     user_total = 0
 
     for contributor in data:
         total_repo_commits += contributor.get("total", 0)
+
+        # sum team-wide additions/deletions
+        for week in contributor.get("weeks", []):
+            team_additions += week.get("a", 0)
+            team_deletions += week.get("d", 0)
 
         if contributor.get("author", {}).get("login") == github_username:
             user_total = contributor.get("total", 0)
@@ -268,4 +308,84 @@ def get_gh_repo_contributions(token, owner, repo, github_username):
             (user_total / total_repo_commits) * 100, 2
         )
 
-    return user_stats
+    return {
+        "user": user_stats,
+        "team": {
+            "total_commits": total_repo_commits,
+            "total_additions": team_additions,
+            "total_deletions": team_deletions
+        }
+    }
+
+# review fetching
+def get_gh_pr_reviews(token, owner, repo, pull_number):
+    """
+    Fetch all review events on a pull request.
+    GitHub API: 
+    GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews
+    """
+    url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
+    return gh_get(token, url)
+
+def get_gh_pr_review_comments(token, owner, repo, pull_number):
+    """
+    Fetch review comments left on a pull request (inline code comments).
+    GitHub API:
+    GET /repos/{owner}/{repo}/pulls/{pull_number}/comments
+    """
+    url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/comments"
+    return gh_get(token, url)
+
+def get_gh_reviews_for_repo(token, owner, repo, pulls):
+    """
+    Fetch reviews + review comments for multiple PRs.
+    Returns data in a structured form for later analysis layers.
+    
+    pulls: list[int] of PR numbers
+    """
+    review_data = {}
+
+    for pr in pulls:
+        review_data[pr] = {
+            "reviews": get_gh_pr_reviews(token, owner, repo, pr),
+            "review_comments": get_gh_pr_review_comments(token, owner, repo, pr),
+        }
+
+    return review_data  
+
+def get_repo_commit_timestamps(token, owner, repo):
+    """
+    Fetch timestamps for ALL commits in the repo.
+    Returns a list of datetime objects.
+    Preserves all existing gh_get error-handling semantics.
+    """
+    page = 1
+    timestamps = []
+
+    while True:
+        url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page=100&page={page}"
+        data = gh_get(token, url)
+
+        # If GitHub gives nothing or returns an error object, stop
+        if not data or isinstance(data, dict): break
+
+        for commit in data:
+            ts_str = commit["commit"]["author"]["date"]  # e.g. "2024-06-01T14:22:12Z"
+
+            # Convert ISO timestamp string into datetime
+            try:
+                # Remove 'Z' because Python's fromisoformat doesn't accept it
+                clean = ts_str.replace("Z", "")
+                ts_dt = datetime.fromisoformat(clean)
+                timestamps.append(ts_dt)
+            except Exception:
+                # ignore malformed timestamps
+                continue
+
+        # No more pages
+        if len(data) < 100:
+            break
+
+        page += 1
+
+    return timestamps

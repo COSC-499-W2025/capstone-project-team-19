@@ -40,6 +40,10 @@ def conn():
             total_deletions INTEGER,
             contribution_percent REAL,
 
+            team_total_commits INTEGER,
+            team_total_additions INTEGER,
+            team_total_deletions INTEGER,
+
             last_synced TEXT DEFAULT (datetime('now')),
             
             UNIQUE(user_id, project_name, repo_owner, repo_name)
