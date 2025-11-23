@@ -24,7 +24,11 @@ ACTIVITY_TYPES = [
             r"brainstorm",
             r"structure",
             r"todo",
-            r"ideas"
+            r"ideas",
+            r"proposal",
+            r"agenda",
+            r"outline.*v1"
+
         ],
         priority=1
     ),
@@ -38,7 +42,11 @@ ACTIVITY_TYPES = [
             r"biblio",
             r"citation",
             r"literature",
-            r"reading"
+            r"reading",
+            r"lit[\s_]?review",
+            r"\blr\b",
+            r"background",
+            r"methodology"
         ],
         priority=2
     ),
@@ -52,7 +60,12 @@ ACTIVITY_TYPES = [
             r"wip",
             r"working",
             r"v1(?:\D|$)",  # v1 specifically
-            r"version[_\s]?1"
+            r"version[_\s]?1",
+            r"draft[_\s]?1",
+            r"\bv0(?:\.\d+)?\b",
+            r"\bv01\b",
+            r"first[\s_]?draft"
+
         ],
         priority=3
     ),
@@ -67,7 +80,12 @@ ACTIVITY_TYPES = [
             r"draft[_\s]?[2-9]",
             r"(?:second|third|2nd|3rd)",
             r"updated?",
-            r"modified"
+            r"modified",
+            r"rev[_\s]?1",
+            r"revision[_\s]?1",
+            r"final(?:[_\s]?\d+)?",
+            r"final[_\s]?rev"
+
         ],
         priority=4
     ),
@@ -80,7 +98,15 @@ ACTIVITY_TYPES = [
             r"\.xlsx?$",
             r"\banalysis\b",
             r"\bresults?\b",
-            r"\bstats?\b"
+            r"\bstats?\b",
+            r"raw[_\s]?data",
+            r"cleaned[_\s]?data",
+            r"dataset",
+            r"features?",
+            r"metrics?",
+            r"experiment",
+            r"run\d+"
+
         ],
         priority=5
     )
