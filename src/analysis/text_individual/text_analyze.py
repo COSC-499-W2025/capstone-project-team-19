@@ -146,6 +146,17 @@ def run_text_pipeline(
         print("-" * 60)
         print(f"OVERALL PROJECT SCORE: {skill_result['overall_score']:.2f}")
         print("-" * 60)
+        
+        # ----------------------------------------------------------
+        # RETURN structured results for project_analysis integration
+        # ----------------------------------------------------------
+        return {
+            "project_summary": summary,
+            "skills": skill_result.get("skills", []),
+            "buckets": skill_result.get("buckets", {}),
+            "overall_score": skill_result.get("overall_score"),
+            "main_file": main_file["file_name"],
+        }
 
 
 # ----------------- Helpers -----------------
@@ -193,20 +204,3 @@ def _csv_files_for_project(project_name, csv_summaries):
         if top == project_name:
             matches.append(entry)
     return matches
-
-
-def _compute_text_skills_placeholder():
-    """
-    Temporary placeholder for future detector pipeline.
-    This will later call your text skill detectors, which will use:
-      - main_text
-      - supporting_texts
-      - csv_metadata
-    to compute scores + evidence.
-    """
-    return [
-        "Clear communication",
-        "Structured writing",
-        "Strong vocabulary",
-        "Evidence of data collection",
-    ]

@@ -1,6 +1,7 @@
 import os
 import textwrap
 import re
+from typing import Any, Dict, Optional
 from src.utils.helpers import extract_code_file, extract_readme_file
 from dotenv import load_dotenv
 from groq import Groq
@@ -8,14 +9,19 @@ from groq import Groq
 load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-def run_code_llm_analysis(parsed_files, zip_path, project_name=None):
+def run_code_llm_analysis(
+    parsed_files,
+    zip_path,
+    project_name=None
+) -> Optional[Dict[str, Any]]:
+
     if not isinstance(parsed_files, list):
-        return
+        return None
         
     code_files = [f for f in parsed_files if f.get("file_type") == "code"]
     if not code_files:
         print("No code files found to analyze.")
-        return
+        return None
         
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
@@ -46,7 +52,7 @@ def run_code_llm_analysis(parsed_files, zip_path, project_name=None):
     project_context = "\n\n".join(project_context_parts)
     if not project_context:
         print("No readable code context found. Skipping LLM analysis.\n")
-        return
+        return None
     
     # get the top-level folder name where the code files live
     project_folders = sorted(set(os.path.dirname(f["file_path"]).split(os.sep)[0] for f in code_files))
@@ -69,6 +75,11 @@ def run_code_llm_analysis(parsed_files, zip_path, project_name=None):
     print(f"{'='*80}\n")
     print(f"All insights successfully generated for: {zip_name}.")
     print(f"\n{'='*80}\n")
+    
+    return {
+        "project_summary": project_summary,
+        "contribution_summary": contribution_summary
+    }
 
 
 def display_code_llm_results(project_name, project_summary, contribution_summary, mode="INDIVIDUAL"):
