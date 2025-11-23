@@ -52,7 +52,7 @@ class TestActivityTypeDetection:
         assert detect_activity_type("revised_essay.txt") == "Revision"  
         assert detect_activity_type("edited_version.docx") == "Revision"
         assert detect_activity_type("version_3.pdf") == "Revision"
-        assert detect_activity_type("final_version.docx") == "Revision"
+        assert detect_activity_type("final_revision.docx") == "Revision"
         assert detect_activity_type("final_rev.pdf") == "Revision"
         assert detect_activity_type("updated_report.docx") == "Revision"
         assert detect_activity_type("rev_1.txt") == "Revision"

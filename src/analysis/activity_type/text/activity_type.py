@@ -83,7 +83,8 @@ ACTIVITY_TYPES = [
             r"modified",
             r"rev[_\s]?1",
             r"revision[_\s]?1",
-            r"final[_\s]?rev"
+            r"final[_\s]?rev",
+            r"draft[_\s]?final"
 
         ],
         priority=4
