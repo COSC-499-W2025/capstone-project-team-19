@@ -6,3 +6,9 @@ class SkillBucket:
     total_signals: int
     description: str
     detectors: list[str] = field(default_factory=list)
+    
+@dataclass
+class TextSkillBucket:
+    name: str
+    description: str
+    detectors: list[str] = field(default_factory=list)
