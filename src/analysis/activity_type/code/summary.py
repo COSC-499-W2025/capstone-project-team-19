@@ -1,28 +1,29 @@
 """
 Builds an ActivitySummary per project by combining file and PR events.
-Uses fetch.py + labeler.py to get events, then aggregates counts and top files.
+Uses src.db helpers + labeler.py to get events, then aggregates counts and top items.
 """
 
 from __future__ import annotations
+
+import sqlite3
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
-from .fetch import (
-    get_project_classification,
-    get_project_files,
-    get_project_prs,
-    get_project_repos,
-    is_github_connected,
-    resolve_scope,
-    get_user_contributed_files
+
+from src.db import (
+    get_project_metadata,
+    get_files_for_project,
+    get_user_contributed_files,
+    get_project_repo,
+    has_github_account,
+    get_pull_requests_for_project,
 )
+
 from .labeler import label_file_event, label_pr_event
 from .types import ActivityEvent, ActivitySummary, ActivityType, Scope
-from collections import Counter
-from typing import Dict, Optional, Tuple
-from .types import ActivityType, ActivityEvent
+
 
 def _aggregate_per_activity(
-    events: list[ActivityEvent],
+    events: List[ActivityEvent],
 ) -> Tuple[
     Dict[ActivityType, Dict[str, Optional[str]]],  # per_activity_files
     Dict[ActivityType, Dict[str, Optional[str]]],  # per_activity_prs
@@ -146,43 +147,67 @@ def _aggregate_per_activity(
         top_pr_title_overall,
     )
 
+
+def _resolve_scope_from_metadata(classification: Optional[str]) -> Scope:
+    """
+    Map classification string to Scope enum; default to COLLABORATIVE.
+    """
+    if classification == "individual":
+        return Scope.INDIVIDUAL
+    return Scope.COLLABORATIVE
+
+
 def build_activity_summary(
+    conn: sqlite3.Connection,
     user_id: int,
     project_name: str,
-    db_path: Optional[str] = None,
 ) -> ActivitySummary:
     """
-    Builds an ActivitySummary for a project.
+    Main entry: fetch classification, files, optional PRs and return ActivitySummary.
 
-    - Individual: includes all project files
-    - Collaborative: includes only files where the user actually contributed
-    - PRs included only if GitHub is connected + repo linked
+    - Uses src/db helpers (no inline SQL here)
+    - For collaborative projects, file events are restricted to files the user actually
+      contributed to (via user_file_contributions)
+    - For individual projects, all files for this user + project are used
     """
-    classification_row = get_project_classification(user_id, project_name, db_path=db_path)
-    scope = resolve_scope(classification_row)
+    # 1) Classification → scope
+    classification, _project_type = get_project_metadata(conn, user_id, project_name)
+    scope = _resolve_scope_from_metadata(classification)
 
     events: List[ActivityEvent] = []
 
-    # --- File-based events ---
+    # 2) File-based events
+    all_files = get_files_for_project(conn, user_id, project_name, only_text=False)
+    # all_files: list[{"file_name", "file_type", "file_path"}]
+
     if scope == Scope.COLLABORATIVE:
-        file_rows = get_user_contributed_files(user_id, project_name, db_path=db_path)
+        # Restrict to files the user actually contributed to
+        contributed_filenames = set(
+            p.split("/")[-1]  # safety in case path appears
+            for p in get_user_contributed_files(conn, user_id, project_name)
+        )
+
+        file_rows = [
+            f for f in all_files
+            if f.get("file_name") in contributed_filenames
+        ]
     else:
-        file_rows = get_project_files(user_id, project_name, db_path=db_path)
+        # Individual → all files for this user + project
+        file_rows = all_files
 
     for row in file_rows:
         events.append(label_file_event(project_name, scope, row))
 
-    # --- PR-based events (only if GitHub linked) ---
-    github_ok = is_github_connected(user_id, db_path=db_path)
-    repos = get_project_repos(user_id, project_name, db_path=db_path)
-    has_github_repo = any(r.get("provider") == "github" for r in repos)
+    # 3) PR-based events (if GitHub linked and repo mapped)
+    github_ok = has_github_account(conn, user_id)
+    repo_url = get_project_repo(conn, user_id, project_name)
 
-    if github_ok and has_github_repo:
-        pr_rows = get_project_prs(user_id, project_name, db_path=db_path)
+    if github_ok and repo_url:
+        pr_rows = get_pull_requests_for_project(conn, user_id, project_name)
         for pr in pr_rows:
             events.append(label_pr_event(project_name, scope, pr))
 
-    # --- Activity aggregation (files + PRs + totals) ---
+    # 4) Aggregate per-activity stats
     (
         per_activity_files,
         per_activity_prs,
@@ -200,7 +225,7 @@ def build_activity_summary(
         total_events=len(events),
         total_file_events=total_file_events,
         total_pr_events=total_pr_events,
-        per_activity=per_activity_total,         # combined
+        per_activity=per_activity_total,
         per_activity_files=per_activity_files,
         per_activity_prs=per_activity_prs,
         top_file=top_file,

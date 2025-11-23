@@ -348,7 +348,7 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
     analyze_code_project(conn, user_id, project_name, zip_path)
 
     # activity-type summary for collaborative code
-    activity_summary = build_activity_summary(user_id=user_id, project_name=project_name)
+    activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
     print("\n[COLLABORATIVE-CODE] Activity type summary:")
     print(format_activity_summary(activity_summary))
     print()
@@ -391,7 +391,7 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=False)
 
     # --- Activity-type summary (individual) ---
-    activity_summary = build_activity_summary(user_id=user_id, project_name=project_name)
+    activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
     print()  # spacing
     print(format_activity_summary(activity_summary))
     print()

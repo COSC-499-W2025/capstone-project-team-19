@@ -44,7 +44,7 @@ from .github_repositories import (
 )
 
 # GitHub account operations
-from .github_accounts import store_github_account
+from .github_accounts import store_github_account, has_github_account
 
 # Drive file operations
 from .drive_files import (
@@ -92,6 +92,10 @@ from .code_activity import (
     insert_code_activity_metric,
 )
 
+# github prs
+from .github_pull_requests import get_pull_requests_for_project
+
+from .files import get_files_for_project
 
 __all__ = [
     "connect",
@@ -106,6 +110,7 @@ __all__ = [
     "save_project_repo",
     "get_project_repo",
     "store_github_account",
+    "has_github_account",
     "store_file_link",
     "get_project_drive_files",
     "get_unlinked_project_files",
@@ -125,5 +130,7 @@ __all__ = [
     "has_contribution_data",
     "store_collaboration_profile"
     "delete_code_activity_metrics_for_project",
-    "insert_code_activity_metric"
+    "insert_code_activity_metric",
+    "get_pull_requests_for_project",
+    "get_files_for_project"
 ]
