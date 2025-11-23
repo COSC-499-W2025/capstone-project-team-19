@@ -14,6 +14,7 @@ All database operations are organized by domain:
 - contributions.py: Contribution write operations
 - tokens.py: Token write operations
 - connection.py: Connection and schema management
+- code_activity.py: Code activity metrics (read and write)
 """
 
 # Connection and schema
@@ -85,6 +86,13 @@ from .file_contributions import (
     has_contribution_data,
 )
 
+# code activity type
+from .code_activity import (
+    delete_code_activity_metrics_for_project,
+    insert_code_activity_metric,
+)
+
+
 __all__ = [
     "connect",
     "init_schema",
@@ -116,4 +124,6 @@ __all__ = [
     "get_file_contribution_stats",
     "has_contribution_data",
     "store_collaboration_profile"
+    "delete_code_activity_metrics_for_project",
+    "insert_code_activity_metric"
 ]
