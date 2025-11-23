@@ -9,11 +9,31 @@ import re
 from typing import Tuple, List, Dict
 
 
+# HELPER FUNCTIONS
+
+def _is_comment_line(line: str) -> bool:
+    """Check if a line is a comment."""
+    stripped = line.strip()
+    return stripped.startswith('#') or stripped.startswith('//') or stripped.startswith('*')
+
+
+def _is_likely_in_string(line: str, pattern_match_pos: int) -> bool:
+    """Simple heuristic: check if match position is inside quotes."""
+    # Count quotes before the match position
+    before_match = line[:pattern_match_pos]
+    single_quotes = before_match.count("'")
+    double_quotes = before_match.count('"')
+
+    # If odd number of quotes, we're likely inside a string
+    return (single_quotes % 2 == 1) or (double_quotes % 2 == 1)
+
+
 # OOP DETECTORS
 
 def detect_classes(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect class definitions such as `class Foo:`."""
-    pattern = r'\bclass\s+\w+'
+    # Must be at start of line (possibly after whitespace) to avoid strings/comments
+    pattern = r'^\s*class\s+\w+'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
@@ -27,7 +47,8 @@ def detect_inheritance(file_text: str, file_name: str) -> Tuple[bool, List[Dict]
     """Detect class inheritance such as `class Foo(Bar):`."""
     # Matches: class Dog(Animal), class User extends Base, class Foo : public Bar
     # Must have something in parentheses or 'extends' keyword
-    pattern = r'class\s+\w+\s*\([^)]+\)|class\s+\w+\s+extends\s+\w+|class\s+\w+\s*:\s*(public|private|protected)'
+    # Must be at start of line to avoid strings
+    pattern = r'^\s*(class\s+\w+\s*\([^)]+\)|class\s+\w+\s+extends\s+\w+|class\s+\w+\s*:\s*(public|private|protected))'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
@@ -55,10 +76,15 @@ def detect_polymorphism(file_text: str, file_name: str) -> Tuple[bool, List[Dict
 def detect_hash_maps(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect usage of dict/hash-map patterns."""
     # Matches: HashMap, dict(), Map<String>, map[], {"key": val}
-    pattern = r'(HashMap|dict\(|Map<|map\[|\{\s*["\']?\w+["\']?\s*:)'
+    # Avoid matching inside strings by requiring word boundaries and not being preceded by quotes
+    pattern = r'(\bHashMap\b|=\s*dict\(|=\s*\{|Map<|\bmap\[)'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
+        # Skip lines that are comments
+        stripped = line.strip()
+        if stripped.startswith('#') or stripped.startswith('//'):
+            continue
         if re.search(pattern, line):
             evidence.append({"file": file_name, "line": i})
 
@@ -126,10 +152,14 @@ def detect_recursion(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
 def detect_sorting_or_search(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect calls to `sort`, `sorted`, or binary search patterns."""
     # Matches: .sort(), sorted(), Arrays.sort, Collections.sort, binary_search, binarySearch
-    pattern = r'(\.sort\(|sorted\(|Arrays\.sort|Collections\.sort|binary.?search|linear.?search)'
+    pattern = r'(\.sort\(|\bsorted\(|Arrays\.sort|Collections\.sort|binary.?search|linear.?search)'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
+        # Skip comment lines
+        stripped = line.strip()
+        if stripped.startswith('#') or stripped.startswith('//'):
+            continue
         if re.search(pattern, line, re.IGNORECASE):
             evidence.append({"file": file_name, "line": i})
 
@@ -226,10 +256,12 @@ def detect_ci_workflows(file_text: str, file_name: str) -> Tuple[bool, List[Dict
 def detect_assertions(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect test assertions."""
     # Matches: assert, expect, should, chai.
-    pattern = r'(assert|expect|should|chai\.)'
+    pattern = r'(\bassert\b|expect\(|should\.|chai\.)'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
+        if _is_comment_line(line):
+            continue
         if re.search(pattern, line, re.IGNORECASE):
             evidence.append({"file": file_name, "line": i})
 
@@ -254,10 +286,13 @@ def detect_mocking_or_fixtures(file_text: str, file_name: str) -> Tuple[bool, Li
 def detect_error_handling(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect error handling patterns."""
     # Matches: try:, except, catch, throw, raises
-    pattern = r'(try:|except|catch\s*\(|throw\s+|raises)'
+    # Must be at start of line or after whitespace for try/except
+    pattern = r'(^\s*try:|^\s*except\b|catch\s*\(|throw\s+new|raises\()'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
+        if _is_comment_line(line):
+            continue
         if re.search(pattern, line, re.IGNORECASE):
             evidence.append({"file": file_name, "line": i})
 
@@ -267,10 +302,12 @@ def detect_error_handling(file_text: str, file_name: str) -> Tuple[bool, List[Di
 def detect_input_validation(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect input validation patterns."""
     # Matches: validate, validator, sanitize, schema.validate
-    pattern = r'(validate|validator|sanitize|schema\.validate|\.is_valid)'
+    pattern = r'(\bvalidate\(|validator|sanitize\(|schema\.validate|\.is_valid\()'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
+        if _is_comment_line(line):
+            continue
         if re.search(pattern, line, re.IGNORECASE):
             evidence.append({"file": file_name, "line": i})
 
@@ -279,11 +316,13 @@ def detect_input_validation(file_text: str, file_name: str) -> Tuple[bool, List[
 
 def detect_env_variable_usage(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect environment variable usage."""
-    # Matches: process.env, os.environ, getenv, .env
-    pattern = r'(process\.env|os\.environ|getenv|dotenv|\.env)'
+    # Matches: process.env, os.environ, getenv, .env (but not "environment" variable)
+    pattern = r'(process\.env|os\.environ|\bgetenv\(|import dotenv|load_dotenv)'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
+        if _is_comment_line(line):
+            continue
         if re.search(pattern, line):
             evidence.append({"file": file_name, "line": i})
 
@@ -292,11 +331,13 @@ def detect_env_variable_usage(file_text: str, file_name: str) -> Tuple[bool, Lis
 
 def detect_crypto_usage(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect cryptography and security library usage."""
-    # Matches: hashlib, bcrypt, crypto, encrypt, decrypt, jwt
-    pattern = r'(hashlib|bcrypt|crypto|encrypt|decrypt|jwt|hash|hmac)'
+    # Matches: hashlib, bcrypt, crypto imports/usage, encrypt/decrypt functions
+    pattern = r'(import hashlib|import bcrypt|crypto\.|encrypt\(|decrypt\(|jwt\.|hashlib\.|bcrypt\.)'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
+        if _is_comment_line(line):
+            continue
         if re.search(pattern, line, re.IGNORECASE):
             evidence.append({"file": file_name, "line": i})
 
@@ -319,10 +360,13 @@ def detect_mvc_folders(file_text: str, file_name: str) -> Tuple[bool, List[Dict]
 def detect_api_routes(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect API route definitions."""
     # Matches: @app.route, @router., app.get(, @GetMapping, @PostMapping
-    pattern = r'(@app\.route|@router\.|app\.(get|post|put|delete)\(|@(Get|Post|Put|Delete)Mapping|@(get|post|put|delete)\()'
+    # Must be at start of line (decorator) or actual function call
+    pattern = r'(^\s*@app\.route|^\s*@router\.|^\s*@(Get|Post|Put|Delete)Mapping|app\.(get|post|put|delete)\()'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
+        if _is_comment_line(line):
+            continue
         if re.search(pattern, line):
             evidence.append({"file": file_name, "line": i})
 
@@ -334,10 +378,12 @@ def detect_api_routes(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]
 def detect_components(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect frontend component usage."""
     # Matches: React.Component, extends Component, Vue.component, @Component
-    pattern = r'(React\.Component|extends Component|Vue\.component|@Component|createComponent)'
+    pattern = r'(React\.Component|class \w+ extends Component|Vue\.component|^\s*@Component|createComponent)'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
+        if _is_comment_line(line):
+            continue
         if re.search(pattern, line):
             evidence.append({"file": file_name, "line": i})
 
@@ -349,10 +395,12 @@ def detect_components(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]
 def detect_serialization(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect data serialization patterns."""
     # Matches: JSON.stringify, json.dumps, serialize, toJSON, JsonSerializer
-    pattern = r'(JSON\.stringify|json\.dumps|serialize|toJSON|JsonSerializer|pickle\.dump)'
+    pattern = r'(JSON\.stringify|json\.dumps|\bserialize\(|\.toJSON\(|JsonSerializer|pickle\.dump)'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
+        if _is_comment_line(line):
+            continue
         if re.search(pattern, line):
             evidence.append({"file": file_name, "line": i})
 
@@ -362,10 +410,13 @@ def detect_serialization(file_text: str, file_name: str) -> Tuple[bool, List[Dic
 def detect_database_queries(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect database query usage."""
     # Matches: SELECT, INSERT, UPDATE, cursor.execute, query(, findOne
-    pattern = r'(SELECT|INSERT|UPDATE|DELETE|cursor\.execute|\.query\(|\.findOne|\.findMany|\.find\(|\.save\()'
+    # For SQL keywords, require word boundaries or start of string
+    pattern = r'(\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b|cursor\.execute|\.query\(|\.findOne|\.findMany|\.find\(|\.save\()'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
+        if _is_comment_line(line):
+            continue
         if re.search(pattern, line):
             evidence.append({"file": file_name, "line": i})
 
@@ -374,12 +425,14 @@ def detect_database_queries(file_text: str, file_name: str) -> Tuple[bool, List[
 
 def detect_caching(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect caching implementation."""
-    # Matches: cache, Cache, Redis, memcached, @cached, lru_cache
-    pattern = r'(@cached|@lru_cache|cache|Cache|Redis|memcached|Memcached)'
+    # Matches: @cached, @lru_cache, Redis, memcached, .cache
+    pattern = r'(^\s*@cached|^\s*@lru_cache|import redis|Redis\(|memcached|\.cache\(|cache\.get|cache\.set)'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
-        if re.search(pattern, line):
+        if _is_comment_line(line):
+            continue
+        if re.search(pattern, line, re.IGNORECASE):
             evidence.append({"file": file_name, "line": i})
 
     return (len(evidence) > 0, evidence)
