@@ -134,15 +134,24 @@ def analyze_collaborative_text_project(
     ]
 
     # ---------------------------------------------------------
-    # STEP 2C — Load ENTIRE CONTENT of selected supporting files
+    # STEP 2C — Load ENTIRE CONTENT + build structures for detectors
     # ---------------------------------------------------------
     contributed_supporting_texts = []
+    supporting_structured = []   # <── NEW (this is what detectors need)
 
     for f in selected_text_support_files:
         support_text = _load_main_text(parsed_files, f["file_name"], zip_path, conn, user_id)
         normalized_sup = normalize_pdf_paragraphs(support_text)
         clean_text = "\n\n".join(normalized_sup)
+
         contributed_supporting_texts.append(clean_text)
+
+        # Build structured record for skill detectors
+        supporting_structured.append({
+            "filename": f["file_name"],
+            "text": clean_text
+        })
+
 
     # ---------------------------------------------------------
     # STEP 2D — CSV selection
@@ -202,7 +211,7 @@ def analyze_collaborative_text_project(
     # ---------------------------------------------------------
     skill_output = extract_text_skills(
         main_text=contributed_text,
-        supporting_texts=[],     # do not include group writing
+        supporting_texts=supporting_structured,
         csv_metadata=user_csv_metadata,
         project_name=project_name,
         user_id=user_id,
