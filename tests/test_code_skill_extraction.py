@@ -25,6 +25,7 @@ def with_patched_env(
     buckets=None,
     score_map=None,
     insert_mock=None,
+    zip_name="test_zip",
 ):
     """
     Context manager that patches:
@@ -32,18 +33,24 @@ def with_patched_env(
     - bucket registry
     - score_to_level
     - insert_project_skill
+    - _get_zip_name (returns zip_name)
+    - _load_file_contents (returns files as-is with content already set)
     """
     detectors = detectors or {}
     buckets = buckets or []
     score_map = score_map or (lambda x: "L1") # default fake level
     insert_mock = insert_mock or Mock()
 
+    # Mock _get_zip_name to return the zip_name
+    # Mock _load_file_contents to just return files as-is (test files already have content)
     return patch.multiple(
         "src.analysis.skills.flows.code_skill_extraction",
         CODE_DETECTOR_FUNCTIONS=detectors,
         CODE_SKILL_BUCKETS=buckets,
         score_to_level=score_map,
         insert_project_skill=insert_mock,
+        _get_zip_name=Mock(return_value=zip_name),
+        _load_file_contents=Mock(side_effect=lambda files, zn: files),
     )
 
 
