@@ -278,6 +278,22 @@ CREATE TABLE IF NOT EXISTS project_skills (
     UNIQUE(user_id, project_name, skill_name),
     FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+
+-- USER FILE CONTRIBUTIONS (for collaborative projects)
+-- Tracks which files each user worked on, used to filter skill detection
+
+CREATE TABLE IF NOT EXISTS user_file_contributions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    project_name TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    lines_changed INTEGER DEFAULT 0,  -- additions + deletions
+    commits_count INTEGER DEFAULT 0,
+    recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, project_name, file_path),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS github_collaboration_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,

@@ -7,6 +7,7 @@ import re
 import pytest
 
 import src.analysis.code_collaborative.code_collaborative_analysis as cc
+from src.db import init_schema
 
 
 def _fake_commits(author_email="me@example.com"):
@@ -63,6 +64,9 @@ def test_analyze_code_project_happy_path(tmp_sqlite_conn, temp_zip_layout, monke
     checks the happy path: repo is found, identity already exists, mocked git history is used,
     and the printed card shows the right numbers.
     """
+    # Initialize schema to create all tables including user_file_contributions
+    init_schema(tmp_sqlite_conn)
+
     def fake_zip_paths(_zip_path):
         return (
             temp_zip_layout["zip_data_dir"],
@@ -85,7 +89,7 @@ def test_analyze_code_project_happy_path(tmp_sqlite_conn, temp_zip_layout, monke
     )
 
 
-    # mock frameworks so it doesn’t hit DB
+    # mock frameworks so it doesn't hit DB
     monkeypatch.setattr(cc, "detect_frameworks", lambda *args, **kwargs: set())
 
     cc.ensure_user_github_table(tmp_sqlite_conn)
@@ -145,6 +149,9 @@ def test_identity_prompt_and_persist(tmp_sqlite_conn, temp_zip_layout, monkeypat
     then run analysis and print the card.
     """
     import os
+
+    # Initialize schema to create all tables including user_file_contributions
+    init_schema(tmp_sqlite_conn)
 
     # zip paths -> fixed temp layout
     def fake_zip_paths(_zip_path):
@@ -216,6 +223,9 @@ def test_portfolio_summary_keywords(tmp_sqlite_conn, temp_zip_layout, monkeypatc
     """
     import os, sys, datetime as dt
     import src.analysis.code_collaborative.code_collaborative_analysis as cc  # alias under test
+
+    # Initialize schema to create all tables including user_file_contributions
+    init_schema(tmp_sqlite_conn)
 
     # Make stdin look interactive so description prompt runs
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True, raising=False)
