@@ -154,6 +154,7 @@ def resolve_scope(
         return Scope.INDIVIDUAL
     return Scope.COLLABORATIVE
 
+
 def get_user_contributed_files(
     user_id: int,
     project_name: str,
@@ -161,24 +162,32 @@ def get_user_contributed_files(
 ) -> List[Dict[str, Any]]:
     """
     Return only files where this user actually contributed in a collaborative project.
-    Joins `files` with `user_file_contributions` on (user_id, project_name, file_path).
+
+    Joins `files` with `user_file_contributions` on (user_id, project_name) and
+    attempts to match file_path robustly to handle differences in stored paths
+    (e.g., absolute vs relative).
 
     Only includes rows where lines_changed > 0 OR commits_count > 0.
     """
     query = """
-        SELECT f.file_id,
-               f.file_name,
-               f.file_path,
-               f.extension,
-               f.file_type,
-               f.created,
-               f.modified,
-               f.size_bytes
+        SELECT
+            f.file_id,
+            f.file_name,
+            f.file_path,
+            f.extension,
+            f.file_type,
+            f.created,
+            f.modified,
+            f.size_bytes
         FROM files AS f
         JOIN user_file_contributions AS ufc
           ON ufc.user_id = f.user_id
          AND ufc.project_name = f.project_name
-         AND ufc.file_path = f.file_path
+         AND (
+               ufc.file_path = f.file_path
+               OR f.file_path LIKE '%' || ufc.file_path
+               OR ufc.file_path LIKE '%' || f.file_path
+             )
         WHERE f.user_id = ?
           AND f.project_name = ?
           AND (ufc.lines_changed > 0 OR ufc.commits_count > 0)
