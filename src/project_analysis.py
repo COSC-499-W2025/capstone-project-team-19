@@ -7,6 +7,8 @@ import sqlite3
 from src.analysis.text_individual.text_analyze import run_text_pipeline
 from src.analysis.text_individual.csv_analyze import analyze_all_csv
 from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
+from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
+from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
 
 
 # CODE ANALYSIS imports
@@ -22,7 +24,8 @@ from src.analysis.code_collaborative.code_collaborative_analysis import analyze_
 from src.analysis.text_individual.csv_analyze import run_csv_analysis
 from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
-from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
+
+
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     """
@@ -303,11 +306,20 @@ def run_individual_analysis(conn, user_id, project_name, project_type, current_e
 
 def analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary):
     """
-    Analyze collaborative text projects with an optional Google Drive connection.
-    If Google Drive connection is skipped or fails, fallback to manual text contribution mode.
+    Analyze collaborative text projects with optional Google Drive connection.
+    If Google Drive is skipped or fails → fallback to collaborative manual text flow.
     """
 
     print(f"[COLLABORATIVE] Preparing TEXT contribution analysis for '{project_name}'")
+
+    # ------------------------------
+    # ALWAYS FETCH PARSED FILES HERE
+    # ------------------------------
+    parsed_files = _fetch_files(conn, user_id, project_name, only_text=True)
+
+    if not parsed_files:
+        print(f"[TEXT-COLLAB] No text files found for '{project_name}'. Cannot analyze.")
+        return
 
     while True:
         choice = input(
@@ -324,17 +336,31 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
         else:
             print("Please enter 'y' or 'n'.")
 
+    # Manual contribution mode
     if not use_drive:
         print("[TEXT-COLLAB] Google Drive connection skipped. Using manual contribution mode.")
-        _run_manual_text_contribution_flow(conn, user_id, project_name, summary)
+        analyze_collaborative_text_project(
+            conn=conn,
+            user_id=user_id,
+            project_name=project_name,
+            parsed_files=parsed_files,
+            zip_path=None,
+            external_consent=current_ext_consent,
+            summary_obj=summary
+        )
         return
 
+    # Drive attempt
     result = setup_text_project_drive_connection(conn, user_id, project_name)
 
     if not result['success']:
-        print("\n[TEXT-COLLAB] Google Drive connection failed.")
-        print("Falling back to manual contribution mode.\n")
-        _run_manual_text_contribution_flow(conn, user_id, project_name, summary)
+        print("\n[TEXT-COLLAB] Google Drive connection failed → falling back to manual mode.\n")
+
+        from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
+
+        analyze_collaborative_text_project(
+            conn, user_id, project_name, parsed_files, None, current_ext_consent, summary
+        )
         return
 
     creds = result.get("creds")
@@ -342,10 +368,18 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     docs_service = result.get("docs_service")
 
     if not drive_service or not docs_service:
-        print("\n[TEXT-COLLAB] Google Drive connected but required services missing.")
-        print("Falling back to manual contribution mode.\n")
-        _run_manual_text_contribution_flow(conn, user_id, project_name, summary)
+        print("\n[TEXT-COLLAB] Google Drive connected but incomplete services → fallback to manual.\n")
+
+        from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
+
+        analyze_collaborative_text_project(
+            conn, user_id, project_name, parsed_files, None, current_ext_consent, summary
+        )
         return
+
+    # ------------------------------
+    # DRIVE MODE
+    # ------------------------------
 
     user_email = result.get("user_email")
     print("\n[TEXT-COLLAB] Starting Google Drive revision analysis...")
