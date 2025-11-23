@@ -57,12 +57,12 @@ def run_text_pipeline(
     import pprint
     pp = pprint.PrettyPrinter(indent=2, width=120)
 
-    print("\n[DEBUG] FULL CSV METADATA (raw analyze_all_csv output):")
-    if not csv_metadata:
-        print("  → None (no CSVs detected).")
-    else:
-        pp.pprint(csv_metadata)
-    print("[END DEBUG]")
+    #print("\n[DEBUG] FULL CSV METADATA (raw analyze_all_csv output):")
+    #if not csv_metadata:
+    #    print("  → None (no CSVs detected).")
+    #else:
+    #    pp.pprint(csv_metadata)
+    #print("[END DEBUG]")
 
     # ================================
 

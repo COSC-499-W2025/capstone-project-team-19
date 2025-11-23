@@ -78,8 +78,12 @@ def test_group_csv_files():
 
 # analyze_all_csv()
 def test_analyze_all_csv(tmp_path, monkeypatch):
-    # Create temporary CSV files
-    project_dir = tmp_path / "proj"
+    # Create a proper directory structure that matches what analyze_all_csv expects
+    # It expects: ZIP_DATA_DIR / zip_name / file_path
+    zip_data_dir = tmp_path / "zip_data"
+    zip_data_dir.mkdir()
+
+    project_dir = zip_data_dir / "test_project"
     project_dir.mkdir()
 
     # Fake parsed_files
@@ -94,19 +98,18 @@ def test_analyze_all_csv(tmp_path, monkeypatch):
     df1.to_csv(project_dir / "data1.csv", index=False)
     df2.to_csv(project_dir / "data2.csv", index=False)
 
-    # Patch ZIP_DATA_DIR to point to tmp_path
-    monkeypatch.setattr(
-        ca,
-        "os",
-        ca.os  # need original module
-    )
-    monkeypatch.setattr(
-        ca.os.path,
-        "join",
-        lambda *args: project_dir / args[-1]
-    )
+    # Mock only the directory paths that analyze_all_csv computes
+    def mock_dirname(_path):
+        # Return fake repo root when asked for parent directories
+        return str(tmp_path)
 
-    result = ca.analyze_all_csv(parsed_files, zip_path=str(project_dir))
+    def mock_abspath(path):
+        return str(path)
+
+    monkeypatch.setattr(ca.os.path, "dirname", mock_dirname)
+    monkeypatch.setattr(ca.os.path, "abspath", mock_abspath)
+
+    result = ca.analyze_all_csv(parsed_files, zip_path=str(tmp_path / "test_project.zip"))
 
     assert result["growth_trend_present"] is True
     assert "data" in result["growth_trends"]
