@@ -20,7 +20,7 @@ from src.db import (
 
 from .labeler import label_file_event, label_pr_event
 from .types import ActivityEvent, ActivitySummary, ActivityType, Scope
-
+from src.analysis.code_individual.code_complexity_analyzer import EXCLUDE_DIRECTORIES
 
 def _aggregate_per_activity(
     events: List[ActivityEvent],
@@ -177,8 +177,13 @@ def build_activity_summary(
     events: List[ActivityEvent] = []
 
     # 2) File-based events
-    all_files = get_files_for_project(conn, user_id, project_name, only_text=False)
-    # all_files: list[{"file_name", "file_type", "file_path"}]
+    all_files_raw = get_files_for_project(conn, user_id, project_name, only_text=False)
+
+    # Filter out dependency/vendor directories
+    all_files = [
+        f for f in all_files_raw
+        if not _is_excluded_dependency(f.get("file_path"))
+    ]
 
     if scope == Scope.COLLABORATIVE:
         # Restrict to files the user actually contributed to
@@ -232,3 +237,17 @@ def build_activity_summary(
         top_pr=top_pr,
         top_pr_title=top_pr_title,
     )
+
+def _is_excluded_dependency(path: str | None) -> bool:
+    if not path:
+        return False
+
+    path = path.replace("\\", "/")
+
+    # match folder names
+    for dirname in EXCLUDE_DIRECTORIES:
+        # match ".../dirname/" or ".../dirname\"
+        if f"/{dirname}/" in path:
+            return True
+
+    return False
