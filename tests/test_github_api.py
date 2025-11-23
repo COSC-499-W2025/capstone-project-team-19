@@ -70,15 +70,25 @@ def test_commit_activity(monkeypatch):
 
 def test_get_issues(monkeypatch):
     fake = [
-        {"title":"Bug","body":"","created_at":"2024-01-01T00","closed_at":None,
-         "labels":[],"user":{"login":"me"},"assignees":[]},
-        {"pull_request":{}, "user":{"login":"me"}},
+        {
+            "number": 1,
+            "title":"Bug",
+            "body":"",
+            "created_at":"2024-01-01T00",
+            "closed_at":None,
+            "labels":[],
+            "user":{"login":"me"},
+            "assignees":[]
+        },
+        {"pull_request":{}, "user":{"login":"me"}}
     ]
     monkeypatch.setattr(api.requests, "get", lambda *a, **k: FakeResp(200, fake))
     res = api.get_gh_repo_issues("T","o","r","me")
     assert res["total_opened"] == 1
     assert len(res["user_issues"]) == 1
     assert res["user_issues"][0]["title"] == "Bug"
+    assert "user_issue_comments" in res
+    assert isinstance(res["user_issue_comments"], list)
 
 def test_get_prs(monkeypatch):
     fake = [
@@ -105,10 +115,10 @@ def test_contributions_poll(monkeypatch):
         }])
     ])
     res = api.get_gh_repo_contributions("T","o","r","me")
-    assert res["commits"] == 5
-    assert res["additions"] == 7
-    assert res["deletions"] == 3
-    assert res["contribution_percent"] == 100.0
+    assert res["user"]["commits"] == 5
+    assert res["user"]["additions"] == 7
+    assert res["user"]["deletions"] == 3
+    assert res["user"]["contribution_percent"] == 100.0
 
 def test_gh_get_graceful_failure(monkeypatch):
     class FakeResp:
@@ -118,3 +128,89 @@ def test_gh_get_graceful_failure(monkeypatch):
     monkeypatch.setattr(requests, "get", lambda *a, **k: FakeResp())
     data = api.gh_get("fake", "fake")
     assert data == {}  # No crash, returns empty
+
+
+def test_get_gh_pr_reviews_calls_correct_url(monkeypatch):
+    captured = {}
+
+    def fake_gh_get(token, url, retries=6, delay=2):
+        captured["token"] = token
+        captured["url"] = url
+        return ["ok"]
+
+    monkeypatch.setattr(api, "gh_get", fake_gh_get)
+
+    result = api.get_gh_pr_reviews("TOKEN", "owner", "repo", 5)
+
+    assert result == ["ok"]
+    assert captured["url"] == "https://api.github.com/repos/owner/repo/pulls/5/reviews"
+    assert captured["token"] == "TOKEN"
+
+def test_get_gh_pr_review_comments_calls_correct_url(monkeypatch):
+    captured = {}
+
+    def fake_gh_get(token, url, retries=6, delay=2):
+        captured["token"] = token
+        captured["url"] = url
+        return ["ok"]
+
+    monkeypatch.setattr(api, "gh_get", fake_gh_get)
+
+    result = api.get_gh_pr_review_comments("TOKEN", "owner", "repo", 7)
+
+    assert result == ["ok"]
+    assert captured["url"] == "https://api.github.com/repos/owner/repo/pulls/7/comments"
+    assert captured["token"] == "TOKEN"
+
+def test_get_gh_reviews_for_repo_aggregates(monkeypatch):
+    calls = []
+
+    def fake_reviews(token, owner, repo, pr):
+        calls.append(("reviews", pr))
+        return [f"review-{pr}"]
+
+    def fake_comments(token, owner, repo, pr):
+        calls.append(("comments", pr))
+        return [f"comment-{pr}"]
+
+    monkeypatch.setattr(api, "get_gh_pr_reviews", fake_reviews)
+    monkeypatch.setattr(api, "get_gh_pr_review_comments", fake_comments)
+
+    result = api.get_gh_reviews_for_repo("TOKEN", "owner", "repo", [1, 2])
+
+    assert result == {
+        1: {
+            "reviews": ["review-1"],
+            "review_comments": ["comment-1"],
+        },
+        2: {
+            "reviews": ["review-2"],
+            "review_comments": ["comment-2"],
+        },
+    }
+
+    assert calls == [
+        ("reviews", 1),
+        ("comments", 1),
+        ("reviews", 2),
+        ("comments", 2),
+    ]
+
+def test_get_repo_commit_timestamps(monkeypatch):
+    # Return two commits on page 1, then empty list to stop.
+    fake_data = [
+        FakeResp(200, [
+            {"commit": {"author": {"date": "2024-03-01T12:00:00Z"}}},
+            {"commit": {"author": {"date": "2024-03-02T15:30:00Z"}}},
+        ]),
+        FakeResp(200, [])
+    ]
+
+    seq = iter(fake_data)
+    monkeypatch.setattr(api.requests, "get", lambda *a, **k: next(seq))
+
+    timestamps = api.get_repo_commit_timestamps("T", "o", "r")
+
+    assert len(timestamps) == 2
+    assert timestamps[0].year == 2024 and timestamps[0].month == 3 and timestamps[0].day == 1
+    assert timestamps[1].day == 2

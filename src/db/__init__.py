@@ -39,6 +39,7 @@ from .projects import (
 from .github_repositories import (
     save_project_repo,
     get_project_repo,
+    store_collaboration_profile
 )
 
 # GitHub account operations
@@ -114,4 +115,5 @@ __all__ = [
     "get_user_contributed_files",
     "get_file_contribution_stats",
     "has_contribution_data",
+    "store_collaboration_profile"
 ]
