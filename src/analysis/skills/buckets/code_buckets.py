@@ -53,6 +53,11 @@ CODE_SKILL_BUCKETS = [
             "detect_comments_docstrings",
             "detect_duplicate_code",
         ],
+        weights={
+            "detect_large_functions": -1,      # negative: large functions are bad
+            "detect_comments_docstrings": 1,   # positive: comments are good
+            "detect_duplicate_code": -1,       # negative: duplicates are bad
+        },
     ),
 
     SkillBucket(

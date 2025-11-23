@@ -210,7 +210,7 @@ def detect_comments_docstrings(file_text: str, file_name: str) -> Tuple[bool, Li
 
 def detect_duplicate_code(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect repeated code blocks (basic duplicate detection)."""
-    # Too complex for today - punt
+    # To be implemented in another PR due to complexity.
     return False, []
 
 
