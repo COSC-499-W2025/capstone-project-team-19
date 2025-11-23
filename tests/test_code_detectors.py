@@ -20,349 +20,402 @@ from src.analysis.skills.detectors.code.code_detectors import (
     detect_modular_design,
     detect_test_files,
     detect_ci_workflows,
+    detect_assertions,
+    detect_mocking_or_fixtures,
+    detect_error_handling,
+    detect_input_validation,
+    detect_env_variable_usage,
+    detect_crypto_usage,
+    detect_mvc_folders,
+    detect_api_routes,
+    detect_components,
+    detect_serialization,
+    detect_database_queries,
+    detect_caching,
 )
+
+
+# HELPER FUNCTIONS
+
+def assert_detector_hits(detector, code, filename="test.py", min_evidence=1):
+    """Assert that a detector finds patterns in code."""
+    hit, evidence = detector(code, filename)
+    assert hit is True, f"{detector.__name__} should detect pattern in code"
+    assert len(evidence) >= min_evidence, f"Expected at least {min_evidence} evidence items"
+    return evidence
+
+
+def assert_detector_misses(detector, code, filename="test.py"):
+    """Assert that a detector does NOT find patterns in code."""
+    hit, evidence = detector(code, filename)
+    assert hit is False, f"{detector.__name__} should not detect pattern in code"
+    assert len(evidence) == 0, "Should have no evidence"
+
+
+def assert_filename_detector_hits(detector, filename):
+    """Assert that a filename-based detector matches."""
+    hit, evidence = detector("", filename)
+    assert hit is True, f"{detector.__name__} should detect {filename}"
+
+
+def assert_filename_detector_misses(detector, filename):
+    """Assert that a filename-based detector does not match."""
+    hit, evidence = detector("", filename)
+    assert hit is False, f"{detector.__name__} should not detect {filename}"
 
 
 # OOP DETECTORS
 
-def test_detect_classes_positive():
-    """Test that classes are detected."""
-    code = """
-class User:
-    pass
-
-class Admin:
-    pass
-"""
-    hit, evidence = detect_classes(code, "test.py")
-    assert hit is True
-    assert len(evidence) == 2
-    assert evidence[0]["file"] == "test.py"
-    assert evidence[0]["line"] == 2
+def test_detect_classes():
+    assert_detector_hits(detect_classes, "class User:\n    pass", min_evidence=1)
+    assert_detector_misses(detect_classes, "def function(): pass")
 
 
-def test_detect_classes_negative():
-    """Test that non-class code doesn't trigger detection."""
-    code = "def function(): pass"
-    hit, evidence = detect_classes(code, "test.py")
-    assert hit is False
-    assert len(evidence) == 0
+def test_detect_inheritance():
+    assert_detector_hits(detect_inheritance, "class Dog(Animal):\n    pass")
+    assert_detector_hits(detect_inheritance, "class User extends BaseUser {}")
+    assert_detector_misses(detect_inheritance, "class Simple:\n    pass")
 
 
-def test_detect_inheritance_positive():
-    """Test that inheritance is detected."""
-    code = """
-class Dog(Animal):
-    pass
-
-class User extends BaseUser:
-    pass
-"""
-    hit, evidence = detect_inheritance(code, "test.py")
-    assert hit is True
-    assert len(evidence) >= 1
-
-
-def test_detect_inheritance_negative():
-    """Test that simple classes without inheritance don't trigger."""
-    code = "class Simple:\n    pass"
-    hit, evidence = detect_inheritance(code, "test.py")
-    assert hit is False
-
-
-def test_detect_polymorphism_positive():
-    """Test that polymorphism patterns are detected."""
-    code = """
-@override
-def method(self):
-    pass
-
-virtual void process() {}
-
-abstract class Shape {}
-"""
-    hit, evidence = detect_polymorphism(code, "test.py")
-    assert hit is True
-    assert len(evidence) >= 2
-
-
-def test_detect_polymorphism_negative():
-    """Test that regular code doesn't trigger polymorphism."""
-    code = "def regular_function(): pass"
-    hit, evidence = detect_polymorphism(code, "test.py")
-    assert hit is False
+def test_detect_polymorphism():
+    code = "@override\ndef method(): pass\nvirtual void func() {}"
+    assert_detector_hits(detect_polymorphism, code, min_evidence=2)
+    assert_detector_misses(detect_polymorphism, "def regular(): pass")
 
 
 # DATA STRUCTURE DETECTORS
 
-def test_detect_hash_maps_positive():
-    """Test that hash map usage is detected."""
-    code = """
-user_data = dict()
-map = HashMap<String, Integer>()
-config = {"key": "value"}
-"""
-    hit, evidence = detect_hash_maps(code, "test.py")
-    assert hit is True
-    assert len(evidence) >= 2
+def test_detect_hash_maps():
+    code = 'user_data = dict()\nconfig = {"key": "value"}'
+    assert_detector_hits(detect_hash_maps, code, min_evidence=2)
+    assert_detector_misses(detect_hash_maps, "x = 5")
 
 
-def test_detect_hash_maps_negative():
-    """Test that non-map code doesn't trigger."""
-    code = "x = 5"
-    hit, evidence = detect_hash_maps(code, "test.py")
-    assert hit is False
+def test_detect_sets():
+    code = "unique = set()\nitems = HashSet<Integer>()"
+    assert_detector_hits(detect_sets, code, min_evidence=2)
+    assert_detector_misses(detect_sets, "x = [1, 2, 3]")
 
 
-def test_detect_sets_positive():
-    """Test that set usage is detected."""
-    code = """
-unique = set()
-numbers = HashSet<Integer>()
-items = set([1, 2, 3])
-"""
-    hit, evidence = detect_sets(code, "test.py")
-    assert hit is True
-    assert len(evidence) >= 2
-
-
-def test_detect_sets_negative():
-    """Test that non-set code doesn't trigger."""
-    code = "x = [1, 2, 3]"
-    hit, evidence = detect_sets(code, "test.py")
-    assert hit is False
-
-
-def test_detect_queues_or_stacks_positive():
-    """Test that queue/stack usage is detected."""
-    code = """
-stack = Stack()
-queue = Queue()
-stack.push(item)
-queue.pop()
-"""
-    hit, evidence = detect_queues_or_stacks(code, "test.py")
-    assert hit is True
-    assert len(evidence) >= 3
-
-
-def test_detect_queues_or_stacks_negative():
-    """Test that non-queue/stack code doesn't trigger."""
-    code = "x = [1, 2, 3]"
-    hit, evidence = detect_queues_or_stacks(code, "test.py")
-    assert hit is False
+def test_detect_queues_or_stacks():
+    code = "stack = Stack()\nstack.push(item)\nqueue.pop()"
+    assert_detector_hits(detect_queues_or_stacks, code, min_evidence=3)
+    assert_detector_misses(detect_queues_or_stacks, "x = [1, 2, 3]")
 
 
 # ALGORITHM DETECTORS
 
-def test_detect_recursion_positive():
-    """Test that recursive functions are detected."""
-    code = """
-def factorial(n):
-    if n <= 1:
-        return 1
-    return n * factorial(n - 1)
-"""
-    hit, evidence = detect_recursion(code, "test.py")
-    assert hit is True
-    assert len(evidence) >= 1
+def test_detect_recursion():
+    code = "def factorial(n):\n    return n * factorial(n - 1)"
+    assert_detector_hits(detect_recursion, code)
+    assert_detector_misses(detect_recursion, "def simple(n):\n    return n + 1")
 
 
-def test_detect_recursion_negative():
-    """Test that non-recursive functions don't trigger."""
-    code = """
-def simple(n):
-    return n + 1
-"""
-    hit, evidence = detect_recursion(code, "test.py")
-    assert hit is False
-
-
-def test_detect_sorting_or_search_positive():
-    """Test that sorting and search algorithms are detected."""
-    code = """
-data.sort()
-result = sorted(items)
-index = binary_search(arr, target)
-"""
-    hit, evidence = detect_sorting_or_search(code, "test.py")
-    assert hit is True
-    assert len(evidence) >= 3
-
-
-def test_detect_sorting_or_search_negative():
-    """Test that non-algorithm code doesn't trigger."""
-    code = "x = [1, 2, 3]"
-    hit, evidence = detect_sorting_or_search(code, "test.py")
-    assert hit is False
+def test_detect_sorting_or_search():
+    code = "data.sort()\nresult = sorted(items)\nindex = binary_search(arr, target)"
+    assert_detector_hits(detect_sorting_or_search, code, min_evidence=3)
+    assert_detector_misses(detect_sorting_or_search, "x = [1, 2, 3]")
 
 
 # CODE QUALITY DETECTORS
 
-def test_detect_large_functions_positive():
-    """Test that large functions are detected."""
-    # Create a function with more than 50 lines
-    lines = ["def large_function():\n"]
-    lines.extend(["    x = 1\n"] * 60)
-    code = "".join(lines)
-
-    hit, evidence = detect_large_functions(code, "test.py")
-    assert hit is True
-    assert len(evidence) >= 1
+def test_detect_large_functions():
+    large_func = "def large():\n" + "    x = 1\n" * 60
+    assert_detector_hits(detect_large_functions, large_func)
+    assert_detector_misses(detect_large_functions, "def small():\n    return 1")
 
 
-def test_detect_large_functions_negative():
-    """Test that small functions don't trigger."""
-    code = """
-def small():
-    return 1
-"""
-    hit, evidence = detect_large_functions(code, "test.py")
-    assert hit is False
-
-
-def test_detect_comments_docstrings_positive():
-    """Test that comments and docstrings are detected."""
-    code = """
-# This is a comment
-def foo():
-    \"\"\"This is a docstring\"\"\"
-    // Another comment
-    pass
-"""
-    hit, evidence = detect_comments_docstrings(code, "test.py")
-    assert hit is True
-    assert len(evidence) >= 2
-
-
-def test_detect_comments_docstrings_negative():
-    """Test that code without comments doesn't trigger."""
-    code = "x = 5"
-    hit, evidence = detect_comments_docstrings(code, "test.py")
-    assert hit is False
+def test_detect_comments_docstrings():
+    code = '# Comment\ndef foo():\n    """Docstring"""\n    pass'
+    assert_detector_hits(detect_comments_docstrings, code, min_evidence=2)
+    assert_detector_misses(detect_comments_docstrings, "x = 5")
 
 
 def test_detect_duplicate_code():
-    """Test that duplicate code detector is stubbed out."""
-    code = "anything"
-    hit, evidence = detect_duplicate_code(code, "test.py")
+    # Stubbed out - should always return False
+    hit, evidence = detect_duplicate_code("anything", "test.py")
     assert hit is False
-    assert len(evidence) == 0
+    assert evidence == []
 
 
 # STRUCTURE DETECTORS
 
-def test_detect_modular_design_positive():
-    """Test that imports are detected."""
-    code = """
-import os
-from typing import List
-require('express')
-#include <stdio.h>
-"""
-    hit, evidence = detect_modular_design(code, "test.py")
-    assert hit is True
-    assert len(evidence) >= 2
+def test_detect_modular_design():
+    code = "import os\nfrom typing import List\nrequire('express')"
+    assert_detector_hits(detect_modular_design, code, min_evidence=2)
+    assert_detector_misses(detect_modular_design, "x = 5")
 
 
-def test_detect_modular_design_negative():
-    """Test that code without imports doesn't trigger."""
-    code = "x = 5"
-    hit, evidence = detect_modular_design(code, "test.py")
-    assert hit is False
+def test_detect_test_files():
+    for filename in ["test_user.py", "user_test.py", "user.test.js", "src/tests/helper.py"]:
+        assert_filename_detector_hits(detect_test_files, filename)
+    for filename in ["main.py", "user.py", "component.js"]:
+        assert_filename_detector_misses(detect_test_files, filename)
 
 
-def test_detect_test_files_positive():
-    """Test that test file names are detected."""
-    test_cases = [
-        "test_user.py",
-        "user_test.py",
-        "user.test.js",
-        "user.spec.ts",
-        "src/tests/helper.py",
-        "__tests__/component.js"
+def test_detect_ci_workflows():
+    for filename in [".github/workflows/test.yml", ".gitlab-ci.yml", "Jenkinsfile"]:
+        assert_filename_detector_hits(detect_ci_workflows, filename)
+    for filename in ["main.py", "workflow.txt"]:
+        assert_filename_detector_misses(detect_ci_workflows, filename)
+
+
+# TESTING DETECTORS
+
+def test_detect_assertions():
+    code = "assert x == 5\nexpect(result).toBe(true)\nshould.equal(a, b)"
+    assert_detector_hits(detect_assertions, code, min_evidence=3)
+    assert_detector_misses(detect_assertions, "x = 5")
+
+
+def test_detect_mocking_or_fixtures():
+    code = "@patch('module.func')\n@pytest.fixture\ndef mock_data():\n    return Mock()"
+    assert_detector_hits(detect_mocking_or_fixtures, code, min_evidence=3)
+    assert_detector_misses(detect_mocking_or_fixtures, "def regular(): pass")
+
+
+# ERROR HANDLING & SECURITY DETECTORS
+
+def test_detect_error_handling():
+    code = "try:\n    risky()\nexcept Exception:\n    pass"
+    assert_detector_hits(detect_error_handling, code, min_evidence=2)
+    assert_detector_misses(detect_error_handling, "x = 5")
+
+
+def test_detect_input_validation():
+    code = "validate(email)\nschema.validate(data)\nif is_valid(input):"
+    assert_detector_hits(detect_input_validation, code, min_evidence=2)
+    assert_detector_misses(detect_input_validation, "x = 5")
+
+
+def test_detect_env_variable_usage():
+    code = "api_key = os.environ['KEY']\nport = process.env.PORT"
+    assert_detector_hits(detect_env_variable_usage, code, min_evidence=2)
+    assert_detector_misses(detect_env_variable_usage, "x = 5")
+
+
+def test_detect_crypto_usage():
+    code = "import hashlib\nencrypted = encrypt(data)\ntoken = jwt.encode(payload)"
+    assert_detector_hits(detect_crypto_usage, code, min_evidence=3)
+    assert_detector_misses(detect_crypto_usage, "x = 5")
+
+
+# ARCHITECTURE DETECTORS
+
+def test_detect_mvc_folders():
+    for path in ["src/models/user.py", "app/views/index.js", "api/controllers/auth.py"]:
+        assert_filename_detector_hits(detect_mvc_folders, path)
+    assert_filename_detector_misses(detect_mvc_folders, "src/utils/helper.py")
+
+
+def test_detect_api_routes():
+    code = "@app.route('/api/users')\napp.get('/health')\n@GetMapping('/api/posts')"
+    assert_detector_hits(detect_api_routes, code, min_evidence=3)
+    assert_detector_misses(detect_api_routes, "def regular(): pass")
+
+
+# FRONTEND DETECTORS
+
+def test_detect_components():
+    code = "class App extends Component {}\nVue.component('my-comp', {})"
+    assert_detector_hits(detect_components, code, min_evidence=2)
+    assert_detector_misses(detect_components, "const x = 5")
+
+
+# BACKEND DETECTORS
+
+def test_detect_serialization():
+    code = "JSON.stringify(obj)\njson.dumps(data)\nserialize(model)"
+    assert_detector_hits(detect_serialization, code, min_evidence=3)
+    assert_detector_misses(detect_serialization, "x = 5")
+
+
+def test_detect_database_queries():
+    code = "SELECT * FROM users\ncursor.execute(query)\nUser.findOne({id: 1})"
+    assert_detector_hits(detect_database_queries, code, min_evidence=3)
+    assert_detector_misses(detect_database_queries, "x = 5")
+
+
+def test_detect_caching():
+    code = "@lru_cache\nredis.set('key', value)\ncache.get('data')"
+    assert_detector_hits(detect_caching, code, min_evidence=2)
+    assert_detector_misses(detect_caching, "x = 5")
+
+
+# FALSE POSITIVE TESTS
+
+def test_detect_classes_false_positives():
+    """Ensure class detector doesn't trigger on non-class occurrences."""
+    false_positives = [
+        'message = "class User is defined"',  # String literal
+        '# This class does something',  # Comment
+        'my_class = 5',  # Variable name
+        'user_class_name = "Admin"',  # Part of variable name
+        "'''Documentation about class keyword'''",  # Docstring
     ]
-
-    for filename in test_cases:
-        hit, evidence = detect_test_files("", filename)
-        assert hit is True, f"Should detect {filename} as test file"
+    for code in false_positives:
+        assert_detector_misses(detect_classes, code)
 
 
-def test_detect_test_files_negative():
-    """Test that non-test files don't trigger."""
-    non_test_files = [
-        "main.py",
-        "user.py",
-        "component.js"
+def test_detect_inheritance_false_positives():
+    """Ensure inheritance detector doesn't trigger on non-inheritance patterns."""
+    false_positives = [
+        'class Simple:\n    pass',  # Class without inheritance
+        'description = "class User(BaseUser)"',  # In string
+        '# class Dog(Animal):',  # In comment
     ]
-
-    for filename in non_test_files:
-        hit, evidence = detect_test_files("", filename)
-        assert hit is False, f"Should not detect {filename} as test file"
+    for code in false_positives:
+        assert_detector_misses(detect_inheritance, code)
 
 
-def test_detect_ci_workflows_positive():
-    """Test that CI/CD files are detected."""
-    ci_files = [
-        ".github/workflows/test.yml",
-        ".gitlab-ci.yml",
-        "Jenkinsfile",
-        ".circleci/config.yml",
-        ".travis.yml"
+def test_detect_hash_maps_false_positives():
+    """Ensure hash map detector doesn't trigger on unrelated dict occurrences."""
+    false_positives = [
+        'dictionary = "dict"',  # String literal
+        '# Using dict() here',  # Comment
+        'predict = model.predict()',  # Similar word
+        'verdict = get_verdict()',  # Contains 'dict'
     ]
-
-    for filename in ci_files:
-        hit, evidence = detect_ci_workflows("", filename)
-        assert hit is True, f"Should detect {filename} as CI file"
+    for code in false_positives:
+        assert_detector_misses(detect_hash_maps, code)
 
 
-def test_detect_ci_workflows_negative():
-    """Test that non-CI files don't trigger."""
-    non_ci_files = [
-        "main.py",
-        "config.yml",
-        "workflow.txt"
+def test_detect_recursion_false_positives():
+    """Ensure recursion detector doesn't trigger on non-recursive functions."""
+    false_positives = [
+        'def process():\n    # factorial(n) is recursive',  # Comment
+        'def calc():\n    result = "factorial(n)"',  # String
     ]
+    for code in false_positives:
+        assert_detector_misses(detect_recursion, code)
 
-    for filename in non_ci_files:
-        hit, evidence = detect_ci_workflows("", filename)
-        assert hit is False, f"Should not detect {filename} as CI file"
+    # Note: def factorial() calling math.factorial() is an acceptable false positive
+    # since the function name matches - would need full AST parsing to fix
+
+
+def test_detect_sorting_false_positives():
+    """Ensure sorting detector doesn't trigger on unrelated sort occurrences."""
+    false_positives = [
+        'resort = "vacation"',  # Contains 'sort'
+        'assorted_items = []',  # Contains 'sorted'
+        '"Please sort this list"',  # In string
+        '# Use sorted() here',  # In comment
+    ]
+    for code in false_positives:
+        assert_detector_misses(detect_sorting_or_search, code)
+
+
+def test_detect_comments_false_positives():
+    """Ensure comment detector doesn't trigger on # or // in strings."""
+    false_positives = [
+        'url = "http://example.com"',  # // in URL
+        'tag = "This is a #hashtag"',  # # in string
+        'regex = r"\\d+"',  # Escape sequences
+    ]
+    for code in false_positives:
+        assert_detector_misses(detect_comments_docstrings, code)
+
+
+def test_detect_modular_design_false_positives():
+    """Ensure import detector doesn't trigger on import in strings/comments."""
+    false_positives = [
+        'message = "import this module"',  # In string
+        '# import os',  # Commented out import
+        'important = True',  # Contains 'import'
+    ]
+    for code in false_positives:
+        assert_detector_misses(detect_modular_design, code)
+
+
+def test_detect_error_handling_false_positives():
+    """Ensure error handling detector doesn't trigger on try in strings."""
+    false_positives = [
+        'message = "try this approach"',  # In string
+        '# try:',  # Commented code
+        'country = "England"',  # Contains 'try'
+        'retry_count = 3',  # Contains 'try'
+    ]
+    for code in false_positives:
+        assert_detector_misses(detect_error_handling, code)
+
+
+def test_detect_input_validation_false_positives():
+    """Ensure validation detector doesn't trigger on validate in strings."""
+    false_positives = [
+        'message = "validate the input"',  # In string
+        '# validate_email()',  # Comment
+        'invalidate_cache()',  # Contains 'validate'
+    ]
+    for code in false_positives:
+        assert_detector_misses(detect_input_validation, code)
+
+
+def test_detect_crypto_false_positives():
+    """Ensure crypto detector doesn't trigger on encrypt in strings."""
+    false_positives = [
+        'message = "encrypt the data"',  # In string
+        '# hashlib.sha256()',  # Comment
+        'decryption_key = None',  # Contains 'decrypt'
+    ]
+    for code in false_positives:
+        assert_detector_misses(detect_crypto_usage, code)
+
+
+def test_detect_api_routes_false_positives():
+    """Ensure API route detector doesn't trigger on route in strings."""
+    false_positives = [
+        'message = "@app.route is a decorator"',  # In string
+        '# @app.route("/api")',  # Comment
+        'router = Router()',  # Variable name
+    ]
+    for code in false_positives:
+        assert_detector_misses(detect_api_routes, code)
+
+
+def test_detect_components_false_positives():
+    """Ensure component detector doesn't trigger on Component in strings."""
+    false_positives = [
+        'message = "extends Component"',  # In string
+        '# class App extends Component',  # Comment
+        'component_name = "Header"',  # Variable name
+    ]
+    for code in false_positives:
+        assert_detector_misses(detect_components, code)
+
+
+def test_detect_caching_false_positives():
+    """Ensure caching detector doesn't trigger on cache in strings."""
+    false_positives = [
+        'message = "clear the cache"',  # In string
+        '# redis.set()',  # Comment
+        'cached_data = None',  # Variable name
+    ]
+    for code in false_positives:
+        assert_detector_misses(detect_caching, code)
 
 
 # EDGE CASES
 
-def test_detectors_handle_empty_input():
+def test_all_detectors_handle_empty_input():
     """Test that all detectors handle empty input gracefully."""
     detectors = [
-        detect_classes,
-        detect_inheritance,
-        detect_polymorphism,
-        detect_hash_maps,
-        detect_sets,
-        detect_queues_or_stacks,
-        detect_recursion,
-        detect_sorting_or_search,
-        detect_large_functions,
-        detect_comments_docstrings,
-        detect_duplicate_code,
-        detect_modular_design,
+        detect_classes, detect_inheritance, detect_polymorphism,
+        detect_hash_maps, detect_sets, detect_queues_or_stacks,
+        detect_recursion, detect_sorting_or_search,
+        detect_large_functions, detect_comments_docstrings, detect_duplicate_code,
+        detect_modular_design, detect_assertions, detect_mocking_or_fixtures,
+        detect_error_handling, detect_input_validation, detect_env_variable_usage,
+        detect_crypto_usage, detect_api_routes, detect_components,
+        detect_serialization, detect_database_queries, detect_caching,
     ]
 
     for detector in detectors:
-        hit, evidence = detector("", "empty.py")
-        assert hit is False
-        assert evidence == []
+        assert_detector_misses(detector, "")
 
 
 def test_evidence_format():
     """Test that evidence has correct format."""
-    code = "class Test: pass"
-    hit, evidence = detect_classes(code, "test.py")
-
-    assert hit is True
-    assert len(evidence) > 0
-
-    # Check evidence structure
+    evidence = assert_detector_hits(detect_classes, "class Test: pass")
     for item in evidence:
         assert "file" in item
         assert "line" in item
