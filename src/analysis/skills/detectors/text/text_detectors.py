@@ -16,35 +16,131 @@ from nltk.corpus import stopwords
 
 def detect_sentence_clarity(file_text: str, file_name: str):
     """
-    Criteria (max 4 points):
-      1. >= 50% sentences <= 25 words
-      2. Avg sentence length <= 20 words
-      3. No sentence > 50 words
-      4. Variance of sentence length reasonable (< 200)
+    Checks for 5 types of writing issues:
+      1. Fragments / run-on sentences
+      2. Subject–verb agreement errors
+      3. Misplaced or dangling modifiers
+      4. Wordiness / filler words
+      5. Pronoun & homophone clarity issues
+
+    Score = (# criteria passed) / 5
+
+    Evidence = all sentences that violated each rule.
     """
 
-    sentences = re.split(r'[.!?]+\s+', file_text.strip())
-    sentences = [s for s in sentences if s.strip()]
+    # Safer sentence splitting (keeps abbreviations intact)
+    sentences = [
+        s.strip()
+        for s in re.split(r'(?<=[\.!?])\s+', file_text.strip())
+        if s.strip()
+    ]
 
     if not sentences:
-        return {"score": 0, "evidence": []}
+        return {"score": 0, "evidence": {}}
 
-    lengths = [len(s.split()) for s in sentences]
-    evidence = [{"sentence": s[:60], "length": len(s.split())} for s in sentences]
-
+    total_criteria = 5
     score = 0
-    total = 4
 
-    if sum(1 for l in lengths if l <= 25) / len(lengths) >= 0.5:
-        score += 1
-    if (sum(lengths) / len(lengths)) <= 20:
-        score += 1
-    if max(lengths) <= 50:
-        score += 1
-    if (max(lengths) - min(lengths)) < 200:
+    # Evidence buckets
+    evidence = {
+        "fragments_runons": [],
+        "subj_verb_agreement": [],
+        "misplaced_modifiers": [],
+        "wordiness": [],
+        "pronoun_homophone": []
+    }
+
+    # --- Helper heuristic functions ---
+
+    def is_runon_or_fragment(s: str) -> bool:
+        words = s.split()
+
+        # Fragment: too short or missing a verb
+        if len(words) < 4 or not re.search(r'\b(is|are|was|were|has|had|does|do|did)\b', s, re.I):
+            return True
+
+        # Run-on: extremely long but no commas/semicolons
+        if len(words) > 40 and (',' not in s and ';' not in s):
+            return True
+
+        return False
+
+    def has_subj_verb_error(s: str) -> bool:
+        # Plural nouns incorrectly matched with singular verbs
+        if re.search(r'\b(people|students|data|results)\s+is\b', s, re.I):
+            return True
+
+        # Singular markers incorrectly matched with plural verbs
+        if re.search(r'\b(each|every)\s+\w+\s+are\b', s, re.I):
+            return True
+
+        return False
+
+    def is_misplaced_modifier(s: str) -> bool:
+        # Dangling participles ("Having done X, Y happened")
+        return bool(re.match(r'^(Having|Being|While)\s+\w+', s))
+
+    def is_wordy(s: str) -> bool:
+        words = s.split()
+        filler = re.search(r'\b(very|really|in addition|furthermore)\b', s, re.I)
+        return len(words) > 22 or bool(filler)
+
+    def has_pronoun_homophone_issue(s: str) -> bool:
+        # Vague pronoun chains ("this... this... it...")
+        if re.search(r'\b(it|this|that)\b.*\b(it|this|that)\b', s, re.I):
+            return True
+
+        # Common homophone mixups
+        if re.search(r'\b(their|there|they\'re)\b', s, re.I):
+            return True
+        if re.search(r'\b(its|it\'s)\b', s, re.I):
+            return True
+
+        return False
+
+    # --- Evaluate all sentences ---
+    for s in sentences:
+        if is_runon_or_fragment(s):
+            evidence["fragments_runons"].append(s)
+        if has_subj_verb_error(s):
+            evidence["subj_verb_agreement"].append(s)
+        if is_misplaced_modifier(s):
+            evidence["misplaced_modifiers"].append(s)
+        if is_wordy(s):
+            evidence["wordiness"].append(s)
+        if has_pronoun_homophone_issue(s):
+            evidence["pronoun_homophone"].append(s)
+
+    # --- Scoring rules ---
+    # Less than 5% of sentences should have these errors (or max 1)
+    threshold_5 = max(1, int(len(sentences) * 0.05))
+    threshold_10 = max(1, int(len(sentences) * 0.10))
+
+    # Criterion 1: fragments/run-ons
+    if len(evidence["fragments_runons"]) <= threshold_5:
         score += 1
 
-    return {"score": score / total, "evidence": evidence}
+    # Criterion 2: subject-verb agreement
+    if len(evidence["subj_verb_agreement"]) == 0:
+        score += 1
+
+    # Criterion 3: misplaced modifiers
+    if len(evidence["misplaced_modifiers"]) <= threshold_5:
+        score += 1
+
+    # Criterion 4: wordiness
+    if len(evidence["wordiness"]) <= threshold_10:
+        score += 1
+
+    # Criterion 5: pronoun/homophone misuse
+    if len(evidence["pronoun_homophone"]) <= threshold_5:
+        score += 1
+
+    return {
+        "score": score / total_criteria,
+        "evidence": evidence
+    }
+
 
 
 def detect_paragraph_structure(file_text: str, file_name: str):
@@ -56,7 +152,7 @@ def detect_paragraph_structure(file_text: str, file_name: str):
       4. Paragraph-level transitions detected (keywords)
     """
 
-    paragraphs = [p.strip() for p in file_text.split("\n") if p.strip()]
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n+", file_text) if p.strip()]
     if not paragraphs:
         return {"score": 0, "evidence": []}
 
@@ -133,10 +229,10 @@ def detect_argument_structure(file_text: str, file_name: str):
 
     text_lower = file_text.lower()
 
-    claim_words      = ["i argue", "this suggests", "i claim", "the point is"]
-    evidence_words   = ["according to", "data", "research", "study"]
-    reasoning_words  = ["because", "therefore", "thus", "hence"]
-    conclusion_words = ["in conclusion", "overall", "to conclude"]
+    claim_words      = ["i argue", "this paper argues", "i propose", "the thesis is", "the point is"]
+    evidence_words   = ["according to", "the study shows", "data from", "research indicates", "evidence suggests"]
+    reasoning_words  = ["because", "therefore", "as a result", "thus", "hence", "this implies"]
+    conclusion_words = ["in conclusion", "to conclude", "overall", "in sum", "in closing"]
 
     score = 0
     total = 4
@@ -159,40 +255,58 @@ def detect_argument_structure(file_text: str, file_name: str):
 def detect_depth_of_content(file_text: str, file_name: str):
     """
     Depth detector = conceptual richness + analytical reasoning.
-    
+
     Scoring (4 points):
-      1. Abstract/conceptual vocabulary (>=5)
+      1. Abstract/conceptual vocabulary (>=5 unique whole-word matches)
       2. Causal/analytical connectors (>=3)
-      3. Idea density (>=0.20)
+      3. Idea density >= 0.20 AND text >= 80 words
       4. Interpretation phrases (>=2)
     """
 
     text_lower = file_text.lower()
 
-    # 1. Abstract / conceptual vocabulary
+    # Tokenize words
+    words = re.findall(r"[A-Za-z]+", text_lower)
+    word_count = len(words)
+
+    # If text is too short, idea-density is meaningless → auto score = 0
+    if word_count < 80:
+        return {
+            "score": 0,
+            "evidence": [{
+                "reason": "text too short (<80 words for reliable depth analysis)",
+                "word_count": word_count
+            }]
+        }
+
+    # 1. Abstract/conceptual vocabulary (whole-word matching)
     abstract_keywords = [
         "concept", "framework", "theory", "model", "analysis",
         "interpretation", "implication", "assumption",
         "perspective", "principle", "underlying"
     ]
-    abstract_count = sum(text_lower.count(k) for k in abstract_keywords)
 
-    # 2. Causal / analytical connectors
+    abstract_count = 0
+    for kw in abstract_keywords:
+        # whole-word boundaries only
+        if re.search(rf"\b{kw}\b", text_lower):
+            abstract_count += 1
+
+    # 2. Causal / analytical connectors (must appear as substrings but normalized)
     connectors = [
-        "therefore", "thus", "hence", "consequently", 
-        "as a result", "this implies", "this suggests", 
+        "therefore", "thus", "hence", "consequently",
+        "as a result", "this implies", "this suggests",
         "this indicates", "results in", "leads to"
     ]
     connector_hits = [c for c in connectors if c in text_lower]
 
-    # 3. Idea density
+    # 3. Idea density (meaningful words per total words)
     stop = set(stopwords.words('english'))
 
-    words = re.findall(r"[A-Za-z]+", text_lower)
     meaningful = [w for w in words if w not in stop]
-
     unique_meaningful = set(meaningful)
-    idea_density = (len(unique_meaningful) / len(words)) if words else 0
+
+    idea_density = len(unique_meaningful) / word_count if word_count else 0
 
     # 4. Interpretation phrases
     interpretation_patterns = [
@@ -218,7 +332,8 @@ def detect_depth_of_content(file_text: str, file_name: str):
         "abstract_keyword_count": abstract_count,
         "connector_hits": connector_hits,
         "idea_density": round(idea_density, 3),
-        "interpretation_hits": interpretation_hits
+        "interpretation_hits": interpretation_hits,
+        "word_count": word_count
     }]
 
     return {"score": score / total, "evidence": evidence}
@@ -227,11 +342,13 @@ def detect_depth_of_content(file_text: str, file_name: str):
 
 def detect_iterative_process(file_text: str, file_name: str, supporting_files=None):
     """
-    Criteria (max 4 points):
-      1. >= 1 draft file
+    Iterative process detector.
+
+    Scoring (4 points):
+      1. >= 1 draft file (whole-word match)
       2. >= 2 drafts
-      3. outline file present
-      4. version markers in filenames (v2, rev, etc.)
+      3. Outline file present
+      4. Version markers detected (v# or "version #")
     """
 
     if not supporting_files:
@@ -239,18 +356,52 @@ def detect_iterative_process(file_text: str, file_name: str, supporting_files=No
 
     score = 0
     total = 4
-    evidence = [{"file": f["filename"]} for f in supporting_files]
 
-    draft_like = [f for f in supporting_files if any(x in f["filename"].lower() for x in ["draft", "rev", "edit"])]
-    version_like = [f for f in supporting_files if any(x in f["filename"].lower() for x in ["v2", "v3"])]
-    outline_like = [f for f in supporting_files if "outline" in f["filename"].lower()]
+    evidence = []
+    draft_files = []
+    version_files = []
+    outline_files = []
 
-    if len(draft_like) >= 1: score += 1
-    if len(draft_like) >= 2: score += 1
-    if outline_like: score += 1
-    if version_like: score += 1
+    for f in supporting_files:
+        fname = f["filename"]
+        lower = fname.lower()
+
+        # record all filenames regardless
+        evidence.append({"file": fname})
+
+        # --- 1) DRAFT DETECTION (whole word only) ---
+        # Ensures "final_draft_v3" → counts as draft (once), not "pendraft" etc.
+        if re.search(r"\bdraft\b|\brev(?:ision)?\b", lower):
+            draft_files.append(fname)
+
+        # --- 2) OUTLINE DETECTION ---
+        if re.search(r"\boutline\b", lower):
+            outline_files.append(fname)
+
+        # --- 3) VERSION DETECTION (v2, v10, version 3, etc.) ---
+        # Captures: v2, V3, v10, version2, version 2, revision 3
+        if re.search(r"\bv\s*\d+\b|\bversion\s*\d+\b", lower):
+            version_files.append(fname)
+
+    # ---------- Scoring ----------
+    if len(draft_files) >= 1:
+        score += 1
+    if len(draft_files) >= 2:
+        score += 1
+    if len(outline_files) >= 1:
+        score += 1
+    if len(version_files) >= 1:
+        score += 1
+
+    # ---------- Evidence ----------
+    evidence.append({
+        "draft_files": draft_files,
+        "outline_files": outline_files,
+        "version_files": version_files,
+    })
 
     return {"score": score / total, "evidence": evidence}
+
 
 
 def detect_planning_behavior(file_text: str, file_name: str, supporting_files=None):
