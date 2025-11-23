@@ -90,6 +90,7 @@ from .file_contributions import (
 from .code_activity import (
     delete_code_activity_metrics_for_project,
     insert_code_activity_metric,
+    store_code_activity_metrics,
 )
 
 # github prs
@@ -132,5 +133,6 @@ __all__ = [
     "delete_code_activity_metrics_for_project",
     "insert_code_activity_metric",
     "get_pull_requests_for_project",
-    "get_files_for_project"
+    "get_files_for_project",
+    "store_code_activity_metrics"
 ]

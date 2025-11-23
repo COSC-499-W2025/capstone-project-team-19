@@ -18,6 +18,7 @@ from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
+from src.db import store_code_activity_metrics
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -352,6 +353,7 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
     print("\n[COLLABORATIVE-CODE] Activity type summary:")
     print(format_activity_summary(activity_summary))
     print()
+    store_code_activity_metrics(conn, user_id, activity_summary)
     
     if summary:
         summary.contributions["github_contribution_metrics_generated"] = True
@@ -395,6 +397,7 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     print()  # spacing
     print(format_activity_summary(activity_summary))
     print()
+    store_code_activity_metrics(conn, user_id, activity_summary)
 
     if summary is not None:
         # store raw counts so you can reuse later in UI / JSON

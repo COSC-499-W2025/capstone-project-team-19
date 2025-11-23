@@ -63,3 +63,63 @@ def insert_code_activity_metric(
             percent,
         ),
     )
+
+def store_code_activity_metrics(conn, user_id, summary):
+    """
+    Store activity metrics into code_activity_metrics table.
+    - Clears old rows for this user + project + scope
+    - Inserts rows for 'files', 'prs', and 'combined'
+    """
+
+    project_name = summary.project_name
+    scope = summary.scope.value  # enum → string
+
+    # 1) Delete old rows
+    delete_code_activity_metrics_for_project(conn, user_id, project_name, scope)
+
+    # 2) Insert files rows
+    for at, data in summary.per_activity_files.items():
+        insert_code_activity_metric(
+            conn,
+            user_id,
+            project_name,
+            scope,
+            source="files",
+            activity_type=at.value,
+            event_count=data["count"],
+            total_events=summary.total_file_events,
+            percent=(data["count"] / summary.total_file_events * 100.0)
+            if summary.total_file_events > 0 else 0.0,
+        )
+
+    # 3) Insert PR rows
+    for at, data in summary.per_activity_prs.items():
+        insert_code_activity_metric(
+            conn,
+            user_id,
+            project_name,
+            scope,
+            source="prs",
+            activity_type=at.value,
+            event_count=data["count"],
+            total_events=summary.total_pr_events,
+            percent=(data["count"] / summary.total_pr_events * 100.0)
+            if summary.total_pr_events > 0 else 0.0,
+        )
+
+    # 4) Insert combined rows
+    for at, data in summary.per_activity.items():
+        insert_code_activity_metric(
+            conn,
+            user_id,
+            project_name,
+            scope,
+            source="combined",
+            activity_type=at.value,
+            event_count=data["count"],
+            total_events=summary.total_events,
+            percent=(data["count"] / summary.total_events * 100.0)
+            if summary.total_events > 0 else 0.0,
+        )
+
+    conn.commit()
