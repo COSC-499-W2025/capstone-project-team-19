@@ -23,6 +23,10 @@ import json
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
 from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
+from src.analysis.activity_type.code.summary import build_activity_summary
+from src.analysis.activity_type.code.formatter import format_activity_summary
+from src.analysis.activity_type.code.summary import build_activity_summary
+from src.analysis.activity_type.code.formatter import format_activity_summary
 
 
 
@@ -400,9 +404,16 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
     print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' (code)")
 
     analyze_code_project(conn, user_id, project_name, zip_path)
+
+    # activity-type summary for collaborative code
+    activity_summary = build_activity_summary(user_id=user_id, project_name=project_name)
+    print("\n[COLLABORATIVE-CODE] Activity type summary:")
+    print(format_activity_summary(activity_summary))
+    print()
     
     if summary:
         summary.contributions["github_contribution_metrics_generated"] = True
+        summary.contributions["activity_type"] = activity_summary.per_activity
 
     if current_ext_consent == 'accepted':
         parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
@@ -436,6 +447,16 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
 
     # --- Run main code + Git analysis ---
     analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=False)
+
+    # --- Activity-type summary (individual) ---
+    activity_summary = build_activity_summary(user_id=user_id, project_name=project_name)
+    print()  # spacing
+    print(format_activity_summary(activity_summary))
+    print()
+
+    if summary is not None:
+        # store raw counts so you can reuse later in UI / JSON
+        summary.metrics["activity_type"] = activity_summary.per_activity
 
     # --- Run LLM summary LAST, and only once ---
     if current_ext_consent == "accepted":
