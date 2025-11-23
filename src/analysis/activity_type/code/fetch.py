@@ -1,6 +1,5 @@
 """
 Handles all SQLite access needed for activity detection (files, PRs, classification).
-Assumes DB is local_storage.db at repo root, relative to this module.
 """
 
 from __future__ import annotations
