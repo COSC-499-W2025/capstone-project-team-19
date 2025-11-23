@@ -153,3 +153,36 @@ def resolve_scope(
     if cls == "individual":
         return Scope.INDIVIDUAL
     return Scope.COLLABORATIVE
+
+def get_user_contributed_files(
+    user_id: int,
+    project_name: str,
+    db_path: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Return only files where this user actually contributed in a collaborative project.
+    Joins `files` with `user_file_contributions` on (user_id, project_name, file_path).
+
+    Only includes rows where lines_changed > 0 OR commits_count > 0.
+    """
+    query = """
+        SELECT f.file_id,
+               f.file_name,
+               f.file_path,
+               f.extension,
+               f.file_type,
+               f.created,
+               f.modified,
+               f.size_bytes
+        FROM files AS f
+        JOIN user_file_contributions AS ufc
+          ON ufc.user_id = f.user_id
+         AND ufc.project_name = f.project_name
+         AND ufc.file_path = f.file_path
+        WHERE f.user_id = ?
+          AND f.project_name = ?
+          AND (ufc.lines_changed > 0 OR ufc.commits_count > 0)
+    """
+    with _get_connection(db_path) as conn:
+        rows = conn.execute(query, (user_id, project_name)).fetchall()
+    return [dict(r) for r in rows]

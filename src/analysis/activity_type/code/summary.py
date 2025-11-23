@@ -15,6 +15,7 @@ from .fetch import (
     get_project_repos,
     is_github_connected,
     resolve_scope,
+    get_user_contributed_files
 )
 from .labeler import label_file_event, label_pr_event
 from .types import ActivityEvent, ActivitySummary, ActivityType, Scope
@@ -71,7 +72,13 @@ def build_activity_summary(
     events: List[ActivityEvent] = []
 
     # 1) Offline file events
-    file_rows = get_project_files(user_id, project_name, db_path=db_path)
+    if scope == Scope.COLLABORATIVE:
+        # Only count files the user actually contributed to
+        file_rows = get_user_contributed_files(user_id, project_name, db_path=db_path)
+    else:
+        # Individual projects: use all project files for this user
+        file_rows = get_project_files(user_id, project_name, db_path=db_path)
+
     for row in file_rows:
         events.append(label_file_event(project_name, scope, row))
 
