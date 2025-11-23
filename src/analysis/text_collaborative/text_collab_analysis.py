@@ -97,8 +97,21 @@ def analyze_collaborative_text_project(
         }
         return
 
-    indices = [int(x.strip()) for x in selected.split(",") if x.strip().isdigit()]
-    user_sections = [sections[i - 1] for i in indices if 1 <= i <= len(sections)]
+    indices = []
+    for x in selected.split(","):
+        x = x.strip()
+        if not x.isdigit():
+            print(f"[Warning] Ignoring invalid input: '{x}'")
+            continue
+
+        n = int(x)
+        if 1 <= n <= len(sections):
+            indices.append(n)
+        else:
+            print(f"[Warning] Selection {n} is out of range.")
+
+    user_sections = [sections[i - 1] for i in indices]
+
 
     contributed_text = "\n\n".join(s["text"] for s in user_sections)
     
@@ -118,20 +131,36 @@ def analyze_collaborative_text_project(
         if f["file_name"].lower().endswith(".csv")
     ]
 
-    print("\nWhich supporting TEXT files did you contribute to?")
-    for idx, f in enumerate(supporting_text_files, start=1):
-        print(f"  {idx}. {f['file_name']}")
-    print("Enter numbers (comma-separated), or 0 for NONE.")
+    # ---- SUPPORTING TEXT FILES ----
+    if supporting_text_files:
+        print("\nWhich supporting TEXT files did you contribute to?")
+        for idx, f in enumerate(supporting_text_files, start=1):
+            print(f"  {idx}. {f['file_name']}")
+        print("Enter numbers (comma-separated), or 0 for NONE.")
 
-    resp = input("> ").strip()
-    text_support_indices = [
-        int(x) for x in resp.split(",")
-        if x.strip().isdigit() and int(x) != 0
-    ]
+        resp = input("> ").strip()
 
-    selected_text_support_files = [
-        supporting_text_files[i - 1] for i in text_support_indices
-    ]
+        text_support_indices = []
+        for x in resp.split(","):
+            x = x.strip()
+            if not x.isdigit():
+                print(f"[Warning] Ignoring invalid input: '{x}'")
+                continue
+            n = int(x)
+            if n == 0:
+                break
+            if 1 <= n <= len(supporting_text_files):
+                text_support_indices.append(n)
+            else:
+                print(f"[Warning] Selection {n} is out of range.")
+
+        selected_text_support_files = [
+            supporting_text_files[i - 1] for i in text_support_indices
+        ]
+    else:
+        print("\n(No supporting text files detected.)")
+        selected_text_support_files = []
+
 
     # ---------------------------------------------------------
     # STEP 2C — Load ENTIRE CONTENT + build structures for detectors
@@ -156,24 +185,43 @@ def analyze_collaborative_text_project(
     # ---------------------------------------------------------
     # STEP 2D — CSV selection
     # ---------------------------------------------------------
-    print("\nWhich CSV files did you contribute to?")
-    for idx, csv_f in enumerate(supporting_csv_files, start=1):
-        print(f"  {idx}. {csv_f['file_name']}")
-    print("Enter numbers (comma-separated), or 0 for NONE.")
+    if supporting_csv_files:
+        print("\nWhich CSV files did you contribute to?")
+        for idx, csv_f in enumerate(supporting_csv_files, start=1):
+            print(f"  {idx}. {csv_f['file_name']}")
+        print("Enter numbers (comma-separated), or 0 for NONE.")
 
-    resp_csv = input("> ").strip()
-    csv_support_indices = [
-        int(x) for x in resp_csv.split(",")
-        if x.strip().isdigit() and int(x) != 0
-    ]
+        resp_csv = input("> ").strip()
 
-    user_csv_metadata = None
-    if csv_support_indices:
-        all_csv_metadata = pipeline_result.get("csv_metadata", {})
-        files_metadata = all_csv_metadata.get("files", [])
-        user_csv_metadata = {
-            "files": [files_metadata[i - 1] for i in csv_support_indices]
-        }
+        csv_support_indices = []
+        for x in resp_csv.split(","):
+            x = x.strip()
+            if not x.isdigit():
+                print(f"[Warning] Ignoring invalid input: '{x}'")
+                continue
+            n = int(x)
+            if n == 0:
+                break
+            if 1 <= n <= len(supporting_csv_files):
+                csv_support_indices.append(n)
+            else:
+                print(f"[Warning] Selection {n} is out of range.")
+
+        user_csv_metadata = None
+        if csv_support_indices:
+            all_csv_metadata = pipeline_result.get("csv_metadata", {})
+            files_metadata = all_csv_metadata.get("files", [])
+            user_csv_metadata = {
+                "files": [
+                    files_metadata[i - 1]
+                    for i in csv_support_indices
+                    if i - 1 < len(files_metadata)
+                ]
+            }
+    else:
+        print("\n(No CSV files detected.)")
+        user_csv_metadata = None
+
 
     # ---------------------------------------------------------
     # MERGE ALL CONTRIBUTED TEXT
