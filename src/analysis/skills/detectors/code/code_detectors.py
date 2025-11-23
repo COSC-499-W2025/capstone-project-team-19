@@ -219,3 +219,167 @@ def detect_ci_workflows(file_text: str, file_name: str) -> Tuple[bool, List[Dict
         return True, [{"file": file_name, "line": 0}]
 
     return False, []
+
+
+# TESTING DETECTORS
+
+def detect_assertions(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+    """Detect test assertions."""
+    # Matches: assert, expect, should, chai.
+    pattern = r'(assert|expect|should|chai\.)'
+    evidence = []
+
+    for i, line in enumerate(file_text.split('\n'), 1):
+        if re.search(pattern, line, re.IGNORECASE):
+            evidence.append({"file": file_name, "line": i})
+
+    return (len(evidence) > 0, evidence)
+
+
+def detect_mocking_or_fixtures(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+    """Detect mocking or fixture usage in tests."""
+    # Matches: mock, Mock, @patch, fixture, stub
+    pattern = r'(mock|Mock|@patch|@fixture|stub|@pytest\.fixture)'
+    evidence = []
+
+    for i, line in enumerate(file_text.split('\n'), 1):
+        if re.search(pattern, line):
+            evidence.append({"file": file_name, "line": i})
+
+    return (len(evidence) > 0, evidence)
+
+
+# ERROR HANDLING & SECURITY
+
+def detect_error_handling(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+    """Detect error handling patterns."""
+    # Matches: try:, except, catch, throw, raises
+    pattern = r'(try:|except|catch\s*\(|throw\s+|raises)'
+    evidence = []
+
+    for i, line in enumerate(file_text.split('\n'), 1):
+        if re.search(pattern, line, re.IGNORECASE):
+            evidence.append({"file": file_name, "line": i})
+
+    return (len(evidence) > 0, evidence)
+
+
+def detect_input_validation(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+    """Detect input validation patterns."""
+    # Matches: validate, validator, sanitize, schema.validate
+    pattern = r'(validate|validator|sanitize|schema\.validate|\.is_valid)'
+    evidence = []
+
+    for i, line in enumerate(file_text.split('\n'), 1):
+        if re.search(pattern, line, re.IGNORECASE):
+            evidence.append({"file": file_name, "line": i})
+
+    return (len(evidence) > 0, evidence)
+
+
+def detect_env_variable_usage(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+    """Detect environment variable usage."""
+    # Matches: process.env, os.environ, getenv, .env
+    pattern = r'(process\.env|os\.environ|getenv|dotenv|\.env)'
+    evidence = []
+
+    for i, line in enumerate(file_text.split('\n'), 1):
+        if re.search(pattern, line):
+            evidence.append({"file": file_name, "line": i})
+
+    return (len(evidence) > 0, evidence)
+
+
+def detect_crypto_usage(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+    """Detect cryptography and security library usage."""
+    # Matches: hashlib, bcrypt, crypto, encrypt, decrypt, jwt
+    pattern = r'(hashlib|bcrypt|crypto|encrypt|decrypt|jwt|hash|hmac)'
+    evidence = []
+
+    for i, line in enumerate(file_text.split('\n'), 1):
+        if re.search(pattern, line, re.IGNORECASE):
+            evidence.append({"file": file_name, "line": i})
+
+    return (len(evidence) > 0, evidence)
+
+
+# ARCHITECTURE DETECTORS
+
+def detect_mvc_folders(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+    """Detect MVC folder structure."""
+    # Check filepath for models, views, controllers folders
+    pattern = r'/(models|views|controllers)/'
+
+    if re.search(pattern, file_name, re.IGNORECASE):
+        return True, [{"file": file_name, "line": 0}]
+
+    return False, []
+
+
+def detect_api_routes(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+    """Detect API route definitions."""
+    # Matches: @app.route, @router., app.get(, @GetMapping, @PostMapping
+    pattern = r'(@app\.route|@router\.|app\.(get|post|put|delete)\(|@(Get|Post|Put|Delete)Mapping|@(get|post|put|delete)\()'
+    evidence = []
+
+    for i, line in enumerate(file_text.split('\n'), 1):
+        if re.search(pattern, line):
+            evidence.append({"file": file_name, "line": i})
+
+    return (len(evidence) > 0, evidence)
+
+
+# FRONTEND DETECTORS
+
+def detect_components(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+    """Detect frontend component usage."""
+    # Matches: React.Component, extends Component, Vue.component, @Component
+    pattern = r'(React\.Component|extends Component|Vue\.component|@Component|createComponent)'
+    evidence = []
+
+    for i, line in enumerate(file_text.split('\n'), 1):
+        if re.search(pattern, line):
+            evidence.append({"file": file_name, "line": i})
+
+    return (len(evidence) > 0, evidence)
+
+
+# BACKEND DETECTORS
+
+def detect_serialization(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+    """Detect data serialization patterns."""
+    # Matches: JSON.stringify, json.dumps, serialize, toJSON, JsonSerializer
+    pattern = r'(JSON\.stringify|json\.dumps|serialize|toJSON|JsonSerializer|pickle\.dump)'
+    evidence = []
+
+    for i, line in enumerate(file_text.split('\n'), 1):
+        if re.search(pattern, line):
+            evidence.append({"file": file_name, "line": i})
+
+    return (len(evidence) > 0, evidence)
+
+
+def detect_database_queries(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+    """Detect database query usage."""
+    # Matches: SELECT, INSERT, UPDATE, cursor.execute, query(, findOne
+    pattern = r'(SELECT|INSERT|UPDATE|DELETE|cursor\.execute|\.query\(|\.findOne|\.findMany|\.find\(|\.save\()'
+    evidence = []
+
+    for i, line in enumerate(file_text.split('\n'), 1):
+        if re.search(pattern, line):
+            evidence.append({"file": file_name, "line": i})
+
+    return (len(evidence) > 0, evidence)
+
+
+def detect_caching(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+    """Detect caching implementation."""
+    # Matches: cache, Cache, Redis, memcached, @cached, lru_cache
+    pattern = r'(@cached|@lru_cache|cache|Cache|Redis|memcached|Memcached)'
+    evidence = []
+
+    for i, line in enumerate(file_text.split('\n'), 1):
+        if re.search(pattern, line):
+            evidence.append({"file": file_name, "line": i})
+
+    return (len(evidence) > 0, evidence)
