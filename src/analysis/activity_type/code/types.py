@@ -41,16 +41,24 @@ class ActivityEvent:
 @dataclass
 class ActivitySummary:
     """
-    Per-project aggregated summary of activity types and top files.
+    Per-project aggregated summary of activity types and top files/PRs.
     """
     project_name: str
     scope: Scope
     duration_start: Optional[str]
     duration_end: Optional[str]
-    total_events: int
-    per_activity: Dict[ActivityType, Dict[str, Optional[str]]]
-    # Example entry:
-    # {
-    #   ActivityType.FEATURE_CODING: {"count": 22, "top_file": "src/main.py"},
-    #   ActivityType.TESTING:        {"count": 6,  "top_file": "tests/test_foo.py"},
-    # }
+
+    # Totals
+    total_events: int            # files + PRs
+    total_file_events: int       # only file-based events
+    total_pr_events: int         # only PR-based events
+
+    # Per-activity breakdowns
+    per_activity: Dict[ActivityType, Dict[str, Optional[str]]]          # combined
+    per_activity_files: Dict[ActivityType, Dict[str, Optional[str]]]
+    per_activity_prs: Dict[ActivityType, Dict[str, Optional[str]]]
+
+    # Global top items (for footer)
+    top_file: Optional[str] = None
+    top_pr: Optional[str] = None
+
