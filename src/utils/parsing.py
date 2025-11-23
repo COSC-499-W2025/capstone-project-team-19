@@ -78,7 +78,7 @@ def parse_zip_file(zip_path, user_id: int | None = None, conn=None):
         os.makedirs(target_dir, exist_ok=True)
         zip_ref.extractall(target_dir)
 
-    files_info = collect_file_info(target_dir)
+    files_info = collect_file_info(target_dir, zip_path)
     layout = analyze_project_layout(files_info)
     _annotate_projects_on_files(files_info, layout)
 
@@ -149,11 +149,24 @@ def is_valid_mime(file_path, extension):
     return False
 
 
-def collect_file_info(root_dir):
+def collect_file_info(root_dir, zip_path=None):
     collected = []
     unsupported_files = []
     duplicate_files = []
     seen = set()
+
+    # Build a map of file paths to their ZIP metadata timestamps
+    zip_timestamps = {}
+    if zip_path and os.path.exists(zip_path):
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                for info in zf.infolist():
+                    if not info.is_dir():
+                        # Convert ZIP date_time tuple to timestamp
+                        dt = time.mktime(info.date_time + (0, 0, -1))
+                        zip_timestamps[info.filename] = time.ctime(dt)
+        except Exception as e:
+            print(f"Warning: Could not read ZIP timestamps: {e}")
 
     for folder, _, files in os.walk(root_dir):
         # Skip any mac files
@@ -162,36 +175,48 @@ def collect_file_info(root_dir):
 
         for file in files:
             full_path = os.path.join(folder, file)
-            extension = os.path.splitext(file)[1].lower() 
+            extension = os.path.splitext(file)[1].lower()
+            rel_path = os.path.relpath(full_path, root_dir)
+
+            # Get timestamp from ZIP metadata if available, otherwise use file system
+            zip_key = rel_path.replace("\\", "/")
+            if zip_key in zip_timestamps:
+                modified_time = zip_timestamps[zip_key]
+                created_time = modified_time  # ZIP only stores modified time
+            else:
+                # Fallback to file system timestamps
+                stats = os.stat(full_path)
+                created_time = time.ctime(stats.st_ctime)
+                modified_time = time.ctime(stats.st_mtime)
 
             # detect configuration/dependency files
             if file in CONFIG_FILES:
                 collected.append({
-                    "file_path": os.path.relpath(full_path, root_dir),
+                    "file_path": rel_path,
                     "file_name": file,
                     "extension": extension,
                     "file_type": "config",  # you can use a special type
                     "size_bytes": os.stat(full_path).st_size,
-                    "created": time.ctime(os.stat(full_path).st_ctime),
-                    "modified": time.ctime(os.stat(full_path).st_mtime)
+                    "created": created_time,
+                    "modified": modified_time
                 })
                 #skip storing config files in files table
-                continue   
+                continue
 
             if extension not in SUPPORTED_EXTENSIONS or not is_valid_mime(full_path, extension):
                 print(f"Unsupported file skipped: {file}")
                 continue
-            
+
             stats = os.stat(full_path)
 
             collected.append({
-                "file_path": os.path.relpath(full_path, root_dir),
+                "file_path": rel_path,
                 "file_name": file,
                 "extension": extension,
                 "file_type": classify_file(extension),
                 "size_bytes": stats.st_size,
-                "created": time.ctime(stats.st_ctime),
-                "modified": time.ctime(stats.st_mtime)
+                "created": created_time,
+                "modified": modified_time
             })
             
     # Log the unsupported files (feedback to users)
