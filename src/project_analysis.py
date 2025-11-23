@@ -422,11 +422,10 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
         # ------------------------------
         csv_metadata = analyze_all_csv(csv_files, zip_path) if csv_files else None
 
-<<<<<<< HEAD
         # ------------------------------
         # 3. Call NEW TEXT PIPELINE
         # ------------------------------
-        run_text_pipeline(
+        text_results = run_text_pipeline(
             parsed_files=parsed_files,
             zip_path=zip_path,
             conn=conn,
@@ -435,58 +434,24 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
             consent=external_consent,
             csv_metadata=csv_metadata
         )
-=======
-        # --- Run Text Analyses ---
-        if external_consent == "accepted":
-            results = run_text_llm_analysis(parsed_files, zip_path, conn, user_id)
+        
+        # ------------------------------
+        # 4. Integrate with ProjectSummary
+        # ------------------------------
+        if summary and text_results:
+            summary.summary_text = text_results.get("project_summary")
+            summary.skills = text_results.get("skills", [])
 
-            if results and len(results) > 0:
-                main = results[0]
-                summary.summary_text = main["summary"]
-                summary.skills = main["skills"]
-                summary.metrics["linguistic"] = main["linguistic"]
-                summary.metrics["success"] = main["success"]
+        if classification_id and text_results:
+            store_text_offline_metrics(
+                conn,
+                classification_id,
+                text_results.get("project_summary")
+            )
 
-            # Store LLM results if returned
-            if results:
-                for result in results:
-                    store_text_llm_metrics(
-                        conn,
-                        classification_id,
-                        result.get("project_name"),
-                        result.get("file_name"),
-                        result.get("file_path"),
-                        result.get("linguistic"),
-                        result.get("summary"),
-                        result.get("skills"),
-                        result.get("success"),
-                    )
-
-        else:
-            analysis_result = alternative_analysis(parsed_files, zip_path, project_name, conn, user_id)
-            if analysis_result and summary:
-                if "project_summary" in analysis_result:
-                    summary.summary_text = analysis_result["project_summary"]
-                if "skills" in analysis_result:
-                    summary.skills = analysis_result.get("skills", [])
-                if "linguistic" in analysis_result:
-                    summary.metrics["linguistic"] = analysis_result.get("linguistic")
-            if analysis_result and classification_id:
-                store_text_offline_metrics(
-                    conn,
-                    classification_id,
-                    analysis_result.get("project_summary"),
-                )
->>>>>>> origin/main
-
-        return
     else:
-<<<<<<< HEAD
-        run_code_non_llm_analysis(conn, user_id, project_name, zip_path)
-=======
         # --- Run non-LLM code analysis (static + Git metrics) ---
         run_code_non_llm_analysis(conn, user_id, project_name, zip_path, summary=summary)
->>>>>>> origin/main
 
 
 def _run_skill_extraction_for_all(conn, user_id, assignments):
