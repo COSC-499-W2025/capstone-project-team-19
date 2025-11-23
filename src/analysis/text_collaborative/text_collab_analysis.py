@@ -4,6 +4,7 @@ from src.analysis.text_individual.text_analyze import run_text_pipeline
 from src.analysis.text_individual.llm_summary import generate_text_llm_summary, generate_contribution_llm_summary
 from src.analysis.text_individual.alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
+from src.utils.helpers import normalize_pdf_paragraphs
 
 
 def analyze_collaborative_text_project(
@@ -54,6 +55,12 @@ def analyze_collaborative_text_project(
 
     main_file_name = pipeline_result["main_file"]
     full_main_text = _load_main_text(parsed_files, main_file_name, zip_path, conn, user_id)
+
+    # Normalize full document (fixes broken PDF line breaks)
+    normalized_paragraphs = normalize_pdf_paragraphs(full_main_text)
+
+    # Recombine normalized paragraphs into a clean text block
+    full_main_text = "\n\n".join(normalized_paragraphs)
 
     # store main summary in project_summary
     summary_obj.summary_text = pipeline_result["project_summary"]

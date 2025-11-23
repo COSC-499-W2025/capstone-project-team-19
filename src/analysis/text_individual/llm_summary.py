@@ -48,3 +48,40 @@ def generate_text_llm_summary(text: str) -> str:
     except Exception as e:
         print(f"Error generating summary: {e}")
         return "[Summary unavailable due to API error]"
+    
+def generate_contribution_llm_summary(full_text, user_text):
+    """
+    LLM-generated FIRST-PERSON contribution summary.
+    """
+    prompt = f"""
+You are summarizing a student's personal contribution to a group document.
+
+FULL DOCUMENT:
+{full_text[:6000]}
+
+THE TEXT THE STUDENT PERSONALLY WROTE:
+{user_text[:4000]}
+
+Task:
+Write a first-person, professional, concise reflection describing:
+- what the student contributed,
+- what those contributions accomplished,
+- how it strengthened or supported the overall document.
+
+Use a tone like:
+"I contributed to the __ section where I __. This improved the project's quality by __."
+
+Write 3–5 sentences.
+"""
+
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=200,
+            temperature=0.5,
+        )
+        return completion.choices[0].message.content.strip()
+    except Exception:
+        return "I contributed to the document, but an automatic summary could not be generated."
+

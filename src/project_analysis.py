@@ -21,7 +21,6 @@ from src.db import get_classification_id, store_text_offline_metrics, store_text
 from src.db.project_summaries import save_project_summary
 import json
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
-from src.analysis.text_individual.csv_analyze import run_csv_analysis
 from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
 
@@ -284,7 +283,7 @@ def get_individual_contributions(conn, user_id, project_name, project_type, curr
     print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' ({project_type})")
 
     if project_type == "text":
-        analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary)
+        analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path)
     elif project_type == "code":
         analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary)
     else:
@@ -304,7 +303,7 @@ def run_individual_analysis(conn, user_id, project_name, project_type, current_e
         print(f"[INDIVIDUAL] Unknown project type for '{project_name}', skipping.")
 
 
-def analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary):
+def analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path):
     """
     Analyze collaborative text projects with optional Google Drive connection.
     If Google Drive is skipped or fails → fallback to collaborative manual text flow.
@@ -344,7 +343,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
             user_id=user_id,
             project_name=project_name,
             parsed_files=parsed_files,
-            zip_path=None,
+            zip_path=zip_path,
             external_consent=current_ext_consent,
             summary_obj=summary
         )
@@ -355,9 +354,6 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
 
     if not result['success']:
         print("\n[TEXT-COLLAB] Google Drive connection failed → falling back to manual mode.\n")
-
-        from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
-
         analyze_collaborative_text_project(
             conn, user_id, project_name, parsed_files, None, current_ext_consent, summary
         )
@@ -369,9 +365,6 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
 
     if not drive_service or not docs_service:
         print("\n[TEXT-COLLAB] Google Drive connected but incomplete services → fallback to manual.\n")
-
-        from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
-
         analyze_collaborative_text_project(
             conn, user_id, project_name, parsed_files, None, current_ext_consent, summary
         )
