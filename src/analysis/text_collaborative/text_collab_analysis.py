@@ -37,7 +37,8 @@ def analyze_collaborative_text_project(
         conn=conn,
         user_id=user_id,
         project_name=project_name,
-        consent=external_consent
+        consent=external_consent,
+        suppress_print=True
     )
 
     if not pipeline_result:
@@ -57,10 +58,10 @@ def analyze_collaborative_text_project(
     full_main_text = _load_main_text(parsed_files, main_file_name, zip_path, conn, user_id)
 
     # Normalize full document (fixes broken PDF line breaks)
-    normalized_paragraphs = normalize_pdf_paragraphs(full_main_text)
+    normalized = normalize_pdf_paragraphs(full_main_text)
 
     # Recombine normalized paragraphs into a clean text block
-    full_main_text = "\n\n".join(normalized_paragraphs)
+    full_main_text = "\n\n".join(normalized)
 
     # store main summary in project_summary
     summary_obj.summary_text = pipeline_result["project_summary"]
@@ -100,6 +101,79 @@ def analyze_collaborative_text_project(
     user_sections = [sections[i - 1] for i in indices if 1 <= i <= len(sections)]
 
     contributed_text = "\n\n".join(s["text"] for s in user_sections)
+    
+    # ---------------------------------------------------------
+    # STEP 2B — Ask which SUPPORTING TEXT files they contributed to
+    # ---------------------------------------------------------
+    supporting_text_files = [
+        f for f in parsed_files
+        if f["file_type"] == "text"
+        and not f["file_name"].lower().endswith(".csv")
+        and f["file_name"] != main_file_name
+    ]
+
+
+    supporting_csv_files = [
+        f for f in parsed_files
+        if f["file_name"].lower().endswith(".csv")
+    ]
+
+    print("\nWhich supporting TEXT files did you contribute to?")
+    for idx, f in enumerate(supporting_text_files, start=1):
+        print(f"  {idx}. {f['file_name']}")
+    print("Enter numbers (comma-separated), or 0 for NONE.")
+
+    resp = input("> ").strip()
+    text_support_indices = [
+        int(x) for x in resp.split(",")
+        if x.strip().isdigit() and int(x) != 0
+    ]
+
+    selected_text_support_files = [
+        supporting_text_files[i - 1] for i in text_support_indices
+    ]
+
+    # ---------------------------------------------------------
+    # STEP 2C — Load ENTIRE CONTENT of selected supporting files
+    # ---------------------------------------------------------
+    contributed_supporting_texts = []
+
+    for f in selected_text_support_files:
+        support_text = _load_main_text(parsed_files, f["file_name"], zip_path, conn, user_id)
+        normalized_sup = normalize_pdf_paragraphs(support_text)
+        clean_text = "\n\n".join(normalized_sup)
+        contributed_supporting_texts.append(clean_text)
+
+    # ---------------------------------------------------------
+    # STEP 2D — CSV selection
+    # ---------------------------------------------------------
+    print("\nWhich CSV files did you contribute to?")
+    for idx, csv_f in enumerate(supporting_csv_files, start=1):
+        print(f"  {idx}. {csv_f['file_name']}")
+    print("Enter numbers (comma-separated), or 0 for NONE.")
+
+    resp_csv = input("> ").strip()
+    csv_support_indices = [
+        int(x) for x in resp_csv.split(",")
+        if x.strip().isdigit() and int(x) != 0
+    ]
+
+    user_csv_metadata = None
+    if csv_support_indices:
+        all_csv_metadata = pipeline_result.get("csv_metadata", {})
+        files_metadata = all_csv_metadata.get("files", [])
+        user_csv_metadata = {
+            "files": [files_metadata[i - 1] for i in csv_support_indices]
+        }
+
+    # ---------------------------------------------------------
+    # MERGE ALL CONTRIBUTED TEXT
+    # ---------------------------------------------------------
+    contributed_text = (
+        contributed_text + "\n\n" + "\n\n".join(contributed_supporting_texts)
+    )
+
+
 
     # ---------------------------------------------------------
     # STEP 3 — Compute % of contribution
@@ -129,7 +203,7 @@ def analyze_collaborative_text_project(
     skill_output = extract_text_skills(
         main_text=contributed_text,
         supporting_texts=[],     # do not include group writing
-        csv_metadata=pipeline_result.get("csv_metadata"),
+        csv_metadata=user_csv_metadata,
         project_name=project_name,
         user_id=user_id,
         conn=conn,
@@ -146,6 +220,16 @@ def analyze_collaborative_text_project(
         "buckets": skill_output.get("buckets", {}),
         "overall_score": skill_output.get("overall_score")
     }
+    
+    # Print the skill detector output for the user
+    print("\nSkill Scores:")
+    print("-" * 60)
+    for bucket, data in skill_output.get("buckets", {}).items():
+        print(f"{bucket:20s}  score={data['score']:.2f}   ({data['description']})")
+    print("-" * 60)
+    print(f"OVERALL SCORE: {skill_output.get('overall_score'):.2f}")
+    print("-" * 60)
+
 
     print("[TEXT-COLLAB] Collaborative text analysis complete.")
 
