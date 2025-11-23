@@ -167,3 +167,121 @@ def classify_files_by_activity(files: List[Dict]) -> Dict[str, List[Dict]]:
             classified['Unclassified'].append(f)
     return classified
 
+def get_activity_timeline(files: List[Dict]) -> List[Dict]:
+    timeline = []
+
+    for f in files:
+        filename = f.get('file_name', '')
+        activity = detect_activity_type(filename) or 'Unclassified'
+
+        created_str = f.get('created')
+        modified_str = f.get('modified')
+        if created_str and modified_str:
+            created_dt = parse_timestamp(created_str)
+            timeline.append({
+                'date': created_dt,
+                'date_str': created_str,
+                'file_name': filename,
+                'activity_type': activity,
+                'event': 'created'
+            })
+        if modified_str:
+            modified_dt = parse_timestamp(modified_str)
+            timeline.append({
+                'date': modified_dt,
+                'date_str': modified_str,
+                'file_name': filename,
+                'activity_type': activity,
+                'event': 'modified'
+            })
+    timeline.sort(key=lambda x: x['date'])
+    return timeline
+
+def get_activity_contribution_data(files: List[Dict]) -> Dict:
+    timestamp_analysis = analyze_file_timestamps(files)
+    classified = classify_files_by_activity(files)
+    timeline = get_activity_timeline(files)
+
+    return {
+        'timestamp_analysis': {
+            'start_date': timestamp_analysis['start_date'],
+            'end_date': timestamp_analysis['end_date'],
+            'duration_days': timestamp_analysis['duration_days']
+        },
+        'activity_classification': {
+            activity_name: [f['file_name'] for f in files_list]
+            for activity_name, files_list in classified.items()
+        },
+        'timeline': [
+            {
+                'date': entry['date'],
+                'file_name': entry['file_name'],
+                'activity_type': entry['activity_type'],
+                'event': entry['event']
+            }
+            for entry in timeline
+        ],
+        'summary': {
+            'total_files': len(files),
+            'classified_files': sum(len(files) for activity_name, files in classified.items() if activity_name != 'Unclassified'),
+            'activity_counts': {
+                activity.name: len(classified[activity.name])
+                for activity in ACTIVITY_TYPES
+            }
+        }
+    }
+
+def print_activity(files: List[Dict], project_name: str = "Project", main_file_name: str = None):
+
+    print("\n" + "=" * 80)
+    print(f"ACTIVITY TYPE CONTRIBUTION ANALYSIS: {project_name}")
+    print("=" * 80)
+
+    print("\nPROJECT DURATION & TIMESTAMPS")
+    print("-" * 80)
+
+    timestamp_analysis = analyze_file_timestamps(files)
+    start_dt = timestamp_analysis['start_date']
+    end_dt = timestamp_analysis['end_date']
+    duration = timestamp_analysis['duration_days']
+
+    if start_dt and end_dt:
+        print(f"Start Date:     {start_dt.strftime('%B %d, %Y at %I:%M %p')}")
+        print(f"End Date:       {end_dt.strftime('%B %d, %Y at %I:%M %p')}")
+        print(f"Duration:       {duration} days")
+
+        print("\nFile Timeline (by last modification):")
+        for file_info in timestamp_analysis['files_by_date']:
+            print(f"  • {file_info['file_name']:40s} → Last edited: {file_info['modified'].strftime('%b %d, %Y')}")
+    else:
+        print("No timestamp data available")
+    print("\n" + "=" * 80)
+    print("⏱️  ACTIVITY TIMELINE (Chronological Order)")
+    print("-" * 80)
+
+    timeline = get_activity_timeline(files)
+
+    # Override activity type for main file
+    for entry in timeline:
+        if main_file_name and entry['file_name'] == main_file_name:
+            entry['activity_type'] = "Final"
+
+    # Timeline is already sorted by date
+    if timeline:
+        current_date = None
+        for entry in timeline:
+            entry_date = entry['date'].strftime('%B %d, %Y')
+
+            # Print date header if changed
+            if entry_date != current_date:
+                print(f"\n{entry_date}:")
+                current_date = entry_date
+
+            time_str = entry['date'].strftime('%I:%M %p')
+            print(f"  {time_str} - "
+                  f"[{entry['activity_type']}] "
+                  f"{entry['file_name']} ({entry['event']})")
+    else:
+        print("\nNo activity timeline available")
+
+    print("=" * 80 + "\n")
