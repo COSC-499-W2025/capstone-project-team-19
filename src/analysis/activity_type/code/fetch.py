@@ -14,10 +14,13 @@ from .types import Scope
 
 def _get_default_db_path() -> str:
     """
-    Resolve ../../../local_storage.db relative to this file.
+    Resolve <repo_root>/local_storage.db relative to this file.
+    Assumes layout: <root>/local_storage.db and <root>/src/...
     """
     here = Path(__file__).resolve()
-    db_path = here.parents[3] / "local_storage.db"
+    # go up: code → activity_type → analysis → src → <root>
+    root = here.parents[4]
+    db_path = root / "local_storage.db"
     return str(db_path)
 
 
