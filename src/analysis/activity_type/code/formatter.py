@@ -4,7 +4,7 @@ Used for printing in the terminal or logs.
 """
 
 from __future__ import annotations
-from .types import ActivitySummary, ActivityType
+from .types import ActivitySummary, ActivityType, Scope
 
 def _shorten_top_file(path: str | None, project_name: str = "") -> str | None:
     """

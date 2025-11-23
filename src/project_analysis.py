@@ -18,8 +18,6 @@ from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
-from src.analysis.activity_type.code.summary import build_activity_summary
-from src.analysis.activity_type.code.formatter import format_activity_summary
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
