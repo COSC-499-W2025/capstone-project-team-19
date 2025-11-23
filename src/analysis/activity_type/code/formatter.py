@@ -4,47 +4,45 @@ Used for printing in the terminal or logs.
 """
 
 from __future__ import annotations
+from .types import ActivitySummary, ActivityType
 
-from .types import ActivitySummary, ActivityType, Scope
+def _shorten_top_file(path: str | None, project_name: str = "") -> str | None:
+    """
+    Remove any leading folders before the actual project name.
+    """
+    if not path:
+        return path
 
+    if project_name and project_name in path:
+        idx = path.find(project_name)
+        return path[idx:]  # keep from project_name → end
 
-def _scope_to_string(scope: Scope) -> str:
-    if scope == Scope.INDIVIDUAL:
-        return "Individual"
-    if scope == Scope.COLLABORATIVE:
-        return "Collaborative"
-    return str(scope.value)
-
+    # fallback (previous behavior)
+    marker = "node_modules/"
+    idx = path.find(marker)
+    return path[idx:] if idx != -1 else path
 
 def format_activity_summary(summary: ActivitySummary) -> str:
     """
-    Return printable overview, including duration and per-activity counts.
+    Print ONLY the activity summary — no project name, no scope, no duration.
     """
     lines = []
-
-    lines.append(f"=== Project: {summary.project_name} ===")
-    lines.append(f"Scope: {_scope_to_string(summary.scope)}")
-
-    if summary.duration_start and summary.duration_end:
-        lines.append(f"Duration: {summary.duration_start} \u2192 {summary.duration_end}")
-    else:
-        lines.append("Duration: (no timestamps available)")
-
-    lines.append("")
     lines.append("Activity summary (by files/PRs):")
 
-    total = max(summary.total_events, 1)  # avoid divide-by-zero semantics
+    total = summary.total_events if summary.total_events > 0 else 1
 
     for at in ActivityType:
         entry = summary.per_activity.get(at, {})
         count = entry.get("count", 0)
         top_file = entry.get("top_file")
 
+        pct = (count / total) * 100.0
         label = at.name.replace("_", " ").title()
-        line = f"- {label}: {count}/{summary.total_events}"
+        display_top = _shorten_top_file(top_file, summary.project_name) if top_file else None
 
-        if top_file:
-            line += f" (top file: {top_file})"
+        line = f"- {label}: {count}/{summary.total_events} -> {pct:.2f}%"
+        if display_top:
+            line += f" (top file: {display_top})"
 
         lines.append(line)
 
