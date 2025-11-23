@@ -66,6 +66,14 @@ from .text_metrics import (
     get_text_llm_metrics,
 )
 
+# Code metrics operations
+from .code_metrics import (
+    store_code_complexity_metrics,
+    get_code_complexity_metrics,
+    store_code_llm_metrics,
+    get_code_llm_metrics,
+)
+
 # Contribution operations
 from .contributions import (
     store_text_contribution_revision,
@@ -128,6 +136,10 @@ __all__ = [
     "store_text_offline_metrics",
     "store_text_llm_metrics",
     "get_text_llm_metrics",
+    "store_code_complexity_metrics",
+    "get_code_complexity_metrics",
+    "store_code_llm_metrics",
+    "get_code_llm_metrics",
     "store_text_contribution_revision",
     "store_text_contribution_summary",
     "save_token_placeholder",
