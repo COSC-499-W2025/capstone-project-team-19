@@ -26,7 +26,8 @@ def detect_classes(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
 def detect_inheritance(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect class inheritance such as `class Foo(Bar):`."""
     # Matches: class Dog(Animal), class User extends Base, class Foo : public Bar
-    pattern = r'class\s+\w+\s*[:(]'
+    # Must have something in parentheses or 'extends' keyword
+    pattern = r'class\s+\w+\s*\([^)]+\)|class\s+\w+\s+extends\s+\w+|class\s+\w+\s*:\s*(public|private|protected)'
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
