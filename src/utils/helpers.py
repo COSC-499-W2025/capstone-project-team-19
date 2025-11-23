@@ -232,16 +232,35 @@ def extractfromcsv(filepath: str, sample_rows: int = 5) -> dict:
 
 SUPPORTED_CODE_EXTENSIONS={'.py', '.java', '.js', '.html', '.css', '.c', '.cpp', '.h'}
 
+def read_file_content(filepath: str) -> Optional[str]:
+    """
+    Read the full contents of a file.
+    Used for skill detection where we need complete file analysis.
+
+    Args:
+        filepath: Absolute path to the file
+
+    Returns:
+        File contents as string, or None if error
+    """
+    try:
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read()
+    except Exception as e:
+        print(f"Error reading file {filepath}: {e}")
+        return None
+
+
 def extract_code_file(filepath: str)->Optional[str]:
     root, extension = os.path.splitext(filepath)
     if extension.lower() not in SUPPORTED_CODE_EXTENSIONS:
         return None
-    
+
     try:
         # .py, .java, .js, .html, .css, .c, .cpp, .h can be accessed using regular text extraction
         with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
-        
+
         # instead of extracting the whole code, we just need function names, class headers, comments, and docstrings
         context_lines = []
         for line in lines:
@@ -252,9 +271,9 @@ def extract_code_file(filepath: str)->Optional[str]:
             # html, css, js comments or tags
             elif stripped.startswith(("<!--", "<!DOCTYPE", "<html", "<head", "<body", "<script", "<style")):
                 context_lines.append(line.rstrip())
-                
+
         return "\n".join(line for line in context_lines if line.strip()) if context_lines else None
-    
+
     except Exception as e:
         print(f"Error extracting code from {filepath}: {e}")
         return None

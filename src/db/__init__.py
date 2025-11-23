@@ -77,6 +77,14 @@ from .tokens import save_token_placeholder
 # skills
 from .skills import insert_project_skill
 
+# file contributions
+from .file_contributions import (
+    store_file_contributions,
+    get_user_contributed_files,
+    get_file_contribution_stats,
+    has_contribution_data,
+)
+
 __all__ = [
     "connect",
     "init_schema",
@@ -102,6 +110,10 @@ __all__ = [
     "store_text_contribution_summary",
     "save_token_placeholder",
     "get_project_metadata",
-    "insert_project_skill"
+    "insert_project_skill",
+    "store_file_contributions",
+    "get_user_contributed_files",
+    "get_file_contribution_stats",
+    "has_contribution_data",
     "store_collaboration_profile"
 ]
