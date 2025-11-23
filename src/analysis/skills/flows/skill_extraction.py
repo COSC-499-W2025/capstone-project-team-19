@@ -7,7 +7,8 @@ This file must:
 """
 
 import sqlite3
-from src.db import get_project_metadata
+import os
+from src.db import get_project_metadata, has_contribution_data, get_user_contributed_files
 from src.utils.helpers import _fetch_files
 from src.analysis.skills.flows.code_skill_extraction import extract_code_skills
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
@@ -23,12 +24,36 @@ def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
     if not project_type or not classification:
         print(f"[SKILLS] Cannot extract skills for '{project_name}' (missing metadata).")
         return
-    
+
     files = _fetch_files(conn, user_id, project_name, only_text=(project_type == "text"))
     if not files:
         print(f"[SKILLS] No files found for '{project_name}'. Skipping skill extraction.")
         return
-    
+
+    # For collaborative projects, filter files based on user contributions
+    if classification == "collaborative" and has_contribution_data(conn, user_id, project_name):
+        contributed_files = get_user_contributed_files(conn, user_id, project_name)
+
+        if contributed_files:
+            # Filter files to only include those the user contributed to
+            original_count = len(files)
+
+            # Match by filename (basename) since file_path formats might differ
+            files = [
+                f for f in files
+                if any(os.path.basename(f.get("file_path", "")) == os.path.basename(contrib_path)
+                       for contrib_path in contributed_files)
+            ]
+
+            filtered_count = len(files)
+            print(f"[SKILLS] Filtered to {filtered_count}/{original_count} files based on your contributions")
+        else:
+            print(f"[SKILLS] Warning: No contributions found for '{project_name}', using all files")
+
+    if not files:
+        print(f"[SKILLS] No contributed files found for '{project_name}'. Skipping skill extraction.")
+        return
+
     print(f"[SKILLS] Extracting skills for {project_name} ({classification}, {project_type})")
 
     if project_type == "code":
