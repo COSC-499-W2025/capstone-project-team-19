@@ -18,6 +18,8 @@ from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
+from src.analysis.activity_type.code.summary import build_activity_summary
+from src.analysis.activity_type.code.formatter import format_activity_summary
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -346,9 +348,16 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
     print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' (code)")
 
     analyze_code_project(conn, user_id, project_name, zip_path)
+
+    # activity-type summary for collaborative code
+    activity_summary = build_activity_summary(user_id=user_id, project_name=project_name)
+    print("\n[COLLABORATIVE-CODE] Activity type summary:")
+    print(format_activity_summary(activity_summary))
+    print()
     
     if summary:
         summary.contributions["github_contribution_metrics_generated"] = True
+        summary.contributions["activity_type"] = activity_summary.per_activity
 
     if current_ext_consent == 'accepted':
         parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
