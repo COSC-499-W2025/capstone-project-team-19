@@ -356,17 +356,10 @@ Next week, the team will focus on finishing the integration between pipelines an
 
 | GitHub Username | Screenshot                                                                  |
 | --------------- | --------------------------------------------------------------------------- |
-| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Nov3-Nov9.png)     |
-| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Nov3-Nov9.png)   |
-| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Nov3-Nov9.png)     |
-| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Nov3-Nov9.png) |
-| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Nov3-Nov9.png)     |
-| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Nov3-Nov9.png)     |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Nov17-Nov23.png)     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Nov17-Nov23.png)   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Nov17-Nov23.png)     |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Nov17-Nov23.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Nov17-Nov23.png)     |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Nov17-Nov23.png)     |
 
-### Table view of in progress tasks by username
-
-| GitHub Username | Screenshot                                                                  |
-| --------------- | --------------------------------------------------------------------------- |
-| `ivonanicetin`  | ![In-progress tasks for Ivona](screenshots/In-Progress-Ivona-Nov3-Nov9.png) |
-| `taoTimTim`     | ![In-progress tasks for Timmi](screenshots/In-Progress-Timmi-Nov3-Nov9.png) |
-| `salmavkh`      | ![In-progress tasks for Timmi](screenshots/In-Progress-Salma-Nov3-Nov9.png) |
