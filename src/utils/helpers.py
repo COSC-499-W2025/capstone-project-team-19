@@ -28,6 +28,9 @@ def _fetch_files(conn: sqlite3.Connection, user_id: int, project_name: str, only
     rows = conn.execute(query, params).fetchall()
     return [{"file_name": r[0], "file_type": r[1], "file_path": r[2]} for r in rows]
 def _fetch_files_timestamps(conn, user_id: int, project_name: str):
+    if conn is None:
+        return []
+
     query = """
         SELECT file_name, file_path, created, modified, file_type
         FROM files
