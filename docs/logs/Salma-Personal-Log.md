@@ -93,3 +93,37 @@ Week recap:
   - Suggested renaming Ammaar’s non-LLM metrics table to non_llm_text for consistency with Johanes’ llm_text table.
 
 Next week: I plan to store non-LLM code collaborative metrics (was unsure about the DB refactoring but now resolved). If time allows, I also plan to refactor the repo structure to include subfolders such as e.g., consent/, common/, text_individual_analysis/, etc.
+
+## (Week 11) Monday November 17 - Sunday November 23
+
+![Screenshot of week 11 peer eval](./screenshots/Salma-Nov17-Nov23.PNG)
+
+I postponed storing the non-LLM collaborative code metrics because a few milestone-1 tasks became higher priority. Here’s what I completed over the past weeks:
+
+- PR #206 (Repo restructuring during reading week)
+
+  - Refactored the src/ directory into clearer subfolders for better organization and maintainability.
+  - Updated all related imports and path references across scripts and tests.
+  - Applied Timmi’s suggestion to rename common/ to utils/ to follow industry standard.
+
+- PR #233 (Code activity-type detection basic logic pipeline)
+
+  - Implemented build_activity_summary() to aggregate activity counts from files and PRs, including percentage breakdowns.
+  - Added a standardized formatter for both individual and collaborative analysis flows.
+  - Created test_code_activity_type.py to validate path shortening, formatter output, and aggregation logic.
+  - Activity detection uses keyword matching on filenames and PR text (e.g., test/spec → Testing, readme/md → Documentation, refactor/fix/bug/docs in PRs → corresponding category). Anything else defaults to Feature Coding.
+
+- PR #238 (Improvements for PR #233)
+
+  - Integrated user-associated files into the collaborative analysis logic.
+  - Incorporated teammate feedback: removed duplicate imports (Ammaar), excluded dependency files by reusing the list from the non-LLM analysis (Johanes), and moved SQL-related queries into src/db (Ivona).
+  - Updated the console output to a cleaner table format.
+  - Store data in code_activity_metrics.
+  - Updated and expanded tests to cover all edge cases.
+
+- Reviewed and provided feedback on several PRs, including:
+  - Johanes’ PR on text activity detection, suggesting that SQL-related queries be moved into src/db.
+  - Timmi’s PR on the GitHub analysis function, recommending a quick word/topic-diversity check to ensure comments are actually meaningful.
+  - Ammaar’s PR on collaborative code-skill detection, suggesting a clearer table name change from user_file_contributions to user_code_contributions.
+
+Next Week: I plan to re-run main to identify and fix remaining issues/possible edge cases (e.g., the text-individual flow) to finish Milestone 1. I’ll also discuss with the team whether the terminal-output reformatting task can be split into smaller subtasks. If still needed, I’ll also store the non-LLM collaborative code metrics.
