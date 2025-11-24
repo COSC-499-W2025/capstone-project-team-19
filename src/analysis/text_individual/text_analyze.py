@@ -8,7 +8,7 @@ from .llm_summary import generate_text_llm_summary
 from .alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.analysis.activity_type.text.activity_type import print_activity
-from src.utils.helpers import _fetch_files_timestamps
+from src.db import get_files_with_timestamps
 def run_text_pipeline(
     parsed_files: List[dict],
     zip_path: str,
@@ -100,7 +100,7 @@ def run_text_pipeline(
 
         # --- Activity type analysis (only for individual mode) ---
         if not suppress_print:
-            all_project_files=_fetch_files_timestamps(conn,user_id, project_name)
+            all_project_files=get_files_with_timestamps(conn,user_id, project_name)
             print_activity(all_project_files,project_name,main_file_name=main_file['file_name'])
 
         # --- Load main file content ---

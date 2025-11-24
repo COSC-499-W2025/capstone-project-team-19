@@ -4,7 +4,8 @@ from src.analysis.text_individual.text_analyze import run_text_pipeline
 from src.analysis.text_individual.llm_summary import generate_text_llm_summary, generate_contribution_llm_summary
 from src.analysis.text_individual.alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
-from src.utils.helpers import normalize_pdf_paragraphs, _fetch_files_timestamps
+from src.utils.helpers import normalize_pdf_paragraphs
+from src.db import get_files_with_timestamps
 from src.analysis.activity_type.text.activity_type import print_activity
 
 
@@ -246,7 +247,7 @@ def analyze_collaborative_text_project(
         ])
 
     # Fetch timestamp data for ALL project files
-    all_project_files = _fetch_files_timestamps(conn, user_id, project_name)
+    all_project_files = get_files_with_timestamps(conn, user_id, project_name)
 
     # Filter to only files the user contributed to
     user_contributed_files = [
