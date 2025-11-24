@@ -98,8 +98,11 @@ def run_text_pipeline(
         # --- Select main file ---
         main_file = _select_main_file(files_sorted, base_path)
 
-        all_project_files=_fetch_files_timestamps(conn,user_id, project_name)
-        print_activity(all_project_files,project_name,main_file_name=main_file['file_name'])
+        # --- Activity type analysis (only for individual mode) ---
+        if not suppress_print:
+            all_project_files=_fetch_files_timestamps(conn,user_id, project_name)
+            print_activity(all_project_files,project_name,main_file_name=main_file['file_name'])
+
         # --- Load main file content ---
         main_path = os.path.join(base_path, main_file["file_path"])
         main_text = extract_text_file(main_path, conn, user_id)
