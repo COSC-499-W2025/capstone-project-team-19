@@ -58,10 +58,15 @@ def match_zip_files_to_drive(
 
 def _list_supported_drive_files(service: Resource) -> List[Dict]:
     """
-    List all supported files from Google Drive.
+    List supported files from Google Drive with server-side MIME type filtering.
     """
     files = []
     page_token = None
+   
+    mime_type_conditions = " or ".join([f"mimeType='{mime}'" for mime in SUPPORTED_MIME_TYPES])
+    
+    # Build query: exclude trashed files AND filter by MIME types
+    query = f"trashed=false and ({mime_type_conditions})"
     
     while True:
         try:
@@ -69,12 +74,13 @@ def _list_supported_drive_files(service: Resource) -> List[Dict]:
                 pageSize=100,
                 fields="nextPageToken, files(id, name, mimeType)",
                 pageToken=page_token,
-                q="trashed=false"  # Exclude trashed files
+                q=query
             ).execute()
             
             items = results.get('files', [])
             
-            # Filter by supported MIME types
+            # Convert to our format (no need to filter by MIME type anymore since
+            # server already filtered, but we keep this for safety/consistency)
             supported = [
                 {'id': item['id'], 'name': item['name'], 'mimeType': item.get('mimeType', '')}
                 for item in items
