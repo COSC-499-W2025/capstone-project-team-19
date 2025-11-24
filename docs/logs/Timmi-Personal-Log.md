@@ -80,6 +80,7 @@ Next week, I plan to extend the individual contributions to a collaborative proj
 
 Last week, I had planned on extending the duplication techniques, but the team discussed this and realized any further duplication checks are not a requirement until Milestone 2. Saving this for the next milestone will allow us to focus more on the Milestone 1 requirements.
 
+
 ## (Week 10) Monday November 3 - Sunday November 9
 
 ![Screenshot of this week's peer evaluation](./screenshots/Timmi-Nov3-Nov9.png)
@@ -98,3 +99,31 @@ My PRs:
 - 173 - Refactor the main flow, both main and store_and_prompt
 - 177 - Fix consent flow for new users and update edge case test
 - 185 - GitHub metrics
+
+
+## (Week 11) Monday November 17 - Sunday November 23
+
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Nov17-Nov23.PNG)
+
+Week Recap: This week I focused heavily on completing core components of the system that were necessary for meeting the milestone requirements. I implemented the full GitHub integration flow, expanded and finalized the pipelines, and contributed major restructuring across the project. I also resolved several GitHub conflicts that emerged due to delayed PR reviews, which required me to manually migrate work into new branches.
+
+A large portion of my time was also spent determining our remaining tasks for the milestone. Because consistent communication was difficult, I created detailed documents outlining the project structure and the outstanding work needed, which helped the team get clarity on what still had to be completed. These documents are all on Google Docs, and thus are not included in the repository.
+
+In addition to this, I continued cleaning up the codebase by organizing modules, improving flow consistency, implementing new flow/pipelines, and preparing for the next phase of development.
+
+Technical Breakdown:
+- #208 (Refactor/db module split) - Refactored the whole `db.py` file. Separated the schema from the helper functions, then further split the helper functions into files based on which table the functions were accessing.
+- #209 (GitHub metrics db storage) - Normalized the `github_repo_metrics` table, so instead of storing a JSON text the table has proper metric columns. I updated all areas of the code to account for this change (storing/parsing functions, updating integration flow, and fixing tests)
+- #212 (Skill detection flow) - Implemented the full skill detection pipeline. Previously, all the analyses were spread out among the system, printing and storing different types of metrics, and not technically detecting the skills the user shows in their projects. This pipeline takes the analyses already implemented and sends the data into a skill detector flow, where the project is parsed via several detector functions (the functions themselves were not implemented in this PR, only the flow was). 
+- #213 (GitHub analysis functions) - Implemented the initial modules used to determine the user's collaboration skills in a coding project. The functions themselves were not fully implemented here, only the flow and supporting classes. 
+- #221 (Integration for project summaries) - Implemented the Project Summaries flow. As the analyses are run, the project summary is filled in, so later the system can print and store the project summaries instead of all the various types of anlyses we previously had implemented. This will make the final milestone requirements much easier to implement (retrieval and parsing).
+- #225 (GitHub analysis final implementation) - Completely finished the full GitHub collaboration analysis. My previous GitHub PRs were partial, and more focused on flow, but this one fully fleshed out any missing sections and conencted all the components. When the user connects to GitHub, their collaboration skills are now detected and stored in the database. Detecting these skills will help the user understand their contribution patterns (team dynamics, workload, etc.).
+
+Additionally, I reviewed as many PRs as my time schedule allowed.
+
+Next Week:
+- Refactor the project summary so that the system prints results stored in the project summary database rather than using the current flow. 
+- Separate the printing of resume items and portfolio items to make the output clearer and more aligned with the user experience we intend.
+- Clarify (and possibly implement) the things Salma mentioned in PR #225 (GitHub API not returning ALL comments on a PR, only some, and ensuring all comments are being stored)
+
+I also plan to refactor the print statements throughout the codebase. Right now the system prints too much during a run, so my goal is to reduce unnecessary output and ensure that only the final project summaries are displayed to the user.
