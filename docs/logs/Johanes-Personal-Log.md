@@ -57,7 +57,7 @@ Next week plan: Continue storing other metrics result to database.
 
 ## (Week 12) Monday 17th November - Sunday 23rd November
 ![Screenshot of week 12 peer eval](./screenshots/Johanes-Nov17-23.PNG)
-Week recap: I did storing individual code metrics to the database, but has not been merged yet, created a new table to store the metrics, with foreign key to the proejct_classifications. I worked on classifying activity type of text project, whether it is a revision file, research file, final file, draft file, or a data file. I used static dictionary. I also add priority variable to the activity so it doesnt have conflict within each activity when classifying. I stored the activity_metrics to the database for future use. I reviewed adara and salma's pr and give some suggestion to improve their feature. 
+Week recap: I created a new table to store the metrics, with foreign key to the proejct_classifications. I worked on classifying activity type of text project, whether it is a revision file, research file, final file, draft file, or a data file. I used static dictionary. I also add priority variable to the activity so it doesnt have conflict within each activity when classifying. I stored the activity_metrics to the database for future use. I reviewed adara and salma's pr and give some suggestion to improve their feature. 
 
 Next week plan: I plan to modify start menu to display options such as analyze new project, view old project, delete old project, and view resume items and view portfolio items
 
