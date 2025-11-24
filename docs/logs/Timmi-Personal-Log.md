@@ -80,7 +80,28 @@ Next week, I plan to extend the individual contributions to a collaborative proj
 
 Last week, I had planned on extending the duplication techniques, but the team discussed this and realized any further duplication checks are not a requirement until Milestone 2. Saving this for the next milestone will allow us to focus more on the Milestone 1 requirements.
 
-## (Week 10) Monday November 17 - Sunday November 23
+
+## (Week 10) Monday November 3 - Sunday November 9
+
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Nov3-Nov9.png)
+
+Week Recap: This week I touched on various parts of the system. I focused a lot on refactoring, understanding existing code, and improving maintainability instead of just adding new features. I also tried to review PRs within 24 hours of them opening, to avoid them sitting there for days, so I reviewed a ton this week.
+
+I started by refactoring the main flow in `main()` and `prompt_and_store()`, since both functions had grown into large and hard-to-follow chunks. I spent time reading through the logic and deciding how to break things apart cleanly, then extracted different responsibilities into helper functions. I followed a TDD-style approach while refactoring, so I had to keep running the tests repeatedly to make sure I wasn't breaking behavior. This took a while, but the code is now much cleaner and easier to follow. We also discussed re-structuring the project directory last week, so even though I created new helper functions, I purposely left them in the same file for now until we reorganize the file structure as a team.
+
+After that, I worked on fixing a bug in the onboarding flow. New users were mistakenly being treated as existing users with no consents, and although I understood the problem well, I wanted to find the cleanest possible fix instead of throwing something together. I spent time looking through the database helper functions to see if the logic I needed already existed rather than rewriting something. Eventually I found `get_user_by_username()`, which returns `None` when a user doesn’t exist, and called the function before creating a user record so we can properly distinguish first-time users. This required adjusting the if/else logic, and one test scenario became logically impossible, so I turned it into a defensive case. This PR took longer than expected because I wanted to ensure I was not writing duplicate code, and was reusing what already existed in the system.
+
+The rest of my time was spent continuing the GitHub integration. The API connection itself was easy enough since authentication already existed, the hardest part was figuring out how to structure it cleanly inside our codebase. The project still isn't modular enough, so I had to refactor as I went and rename some folders and functions to better reflect their purpose (for example, changing the `github_auth` folder to just `github`). I spent a lot of time reading older code, figuring out how to avoid duplication, and deciding where logic should live. Once I established a plan, actually pulling GitHub data and storing it in the database was straightforward. This part was both fun and frustrating because I like API work and seeing everything connect, but the lack of documentation and organization in our system means every small change requires digging through a lot of code first.
+
+Next week (reading break), I plan to continue expanding the GitHub analysis by adding more API calls, restructuring the `github_repo_metrics` table into something more modular instead of one large JSON dump, and integrating the metrics into our analysis output. I also want to continue refactoring and will probably start by either breaking `main.py` into separate files now that the flow is cleaned up or breaking the file `db.py` into separate files (one for the schema, one for access functions).
+
+My PRs:
+- 173 - Refactor the main flow, both main and store_and_prompt
+- 177 - Fix consent flow for new users and update edge case test
+- 185 - GitHub metrics
+
+
+## (Week 11) Monday November 17 - Sunday November 23
 
 ![Screenshot of this week's peer evaluation](./screenshots/Timmi-Nov17-Nov23.PNG)
 
@@ -88,7 +109,7 @@ Week Recap: This week I focused heavily on completing core components of the sys
 
 A large portion of my time was also spent determining our remaining tasks for the milestone. Because consistent communication was difficult, I created detailed documents outlining the project structure and the outstanding work needed, which helped the team get clarity on what still had to be completed. These documents are all on Google Docs, and thus are not included in the repository.
 
-In addition to this, I continued cleaning up the codebase by organizing modules, improving flow consistency, and preparing for the next phase of development.
+In addition to this, I continued cleaning up the codebase by organizing modules, improving flow consistency, implementing new flow/pipelines, and preparing for the next phase of development.
 
 Technical Breakdown:
 - #208 (Refactor/db module split) - Refactored the whole `db.py` file. Separated the schema from the helper functions, then further split the helper functions into files based on which table the functions were accessing.
