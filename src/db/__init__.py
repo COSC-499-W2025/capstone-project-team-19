@@ -85,6 +85,11 @@ from .file_contributions import (
     has_contribution_data,
 )
 
+# files
+from .files import (
+    get_files_with_timestamps,
+)
+
 __all__ = [
     "connect",
     "init_schema",
@@ -115,5 +120,6 @@ __all__ = [
     "get_user_contributed_files",
     "get_file_contribution_stats",
     "has_contribution_data",
-    "store_collaboration_profile"
+    "store_collaboration_profile",
+    "get_files_with_timestamps",
 ]

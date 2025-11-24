@@ -119,3 +119,29 @@ def delete_files_for_project(conn, user_id: int, project_name: str):
         DELETE FROM files
         WHERE user_id = ? AND project_name = ?
     """, (user_id, project_name))
+
+def get_files_with_timestamps(conn, user_id: int, project_name: str):
+    """
+    Fetch files for a project with their timestamps.
+    Returns a list of dicts with file_name, file_path, created, modified, and file_type.
+    """
+    if conn is None:
+        return []
+
+    query = """
+        SELECT file_name, file_path, created, modified, file_type
+        FROM files
+        WHERE user_id = ? AND project_name = ?
+        ORDER BY modified ASC
+    """
+    rows = conn.execute(query, (user_id, project_name)).fetchall()
+    return [
+        {
+            'file_name': r[0],
+            'file_path': r[1],
+            'created': r[2],
+            'modified': r[3],
+            'file_type': r[4]
+        }
+        for r in rows
+    ]

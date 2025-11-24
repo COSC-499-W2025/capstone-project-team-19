@@ -7,8 +7,8 @@ from .csv_analyze import analyze_all_csv
 from .llm_summary import generate_text_llm_summary
 from .alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
-
-
+from src.analysis.activity_type.text.activity_type import print_activity
+from src.db import get_files_with_timestamps
 def run_text_pipeline(
     parsed_files: List[dict],
     zip_path: str,
@@ -78,10 +78,16 @@ def run_text_pipeline(
         print(f"Analyzing {len(text_files)} text file(s)...")
         print(f"{'=' * 80}\n")
 
-    # Group text files by top folder (project name)
+    # Group text files by project folder
     projects: Dict[str, List[dict]] = {}
     for f in text_files:
-        folder = f["file_path"].replace("\\", "/").split("/")[0]
+        path_parts = f["file_path"].replace("\\", "/").split("/")
+        if len(path_parts) >= 3:
+            folder = path_parts[2]
+        elif len(path_parts) >= 1:
+            folder = path_parts[0]
+        else:
+            continue
         projects.setdefault(folder, []).append(f)
 
     for project_name, files in projects.items():
@@ -92,13 +98,20 @@ def run_text_pipeline(
         # --- Select main file ---
         main_file = _select_main_file(files_sorted, base_path)
 
+        # --- Activity type analysis (only for individual mode) ---
+        if not suppress_print:
+            all_project_files=get_files_with_timestamps(conn,user_id, project_name)
+            print_activity(all_project_files,project_name,main_file_name=main_file['file_name'])
+
         # --- Load main file content ---
         main_path = os.path.join(base_path, main_file["file_path"])
         main_text = extract_text_file(main_path, conn, user_id)
         if not main_text and not suppress_print:
             print("Could not extract text. Skipping.\n")
             continue
+        
 
+            
         # --- Supporting text files ---
         supporting_files = [f for f in files_sorted if f != main_file]
         supporting_texts = _load_supporting_texts(
