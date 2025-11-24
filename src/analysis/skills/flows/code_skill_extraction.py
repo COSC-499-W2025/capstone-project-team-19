@@ -3,7 +3,7 @@ import os
 from typing import Dict, List
 
 from src.analysis.skills.utils.skill_levels import score_to_level
-from src.analysis.skills.detectors.code.detector_registry import CODE_DETECTOR_FUNCTIONS
+from src.analysis.skills.detectors.code.code_detector_registry import CODE_DETECTOR_FUNCTIONS
 from src.analysis.skills.buckets.code_buckets import CODE_SKILL_BUCKETS
 from src.db import insert_project_skill
 from src.utils.helpers import read_file_content

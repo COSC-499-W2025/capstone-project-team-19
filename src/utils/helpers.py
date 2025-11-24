@@ -4,6 +4,7 @@ from typing import List, Dict, Optional, Tuple
 import os
 import subprocess
 import pandas as pd
+import re
 
 # Text extraction
 import docx2txt
@@ -290,3 +291,48 @@ def extract_readme_file(base_path: str) -> Optional[str]:
                 print(f"Error reading README: {e}")
                 return None
     return None
+
+
+
+SECTION_HEADERS = [
+    "abstract", "introduction", "background", "methods", "methodology",
+    "results", "results and discussion", "discussion", "conclusion",
+    "references", "keywords"
+]
+
+def normalize_pdf_paragraphs(text: str):
+    """
+    Reconstructs paragraphs from messy PDF-extracted text.
+    - Rejoins broken lines.
+    - Detects standard academic headers.
+    - Splits paragraphs cleanly.
+    """
+
+    # Remove double/triple newlines
+    lines = [l.strip() for l in text.split("\n") if l.strip()]
+
+    paragraphs = []
+    current = []
+
+    def is_header(line):
+        low = line.lower().rstrip(":")
+        return any(low.startswith(h) for h in SECTION_HEADERS)
+
+    for line in lines:
+        # New section header → commit previous paragraph
+        if is_header(line):
+            if current:
+                paragraphs.append(" ".join(current).strip())
+                current = []
+            current.append(line)  # header itself becomes a new paragraph start
+            continue
+
+        # Normal continuation → append to the current paragraph
+        current.append(line)
+
+    # Final paragraph
+    if current:
+        paragraphs.append(" ".join(current).strip())
+
+    return paragraphs
+
