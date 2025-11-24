@@ -172,16 +172,25 @@ def aggregate_into_buckets(detector_results: Dict[str, Dict]):
     bucket_output = {}
 
     for bucket in CODE_SKILL_BUCKETS:
-        signals_found = 0
+        weighted_signals = 0
         bucket_evidence = []
+
+        # Calculate max possible score (only count positive detectors)
+        max_score = sum(1 for d in bucket.detectors if bucket.weights.get(d, 1) > 0)
+        if max_score == 0:
+            max_score = bucket.total_signals  # fallback if no weights defined
 
         for detector_name in bucket.detectors:
             if detector_name in detector_results:
                 if detector_results[detector_name]["hits"] > 0:
-                    signals_found += 1
+                    # Apply weight (default to +1 if not specified)
+                    weight = bucket.weights.get(detector_name, 1)
+                    weighted_signals += weight
                     bucket_evidence.extend(detector_results[detector_name]["evidence"])
 
-        score = signals_found / bucket.total_signals
+        # Clamp weighted_signals to [0, max_score] and normalize
+        weighted_signals = max(0, min(weighted_signals, max_score))
+        score = weighted_signals / max_score if max_score > 0 else 0
         level = score_to_level(score)
 
         bucket_output[bucket.name] = {
