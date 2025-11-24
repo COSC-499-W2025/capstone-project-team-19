@@ -69,3 +69,23 @@ This week I worked on PR[COSC-499-W2025/capstone-project-team-19#198](https://gi
 
 Next Week:
 Continue extracting/improving Google drive collaboration data. Fix the 2 bugs. Refactor/clean code.
+
+## (Week 12) Monday Nov 17th - Sunday November 23th 
+![Screenshot of this week's peer eval](./screenshots/Ivona-Nov.17-23.PNG)
+
+This week I attended group meetings, reviewed PRs, made 2 PRs and helped Timmi with starting the organization for planning what is left for milestone 1.
+
+This week I worked on PR[COSC-499-W2025/capstone-project-team-19#235](https://github.com/COSC-499-W2025/capstone-project-team-19/issues/235):
+
+This was a bug fix to optimize performance when connecting to Google Drive.
+
+PR#245:
+This was the start of the implementation of utilizing GoogleDrive for computing collaborative anlysis skills from text projects. 
+-I added the modules functions for calculating all the initial skill computation flow.
+-I added the profile module to store the computed skills.
+-I added all the modules for calculating the anlaysis.
+-Full unit testing.
+
+Next Week:
+I plan to finnish the contributation skills from text projects by getting the metrics from the comments API and stroing them in the database.
+
