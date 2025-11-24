@@ -328,15 +328,15 @@ The team will focus on linking related modules and improving data connections ac
 | `taoTimTim`     | ![In-progress tasks for Timmi](screenshots/In-Progress-Timmi-Nov3-Nov9.png) |
 | `salmavkh`      | ![In-progress tasks for Timmi](screenshots/In-Progress-Salma-Nov3-Nov9.png) |
 
-
 ## (Week 12) Monday November 17 - Sunday November 23
 
 ### Week recap
-This week, the team focused on refactoring repo structure, pipelines, database, implementing new features, and feature optimization. We finished the core tasks that has not been implemented for milestone 1 based on the TA's feedbacl. We implemented both text and code activity-type detection, using filenames for both code and text, and PR keyword signals for code, and storing all results in the database. We refactored the database by splitting db.py into a schema file and query modules grouped by table. We also continued implementing the storage of key analysis outputs,including activity types, skill extraction results, contribution data, and project summaries,so that all components of the analysis pipeline now persist consistently across the system. In parallel, collaborative workflows were strengthened by improving file-contribution tracking, optimizing Google Drive connections, and enhancing detectors for text and code. Overall, the week focused on solidifying core infrastructure while expanding functionality to support more accurate, scalable project analysis. 
+
+This week, the team focused on completing the remaining core requirements for Milestone 1, with a stronger emphasis on generating skill oriented outputs for the portfolio and resume. This work was complemented by refactoring pipelines and the database, implementing new features, and carrying out targeted feature optimizations. We implemented text and code activity type detection using filenames for both domains and PR keyword signals for code, and ensured all results are persisted in the database. We also refactored the overall repository structure by introducing clearer subfolders and reorganizing the database layer by splitting db.py into a schema module and table specific query modules. In parallel, we continued implementing storage for key analysis outputs including activity types, skill extraction results, contribution data, and project summaries so the entire analysis pipeline now persists consistently across the system. Collaborative workflows were strengthened by improving file contribution tracking, optimizing Google Drive integration, and enhancing text and code detectors. Overall, this week concentrated on solidifying core infrastructure while expanding functionality to support more accurate and scalable project analysis.
 
 ### Plan for the next cycle
 
-Next week, the team will focus on finishing and polishing the integration between pipelines and database storage, refining project summary retrieval, reducing unnecessary print output, and completing collaborative text-analysis features such as Google Drive metrics and contribution scoring. We also plan to refine the start-menu interface, improve the clarity of resume and portfolio outputs, and address remaining GitHub API edge cases. Continuous PR review and cleanup will support final stabilization for the upcoming milestone.
+Next week, the team will complete the remaining Milestone 1 requirements. The team will focus on finishing the integration between pipelines and database storage, refining project summary retrieval, reducing unnecessary print output, and completing collaborative text-analysis features such as Google Drive metrics and contribution scoring. We also plan to refine the start-menu interface, improve the clarity of resume and portfolio outputs, and address remaining GitHub API edge cases. Continuous PR review and cleanup will support final stabilization for the upcoming milestone.
 
 ### Burnup chart
 
@@ -355,12 +355,11 @@ Next week, the team will focus on finishing and polishing the integration betwee
 
 ### Table view of completed tasks by username
 
-| GitHub Username | Screenshot                                                                  |
-| --------------- | --------------------------------------------------------------------------- |
+| GitHub Username | Screenshot                                                                    |
+| --------------- | ----------------------------------------------------------------------------- |
 | `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Nov17-Nov23.png)     |
 | `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Nov17-Nov23.png)   |
 | `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Nov17-Nov23.png)     |
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Nov17-Nov23.png) |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Nov17-Nov23.png)     |
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Nov17-Nov23.png)     |
-
