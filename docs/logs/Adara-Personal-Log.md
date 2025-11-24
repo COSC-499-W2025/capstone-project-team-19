@@ -76,4 +76,30 @@ NEXT WEEK: I plan to connect the output of csv_analyze.py for when the csv is a 
 
 ![Screenshot of tasks done from this sprint](./screenshots/Adara-Nov17-23.png)
 
-Week recap: 
+Week recap: This week, I worked on PR # 222 and PR # 227. I reviewed PRs 208, 209, 212, 224, 228, 237, 239, and 245, providing feedback on logical and runtime errors, an analysis of the possible cause, and suggestions of the solution if there was anything missing. 
+
+For PR 222, this was basically a full architectural rewrite of the text-analysis pipeline. I initially only planned to extend the text skill detectors, but once I started working on them, it became clear that the existing pipeline was too entangled with LLM-dependent logic and duplicated code paths. I had to refactor the entire pipeline before the detectors could function reliably.
+
+This refactor removed most of text_llm_analyze and reduced alt_analyze to only the linguistic-complexity functions. All substantive analysis is now centralized under the new text_analyze.py architecture, which defines a clean API for: (1) main-text extraction, (2) summary generation (LLM or manual), (3) CSV metadata integration, and (4) offline detector-based skill scoring. The major technical improvement is that summary generation and skill extraction are now fully decoupled—LLM consent now only determines which summary helper is used, not the execution path of the whole pipeline.
+
+Visualization of the flow change:
+
+    PREVIOUSLY:
+        llm consent given     → text_llm_analyze
+        llm consent not given → alt_analyze
+
+    NOW:
+        all text files        → text_analyze
+                                 ├─ llm_summary (if consent accepted)
+                                 └─ alt_summary (if consent rejected)
+
+Once the centralized flow was in place, I implemented all ten text-skill detectors (clarity, structure, vocabulary, argumentation, depth, iterative process, planning, research, data collection, data analysis) using multi-criteria scoring with structured evidence.
+
+To support the new architecture, I refactored legacy scripts: alt_analyze.py now only handles lexical diversity and readability; csv_analyze.py was updated to remove printing and expose analyze_all_csv(); and I removed large sections of text_llm_analyze that were no longer compatible with detector-based scoring. This cleanup removed a significant amount of dead logic and made the overall flow far more predictable.
+
+I also rewrote the test suites (test_alt_analyze.py, test_csv_analyze.py, test_text_analyze.py) to match the new pipeline. In hindsight, this PR should have been split into two PRs (a pipeline refactor and a detector implementation).
+
+
+For PR 227, I built the collaborative text-contribution flow. Previously, the system only handled individual text files and had no way of determining which parts of a group project a user actually worked on. I added an interactive contribution-selection pipeline that asks the user which sections of the main file they wrote, which supporting text files they contributed to, and which CSVs they worked with, then feeds only those selected portions into the skill detectors. I also added another llm prompt function to evaluate the impact of those contributions to the overall main file.
+
+Next week: As I disabled calling store_text_offline_metrics() in PR 222, I will enable the call and update the function to pass the updated metrics and skills (it is currently breaking the code as the parameters are not updated based on the new flow yet, which is what I have to refactor).
