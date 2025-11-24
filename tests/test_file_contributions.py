@@ -36,7 +36,7 @@ def test_store_file_contributions_basic(test_conn):
 
     # Verify data was stored
     cursor = test_conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM user_file_contributions WHERE user_id = 1")
+    cursor.execute("SELECT COUNT(*) FROM user_code_contributions WHERE user_id = 1")
     assert cursor.fetchone()[0] == 2
 
 
@@ -54,7 +54,7 @@ def test_store_file_contributions_replace_existing(test_conn):
 
     # Should still have only 1 row (replaced, not duplicated)
     cursor = test_conn.cursor()
-    cursor.execute("SELECT lines_changed, commits_count FROM user_file_contributions WHERE user_id = 1 AND file_path = 'src/main.py'")
+    cursor.execute("SELECT lines_changed, commits_count FROM user_code_contributions WHERE user_id = 1 AND file_path = 'src/main.py'")
     result = cursor.fetchone()
     assert result == (150, 5)
 

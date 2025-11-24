@@ -11,7 +11,6 @@ import os
 from src.db import get_project_metadata, has_contribution_data, get_user_contributed_files
 from src.utils.helpers import _fetch_files
 from src.analysis.skills.flows.code_skill_extraction import extract_code_skills
-from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 
 def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
     """
@@ -58,8 +57,6 @@ def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
 
     if project_type == "code":
         extract_code_skills(conn, user_id, project_name, classification, files)
-    elif project_type == "text":
-        extract_text_skills(conn, user_id, project_name, classification, files)
     else:
         print(f"[SKILLS] Project type is not valid, skipping skill extraction for '{project_name}'")
 

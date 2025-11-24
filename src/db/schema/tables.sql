@@ -282,7 +282,7 @@ CREATE TABLE IF NOT EXISTS project_skills (
 -- USER FILE CONTRIBUTIONS (for collaborative projects)
 -- Tracks which files each user worked on, used to filter skill detection
 
-CREATE TABLE IF NOT EXISTS user_file_contributions (
+CREATE TABLE IF NOT EXISTS user_code_contributions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     project_name TEXT NOT NULL,

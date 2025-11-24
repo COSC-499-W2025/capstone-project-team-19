@@ -89,10 +89,11 @@ def test_run_all_code_detectors_multiple_files_and_hits():
 
 # Tests: aggregate_into_buckets
 class FakeBucket:
-    def __init__(self, name, detectors, total_signals=2):
+    def __init__(self, name, detectors, total_signals=2, weights=None):
         self.name = name
         self.detectors = detectors
         self.total_signals = total_signals
+        self.weights = weights if weights is not None else {}
 
 
 def test_aggregate_buckets_basic():
@@ -157,3 +158,68 @@ def test_extract_code_skills_happy_path():
     assert kwargs["score"] == 1.0
     assert json.loads(kwargs["evidence"]) == [{"f": "f.py"}]
 
+
+# Tests: weighted scoring (negative weights)
+
+def test_aggregate_buckets_with_negative_weight():
+    """Test that negative weights reduce the score."""
+    detector_results = {
+        "good_detector": {"hits": 1, "evidence": [{"e": 1}]},
+        "bad_detector": {"hits": 1, "evidence": [{"e": 2}]},
+    }
+
+    fake_buckets = [
+        FakeBucket(
+            "quality_bucket",
+            ["good_detector", "bad_detector"],
+            total_signals=2,
+            weights={
+                "good_detector": 1,   # positive
+                "bad_detector": -1,   # negative
+            }
+        ),
+    ]
+
+    with patch("src.analysis.skills.flows.code_skill_extraction.CODE_SKILL_BUCKETS", fake_buckets), \
+         patch("src.analysis.skills.flows.code_skill_extraction.score_to_level", return_value="L0"):
+
+        res = aggregate_into_buckets(detector_results)
+
+    # weighted_signals = 1 + (-1) = 0
+    # max_score = 1 (only good_detector is positive)
+    # score = 0/1 = 0.0
+    assert res["quality_bucket"]["score"] == 0.0
+    assert res["quality_bucket"]["level"] == "L0"
+
+
+def test_aggregate_buckets_negative_clamped_to_zero():
+    """Test that negative scores are clamped to 0."""
+    detector_results = {
+        "bad1": {"hits": 1, "evidence": [{"e": 1}]},
+        "bad2": {"hits": 1, "evidence": [{"e": 2}]},
+        "good": {"hits": 0, "evidence": []},
+    }
+
+    fake_buckets = [
+        FakeBucket(
+            "quality",
+            ["good", "bad1", "bad2"],
+            total_signals=3,
+            weights={
+                "good": 1,
+                "bad1": -1,
+                "bad2": -1,
+            }
+        ),
+    ]
+
+    with patch("src.analysis.skills.flows.code_skill_extraction.CODE_SKILL_BUCKETS", fake_buckets), \
+         patch("src.analysis.skills.flows.code_skill_extraction.score_to_level", return_value="L0"):
+
+        res = aggregate_into_buckets(detector_results)
+
+    # weighted_signals = 0 + (-1) + (-1) = -2, clamped to 0
+    # max_score = 1 (only good is positive)
+    # score = 0/1 = 0.0
+    assert res["quality"]["score"] == 0.0
+    assert res["quality"]["level"] == "L0"

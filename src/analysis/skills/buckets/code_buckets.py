@@ -3,70 +3,61 @@ from .bucket_types import SkillBucket
 CODE_SKILL_BUCKETS = [
     SkillBucket(
         name="object_oriented_programming",
-        total_signals=5,
-        description="Ability to design using OOP principles (classes, inheritance, polymorphism, abstraction, encapsulation).",
+        total_signals=3,
+        description="Ability to design using OOP principles (classes, inheritance, polymorphism).",
         detectors=[
             "detect_classes",
             "detect_inheritance",
             "detect_polymorphism",
-            "detect_abstraction",
-            "detect_encapsulation"
         ],
     ),
 
     SkillBucket(
         name="data_structures",
-        total_signals=6,
-        description="Use of appropriate data structures (lists, sets, dicts, stacks, queues, heaps, graphs, trees).",
+        total_signals=3,
+        description="Use of appropriate data structures (hash maps, sets, queues/stacks).",
         detectors=[
             "detect_hash_maps",
             "detect_sets",
-            "detect_queues",
-            "detect_stacks",
-            "detect_heaps",
-            "detect_graph_structures"
+            "detect_queues_or_stacks",
         ],
     ),
 
     SkillBucket(
         name="algorithms",
-        total_signals=6,
-        description="Use of algorithmic thinking (recursion, searching, sorting, DP, BFS/DFS).",
+        total_signals=2,
+        description="Use of algorithmic thinking (recursion, searching, sorting).",
         detectors=[
             "detect_recursion",
-            "detect_binary_search",
-            "detect_sorting",
-            "detect_bfs",
-            "detect_dfs",
-            "detect_dynamic_programming"
+            "detect_sorting_or_search",
         ],
     ),
 
     SkillBucket(
         name="architecture_and_design",
-        total_signals=5,
-        description="Large-scale structural design: MVC, modularity, API routes, services, layered architecture.",
+        total_signals=3,
+        description="Large-scale structural design: MVC, modularity, API routes.",
         detectors=[
             "detect_mvc_folders",
             "detect_modular_design",
             "detect_api_routes",
-            "detect_layered_architecture",
-            "detect_component_structure"
         ],
     ),
 
     SkillBucket(
         name="clean_code_and_quality",
-        total_signals=6,
-        description="Code maintainability, clarity, complexity, naming practices, documentation.",
+        total_signals=3,
+        description="Code maintainability, clarity, complexity, documentation.",
         detectors=[
-            "detect_cyclomatic_complexity",
-            "detect_maintainability_index",
             "detect_large_functions",
-            "detect_naming_conventions",
             "detect_comments_docstrings",
-            "detect_duplicate_code"
+            "detect_duplicate_code",
         ],
+        weights={
+            "detect_large_functions": -1,      # negative: large functions are bad
+            "detect_comments_docstrings": 1,   # positive: comments are good
+            "detect_duplicate_code": -1,       # negative: duplicates are bad
+        },
     ),
 
     SkillBucket(
@@ -77,7 +68,7 @@ CODE_SKILL_BUCKETS = [
             "detect_test_files",
             "detect_assertions",
             "detect_ci_workflows",
-            "detect_mocking_or_fixtures"
+            "detect_mocking_or_fixtures",
         ],
     ),
 
@@ -89,19 +80,16 @@ CODE_SKILL_BUCKETS = [
             "detect_error_handling",
             "detect_input_validation",
             "detect_env_variable_usage",
-            "detect_crypto_usage"
+            "detect_crypto_usage",
         ],
     ),
 
     SkillBucket(
         name="frontend_skills",
-        total_signals=4,
-        description="Frontend development using React/Vue/HTML/CSS/JS.",
+        total_signals=1,
+        description="Frontend development using React/Vue components.",
         detectors=[
             "detect_components",
-            "detect_state_management",
-            "detect_responsive_design",
-            "detect_semantic_html"
         ],
     ),
 
@@ -113,7 +101,7 @@ CODE_SKILL_BUCKETS = [
             "detect_api_routes",
             "detect_serialization",
             "detect_database_queries",
-            "detect_caching"
+            "detect_caching",
         ],
     )
 ]

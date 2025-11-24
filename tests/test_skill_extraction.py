@@ -11,7 +11,6 @@ def run_with_patches(
     files,
     *,
     code_mock=None,
-    text_mock=None,
 ):
     conn = sqlite3.connect(":memory:")
 
@@ -20,9 +19,7 @@ def run_with_patches(
          patch("src.analysis.skills.flows.skill_extraction._fetch_files",
                return_value=files) as fetch_mock, \
          patch("src.analysis.skills.flows.skill_extraction.extract_code_skills",
-               new=code_mock or Mock()) as code_extractor, \
-         patch("src.analysis.skills.flows.skill_extraction.extract_text_skills",
-               new=text_mock or Mock()) as text_extractor:
+               new=code_mock or Mock()) as code_extractor:
 
         extract_skills(conn, 1, "proj")
 
@@ -30,7 +27,6 @@ def run_with_patches(
         "meta": meta_mock,
         "fetch": fetch_mock,
         "code": code_extractor,
-        "text": text_extractor,
     }
 
 # tests
@@ -46,7 +42,6 @@ def test_happy_path_code():
         "individual",
         ["file.py"]
     )
-    mocks["text"].assert_not_called()
 
 
 def test_happy_path_text():
@@ -54,13 +49,8 @@ def test_happy_path_text():
 
     mocks["meta"].assert_called_once()
     mocks["fetch"].assert_called_once()
-    mocks["text"].assert_called_once_with(
-        ANY_CONN := mocks["text"].call_args.args[0],
-        1,
-        "proj",
-        "individual",
-        ["doc.txt"]
-    )
+    # Text projects are handled by text_analyze.py, not skill_extraction.py
+    # So code extractor should not be called
     mocks["code"].assert_not_called()
 
 
@@ -69,20 +59,17 @@ def test_missing_metadata_skips_extraction():
 
     with patch("src.analysis.skills.flows.skill_extraction.get_project_metadata",
                return_value=(None, None)), \
-         patch("src.analysis.skills.flows.skill_extraction.extract_code_skills") as code_mock, \
-         patch("src.analysis.skills.flows.skill_extraction.extract_text_skills") as text_mock:
+         patch("src.analysis.skills.flows.skill_extraction.extract_code_skills") as code_mock:
 
         extract_skills(conn, 1, "proj")
 
     code_mock.assert_not_called()
-    text_mock.assert_not_called()
 
 
 def test_no_files_skips_extraction():
     mocks = run_with_patches("code", [])
 
     mocks["code"].assert_not_called()
-    mocks["text"].assert_not_called()
 
 
 def test_invalid_project_type_skips_both_extractors():
@@ -93,6 +80,5 @@ def test_invalid_project_type_skips_both_extractors():
     mocks["meta"].assert_called_once()
     mocks["fetch"].assert_called_once()
 
-    # but NO extractor should run
+    # but code extractor should not run
     mocks["code"].assert_not_called()
-    mocks["text"].assert_not_called()

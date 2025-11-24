@@ -27,7 +27,6 @@ def _fetch_files(conn: sqlite3.Connection, user_id: int, project_name: str, only
 
     rows = conn.execute(query, params).fetchall()
     return [{"file_name": r[0], "file_type": r[1], "file_path": r[2]} for r in rows]
-
 def get_file_extension_from_db(conn: sqlite3.Connection, user_id: int, filepath: str) -> str | None:
     """Fetch file extension from DB using normalized relative path matching."""
     try:

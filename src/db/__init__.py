@@ -96,7 +96,8 @@ from .code_activity import (
 # github prs
 from .github_pull_requests import get_pull_requests_for_project
 
-from .files import get_files_for_project
+# files
+from .files import get_files_for_project, get_files_with_timestamps
 
 __all__ = [
     "connect",
@@ -134,5 +135,6 @@ __all__ = [
     "insert_code_activity_metric",
     "get_pull_requests_for_project",
     "get_files_for_project",
-    "store_code_activity_metrics"
+    "store_code_activity_metrics",
+    "get_files_with_timestamps",
 ]
