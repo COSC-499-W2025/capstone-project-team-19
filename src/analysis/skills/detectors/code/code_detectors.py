@@ -73,19 +73,54 @@ def detect_polymorphism(file_text: str, file_name: str) -> Tuple[bool, List[Dict
 
 # DATA STRUCTURE DETECTORS
 
-def detect_hash_maps(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
-    """Detect usage of dict/hash-map patterns."""
-    # Matches: HashMap, dict(), Map<String>, map[], {"key": val}
-    # Avoid matching inside strings by requiring word boundaries and not being preceded by quotes
-    pattern = r'(\bHashMap\b|=\s*dict\(|=\s*\{|Map<|\bmap\[)'
+def detect_hash_maps(file_text: str, file_name: str):
     evidence = []
+    lines = file_text.split("\n")
 
-    for i, line in enumerate(file_text.split('\n'), 1):
-        # Skip lines that are comments
+    # Regex rules:
+    # 1. Detect Python dict usage: x = {}  OR x = dict(...)
+    # Allow both quoted and unquoted keys: {"key": ...} or {key: ...}
+    py_dict_pattern = re.compile(r'^\s*\w+\s*=\s*(dict\s*\(|\{\s*["\']?\w+["\']?\s*:)', re.IGNORECASE)
+
+    # 2. Detect Java / C# HashMap, Map<K,V>
+    java_map_pattern = re.compile(r'\b(HashMap|Map<\w+,\s*\w+>)', re.IGNORECASE)
+
+    # 3. Detect JavaScript/TypeScript Map()
+    js_map_pattern = re.compile(r'\bnew\s+Map\s*\(', re.IGNORECASE)
+
+    # Helper: pattern to skip JS object literals:  foo = { a:1 }
+    # Only skip if it's clearly a JS object (single line with closing brace)
+    js_object_literal = re.compile(r'^\s*\w+\s*=\s*\{\s*\w+\s*:.*\}$')
+
+    # Helper: avoid identifiers containing "map" (heatmap, mymap, colormap)
+    false_map_identifier = re.compile(r'\w*map\w*', re.IGNORECASE)
+
+    for i, line in enumerate(lines, 1):
         stripped = line.strip()
-        if stripped.startswith('#') or stripped.startswith('//'):
+
+        # Skip comments
+        if stripped.startswith("#") or stripped.startswith("//") or stripped.startswith("/*"):
             continue
-        if re.search(pattern, line):
+
+        # Skip strings
+        if stripped.startswith(("'", '"')):
+            continue
+
+        # Avoid JS object literal false positives
+        if js_object_literal.search(stripped):
+            continue
+
+        # Avoid variable names that contain "map"
+        # unless it's actually Map<K,V>, HashMap, or new Map()
+        if false_map_identifier.search(stripped) and not (java_map_pattern.search(stripped) or js_map_pattern.search(stripped)):
+            continue
+
+        # Now check actual hashmap patterns
+        if (
+            py_dict_pattern.search(stripped)
+            or java_map_pattern.search(stripped)
+            or js_map_pattern.search(stripped)
+        ):
             evidence.append({"file": file_name, "line": i})
 
     return (len(evidence) > 0, evidence)
