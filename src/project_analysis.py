@@ -512,13 +512,13 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
             summary.summary_text = text_results.get("project_summary")
             summary.skills = text_results.get("skills", [])
 
-        if classification_id and text_results:
-            store_text_offline_metrics(
-                conn,
-                classification_id,
-                text_results.get("project_summary")
-            )
-
+#        if classification_id and text_results:
+#            store_text_offline_metrics(
+#                conn,
+#                classification_id,
+#                text_results.get("project_summary")
+#            )
+#commenting out to be fixed next pr
     else:
         # --- Run non-LLM code analysis (static + Git metrics) ---
         run_code_non_llm_analysis(conn, user_id, project_name, zip_path, summary=summary)
