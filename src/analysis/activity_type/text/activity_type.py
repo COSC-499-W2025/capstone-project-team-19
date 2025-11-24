@@ -18,18 +18,17 @@ ACTIVITY_TYPES = [
         name="Planning",
         description="Planning, outlining, and organizing ideas",
         patterns=[
-            r"outline",
-            r"plan",
-            r"notes",
+            r"\boutline\b",
+            r"\bplan\b",
+            r"\bnotes?\b",
             r"brainstorm",
             r"structure",
             r"todo",
-            r"ideas",
+            r"\bideas?\b",
             r"proposal",
             r"agenda",
             r"outline.*v1"
-
-        ],
+            ],
         priority=1
     ),
     ActivityType(
