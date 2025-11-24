@@ -5,6 +5,8 @@ from src.analysis.text_individual.llm_summary import generate_text_llm_summary, 
 from src.analysis.text_individual.alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.utils.helpers import normalize_pdf_paragraphs
+from src.db import get_files_with_timestamps, get_classification_id, store_text_activity_contribution
+from src.analysis.activity_type.text.activity_type import print_activity, get_activity_contribution_data
 
 
 def analyze_collaborative_text_project(
@@ -230,7 +232,38 @@ def analyze_collaborative_text_project(
         contributed_text + "\n\n" + "\n\n".join(contributed_supporting_texts)
     )
 
+    # ---------------------------------------------------------
+    # STEP 2E — Activity Type Analysis for Contributed Files
+    # ---------------------------------------------------------
+    # Build list of file names the user contributed to
+    contributed_file_names = [main_file_name]  # always include main file
+    contributed_file_names.extend([f["file_name"] for f in selected_text_support_files])
 
+    # If user contributed to CSV files, add them too
+    if user_csv_metadata and user_csv_metadata.get('files'):
+        contributed_file_names.extend([
+            csv_file.get('file_name')
+            for csv_file in user_csv_metadata['files']
+        ])
+
+    # Fetch timestamp data for ALL project files
+    all_project_files = get_files_with_timestamps(conn, user_id, project_name)
+
+    # Filter to only files the user contributed to
+    user_contributed_files = [
+        f for f in all_project_files
+        if f.get("file_name") in contributed_file_names
+    ]
+
+    # Generate activity type data for user's contributed files
+    if user_contributed_files:
+        print_activity(user_contributed_files, project_name, main_file_name=main_file_name)
+
+        # Store activity type data to database
+        activity_data = get_activity_contribution_data(user_contributed_files, main_file_name=main_file_name)
+        classification_id = get_classification_id(conn, user_id, project_name)
+        if classification_id:
+            store_text_activity_contribution(conn, classification_id, activity_data)
 
     # ---------------------------------------------------------
     # STEP 3 — Compute % of contribution

@@ -14,6 +14,7 @@ All database operations are organized by domain:
 - contributions.py: Contribution write operations
 - tokens.py: Token write operations
 - connection.py: Connection and schema management
+- code_activity.py: Code activity metrics (read and write)
 """
 
 # Connection and schema
@@ -43,7 +44,7 @@ from .github_repositories import (
 )
 
 # GitHub account operations
-from .github_accounts import store_github_account
+from .github_accounts import store_github_account, has_github_account
 
 # Drive file operations
 from .drive_files import (
@@ -85,6 +86,26 @@ from .file_contributions import (
     has_contribution_data,
 )
 
+# files
+from .files import (
+    get_files_with_timestamps,)
+# text activity type contribution
+from .text_activity import (
+    store_text_activity_contribution,
+    get_text_activity_contribution,)
+# code activity type
+from .code_activity import (
+    delete_code_activity_metrics_for_project,
+    insert_code_activity_metric,
+    store_code_activity_metrics,
+)
+
+# github prs
+from .github_pull_requests import get_pull_requests_for_project
+
+# files
+from .files import get_files_for_project, get_files_with_timestamps
+
 __all__ = [
     "connect",
     "init_schema",
@@ -98,6 +119,7 @@ __all__ = [
     "save_project_repo",
     "get_project_repo",
     "store_github_account",
+    "has_github_account",
     "store_file_link",
     "get_project_drive_files",
     "get_unlinked_project_files",
@@ -116,4 +138,12 @@ __all__ = [
     "get_file_contribution_stats",
     "has_contribution_data",
     "store_collaboration_profile"
+    "delete_code_activity_metrics_for_project",
+    "insert_code_activity_metric",
+    "get_pull_requests_for_project",
+    "get_files_for_project",
+    "store_code_activity_metrics",
+    "get_files_with_timestamps",
+    "store_text_activity_contribution",
+    "get_text_activity_contribution",
 ]

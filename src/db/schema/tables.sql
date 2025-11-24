@@ -282,7 +282,7 @@ CREATE TABLE IF NOT EXISTS project_skills (
 -- USER FILE CONTRIBUTIONS (for collaborative projects)
 -- Tracks which files each user worked on, used to filter skill detection
 
-CREATE TABLE IF NOT EXISTS user_file_contributions (
+CREATE TABLE IF NOT EXISTS user_code_contributions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     project_name TEXT NOT NULL,
@@ -405,3 +405,38 @@ CREATE TABLE IF NOT EXISTS github_pr_review_comments (
 
 CREATE INDEX IF NOT EXISTS idx_github_pr_review_comments_lookup
     ON github_pr_review_comments(user_id, project_name, repo_owner, repo_name);
+
+
+-- TEXT ACTIVITY TYPE CONTRIBUTION DATA
+
+CREATE TABLE IF NOT EXISTS text_activity_contribution (
+    activity_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    classification_id INTEGER UNIQUE NOT NULL,
+    start_date TEXT,
+    end_date TEXT,
+    duration_days INTEGER,
+    total_files INTEGER,
+    classified_files INTEGER,
+    activity_classification_json TEXT,  
+    timeline_json TEXT,               
+    activity_counts_json TEXT,     
+    generated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_text_activity_contribution_lookup
+    ON text_activity_contribution(classification_id);
+-- Code activity metrics (per user, project, scope, and source)
+CREATE TABLE IF NOT EXISTS code_activity_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL,     -- who + which project
+    project_name TEXT    NOT NULL,
+    scope        TEXT    NOT NULL,  -- 'individual' or 'collaborative'
+    source       TEXT    NOT NULL,  -- where this metric comes from: 'files', 'prs', or 'combined'
+    activity_type TEXT   NOT NULL,  -- 'feature_coding', 'refactoring', 'debugging', 'testing', 'documentation'
+    event_count  INTEGER NOT NULL,
+    total_events INTEGER NOT NULL,
+    percent      REAL    NOT NULL,  -- 0–100
+    recorded_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
