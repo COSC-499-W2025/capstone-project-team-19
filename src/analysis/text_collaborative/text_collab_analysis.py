@@ -260,7 +260,7 @@ def analyze_collaborative_text_project(
         print_activity(user_contributed_files, project_name, main_file_name=main_file_name)
 
         # Store activity type data to database
-        activity_data = get_activity_contribution_data(user_contributed_files)
+        activity_data = get_activity_contribution_data(user_contributed_files, main_file_name=main_file_name)
         classification_id = get_classification_id(conn, user_id, project_name)
         if classification_id:
             store_text_activity_contribution(conn, classification_id, activity_data)

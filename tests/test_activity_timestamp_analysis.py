@@ -350,6 +350,7 @@ class TestIntegrationScenarios:
         assert len(classified['Research']) == 1
         assert len(classified['Drafting']) == 1
         assert len(classified['Revision']) == 1
+        assert len(classified['Final']) == 1
 
         # Test timeline
         timeline = get_activity_timeline(files)
@@ -357,7 +358,7 @@ class TestIntegrationScenarios:
 
         # Verify progression
         activity_sequence = [e['activity_type'] for e in timeline[::2]]  # Every other (created events)
-        assert activity_sequence == ['Planning', 'Research', 'Drafting', 'Revision', 'Unclassified']
+        assert activity_sequence == ['Planning', 'Research', 'Drafting', 'Revision', 'Final']
 
 
 if __name__ == "__main__":

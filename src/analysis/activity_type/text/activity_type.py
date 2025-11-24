@@ -107,7 +107,39 @@ ACTIVITY_TYPES = [
 
         ],
         priority=5
-    )
+    ),
+ActivityType(
+    name="Final",
+    description="Final submission or main deliverable",
+    patterns=[
+        r"final",
+        r"submission",
+        r"main",
+        r"complete",
+        r"submitted?",
+        r"deliverable",
+        r"published?",
+        r"completed",
+        r"finished",
+        r"ready",
+        r"release",
+        r"official",
+        r"approved?",
+        r"accepted?",
+        r"definitive",
+        r"ultimate",
+        r"last[_\s]?version",
+        r"final[_\s]?draft",
+        r"final[_\s]?version",
+        r"final[_\s]?copy",
+        r"final[_\s]?submission",
+        r"thesis[_\s]?final",
+        r"paper[_\s]?final",
+        r"report[_\s]?final",
+        r"project[_\s]?final"
+    ],
+    priority=6
+)
 ]
 
 def detect_activity_type(filename: str)->Optional[str]:
@@ -178,17 +210,22 @@ def analyze_file_timestamps(files: List[Dict])->Dict:
             'files_by_date': files_dates
     }
 
-def classify_files_by_activity(files: List[Dict]) -> Dict[str, List[Dict]]:
+def classify_files_by_activity(files: List[Dict], main_file_name: str = None) -> Dict[str, List[Dict]]:
     classified = {activity.name: [] for activity in ACTIVITY_TYPES}
     classified['Unclassified'] = []
 
     for f in files:
         filename = f.get('file_name', '')
-        activity = detect_activity_type(filename)
-        if activity:
-            classified[activity].append(f)
+
+        # Check if this is the main file - always classify as Final
+        if main_file_name and filename == main_file_name:
+            classified['Final'].append(f)
         else:
-            classified['Unclassified'].append(f)
+            activity = detect_activity_type(filename)
+            if activity:
+                classified[activity].append(f)
+            else:
+                classified['Unclassified'].append(f)
     return classified
 
 def get_activity_timeline(files: List[Dict]) -> List[Dict]:
@@ -221,9 +258,9 @@ def get_activity_timeline(files: List[Dict]) -> List[Dict]:
     timeline.sort(key=lambda x: x['date'])
     return timeline
 
-def get_activity_contribution_data(files: List[Dict]) -> Dict:
+def get_activity_contribution_data(files: List[Dict], main_file_name: str = None) -> Dict:
     timestamp_analysis = analyze_file_timestamps(files)
-    classified = classify_files_by_activity(files)
+    classified = classify_files_by_activity(files, main_file_name=main_file_name)
     timeline = get_activity_timeline(files)
 
     return {

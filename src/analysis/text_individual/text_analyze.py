@@ -104,7 +104,7 @@ def run_text_pipeline(
         # Store activity type data to database (only if conn is available)
             if conn is not None:
                 classification_id=get_classification_id(conn, user_id, project_name)
-                activity_data=get_activity_contribution_data(all_project_files)
+                activity_data=get_activity_contribution_data(all_project_files, main_file_name=main_file['file_name'])
                 if classification_id and activity_data:
                     store_text_activity_contribution(conn, classification_id, activity_data)
             print_activity(all_project_files,project_name,main_file_name=main_file['file_name'])
