@@ -1,6 +1,7 @@
 from .comment_quality import compute_comment_quality
 from .participation import compute_participation
 from .communication_leadership import compute_communication_leadership
+from src.analysis.skills.utils.skill_levels import classify_level
 
 from .models import RawUserTextCollabMetrics, RawTeamTextCollabMetrics
 
@@ -27,21 +28,6 @@ def compute_text_collaboration_profile(
             "communication_leadership": communication_leadership,
         }
     }
-
-
-def classify_level(value: float, max_value: float) -> str:
-    if max_value <= 0:
-        return "Beginner"
-    
-    ratio = value / max_value
-
-    if ratio < 0.33:
-        return "Beginner"
-    elif ratio < 0.66:
-        return "Intermediate"
-    else:
-        return "Advanced"
-    
 
 def compute_skill_levels(profile: dict) -> dict:
     skills = profile["skills"]

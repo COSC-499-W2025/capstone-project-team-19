@@ -3,6 +3,7 @@ from .review_quality import compute_review_quality
 from .participation import compute_participation
 from .consistency import compute_consistency
 from .leadership import compute_leadership
+from src.analysis.skills.utils.skill_levels import classify_level
 
 from .models import RawUserCollabMetrics, RawTeamCollabMetrics
 
@@ -35,18 +36,6 @@ def compute_collaboration_profile(
         }
     }
 
-def classify_level(value: float, max_value: float) -> str:
-    if max_value <= 0:
-        return "Beginner"
-    
-    ratio = value / max_value
-
-    if ratio < 0.33:
-        return "Beginner"
-    elif ratio < 0.66:
-        return "Intermediate"
-    else:
-        return "Advanced"
     
 def compute_skill_levels(profile: dict) -> dict:
     skills = profile["skills"]
