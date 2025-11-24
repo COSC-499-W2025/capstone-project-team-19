@@ -28,7 +28,7 @@ def find_and_link_files(service: Resource,project_name: str,zip_files: List[str]
     selected_files: Dict[str, Tuple[str, str, str]] = {}
     not_found_files: List[str] = []
     
-    # Get all Drive files once at the start
+    # Get all Drive files once at the start (now with server-side MIME type filtering)
     print(f"\nLoading files from Google Drive...")
     all_drive_files = _list_supported_drive_files(service)
     all_drive_files_list = [(f['id'], f['name'], f['mimeType']) for f in all_drive_files]

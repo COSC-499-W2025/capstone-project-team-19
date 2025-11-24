@@ -25,8 +25,7 @@ from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
-from src.analysis.activity_type.code.summary import build_activity_summary
-from src.analysis.activity_type.code.formatter import format_activity_summary
+from src.db import store_code_activity_metrics
 
 
 
@@ -406,10 +405,11 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
     analyze_code_project(conn, user_id, project_name, zip_path)
 
     # activity-type summary for collaborative code
-    activity_summary = build_activity_summary(user_id=user_id, project_name=project_name)
+    activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
     print("\n[COLLABORATIVE-CODE] Activity type summary:")
     print(format_activity_summary(activity_summary))
     print()
+    store_code_activity_metrics(conn, user_id, activity_summary)
     
     if summary:
         summary.contributions["github_contribution_metrics_generated"] = True
@@ -449,10 +449,11 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=False)
 
     # --- Activity-type summary (individual) ---
-    activity_summary = build_activity_summary(user_id=user_id, project_name=project_name)
+    activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
     print()  # spacing
     print(format_activity_summary(activity_summary))
     print()
+    store_code_activity_metrics(conn, user_id, activity_summary)
 
     if summary is not None:
         # store raw counts so you can reuse later in UI / JSON
