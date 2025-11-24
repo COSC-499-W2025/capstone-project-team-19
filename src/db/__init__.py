@@ -86,6 +86,13 @@ from .file_contributions import (
     has_contribution_data,
 )
 
+# files
+from .files import (
+    get_files_with_timestamps,)
+# text activity type contribution
+from .text_activity import (
+    store_text_activity_contribution,
+    get_text_activity_contribution,)
 # code activity type
 from .code_activity import (
     delete_code_activity_metrics_for_project,
@@ -137,4 +144,6 @@ __all__ = [
     "get_files_for_project",
     "store_code_activity_metrics",
     "get_files_with_timestamps",
+    "store_text_activity_contribution",
+    "get_text_activity_contribution",
 ]

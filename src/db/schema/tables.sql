@@ -406,6 +406,26 @@ CREATE TABLE IF NOT EXISTS github_pr_review_comments (
 CREATE INDEX IF NOT EXISTS idx_github_pr_review_comments_lookup
     ON github_pr_review_comments(user_id, project_name, repo_owner, repo_name);
 
+
+-- TEXT ACTIVITY TYPE CONTRIBUTION DATA
+
+CREATE TABLE IF NOT EXISTS text_activity_contribution (
+    activity_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    classification_id INTEGER UNIQUE NOT NULL,
+    start_date TEXT,
+    end_date TEXT,
+    duration_days INTEGER,
+    total_files INTEGER,
+    classified_files INTEGER,
+    activity_classification_json TEXT,  
+    timeline_json TEXT,               
+    activity_counts_json TEXT,     
+    generated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_text_activity_contribution_lookup
+    ON text_activity_contribution(classification_id);
 -- Code activity metrics (per user, project, scope, and source)
 CREATE TABLE IF NOT EXISTS code_activity_metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

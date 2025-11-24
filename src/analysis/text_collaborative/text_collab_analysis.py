@@ -5,8 +5,8 @@ from src.analysis.text_individual.llm_summary import generate_text_llm_summary, 
 from src.analysis.text_individual.alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.utils.helpers import normalize_pdf_paragraphs
-from src.db import get_files_with_timestamps
-from src.analysis.activity_type.text.activity_type import print_activity
+from src.db import get_files_with_timestamps, get_classification_id, store_text_activity_contribution
+from src.analysis.activity_type.text.activity_type import print_activity, get_activity_contribution_data
 
 
 def analyze_collaborative_text_project(
@@ -258,6 +258,12 @@ def analyze_collaborative_text_project(
     # Generate activity type data for user's contributed files
     if user_contributed_files:
         print_activity(user_contributed_files, project_name, main_file_name=main_file_name)
+
+        # Store activity type data to database
+        activity_data = get_activity_contribution_data(user_contributed_files, main_file_name=main_file_name)
+        classification_id = get_classification_id(conn, user_id, project_name)
+        if classification_id:
+            store_text_activity_contribution(conn, classification_id, activity_data)
 
     # ---------------------------------------------------------
     # STEP 3 — Compute % of contribution
