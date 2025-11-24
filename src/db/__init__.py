@@ -87,7 +87,11 @@ from .file_contributions import (
 
 # files
 from .files import (
-    get_files_with_timestamps,
+    get_files_with_timestamps,)
+# text activity type contribution
+from .text_activity import (
+    store_text_activity_contribution,
+    get_text_activity_contribution,
 )
 
 __all__ = [
@@ -122,4 +126,6 @@ __all__ = [
     "has_contribution_data",
     "store_collaboration_profile",
     "get_files_with_timestamps",
+    "store_text_activity_contribution",
+    "get_text_activity_contribution",
 ]
