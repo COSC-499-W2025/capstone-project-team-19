@@ -145,3 +145,36 @@ def get_files_with_timestamps(conn, user_id: int, project_name: str):
         }
         for r in rows
     ]
+
+def get_file_metrics(conn, user_id: int, project_name: str) -> dict:
+    """
+    Returns:
+    - file_count
+    - total_bytes
+    - earliest_timestamp
+    - latest_timestamp
+    """
+    row = conn.execute("""
+        SELECT 
+            COUNT(*) AS file_count,
+            COALESCE(SUM(size_bytes), 0) AS total_size,
+            MIN(modified) AS earliest,
+            MAX(modified) AS latest
+        FROM files
+        WHERE user_id = ? AND project_name = ?
+    """, (user_id, project_name)).fetchone()
+
+    if not row:
+        return {
+            "file_count": 0,
+            "total_size": 0,
+            "earliest": None,
+            "latest": None
+        }
+
+    return {
+        "file_count": row[0],
+        "total_size": row[1],
+        "earliest": row[2],
+        "latest": row[3]
+    }

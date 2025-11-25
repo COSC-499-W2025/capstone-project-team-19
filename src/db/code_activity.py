@@ -123,3 +123,27 @@ def store_code_activity_metrics(conn, user_id, summary):
         )
 
     conn.commit()
+
+def get_code_activity_metrics(conn, user_id: int, project_name: str) -> List[dict]:
+    """
+    Returns list of code activity events:
+    - activity_type ('feature_coding', 'refactoring', etc.)
+    - event_count
+    - total_events
+    - percent (0–100)
+    """
+    rows = conn.execute("""
+        SELECT activity_type, event_count, total_events, percent
+        FROM code_activity_metrics
+        WHERE user_id = ? AND project_name = ?
+    """, (user_id, project_name)).fetchall()
+
+    return [
+        {
+            "activity_type": r[0],
+            "event_count": r[1],
+            "total_events": r[2],
+            "percent": r[3],
+        }
+        for r in rows
+    ] if rows else []

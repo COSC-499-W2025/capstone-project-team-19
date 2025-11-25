@@ -41,3 +41,12 @@ def save_project_summary(conn, user_id, project_name, summary_json):
     """, (user_id, project_name, project_type, project_mode, summary_json))
     conn.commit()
 
+def get_project_summaries(conn, user_id):
+    cursor = conn.execute("""
+        SELECT *
+        FROM project_summaries
+        WHERE user_id = ?
+    """, (user_id,))
+
+    rows = cursor.fetchall()
+    return rows

@@ -149,3 +149,30 @@ def get_text_llm_metrics(conn: sqlite3.Connection, classification_id: int) -> Op
         "overall_score": row[13],
         "processed_at": row[14]
     }
+
+def get_text_non_llm_metrics(conn, user_id: int, project_name: str) -> dict:
+    """
+    Returns:
+    - doc_count
+    - total_words
+    - reading_level_avg
+    - summary_json (if needed)
+    """
+    row = conn.execute("""
+        SELECT n.doc_count, n.total_words,
+               n.reading_level_avg, n.summary_json
+        FROM non_llm_text n
+        JOIN project_classifications p
+        ON n.classification_id = p.classification_id
+        WHERE p.user_id = ? AND p.project_name = ?
+    """, (user_id, project_name)).fetchone()
+
+    if not row:
+        return {}
+
+    return {
+        "doc_count": row[0],
+        "total_words": row[1],
+        "reading_level_avg": row[2],
+        "text_summary_json": row[3]
+    }
