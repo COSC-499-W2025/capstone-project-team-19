@@ -81,13 +81,6 @@ def run_code_llm_analysis(
         "contribution_summary": contribution_summary
     }
 
-    return {
-        "project_name": project_name,
-        "project_summary": project_summary,
-        "contribution_summary": contribution_summary,
-        "mode": "COLLABORATIVE" if "collab" in project_name.lower() else "INDIVIDUAL"
-    }
-
 
 def display_code_llm_results(project_name, project_summary, contribution_summary, mode="INDIVIDUAL"):
     print(f"\n[{mode}-CODE] Project: {project_name}")
