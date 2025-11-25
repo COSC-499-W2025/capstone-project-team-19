@@ -53,3 +53,25 @@ def store_text_contribution_summary(conn: sqlite3.Connection, summary: Dict[str,
         summary.get("total_revision_count", 0),
     ))
     conn.commit()
+
+def get_text_contribution_summary(conn, user_id: int, project_name: str) -> dict:
+    """
+    Returns revision summary for collaborative text projects:
+    - user_revision_count
+    - total_word_count
+    - total_revision_count
+    """
+    row = conn.execute("""
+        SELECT user_revision_count, total_word_count, total_revision_count
+        FROM text_contribution_summary
+        WHERE user_id = ? AND project_name = ?
+    """, (user_id, project_name)).fetchone()
+
+    if not row:
+        return {}
+
+    return {
+        "revision_count": row[0],
+        "revision_words": row[1],
+        "total_revisions": row[2]
+    }

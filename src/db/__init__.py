@@ -40,7 +40,8 @@ from .projects import (
 from .github_repositories import (
     save_project_repo,
     get_project_repo,
-    store_collaboration_profile
+    store_collaboration_profile,
+    get_github_repo_metrics
 )
 
 # GitHub account operations
@@ -64,6 +65,7 @@ from .text_metrics import (
     store_text_offline_metrics,
     store_text_llm_metrics,
     get_text_llm_metrics,
+    get_text_non_llm_metrics
 )
 
 # Code metrics operations
@@ -82,13 +84,14 @@ from .code_metrics_helpers import (
 from .contributions import (
     store_text_contribution_revision,
     store_text_contribution_summary,
+    get_text_contribution_summary
 )
 
 # Token operations
 from .tokens import save_token_placeholder
 
 # skills
-from .skills import insert_project_skill
+from .skills import insert_project_skill, get_project_skills
 
 # file contributions
 from .file_contributions import (
@@ -100,7 +103,10 @@ from .file_contributions import (
 
 # files
 from .files import (
-    get_files_with_timestamps,)
+    get_files_with_timestamps,
+    get_file_metrics
+)
+
 # text activity type contribution
 from .text_activity import (
     store_text_activity_contribution,
@@ -110,6 +116,7 @@ from .code_activity import (
     delete_code_activity_metrics_for_project,
     insert_code_activity_metric,
     store_code_activity_metrics,
+    get_code_activity_metrics
 )
 
 # github prs
@@ -123,7 +130,10 @@ from .project_summaries import (
     save_project_summary,
     get_project_summaries_list,
     get_project_summary_by_name,
+    get_project_summaries
 )
+
+from .github_commit_timestamps import get_commit_timestamps
 
 __all__ = [
     "connect",
@@ -173,4 +183,12 @@ __all__ = [
     "save_project_summary",
     "get_project_summaries_list",
     "get_project_summary_by_name",
+    "get_project_summaries",
+    "get_file_metrics",
+    "get_github_repo_metrics",
+    "get_commit_timestamps",
+    "get_text_non_llm_metrics",
+    "get_text_contribution_summary",
+    "get_project_skills",
+    "get_code_activity_metrics"
 ]

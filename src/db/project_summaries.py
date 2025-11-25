@@ -87,3 +87,12 @@ def get_project_summary_by_name(conn, user_id, project_name):
         "created_at": row[5]
     }
 
+def get_project_summaries(conn, user_id):
+    cursor = conn.execute("""
+        SELECT *
+        FROM project_summaries
+        WHERE user_id = ?
+    """, (user_id,))
+
+    rows = cursor.fetchall()
+    return rows
