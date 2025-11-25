@@ -1,89 +1,62 @@
-"""
-Project Ranking — Required Database Inputs
+from src.db import get_project_summaries, get_file_metrics, get_github_repo_metrics, get_commit_timestamps, get_text_non_llm_metrics, get_text_contribution_summary, get_project_skills, get_code_activity_metrics
 
-To compute a meaningful “importance score” for each project, the ranking
-module must retrieve metrics from multiple database tables. These signals
-describe project size, difficulty, user contribution, recency, skills, and
-overall project scope. All data listed below is already stored in the system.
+# get all project summaries and projecs for the user
+def collect_project_data(conn, user_id):
+    # Collect all necessary data per project to prepare scoring
+    summaries = get_project_summaries
+    projects = []
 
-Required data sources:
+    for summary in summaries:
+        name = summary["project_name"]
+        data = {
+            "project_name": name,
+            "summary": summary,
+            "file_metrics": get_file_metrics(conn, user_id, name),
+            "repo_metrics": get_github_repo_metrics(conn, user_id, name),
+            "commit_timestamps": get_commit_timestamps(conn, user_id, name),
+            "text_metrics": get_text_non_llm_metrics(conn, user_id, name),
+            "text_contrib": get_text_contribution_summary(conn, user_id, name),
+            "skills": get_project_skills(conn, user_id, name),
+            "activity": get_code_activity_metrics(conn, user_id, name),
+        }
 
-1. Project Summary (project_summaries.summary_json)
-   - languages: list of languages used
-   - frameworks: list of detected frameworks
-   - skills: extracted skill list
-   - metrics: code/text/git analysis metrics (LoC, complexity, readability, etc.)
-   - contributions: collaborative contribution details (git or Drive)
-   - errors: analysis errors to penalize messy projects
-   - created_at: when the summary was generated
+        projects.append(data)
 
-2. Files Table (files)
-   - file count per project
-   - total file size (size_bytes)
-   - number of code vs. text files (extension, file_type)
-   - earliest and latest file timestamps (created, modified)
+    return projects
 
-3. Code Contribution Tables
-   - user_code_contributions:
-       lines_changed, commits_count per file
-   - code_activity_metrics:
-       distribution of debugging, testing, refactoring, documentation,
-       and feature coding events
-   - project_repos:
-       repo linkage (to determine if GitHub metrics exist)
+def score_project(project):
+    def score_project(p):
+    """Compute final importance score for one project."""
+    s = p["summary"]
+    files = p["file_metrics"]
+    repo = p["repo_metrics"]
+    skills = p["skills"]
+    commits = p["commit_timestamps"]
+    text = p["text_metrics"]
+    text_contrib = p["text_contrib"]
+    activity = p["activity"]
 
-4. GitHub Metrics (if code project has linked repo)
-   - github_repo_metrics:
-       total_commits, commit_days, first_commit_date, last_commit_date
-       total_additions/deletions, contribution_percent, PR/issue counts
-   - github_commit_timestamps:
-       raw commit timeline for computing duration and recency
-   - github_pull_requests, github_pr_reviews, github_pr_review_comments
-       quality and depth of collaboration signals
-   - github_issues and github_issue_comments:
-       issue tracking involvement
+    # TODO: either implement the functions or see if other functions can be reused
+    complexity_score = compute_complexity(s, repo, text)
+    contribution_score = compute_contribution(s, repo, text_contrib, activity)
+    size_score = compute_size(files, text)
+    skill_score = compute_skill_score(skills, s)
+    recency_score = compute_recency(s, files, repo, commits)
+    breadth_score = compute_breadth(s)
+    duration_score = compute_duration(repo, commits)
+    error_penalty = len(s.get("errors", []))
 
-5. Text Contribution Metrics (text collaboration only)
-   - text_contribution_summary:
-       user_revision_count, total_word_count, total_revision_count
-   - text_contribution_revisions:
-       timestamped revision activity for recency and depth scoring
+    importance_score = (
+        0.25 * complexity_score +
+        0.20 * contribution_score +
+        0.15 * size_score +
+        0.15 * skill_score +
+        0.10 * recency_score +
+        0.10 * breadth_score +
+        0.04 * duration_score -
+        0.10 * error_penalty
+    )
 
-6. Text Analysis Tables (text project difficulty / size)
-   - non_llm_text:
-       doc_count, total_words, reading_level_avg, summary quality metrics
-   - llm_text:
-       readability scores, lexical diversity, word/sentence counts
-
-7. Skill Records (project_skills)
-   - skill_name, level (“beginner/intermediate/advanced”), numeric score
-   - evidence_json showing why the skill applies
-   - used for computing skill depth and evidence strength
-
-Summary:
-The ranking module pulls project-level summaries plus supporting metrics from
-files, GitHub, text analysis tables, skill tables, and contribution tables.
-These values are combined into a unified importance score reflecting size,
-complexity, contribution, skill depth, recency, and project duration.
-
-"""
-
-from src.db import get_project_summaries
-
-
-# TODO: call all project summaries (maybe only certain metrics??)
-
-"""
-get_project_summaries
-get_file_metrics
-get_github_repo_metrics
-get_commit_timestamps
-get_text_non_llm_metrics
-get_text_contribution_summary
-get_project_skills
-get_code_activity_metrics
-"""
-
-# TODO: calculate the most important ones
+    return max(importance_score, 0)
 
 # TODO: print the projects
