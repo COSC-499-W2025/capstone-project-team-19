@@ -6,22 +6,10 @@ from typing import Optional, Dict, Any
 def store_code_llm_metrics(
     conn: sqlite3.Connection,
     classification_id: int,
-    project_summary: str
+    project_summary: str,
+    update: bool = False
 ) -> None:
-    if not classification_id or not project_summary:
-        return
-
-    # Check if record exists
-    existing = conn.execute(
-        """
-        SELECT metrics_id
-        FROM llm_code_individual
-        WHERE classification_id = ?
-        """,
-        (classification_id,),
-    ).fetchone()
-
-    if existing:
+    if update:
         conn.execute(
             """
             UPDATE llm_code_individual
@@ -42,7 +30,6 @@ def store_code_llm_metrics(
             """,
             (classification_id, project_summary),
         )
-
     conn.commit()
 
 
@@ -73,46 +60,39 @@ def get_code_llm_metrics(
     }
 
 
-def store_code_complexity_metrics(
+def code_llm_metrics_exists(
     conn: sqlite3.Connection,
-    classification_id: int,
-    complexity_summary: Dict[str, Any]
-) -> None:
-    if not classification_id or not complexity_summary:
-        return
-
-    # Extract metrics from summary
-    total_files = complexity_summary.get('total_files', 0)
-    total_lines = complexity_summary.get('total_lines', 0)
-    total_code_lines = complexity_summary.get('total_code', 0)
-    total_comments = complexity_summary.get('total_comments', 0)
-    comment_ratio = 0
-    if total_lines > 0:
-        comment_ratio = round((total_comments / total_lines) * 100, 2)
-
-    total_functions = complexity_summary.get('total_functions', 0)
-    avg_complexity = complexity_summary.get('avg_complexity', 0)
-    avg_maintainability = complexity_summary.get('avg_maintainability', 0)
-    functions_needing_refactor = complexity_summary.get('functions_needing_refactor', 0)
-    high_complexity_files = complexity_summary.get('high_complexity_files', 0)
-    low_maintainability_files = complexity_summary.get('low_maintainability_files', 0)
-
-    radon_details = complexity_summary.get('radon_details', {})
-    radon_details_json = json.dumps(radon_details, ensure_ascii=False) if radon_details else json.dumps({})
-
-    lizard_details = complexity_summary.get('lizard_details', {})
-    lizard_details_json = json.dumps(lizard_details, ensure_ascii=False) if lizard_details else json.dumps({})
-
-    existing = conn.execute(
+    classification_id: int
+) -> bool:
+    result = conn.execute(
         """
-        SELECT metrics_id
-        FROM non_llm_code_individual
+        SELECT 1
+        FROM llm_code_individual
         WHERE classification_id = ?
         """,
         (classification_id,),
     ).fetchone()
+    return result is not None
 
-    if existing:
+def store_code_complexity_metrics(
+    conn: sqlite3.Connection,
+    classification_id: int,
+    total_files: int,
+    total_lines: int,
+    total_code_lines: int,
+    total_comments: int,
+    comment_ratio: float,
+    total_functions: int,
+    avg_complexity: float,
+    avg_maintainability: float,
+    functions_needing_refactor: int,
+    high_complexity_files: int,
+    low_maintainability_files: int,
+    radon_details_json: str,
+    lizard_details_json: str,
+    update: bool = False
+) -> None:
+    if update:
         conn.execute(
             """
             UPDATE non_llm_code_individual
@@ -187,7 +167,6 @@ def store_code_complexity_metrics(
                 lizard_details_json,
             ),
         )
-
     conn.commit()
 
 
@@ -244,3 +223,18 @@ def get_code_complexity_metrics(
         "lizard_details": lizard_details,
         "generated_at": row[15],
     }
+
+
+def code_complexity_metrics_exists(
+    conn: sqlite3.Connection,
+    classification_id: int
+) -> bool:
+    result = conn.execute(
+        """
+        SELECT 1
+        FROM non_llm_code_individual
+        WHERE classification_id = ?
+        """,
+        (classification_id,),
+    ).fetchone()
+    return result is not None

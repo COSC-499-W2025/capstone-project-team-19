@@ -19,7 +19,13 @@ from src.analysis.code_collaborative.code_collaborative_analysis import analyze_
 from src.integrations.google_drive.process_project_files import process_project_files
 from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
 from src.db.project_summaries import save_project_summary
-from src.db.code_metrics import store_code_complexity_metrics, store_code_llm_metrics
+from src.db.code_metrics import (
+    store_code_complexity_metrics,
+    store_code_llm_metrics,
+    code_complexity_metrics_exists,
+    code_llm_metrics_exists,
+)
+from src.db.code_metrics_helpers import extract_complexity_metrics
 import json
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
 from src.models.project_summary import ProjectSummary
@@ -425,7 +431,8 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
             if llm_result and classification_id:
                 project_summary = llm_result.get('project_summary')
                 if project_summary:
-                    store_code_llm_metrics(conn, classification_id, project_summary)
+                    update = code_llm_metrics_exists(conn, classification_id)
+                    store_code_llm_metrics(conn, classification_id, project_summary, update=update)
         else:
             print(f"[COLLABORATIVE-CODE] No code files found for '{project_name}'.")
 
@@ -473,7 +480,9 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
         if summary and llm_results:
             summary.summary_text = llm_results.get("project_summary")
             if classification_id:
-                store_code_llm_metrics(conn, classification_id, summary.summary_text) 
+                # Check if exists and update or insert accordingly
+                update = code_llm_metrics_exists(conn, classification_id)
+                store_code_llm_metrics(conn, classification_id, summary.summary_text, update=update)
             summary.contributions["llm_contribution_summary"] = llm_results.get("contribution_summary")
     else:
         print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")
@@ -536,7 +545,9 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
         if code_analysis_result and classification_id:
             complexity_data = code_analysis_result.get('complexity_data')
             if complexity_data and complexity_data.get('summary'):
-                store_code_complexity_metrics(conn, classification_id, complexity_data['summary'])
+                metrics = extract_complexity_metrics(complexity_data['summary'])
+                update = code_complexity_metrics_exists(conn, classification_id)
+                store_code_complexity_metrics(conn, classification_id, *metrics, update=update)
 
 def _run_skill_extraction_for_all(conn, user_id, assignments):
     for project_name in assignments.keys():
