@@ -74,7 +74,7 @@ def test_store_code_complexity_metrics_inserts(shared_db):
 
     # Extract metrics using helper
     metrics = db.extract_complexity_metrics(complexity_summary)
-    db.store_code_complexity_metrics(conn, classification_id, *metrics, update=False)
+    db.insert_code_complexity_metrics(conn, classification_id, *metrics)
 
     row = _fetch_complexity_metrics(conn, classification_id)
     assert row[0] == 10  # total_files
@@ -111,7 +111,7 @@ def test_store_code_complexity_metrics_updates(shared_db):
         "low_maintainability_files": 0,
     }
     metrics = db.extract_complexity_metrics(initial_summary)
-    db.store_code_complexity_metrics(conn, classification_id, *metrics, update=False)
+    db.insert_code_complexity_metrics(conn, classification_id, *metrics)
 
     # Update with new data
     updated_summary = {
@@ -127,7 +127,7 @@ def test_store_code_complexity_metrics_updates(shared_db):
         "low_maintainability_files": 0,
     }
     metrics = db.extract_complexity_metrics(updated_summary)
-    db.store_code_complexity_metrics(conn, classification_id, *metrics, update=True)
+    db.update_code_complexity_metrics(conn, classification_id, *metrics)
 
     row = _fetch_complexity_metrics(conn, classification_id)
     assert row[0] == 8  # total_files updated
@@ -154,7 +154,7 @@ def test_store_code_complexity_metrics_calculates_comment_ratio(shared_db):
     }
 
     metrics = db.extract_complexity_metrics(complexity_summary)
-    db.store_code_complexity_metrics(conn, classification_id, *metrics, update=False)
+    db.insert_code_complexity_metrics(conn, classification_id, *metrics)
 
     row = _fetch_complexity_metrics(conn, classification_id)
     assert row[4] == 25.0  # comment_ratio should be 250/1000 * 100 = 25.0
@@ -179,7 +179,7 @@ def test_store_code_complexity_metrics_handles_zero_lines(shared_db):
     }
 
     metrics = db.extract_complexity_metrics(complexity_summary)
-    db.store_code_complexity_metrics(conn, classification_id, *metrics, update=False)
+    db.insert_code_complexity_metrics(conn, classification_id, *metrics)
 
     row = _fetch_complexity_metrics(conn, classification_id)
     assert row[4] == 0  # comment_ratio should be 0 when total_lines is 0
@@ -227,7 +227,7 @@ def test_get_code_complexity_metrics_returns_correct_data(shared_db):
     }
 
     metrics = db.extract_complexity_metrics(complexity_summary)
-    db.store_code_complexity_metrics(conn, classification_id, *metrics, update=False)
+    db.insert_code_complexity_metrics(conn, classification_id, *metrics)
     result = db.get_code_complexity_metrics(conn, classification_id)
 
     assert result is not None
@@ -253,7 +253,7 @@ def test_store_code_llm_metrics_inserts(shared_db):
 
     project_summary = "This is a Python web application using Flask framework."
 
-    db.store_code_llm_metrics(conn, classification_id, project_summary, update=False)
+    db.insert_code_llm_metrics(conn, classification_id, project_summary)
 
     row = _fetch_llm_metrics(conn, classification_id)
     assert row[0] == project_summary
@@ -265,10 +265,10 @@ def test_store_code_llm_metrics_updates(shared_db):
     classification_id = _create_classification(conn, user_id)
 
     initial_summary = "Initial project summary."
-    db.store_code_llm_metrics(conn, classification_id, initial_summary, update=False)
+    db.insert_code_llm_metrics(conn, classification_id, initial_summary)
 
     updated_summary = "Updated project summary with more details."
-    db.store_code_llm_metrics(conn, classification_id, updated_summary, update=True)
+    db.update_code_llm_metrics(conn, classification_id, updated_summary)
 
     row = _fetch_llm_metrics(conn, classification_id)
     assert row[0] == updated_summary
@@ -296,7 +296,7 @@ def test_get_code_llm_metrics_returns_correct_data(shared_db):
     classification_id = _create_classification(conn, user_id)
 
     project_summary = "A comprehensive Django application for e-commerce."
-    db.store_code_llm_metrics(conn, classification_id, project_summary, update=False)
+    db.insert_code_llm_metrics(conn, classification_id, project_summary)
 
     result = db.get_code_llm_metrics(conn, classification_id)
 
