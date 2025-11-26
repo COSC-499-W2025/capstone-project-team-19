@@ -6,7 +6,8 @@ import sqlite3
 # TEXT ANALYSIS imports
 from src.analysis.text_individual.text_analyze import run_text_pipeline
 from src.analysis.text_individual.csv_analyze import analyze_all_csv
-from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
+from src.db.text_metrics import store_text_offline_metrics, store_text_llm_metrics
+from src.db.projects import get_classification_id
 from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
 from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
 
@@ -17,7 +18,6 @@ from src.analysis.code_individual.code_non_llm_analysis import run_code_non_llm_
 from src.utils.helpers import _fetch_files
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
 from src.integrations.google_drive.process_project_files import process_project_files
-from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
 from src.db.project_summaries import save_project_summary
 import json
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
