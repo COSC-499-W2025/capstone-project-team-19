@@ -2,36 +2,38 @@ import sqlite3
 import json
 from typing import Optional, Dict, Any
 
-
-def store_code_llm_metrics(
-    conn: sqlite3.Connection,
-    classification_id: int,
-    project_summary: str,
-    update: bool = False
-) -> None:
-    if update:
-        conn.execute(
-            """
-            UPDATE llm_code_individual
-            SET project_summary = ?,
-                processed_at = datetime('now')
-            WHERE classification_id = ?
-            """,
-            (project_summary, classification_id),
-        )
-    else:
-        conn.execute(
-            """
-            INSERT INTO llm_code_individual (
-                classification_id,
-                project_summary,
-                processed_at
-            ) VALUES (?, ?, datetime('now'))
-            """,
-            (classification_id, project_summary),
+def insert_code_llm_metrics(
+        conn: sqlite3.Connection,
+        classification_id: int,
+        project_summary: str
+)->None:
+    conn.execute(
+        """
+        INSERT INTO llm_code_individual (
+        classification_id,
+        project_summary,
+        processed_at
+        ) VALUES (?, ?, datetime('now'))
+        """,
+        (classification_id, project_summary),
         )
     conn.commit()
 
+def update_code_llm_metrics(
+        conn: sqlite3.Connection,
+        classification_id: int,
+        project_summary: str
+)->None:
+    conn.execute(
+        """
+        UPDATE llm_code_individual
+        SET project_summary = ?,
+        processed_at = datetime('now')
+        WHERE classification_id = ?
+        """,
+        (project_summary, classification_id),
+        )
+    conn.commit()
 
 def get_code_llm_metrics(
     conn: sqlite3.Connection,
@@ -74,7 +76,7 @@ def code_llm_metrics_exists(
     ).fetchone()
     return result is not None
 
-def store_code_complexity_metrics(
+def update_code_complexity_metrics(
     conn: sqlite3.Connection,
     classification_id: int,
     total_files: int,
@@ -89,10 +91,8 @@ def store_code_complexity_metrics(
     high_complexity_files: int,
     low_maintainability_files: int,
     radon_details_json: str,
-    lizard_details_json: str,
-    update: bool = False
-) -> None:
-    if update:
+    lizard_details_json: str        
+)-> None:
         conn.execute(
             """
             UPDATE non_llm_code_individual
@@ -129,7 +129,25 @@ def store_code_complexity_metrics(
                 classification_id,
             ),
         )
-    else:
+        conn.commit()
+
+def insert_code_complexity_metrics(
+    conn: sqlite3.Connection,
+    classification_id: int,
+    total_files: int,
+    total_lines: int,
+    total_code_lines: int,
+    total_comments: int,
+    comment_ratio: float,
+    total_functions: int,
+    avg_complexity: float,
+    avg_maintainability: float,
+    functions_needing_refactor: int,
+    high_complexity_files: int,
+    low_maintainability_files: int,
+    radon_details_json: str,
+    lizard_details_json: str        
+)-> None:
         conn.execute(
             """
             INSERT INTO non_llm_code_individual (
@@ -167,8 +185,8 @@ def store_code_complexity_metrics(
                 lizard_details_json,
             ),
         )
-    conn.commit()
-
+        conn.commit()
+    
 
 def get_code_complexity_metrics(
     conn: sqlite3.Connection,
