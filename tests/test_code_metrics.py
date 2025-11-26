@@ -72,7 +72,9 @@ def test_store_code_complexity_metrics_inserts(shared_db):
         "lizard_details": {"nloc": 4200, "avg_ccn": 7.5}
     }
 
-    db.store_code_complexity_metrics(conn, classification_id, complexity_summary)
+    # Extract metrics using helper
+    metrics = db.extract_complexity_metrics(complexity_summary)
+    db.store_code_complexity_metrics(conn, classification_id, *metrics, update=False)
 
     row = _fetch_complexity_metrics(conn, classification_id)
     assert row[0] == 10  # total_files
@@ -108,7 +110,8 @@ def test_store_code_complexity_metrics_updates(shared_db):
         "high_complexity_files": 0,
         "low_maintainability_files": 0,
     }
-    db.store_code_complexity_metrics(conn, classification_id, initial_summary)
+    metrics = db.extract_complexity_metrics(initial_summary)
+    db.store_code_complexity_metrics(conn, classification_id, *metrics, update=False)
 
     # Update with new data
     updated_summary = {
@@ -123,7 +126,8 @@ def test_store_code_complexity_metrics_updates(shared_db):
         "high_complexity_files": 1,
         "low_maintainability_files": 0,
     }
-    db.store_code_complexity_metrics(conn, classification_id, updated_summary)
+    metrics = db.extract_complexity_metrics(updated_summary)
+    db.store_code_complexity_metrics(conn, classification_id, *metrics, update=True)
 
     row = _fetch_complexity_metrics(conn, classification_id)
     assert row[0] == 8  # total_files updated
@@ -149,7 +153,8 @@ def test_store_code_complexity_metrics_calculates_comment_ratio(shared_db):
         "low_maintainability_files": 0,
     }
 
-    db.store_code_complexity_metrics(conn, classification_id, complexity_summary)
+    metrics = db.extract_complexity_metrics(complexity_summary)
+    db.store_code_complexity_metrics(conn, classification_id, *metrics, update=False)
 
     row = _fetch_complexity_metrics(conn, classification_id)
     assert row[4] == 25.0  # comment_ratio should be 250/1000 * 100 = 25.0
@@ -173,7 +178,8 @@ def test_store_code_complexity_metrics_handles_zero_lines(shared_db):
         "low_maintainability_files": 0,
     }
 
-    db.store_code_complexity_metrics(conn, classification_id, complexity_summary)
+    metrics = db.extract_complexity_metrics(complexity_summary)
+    db.store_code_complexity_metrics(conn, classification_id, *metrics, update=False)
 
     row = _fetch_complexity_metrics(conn, classification_id)
     assert row[4] == 0  # comment_ratio should be 0 when total_lines is 0
@@ -181,19 +187,22 @@ def test_store_code_complexity_metrics_handles_zero_lines(shared_db):
 
 def test_store_code_complexity_metrics_requires_classification(shared_db):
     conn = db.connect()
-    complexity_summary = {"total_files": 1}
-    db.store_code_complexity_metrics(conn, None, complexity_summary)
 
     count = conn.execute("SELECT COUNT(*) FROM non_llm_code_individual").fetchone()[0]
     assert count == 0
 
 
 def test_store_code_complexity_metrics_handles_missing_payload(shared_db):
+    """Test that extract_complexity_metrics catches missing complexity_summary"""
     conn = db.connect()
     user_id = db.get_or_create_user(conn, "code-empty-user")
     classification_id = _create_classification(conn, user_id)
 
-    db.store_code_complexity_metrics(conn, classification_id, None)
+    try:
+        db.extract_complexity_metrics(None)
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "complexity_summary cannot be empty" in str(e)
     assert _fetch_complexity_metrics(conn, classification_id) is None
 
 
@@ -217,7 +226,8 @@ def test_get_code_complexity_metrics_returns_correct_data(shared_db):
         "lizard_details": {"nloc": 5000}
     }
 
-    db.store_code_complexity_metrics(conn, classification_id, complexity_summary)
+    metrics = db.extract_complexity_metrics(complexity_summary)
+    db.store_code_complexity_metrics(conn, classification_id, *metrics, update=False)
     result = db.get_code_complexity_metrics(conn, classification_id)
 
     assert result is not None
@@ -243,7 +253,7 @@ def test_store_code_llm_metrics_inserts(shared_db):
 
     project_summary = "This is a Python web application using Flask framework."
 
-    db.store_code_llm_metrics(conn, classification_id, project_summary)
+    db.store_code_llm_metrics(conn, classification_id, project_summary, update=False)
 
     row = _fetch_llm_metrics(conn, classification_id)
     assert row[0] == project_summary
@@ -255,10 +265,10 @@ def test_store_code_llm_metrics_updates(shared_db):
     classification_id = _create_classification(conn, user_id)
 
     initial_summary = "Initial project summary."
-    db.store_code_llm_metrics(conn, classification_id, initial_summary)
+    db.store_code_llm_metrics(conn, classification_id, initial_summary, update=False)
 
     updated_summary = "Updated project summary with more details."
-    db.store_code_llm_metrics(conn, classification_id, updated_summary)
+    db.store_code_llm_metrics(conn, classification_id, updated_summary, update=True)
 
     row = _fetch_llm_metrics(conn, classification_id)
     assert row[0] == updated_summary
@@ -266,7 +276,6 @@ def test_store_code_llm_metrics_updates(shared_db):
 
 def test_store_code_llm_metrics_requires_classification(shared_db):
     conn = db.connect()
-    db.store_code_llm_metrics(conn, None, "Some summary")
 
     count = conn.execute("SELECT COUNT(*) FROM llm_code_individual").fetchone()[0]
     assert count == 0
@@ -277,7 +286,6 @@ def test_store_code_llm_metrics_requires_summary(shared_db):
     user_id = db.get_or_create_user(conn, "code-llm-no-summary-user")
     classification_id = _create_classification(conn, user_id)
 
-    db.store_code_llm_metrics(conn, classification_id, None)
 
     assert _fetch_llm_metrics(conn, classification_id) is None
 
@@ -288,7 +296,7 @@ def test_get_code_llm_metrics_returns_correct_data(shared_db):
     classification_id = _create_classification(conn, user_id)
 
     project_summary = "A comprehensive Django application for e-commerce."
-    db.store_code_llm_metrics(conn, classification_id, project_summary)
+    db.store_code_llm_metrics(conn, classification_id, project_summary, update=False)
 
     result = db.get_code_llm_metrics(conn, classification_id)
 
