@@ -6,7 +6,8 @@ Manages skill-metric database operations:
 """
 
 import sqlite3
-from typing import List
+import json
+from typing import List, Dict, Any
 
 
 def insert_project_skill(conn, user_id, project_name, skill_name, level, score, evidence):
@@ -29,20 +30,20 @@ def insert_project_skill(conn, user_id, project_name, skill_name, level, score, 
         (user_id, project_name, skill_name, level, score, evidence)
     )
 
-def get_project_skills(conn, user_id: int, project_name: str) -> List[dict]:
+def get_project_skills(conn, user_id: int, project_name: str) -> List[tuple]:
     """
-    Returns:
-    - skill_name
-    - level ("beginner"/"intermediate"/"advanced")
-    - score (numeric)
+    Retrieve all skills for a project with their details.
+    Returns list of tuples: (skill_name, level, score, evidence_json)
+    Ordered by score descending.
     """
-    rows = conn.execute("""
-        SELECT skill_name, level, score
+    cursor = conn.execute(
+        """
+        SELECT skill_name, level, score, evidence_json
         FROM project_skills
         WHERE user_id = ? AND project_name = ?
-    """, (user_id, project_name)).fetchall()
-
-    return [
-        {"skill": r[0], "level": r[1], "score": r[2]}
-        for r in rows
-    ] if rows else []
+        ORDER BY score DESC
+        """,
+        (user_id, project_name)
+    )
+    
+    return cursor.fetchall()

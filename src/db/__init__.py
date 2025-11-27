@@ -162,6 +162,7 @@ __all__ = [
     "update_code_complexity_metrics",
     "get_code_complexity_metrics",
     "extract_complexity_metrics",
+    "get_text_non_llm_metrics",
     "store_text_contribution_revision",
     "store_text_contribution_summary",
     "save_token_placeholder",
@@ -171,7 +172,7 @@ __all__ = [
     "get_user_contributed_files",
     "get_file_contribution_stats",
     "has_contribution_data",
-    "store_collaboration_profile"
+    "store_collaboration_profile",
     "delete_code_activity_metrics_for_project",
     "insert_code_activity_metric",
     "get_pull_requests_for_project",

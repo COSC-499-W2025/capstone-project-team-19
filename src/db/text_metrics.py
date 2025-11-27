@@ -150,29 +150,31 @@ def get_text_llm_metrics(conn: sqlite3.Connection, classification_id: int) -> Op
         "processed_at": row[14]
     }
 
-def get_text_non_llm_metrics(conn, user_id: int, project_name: str) -> dict:
+def get_text_non_llm_metrics(conn: sqlite3.Connection, classification_id: int) -> Optional[dict]:
     """
+    Retrieve non-LLM text metrics for a project by classification_id.
     Returns:
     - doc_count
     - total_words
     - reading_level_avg
-    - summary_json (if needed)
+    - reading_level_label
+    - keywords (parsed from JSON)
     """
     row = conn.execute("""
-        SELECT n.doc_count, n.total_words,
-               n.reading_level_avg, n.summary_json
-        FROM non_llm_text n
-        JOIN project_classifications p
-        ON n.classification_id = p.classification_id
-        WHERE p.user_id = ? AND p.project_name = ?
-    """, (user_id, project_name)).fetchone()
+        SELECT doc_count, total_words, reading_level_avg, reading_level_label, keywords_json
+        FROM non_llm_text
+        WHERE classification_id = ?
+    """, (classification_id,)).fetchone()
 
     if not row:
-        return {}
+        return None
 
+    keywords = json.loads(row[4]) if row[4] else []
+    
     return {
         "doc_count": row[0],
         "total_words": row[1],
         "reading_level_avg": row[2],
-        "text_summary_json": row[3]
+        "reading_level_label": row[3],
+        "keywords": keywords
     }
