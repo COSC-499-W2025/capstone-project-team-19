@@ -13,6 +13,9 @@ from src.db import (
 from src.menu import (
     show_start_menu,
     view_old_project_summaries,
+    view_resume_items,
+    view_portfolio_items,
+    delete_old_insights,
 )
 from src.consent.consent import CONSENT_TEXT, get_user_consent, record_consent
 from src.consent.external_consent import get_external_consent, record_external_consent
