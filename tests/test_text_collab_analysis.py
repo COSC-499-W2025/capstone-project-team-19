@@ -114,16 +114,13 @@ def test_analyze_collaborative_text_project(
     # -------------------------
     result = summary_obj.contributions["text_collab"]
 
-    assert "contributed_text" in result
-    assert len(result["contributed_text"]) > 0
+    # contributed_text was removed to reduce verbosity
+    assert "contributed_text" not in result
 
     assert result["percent_of_document"] > 0
 
     assert "skills" in result
     assert "buckets" in result
     assert result["overall_score"] == mock_skill_output["overall_score"]
-
-    # Ensure supporting files were included
-    assert any("draft" in result["contributed_text"].lower() for _ in [0])
 
     print("\n[Test Completed] Collaborative text pipeline passed!\n")

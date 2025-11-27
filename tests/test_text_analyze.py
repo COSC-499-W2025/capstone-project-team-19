@@ -61,8 +61,8 @@ def test_run_text_pipeline_basic(
     mock_extract_skills.return_value = {
         "skills": ["Critical Thinking", "Research"],
         "buckets": {
-            "clarity": {"score": 0.8, "description": "Sentence clarity"},
-            "depth": {"score": 0.7, "description": "Content depth"},
+            "Critical Thinking": {"score": 0.8, "description": "Critical thinking skills"},
+            "Research": {"score": 0.7, "description": "Research skills"},
         },
         "overall_score": 0.75
     }
@@ -88,9 +88,9 @@ def test_run_text_pipeline_basic(
     # Correct summary
     assert result["project_summary"] == "Manual summary text."
 
-    # Skills passed through
+    # Skills passed through (extracted from bucket keys)
     assert result["skills"] == ["Critical Thinking", "Research"]
-    assert result["buckets"]["clarity"]["score"] == 0.8
+    assert result["buckets"]["Critical Thinking"]["score"] == 0.8
 
     # Verify correct file detected as main
     assert result["main_file"] == "main.txt"
