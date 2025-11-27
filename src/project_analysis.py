@@ -21,11 +21,8 @@ from src.db import get_classification_id, store_text_offline_metrics, store_text
 from src.db.project_summaries import save_project_summary
 from src.db.code_metrics import (
     insert_code_complexity_metrics,
-    insert_code_llm_metrics,
     update_code_complexity_metrics,
-    update_code_llm_metrics,
     code_complexity_metrics_exists,
-    code_llm_metrics_exists,
 )
 from src.db.code_metrics_helpers import extract_complexity_metrics
 import json
@@ -428,16 +425,7 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
         parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
         if parsed_files:
             print(f"\n[COLLABORATIVE-CODE] Running LLM-based summary for '{project_name}'...")
-            classification_id = get_classification_id(conn, user_id, project_name)
-            llm_result = run_code_llm_analysis(parsed_files, zip_path, project_name)
-            if llm_result and classification_id:
-                project_summary = llm_result.get('project_summary')
-                if project_summary:
-                    update = code_llm_metrics_exists(conn, classification_id)
-                    if update:
-                        update_code_llm_metrics(conn, classification_id, project_summary)
-                    else:
-                        insert_code_llm_metrics(conn, classification_id, project_summary)
+            run_code_llm_analysis(parsed_files, zip_path, project_name)
 
         else:
             print(f"[COLLABORATIVE-CODE] No code files found for '{project_name}'.")
@@ -481,17 +469,9 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     # --- Run LLM summary LAST, and only once ---
     if current_ext_consent == "accepted":
         print(f"\n[INDIVIDUAL-CODE] Running LLM-based summary for '{project_name}'...")
-        classification_id=get_classification_id(conn, user_id, project_name)
         llm_results = run_code_llm_analysis(parsed_files, zip_path, project_name)
         if summary and llm_results:
             summary.summary_text = llm_results.get("project_summary")
-            if classification_id:
-                # Check if exists and update or insert accordingly
-                update = code_llm_metrics_exists(conn, classification_id)
-                if update:
-                    update_code_llm_metrics(conn, classification_id, summary.summary_text)
-                else:
-                    insert_code_llm_metrics(conn, classification_id, summary.summary_text)
             summary.contributions["llm_contribution_summary"] = llm_results.get("contribution_summary")
     else:
         print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")

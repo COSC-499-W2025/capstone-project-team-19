@@ -39,15 +39,6 @@ def _fetch_complexity_metrics(conn, classification_id):
     ).fetchone()
 
 
-def _fetch_llm_metrics(conn, classification_id):
-    return conn.execute(
-        """
-        SELECT project_summary
-        FROM llm_code_individual
-        WHERE classification_id = ?
-        """,
-        (classification_id,),
-    ).fetchone()
 
 
 # ========== Code Complexity Metrics Tests ==========
@@ -241,72 +232,4 @@ def test_get_code_complexity_metrics_returns_correct_data(shared_db):
 def test_get_code_complexity_metrics_returns_none_when_not_found(shared_db):
     conn = db.connect()
     result = db.get_code_complexity_metrics(conn, 99999)
-    assert result is None
-
-
-# ========== Code LLM Metrics Tests ==========
-
-def test_store_code_llm_metrics_inserts(shared_db):
-    conn = db.connect()
-    user_id = db.get_or_create_user(conn, "code-llm-user")
-    classification_id = _create_classification(conn, user_id)
-
-    project_summary = "This is a Python web application using Flask framework."
-
-    db.insert_code_llm_metrics(conn, classification_id, project_summary)
-
-    row = _fetch_llm_metrics(conn, classification_id)
-    assert row[0] == project_summary
-
-
-def test_store_code_llm_metrics_updates(shared_db):
-    conn = db.connect()
-    user_id = db.get_or_create_user(conn, "code-llm-update-user")
-    classification_id = _create_classification(conn, user_id)
-
-    initial_summary = "Initial project summary."
-    db.insert_code_llm_metrics(conn, classification_id, initial_summary)
-
-    updated_summary = "Updated project summary with more details."
-    db.update_code_llm_metrics(conn, classification_id, updated_summary)
-
-    row = _fetch_llm_metrics(conn, classification_id)
-    assert row[0] == updated_summary
-
-
-def test_store_code_llm_metrics_requires_classification(shared_db):
-    conn = db.connect()
-
-    count = conn.execute("SELECT COUNT(*) FROM llm_code_individual").fetchone()[0]
-    assert count == 0
-
-
-def test_store_code_llm_metrics_requires_summary(shared_db):
-    conn = db.connect()
-    user_id = db.get_or_create_user(conn, "code-llm-no-summary-user")
-    classification_id = _create_classification(conn, user_id)
-
-
-    assert _fetch_llm_metrics(conn, classification_id) is None
-
-
-def test_get_code_llm_metrics_returns_correct_data(shared_db):
-    conn = db.connect()
-    user_id = db.get_or_create_user(conn, "code-llm-get-user")
-    classification_id = _create_classification(conn, user_id)
-
-    project_summary = "A comprehensive Django application for e-commerce."
-    db.insert_code_llm_metrics(conn, classification_id, project_summary)
-
-    result = db.get_code_llm_metrics(conn, classification_id)
-
-    assert result is not None
-    assert result["classification_id"] == classification_id
-    assert result["project_summary"] == project_summary
-    assert "processed_at" in result
-
-
-def test_get_code_llm_metrics_returns_none_when_not_found(shared_db):
-    conn = db.connect()
-    result = db.get_code_llm_metrics(conn, 99999)
     assert result is None

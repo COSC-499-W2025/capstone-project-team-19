@@ -140,15 +140,6 @@ CREATE TABLE IF NOT EXISTS llm_text (
 );
 
 -- CODE METRICS TABLE
-CREATE TABLE IF NOT EXISTS llm_code_individual (
-    metrics_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    classification_id INTEGER NOT NULL,
-    project_summary TEXT,
-    processed_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(metrics_id),
-    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
-
-);
 
 CREATE TABLE IF NOT EXISTS non_llm_code_individual(
     metrics_id INTEGER PRIMARY KEY AUTOINCREMENT,
