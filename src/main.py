@@ -10,6 +10,10 @@ from src.db import (
     get_latest_external_consent,
     record_project_classifications,
 )
+from src.menu import (
+    show_start_menu,
+    view_old_project_summaries,
+)
 from src.consent.consent import CONSENT_TEXT, get_user_consent, record_consent
 from src.consent.external_consent import get_external_consent, record_external_consent
 from src.project_analysis import detect_project_type, send_to_analysis
@@ -46,26 +50,25 @@ def prompt_and_store():
         user_id = existing_user[0]
         is_new_user = False
 
-    # Show main menu after username
-    menu_choice = show_start_menu(username)
+    while True:
+        # Show main menu after username
+        menu_choice = show_start_menu(username)
 
-    # Handle menu choices
-    if menu_choice == 2:
-        view_old_project_summaries(conn, user_id, username)
-        return None
-    elif menu_choice == 3:
-        view_resume_items(conn, user_id, username)
-        return None
-    elif menu_choice == 4:
-        view_portfolio_items(conn, user_id, username)
-        return None
-    elif menu_choice == 5:
-        delete_old_insights(conn, user_id, username)
-        return None
-    elif menu_choice == 6:
-        print("\nThank you for using the system. Goodbye!")
-        return None
-    
+        # Handle menu choices
+        if menu_choice == 2:
+            view_old_project_summaries(conn, user_id, username)
+        elif menu_choice == 3:
+            view_resume_items(conn, user_id, username)
+        elif menu_choice == 4:
+            view_portfolio_items(conn, user_id, username)
+        elif menu_choice == 5:
+            delete_old_insights(conn, user_id, username)
+        elif menu_choice == 6:
+            print("\nThank you for using the system. Goodbye!")
+            return None
+        elif menu_choice == 1:
+            break
+
     stored_user_consent = get_latest_consent(conn, user_id)
     stored_external_consent = get_latest_external_consent(conn, user_id)
 
@@ -310,42 +313,6 @@ def ask_project_classification(project_name: str) -> str:
         if answer in {"c", "collaborative"}:
             return "collaborative"
         print("Please respond with 'i' for individual or 'c' for collaborative.")
-
-
-def show_start_menu(username: str) -> int:
-    print(f"WELCOME, {username.upper()}!")
-    print("1. Analyze new project")
-    print("2. View old project summaries")
-    print("3. View resume items")
-    print("4. View portfolio items")
-    print("5. Delete old insights")
-    print("6. Exit")
-
-    while True:
-        choice = input("\nPlease select an option (1-6): ").strip()
-        if choice in {"1", "2", "3", "4", "5", "6"}:
-            return int(choice)
-        print("Invalid choice. Please enter a number between 1 and 6.")
-
-
-def view_old_project_summaries(conn, user_id: int, username: str):
-    """Placeholder: Display previously analyzed project summaries."""
-    return None
-
-
-def view_resume_items(conn, user_id: int, username: str):
-    """Placeholder: Display items suitable for a resume."""
-    return None
-
-
-def view_portfolio_items(conn, user_id: int, username: str):
-    """Placeholder: Display items suitable for a portfolio."""
-    return None
-
-
-def delete_old_insights(conn, user_id: int, username: str):
-    """Placeholder: Delete old analysis data."""
-    return None
 
 
 if __name__ == "__main__":
