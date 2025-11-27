@@ -38,6 +38,50 @@ def setup_in_memory_db():
             PRIMARY KEY (user_id, project_name)
         );
     """)
+    conn.execute("""
+        CREATE TABLE project_skills (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            project_name TEXT NOT NULL,
+            skill_name TEXT NOT NULL,
+            level TEXT NOT NULL,
+            score REAL NOT NULL,
+            evidence_json TEXT,
+            UNIQUE(user_id, project_name, skill_name)
+        );
+    """)
+    conn.execute("""
+        CREATE TABLE non_llm_text (
+            metrics_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            classification_id INTEGER UNIQUE NOT NULL,
+            doc_count INTEGER,
+            total_words INTEGER,
+            reading_level_avg REAL,
+            reading_level_label TEXT,
+            keywords_json TEXT,
+            summary_json TEXT,
+            generated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+    """)
+    conn.execute("""
+        CREATE TABLE llm_text (
+            text_metric_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            classification_id INTEGER NOT NULL,
+            file_path TEXT,
+            file_name TEXT,
+            project_name TEXT,
+            word_count INTEGER,
+            sentence_count INTEGER,
+            flesch_kincaid_grade REAL,
+            lexical_diversity REAL,
+            summary TEXT NOT NULL,
+            skills_json JSON,
+            strength_json JSON,
+            weaknesses_json JSON,
+            overall_score TEXT,
+            processed_at TEXT DEFAULT (datetime('now'))
+        );
+    """)
     return conn
 
 
