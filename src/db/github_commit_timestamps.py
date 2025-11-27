@@ -3,6 +3,7 @@ src/db/github_commit_timestamps.py
 
 Queries for the table github_commit_timestamps
 """
+from typing import List
 
 import sqlite3
 from typing import Optional

@@ -6,6 +6,7 @@ Manages skill-metric database operations:
 """
 
 import sqlite3
+from typing import List
 
 
 def insert_project_skill(conn, user_id, project_name, skill_name, level, score, evidence):

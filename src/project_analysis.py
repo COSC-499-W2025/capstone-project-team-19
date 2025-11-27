@@ -408,7 +408,7 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
     """Collaborative code analysis: Git data + LLM summary."""
     print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' (code)")
 
-    analyze_code_project(conn, user_id, project_name, zip_path)
+    analyze_code_project(conn, user_id, project_name, zip_path, summary)
 
     # activity-type summary for collaborative code
     activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)

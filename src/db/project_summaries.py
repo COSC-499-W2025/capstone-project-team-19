@@ -89,10 +89,20 @@ def get_project_summary_by_name(conn, user_id, project_name):
 
 def get_project_summaries(conn, user_id):
     cursor = conn.execute("""
-        SELECT *
+        SELECT project_name, project_type, project_mode, summary_json, created_at
         FROM project_summaries
         WHERE user_id = ?
     """, (user_id,))
 
     rows = cursor.fetchall()
-    return rows
+
+    return [
+        {
+            "project_name": r[0],
+            "project_type": r[1],
+            "project_mode": r[2],
+            "summary_json": r[3],
+            "created_at": r[4]
+        }
+        for r in rows
+    ]
