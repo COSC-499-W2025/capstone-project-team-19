@@ -64,6 +64,7 @@ from .text_metrics import (
     store_text_offline_metrics,
     store_text_llm_metrics,
     get_text_llm_metrics,
+    get_text_non_llm_metrics,
 )
 
 # Contribution operations
@@ -128,6 +129,7 @@ __all__ = [
     "store_text_offline_metrics",
     "store_text_llm_metrics",
     "get_text_llm_metrics",
+    "get_text_non_llm_metrics",
     "store_text_contribution_revision",
     "store_text_contribution_summary",
     "save_token_placeholder",
