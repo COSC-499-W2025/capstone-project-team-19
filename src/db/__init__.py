@@ -106,6 +106,13 @@ from .github_pull_requests import get_pull_requests_for_project
 # files
 from .files import get_files_for_project, get_files_with_timestamps
 
+# project summaries
+from .project_summaries import (
+    save_project_summary,
+    get_project_summaries_list,
+    get_project_summary_by_name,
+)
+
 __all__ = [
     "connect",
     "init_schema",
@@ -146,4 +153,7 @@ __all__ = [
     "get_files_with_timestamps",
     "store_text_activity_contribution",
     "get_text_activity_contribution",
+    "save_project_summary",
+    "get_project_summaries_list",
+    "get_project_summary_by_name",
 ]
