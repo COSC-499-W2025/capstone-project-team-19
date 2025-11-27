@@ -158,3 +158,5 @@ def get_project_metadata(conn, user_id, project_name):
         return None, None
 
     return row[0], row[1]
+
+def get_number_of_user_projects(conn, user_id):

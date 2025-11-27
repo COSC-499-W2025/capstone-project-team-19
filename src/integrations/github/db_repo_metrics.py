@@ -1,4 +1,5 @@
 import json
+from src.db import get_github_repo_metrics
 
 def store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics):
     """Store parsed GitHub metrics into the normalized database schema."""
@@ -73,37 +74,6 @@ def store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics)
     conn.commit()
     print(f"[GitHub] Stored metrics for {project_name}: commits={total_commits}, PRs={prs_opened}, issues={issues_opened}")
 
-# get a github repositories metrics from the local db
-def get_github_repo_metrics(conn, user_id, project_name, owner, repo):
-    """Retrieve stored GitHub metrics for a given project from the normalized table."""
-    cur = conn.execute("""
-        SELECT
-            total_commits,
-            commit_days,
-            first_commit_date,
-            last_commit_date,
-            issues_opened,
-            issues_closed,
-            prs_opened,
-            prs_merged,
-            total_additions,
-            total_deletions,
-            contribution_percent,
-            team_total_commits,
-            team_total_additions,
-            team_total_deletions,
-            last_synced
-        FROM github_repo_metrics
-        WHERE user_id = ? AND project_name = ? AND repo_owner = ? AND repo_name = ?
-        LIMIT 1
-    """, (user_id, project_name, owner, repo))
-
-    row = cur.fetchone()
-    if not row:
-        return None
-
-    keys = [d[0] for d in cur.description]
-    return dict(zip(keys, row))
 
 def print_github_metrics_summary(repo_metrics: dict):
     """Pretty-print GitHub contributions for a project."""
