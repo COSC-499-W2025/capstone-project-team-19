@@ -16,3 +16,8 @@ def run_code_non_llm_analysis(conn, user_id, project_name, zip_path, summary=Non
         summary.metrics["git"] = git_data
     if git_data and git_data.get('has_git'):
         display_git_results(git_data)
+
+    return {
+        'complexity_data': complexity_data,
+        'git_data': git_data
+    }

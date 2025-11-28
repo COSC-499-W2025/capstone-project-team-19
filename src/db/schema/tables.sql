@@ -139,6 +139,30 @@ CREATE TABLE IF NOT EXISTS llm_text (
     FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
 );
 
+-- CODE METRICS TABLE
+
+CREATE TABLE IF NOT EXISTS non_llm_code_individual(
+    metrics_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    classification_id INTEGER NOT NULL,
+    total_files INTEGER,
+    total_lines INTEGER,
+    total_code_lines INTEGER,
+    total_comments INTEGER,
+    comment_ratio REAL,
+    total_functions INTEGER,
+    avg_complexity REAL,
+    avg_maintainability REAL,
+    functions_needing_refactor INTEGER,
+    high_complexity_files INTEGER,
+    low_maintainability_files INTEGER,
+    radon_details_json TEXT,
+    lizard_details_json TEXT,
+    generated_at TEXT DEFAULT(datetime('now')),
+    UNIQUE(metrics_id),
+    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
+
+);
+
 
 -- TEXT CONTRIBUTION TABLES
 
