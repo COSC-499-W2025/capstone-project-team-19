@@ -110,9 +110,6 @@ def analyze_code_project(conn: sqlite3.Connection,
     metrics = compute_metrics(project_name, repo_dir, commits, aliases)
     metrics["project_name"] = project_name
 
-    # save aggregated git metrics into DB
-    store_local_git_metrics_collaborative(conn, user_id, project_name, metrics)
-
     # 5.1) attach manual description if it was collected up-front
     desc = get_manual_desc(project_name)
 
@@ -166,7 +163,10 @@ def analyze_code_project(conn: sqlite3.Connection,
         if contributions_dict:
             store_file_contributions(conn, user_id, project_name, contributions_dict)
 
-    # 8) print
+    # 8) save aggregated git metrics into DB
+    store_local_git_metrics_collaborative(conn, user_id, project_name, metrics)
+
+    # 9) print
     print_project_card(metrics)
     # accumulate for portfolio summary
     _CODE_RUN_METRICS.append(metrics)
