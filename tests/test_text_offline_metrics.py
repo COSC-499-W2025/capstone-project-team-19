@@ -1,5 +1,6 @@
 import json
 import db
+from src.db.text_metrics import get_text_non_llm_metrics
 
 
 def _create_classification(conn, user_id, project_name="OfflineText"):
@@ -111,3 +112,37 @@ def test_store_text_offline_metrics_handles_missing_payload(shared_db):
 
     db.store_text_offline_metrics(conn, classification_id, None)
     assert _fetch_metrics(conn, classification_id) is None
+
+
+def test_get_text_non_llm_metrics(shared_db):
+    conn = db.connect()
+    user_id = db.get_or_create_user(conn, "get-metrics-user")
+    classification_id = _create_classification(conn, user_id, "TestProject")
+
+    metrics_payload = {
+        "summary": {
+            "total_documents": 2,
+            "total_words": 1000,
+            "reading_level_average": 12.5,
+            "reading_level_label": "College",
+        },
+        "keywords": [{"word": "test", "score": 0.8}],
+    }
+    db.store_text_offline_metrics(conn, classification_id, metrics_payload)
+
+    result = get_text_non_llm_metrics(conn, classification_id)
+    assert result is not None
+    assert result["doc_count"] == 2
+    assert result["total_words"] == 1000
+    assert result["reading_level_avg"] == 12.5
+    assert result["reading_level_label"] == "College"
+    assert result["keywords"] == [{"word": "test", "score": 0.8}]
+
+
+def test_get_text_non_llm_metrics_returns_none_when_missing(shared_db):
+    conn = db.connect()
+    user_id = db.get_or_create_user(conn, "get-metrics-missing-user")
+    classification_id = _create_classification(conn, user_id, "NoMetricsProject")
+
+    result = get_text_non_llm_metrics(conn, classification_id)
+    assert result is None

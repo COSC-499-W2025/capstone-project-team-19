@@ -183,7 +183,7 @@ def run_text_pipeline(
         # ----------------------------------------------------------
         return {
             "project_summary": summary,
-            "skills": skill_result.get("skills", []),
+            "skills": list(skill_result.get("buckets", {}).keys()),
             "buckets": skill_result.get("buckets", {}),
             "overall_score": skill_result.get("overall_score"),
             "main_file": main_file["file_name"],
