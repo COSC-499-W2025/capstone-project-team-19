@@ -41,3 +41,49 @@ def save_project_summary(conn, user_id, project_name, summary_json):
     """, (user_id, project_name, project_type, project_mode, summary_json))
     conn.commit()
 
+
+def get_project_summaries_list(conn, user_id):
+    """
+    Retrieve a list of all project summaries for a user.
+    """
+    rows = conn.execute("""
+        SELECT project_summary_id, project_name, project_type, project_mode, created_at
+        FROM project_summaries
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    """, (user_id,)).fetchall()
+
+    return [
+        {
+            "project_summary_id": row[0],
+            "project_name": row[1],
+            "project_type": row[2],
+            "project_mode": row[3],
+            "created_at": row[4]
+        }
+        for row in rows
+    ]
+
+
+def get_project_summary_by_name(conn, user_id, project_name):
+    """
+    Retrieve a specific project summary by project name.
+    """
+    row = conn.execute("""
+        SELECT project_summary_id, project_name, project_type, project_mode, summary_json, created_at
+        FROM project_summaries
+        WHERE user_id = ? AND project_name = ?
+    """, (user_id, project_name)).fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "project_summary_id": row[0],
+        "project_name": row[1],
+        "project_type": row[2],
+        "project_mode": row[3],
+        "summary_json": row[4],
+        "created_at": row[5]
+    }
+
