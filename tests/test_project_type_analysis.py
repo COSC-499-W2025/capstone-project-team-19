@@ -82,6 +82,21 @@ def setup_in_memory_db():
             processed_at TEXT DEFAULT (datetime('now'))
         );
     """)
+    conn.execute("""
+        CREATE TABLE text_activity_contribution (
+            activity_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            classification_id INTEGER NOT NULL,
+            start_date TEXT,
+            end_date TEXT,
+            duration_days INTEGER,
+            total_files INTEGER,
+            classified_files INTEGER,
+            activity_classification_json TEXT,
+            timeline_json TEXT,
+            activity_counts_json TEXT,
+            generated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+    """)
     return conn
 
 
