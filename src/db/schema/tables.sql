@@ -464,3 +464,45 @@ CREATE TABLE IF NOT EXISTS code_activity_metrics (
     recorded_at  TEXT    NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+
+-- useful for listing all repos for a user
+CREATE INDEX IF NOT EXISTS idx_git_metrics_collab_user
+    ON local_git_metrics_collaborative (user_id);
+-- Local git metrics for collaborative code projects
+CREATE TABLE IF NOT EXISTS local_git_metrics_collaborative (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    project_name    TEXT    NOT NULL,
+    repo_path       TEXT    NOT NULL,
+    -- totals
+    commits_all     INTEGER,
+    commits_yours   INTEGER,
+    commits_coauth  INTEGER,
+    merges          INTEGER,
+    -- LOC
+    loc_added       INTEGER,
+    loc_deleted     INTEGER,
+    loc_net         INTEGER,
+    files_touched   INTEGER,
+    new_files       INTEGER,
+    renames         INTEGER,
+    -- history
+    first_commit_at TEXT,
+    last_commit_at  TEXT,
+    commits_L30     INTEGER,
+    commits_L90     INTEGER,
+    commits_L365    INTEGER,
+    longest_streak  INTEGER,
+    current_streak  INTEGER,
+    top_days        TEXT,
+    top_hours       TEXT,
+    -- focus
+    languages_json  TEXT,
+    folders_json    TEXT,
+    top_files_json  TEXT,
+    frameworks_json TEXT,
+    -- optional manual description
+    desc            TEXT,
+    created_at      TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, project_name)
+);
