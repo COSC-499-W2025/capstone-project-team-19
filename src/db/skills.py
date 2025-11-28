@@ -40,7 +40,7 @@ def get_project_skills(conn, user_id, project_name):
         """
         SELECT skill_name, level, score, evidence_json
         FROM project_skills
-        WHERE user_id = ? AND project_name = ?
+        WHERE user_id = ? AND project_name = ? AND score > 0
         ORDER BY score DESC
         """,
         (user_id, project_name)
