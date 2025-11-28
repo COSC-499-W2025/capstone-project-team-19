@@ -2,6 +2,7 @@
 File linking module for connecting ZIP files with Google Drive files.
 Handles interactive file matching and storage.
 """
+import os
 from typing import List, Dict, Optional, Tuple
 try:
     from googleapiclient.discovery import Resource
@@ -9,7 +10,11 @@ except ImportError:
     # For testing without googleapiclient installed
     Resource = type(None)
 
-from .file_matcher import _list_supported_drive_files, find_maybe_matches, search_by_name
+from .file_matcher import (
+    _search_supported_files_by_names,
+    find_maybe_matches,
+    search_by_name,
+)
 from .file_selector import select_from_matches, handle_no_matches
 from src.db import store_file_link
 
@@ -28,9 +33,10 @@ def find_and_link_files(service: Resource,project_name: str,zip_files: List[str]
     selected_files: Dict[str, Tuple[str, str, str]] = {}
     not_found_files: List[str] = []
     
-    # Get all Drive files once at the start (now with server-side MIME type filtering)
-    print(f"\nLoading files from Google Drive...")
-    all_drive_files = _list_supported_drive_files(service)
+    # Fetch only candidates that roughly match local file names (avoids scanning entire Drive)
+    print(f"\nLoading candidate files from Google Drive...")
+    base_names = {os.path.splitext(name)[0].lower() for name in zip_files}
+    all_drive_files = _search_supported_files_by_names(service, list(base_names))
     all_drive_files_list = [(f['id'], f['name'], f['mimeType']) for f in all_drive_files]
     
     print(f"Matching files from '{project_name}' with Google Drive...")
