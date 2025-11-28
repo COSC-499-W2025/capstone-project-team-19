@@ -450,6 +450,7 @@ CREATE TABLE IF NOT EXISTS text_activity_contribution (
 
 CREATE INDEX IF NOT EXISTS idx_text_activity_contribution_lookup
     ON text_activity_contribution(classification_id);
+
 -- Code activity metrics (per user, project, scope, and source)
 CREATE TABLE IF NOT EXISTS code_activity_metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -464,10 +465,9 @@ CREATE TABLE IF NOT EXISTS code_activity_metrics (
     recorded_at  TEXT    NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+CREATE INDEX IF NOT EXISTS idx_code_activity_metrics_lookup
+ON code_activity_metrics (user_id, project_name, scope, source);
 
--- useful for listing all repos for a user
-CREATE INDEX IF NOT EXISTS idx_git_metrics_collab_user
-    ON local_git_metrics_collaborative (user_id);
 -- Local git metrics for collaborative code projects
 CREATE TABLE IF NOT EXISTS local_git_metrics_collaborative (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -479,7 +479,7 @@ CREATE TABLE IF NOT EXISTS local_git_metrics_collaborative (
     commits_yours   INTEGER,
     commits_coauth  INTEGER,
     merges          INTEGER,
-    -- LOC
+    -- LOC (lines of code)
     loc_added       INTEGER,
     loc_deleted     INTEGER,
     loc_net         INTEGER,
@@ -506,3 +506,6 @@ CREATE TABLE IF NOT EXISTS local_git_metrics_collaborative (
     created_at      TEXT DEFAULT (datetime('now')),
     UNIQUE(user_id, project_name)
 );
+-- useful for listing all repos for a user
+CREATE INDEX IF NOT EXISTS idx_git_metrics_collab_user
+    ON local_git_metrics_collaborative (user_id);

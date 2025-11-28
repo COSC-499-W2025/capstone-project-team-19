@@ -34,7 +34,6 @@ from src.analysis.activity_type.code.formatter import format_activity_summary
 from src.db import store_code_activity_metrics
 
 
-
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     """
     Determine if each project is code or text by examining files from the 'files' table

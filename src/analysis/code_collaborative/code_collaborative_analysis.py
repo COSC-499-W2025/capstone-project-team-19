@@ -2,7 +2,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Optional, Dict
 
-from src.db import store_github_account, store_collaboration_profile, store_file_contributions
+from src.db import store_github_account, store_collaboration_profile, store_file_contributions, store_local_git_metrics_collaborative
 from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
 from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo, get_gh_repo_name_and_owner
@@ -109,6 +109,9 @@ def analyze_code_project(conn: sqlite3.Connection,
     # 5) compute metrics
     metrics = compute_metrics(project_name, repo_dir, commits, aliases)
     metrics["project_name"] = project_name
+
+    # save aggregated git metrics into DB
+    store_local_git_metrics_collaborative(conn, user_id, project_name, metrics)
 
     # 5.1) attach manual description if it was collected up-front
     desc = get_manual_desc(project_name)
