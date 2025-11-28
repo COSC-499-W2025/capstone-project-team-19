@@ -7,7 +7,7 @@ import json
 # TEXT ANALYSIS imports
 from src.analysis.text_individual.text_analyze import run_text_pipeline
 from src.analysis.text_individual.csv_analyze import analyze_all_csv
-from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
+from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics, get_text_activity_contribution
 from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
 from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
 
@@ -22,7 +22,6 @@ from src.db import get_classification_id, store_text_offline_metrics, store_text
 from src.db.project_summaries import save_project_summary
 from src.db.skills import get_project_skills
 from src.db import get_text_llm_metrics, get_text_non_llm_metrics, get_classification_id
-import json
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
 from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
@@ -175,6 +174,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
             run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary)
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
+            if project_type == "text":
+                _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=False)
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
         return True
@@ -212,6 +213,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
             get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary)
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
+            if project_type == "text":
+                _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=True)
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
 
@@ -230,6 +233,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
             get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary)
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
+            if project_type == "text":
+                _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=True)
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
 
@@ -602,7 +607,6 @@ def _load_text_metrics_into_summary(conn, user_id, project_name, summary):
     # Load LLM metrics
     llm = get_text_llm_metrics(conn, classification_id)
     if llm:
-        import json
         text_metrics["llm"] = {
             "word_count": llm.get("word_count"),
             "sentence_count": llm.get("sentence_count"),
@@ -615,3 +619,47 @@ def _load_text_metrics_into_summary(conn, user_id, project_name, summary):
     
     if text_metrics:
         summary.metrics["text"] = text_metrics
+
+
+def _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=False):
+    """
+    Load text activity type data from database and populate ProjectSummary.
+    Transforms text activity data format to match code activity format for consistency.
+    
+    For individual projects: adds to summary.metrics["activity_type"]
+    For collaborative projects: adds to summary.contributions["activity_type"]
+    """
+    if not summary:
+        return
+    
+    classification_id = get_classification_id(conn, user_id, project_name)
+    if not classification_id:
+        return
+    
+    activity_data = get_text_activity_contribution(conn, classification_id)
+    if not activity_data:
+        return
+    
+    # Transform text activity data to match code format
+    # Code format: {activity_name: {"count": int, "top_file": Optional[str]}}
+    activity_classification = activity_data.get('activity_classification', {})
+    activity_counts = activity_data.get('summary', {}).get('activity_counts', {})
+    
+    per_activity = {}
+    for activity_name, count in activity_counts.items():
+        # Get top file for this activity (first file in classification list, if any)
+        top_file = None
+        files_list = activity_classification.get(activity_name, [])
+        if files_list:
+            top_file = files_list[0]  # Use first file as top_file
+        
+        per_activity[activity_name] = {
+            "count": count,
+            "top_file": top_file
+        }
+    
+    if per_activity:
+        if is_collaborative:
+            summary.contributions["activity_type"] = per_activity
+        else:
+            summary.metrics["activity_type"] = per_activity
