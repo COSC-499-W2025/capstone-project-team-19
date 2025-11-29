@@ -191,10 +191,13 @@ def detect_frameworks(conn, project_name, user_id, zip_path):
     Detect frameworks used in a project by scanning config files.
     Returns a set of framework names.
     """
-    # Use the same extraction path as parsing.py (analysis/zip_data/<zip_name>)
+    # Prefer the analysis/zip_data path (used in parsing.py); fall back to ./zip_data for tests/legacy
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
-    base_path = os.path.join(repo_root, "analysis", "zip_data", zip_name)
+    candidate_paths = [
+        os.path.join(repo_root, "analysis", "zip_data", zip_name),
+        os.path.join(repo_root, "zip_data", zip_name),
+    ]
 
     cur = conn.cursor()
     frameworks = set()
@@ -211,7 +214,16 @@ def detect_frameworks(conn, project_name, user_id, zip_path):
         return frameworks  # empty set
 
     for (file_path,) in files:
-        full_path = os.path.join(base_path, file_path)
+        full_path = None
+        for base_path in candidate_paths:
+            test_path = os.path.join(base_path, file_path)
+            if os.path.isfile(test_path):
+                full_path = test_path
+                break
+
+        if not full_path:
+            continue
+
         try:
             with open(full_path, "r", encoding="utf-8") as f:
                 for line in f:
