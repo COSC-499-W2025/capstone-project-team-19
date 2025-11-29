@@ -6,9 +6,9 @@ from src.menu.display import show_start_menu
 class TestShowStartMenu:
     """Tests for the main menu display functionality."""
 
-    @pytest.mark.parametrize("choice", ["1", "2", "3", "4", "5", "6"])
+    @pytest.mark.parametrize("choice", ["1", "2", "3", "4", "5", "7", "8"])
     def test_valid_menu_choices(self, choice):
-        """Test that valid menu choices (1-6) are accepted and returned as integers."""
+        """Test that valid menu choices (1-8) are accepted and returned as integers."""
         username = "testuser"
 
         with patch("builtins.input", return_value=choice):
@@ -17,7 +17,7 @@ class TestShowStartMenu:
 
     @pytest.mark.parametrize("invalid_input,valid_input", [
         ("0", "1"),  # Number out of range (too low)
-        ("7", "2"),  # Number out of range (too high)
+        ("9", "2"),  # Number out of range (too high, 6 is reserved)
         ("99", "3"),  # Number out of range (way too high)
         ("-1", "4"),  # Negative number
     ])
@@ -43,7 +43,7 @@ class TestShowStartMenu:
         ("", "3"),  # Empty string
         (" ", "4"),  # Whitespace only
         ("1.5", "5"),  # Decimal number
-        ("one", "6"),  # Word
+        ("one", "8"),  # Word
     ])
     def test_invalid_non_numeric_choices(self, invalid_input, valid_input):
         """Test that non-numeric choices are rejected and prompt again."""
@@ -83,7 +83,8 @@ class TestShowStartMenu:
             "3. View resume items",
             "4. View portfolio items",
             "5. Delete old insights",
-            "6. Exit"
+            "7. View chronological skills",
+            "8. Exit"
         ]
 
         with patch("builtins.input", return_value="1"):
