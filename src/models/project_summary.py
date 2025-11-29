@@ -29,3 +29,21 @@ class ProjectSummary:
 
     # Optional: reference to DB project ID (useful for Save/Retrieve)
     project_id: Optional[int] = None
+
+    @staticmethod
+    def from_dict(data: dict) -> "ProjectSummary":
+        return ProjectSummary(
+            project_name = data["project_name"],
+            project_type = data["project_type"],
+            project_mode = data["project_mode"],
+            languages = data.get("languages", []),
+            frameworks = data.get("frameworks", []),
+            summary_text = data.get("summary_text"),
+            skills = data.get("skills", []),
+            metrics = data.get("metrics", {}),
+            contributions = data.get("contributions", {}),
+            created_at = datetime.fromisoformat(data["created_at"])
+                if isinstance(data.get("created_at"), str)
+                else data.get("created_at", datetime.now(UTC)),
+            project_id = data.get("project_id")
+        )
