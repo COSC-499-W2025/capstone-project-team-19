@@ -1,6 +1,10 @@
 import json
 
+<<<<<<< HEAD
 from src.db import get_project_summaries, get_file_metrics, get_github_repo_metrics, get_commit_timestamps, get_text_non_llm_metrics, get_text_contribution_summary, get_project_skills, get_code_activity_metrics, get_classification_id
+=======
+from src.db import get_project_summaries, get_file_metrics, get_github_repo_metrics, get_commit_timestamps, get_text_non_llm_metrics, get_text_contribution_summary, get_project_skills, get_code_activity_metrics
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
 from src.db.connection import connect
 from src.insights.project_ranking.scoring_functions import compute_complexity, compute_contribution, compute_size, compute_skill_score, compute_recency, compute_breadth, compute_duration
 
@@ -44,6 +48,7 @@ def collect_project_data(conn, user_id):
         # always safe queries
         file_metrics = get_file_metrics(conn, user_id, project_name)
         commit_timestamps = get_commit_timestamps(conn, user_id, project_name)
+<<<<<<< HEAD
         
         # Get text metrics only for text projects
         text_metrics = None
@@ -52,6 +57,9 @@ def collect_project_data(conn, user_id):
             if classification_id:
                 text_metrics = get_text_non_llm_metrics(conn, classification_id)
         
+=======
+        text_metrics = get_text_non_llm_metrics(conn, user_id, project_name)
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
         text_contrib = get_text_contribution_summary(conn, user_id, project_name)
         skills = get_project_skills(conn, user_id, project_name)
 

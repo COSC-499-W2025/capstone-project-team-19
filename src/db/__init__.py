@@ -65,6 +65,7 @@ from .text_metrics import (
     store_text_offline_metrics,
     store_text_llm_metrics,
     get_text_llm_metrics,
+<<<<<<< HEAD
     get_text_non_llm_metrics
 )
 
@@ -78,6 +79,9 @@ from .code_metrics import (
 # Code metrics helpers (data extraction/transformation)
 from .code_metrics_helpers import (
     extract_complexity_metrics,
+=======
+    get_text_non_llm_metrics,
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
 )
 
 # Contribution operations
@@ -125,6 +129,7 @@ from .github_pull_requests import get_pull_requests_for_project
 # files
 from .files import get_files_for_project, get_files_with_timestamps
 
+<<<<<<< HEAD
 # project summaries
 from .project_summaries import (
     save_project_summary,
@@ -132,6 +137,9 @@ from .project_summaries import (
     get_project_summary_by_name,
     get_project_summaries
 )
+=======
+from .project_summaries import get_project_summaries
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
 
 from .github_commit_timestamps import get_commit_timestamps
 
@@ -157,11 +165,14 @@ __all__ = [
     "store_text_offline_metrics",
     "store_text_llm_metrics",
     "get_text_llm_metrics",
+<<<<<<< HEAD
     "code_complexity_metrics_exists",
     "insert_code_complexity_metrics",
     "update_code_complexity_metrics",
     "get_code_complexity_metrics",
     "extract_complexity_metrics",
+=======
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
     "get_text_non_llm_metrics",
     "store_text_contribution_revision",
     "store_text_contribution_summary",
@@ -181,9 +192,12 @@ __all__ = [
     "get_files_with_timestamps",
     "store_text_activity_contribution",
     "get_text_activity_contribution",
+<<<<<<< HEAD
     "save_project_summary",
     "get_project_summaries_list",
     "get_project_summary_by_name",
+=======
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
     "get_project_summaries",
     "get_file_metrics",
     "get_github_repo_metrics",

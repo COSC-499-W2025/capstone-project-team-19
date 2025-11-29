@@ -41,6 +41,7 @@ def save_project_summary(conn, user_id, project_name, summary_json):
     """, (user_id, project_name, project_type, project_mode, summary_json))
     conn.commit()
 
+<<<<<<< HEAD
 
 def get_project_summaries_list(conn, user_id):
     """
@@ -87,6 +88,8 @@ def get_project_summary_by_name(conn, user_id, project_name):
         "created_at": row[5]
     }
 
+=======
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
 def get_project_summaries(conn, user_id):
     cursor = conn.execute("""
         SELECT project_name, project_type, project_mode, summary_json, created_at

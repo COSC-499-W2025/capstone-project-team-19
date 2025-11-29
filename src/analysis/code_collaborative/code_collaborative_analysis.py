@@ -61,7 +61,11 @@ def analyze_code_project(conn: sqlite3.Connection,
                          user_id: int,
                          project_name: str,
                          zip_path: str,
+<<<<<<< HEAD
                          summary: dict) -> Optional[dict]:
+=======
+                         summary=None) -> Optional[dict]:
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
     # 1) get base dirs from the uploaded zip
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
 
@@ -74,17 +78,24 @@ def analyze_code_project(conn: sqlite3.Connection,
         )
 
         _handle_no_git_repo(conn, user_id, project_name)
+<<<<<<< HEAD
         repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
+=======
+        _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
 
         return None
 
     print(f"Found local Git repo for {project_name}")
 
     repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
+<<<<<<< HEAD
 
     if repo_metrics is not None:
         # put repo_metrics inside summary
         summary.metrics["github"] = repo_metrics
+=======
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
 
     if DEBUG:
         print(f"[debug] repo resolved → {repo_dir}")

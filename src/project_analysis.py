@@ -20,12 +20,15 @@ from src.analysis.code_collaborative.code_collaborative_analysis import analyze_
 from src.integrations.google_drive.process_project_files import process_project_files
 from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
 from src.db.project_summaries import save_project_summary
+<<<<<<< HEAD
 from src.db.code_metrics import (
     insert_code_complexity_metrics,
     update_code_complexity_metrics,
     code_complexity_metrics_exists,
 )
 from src.db.code_metrics_helpers import extract_complexity_metrics
+=======
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
 from src.db.skills import get_project_skills
 from src.db import get_text_llm_metrics, get_text_non_llm_metrics, get_classification_id
 import json

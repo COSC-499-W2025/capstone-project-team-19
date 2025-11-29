@@ -150,6 +150,7 @@ def get_text_llm_metrics(conn: sqlite3.Connection, classification_id: int) -> Op
         "processed_at": row[14]
     }
 
+<<<<<<< HEAD
 def get_text_non_llm_metrics(conn: sqlite3.Connection, classification_id: int) -> Optional[dict]:
     """
     Retrieve non-LLM text metrics for a project by classification_id.
@@ -160,6 +161,10 @@ def get_text_non_llm_metrics(conn: sqlite3.Connection, classification_id: int) -
     - reading_level_label
     - keywords (parsed from JSON)
     """
+=======
+
+def get_text_non_llm_metrics(conn: sqlite3.Connection, classification_id: int) -> Optional[dict]:
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
     row = conn.execute("""
         SELECT doc_count, total_words, reading_level_avg, reading_level_label, keywords_json
         FROM non_llm_text

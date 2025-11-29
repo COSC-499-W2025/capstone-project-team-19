@@ -30,11 +30,19 @@ def insert_project_skill(conn, user_id, project_name, skill_name, level, score, 
         (user_id, project_name, skill_name, level, score, evidence)
     )
 
+<<<<<<< HEAD
 def get_project_skills(conn, user_id: int, project_name: str) -> List[tuple]:
     """
     Retrieve all skills for a project with their details.
     Returns list of tuples: (skill_name, level, score, evidence_json)
     Ordered by score descending.
+=======
+
+def get_project_skills(conn, user_id, project_name):
+    """
+    Retrieve all skills for a project with their details.
+    Returns list of tuples: (skill_name, level, score, evidence_json)
+>>>>>>> 15ebc4d648b2c7c2ba9005fddd5f6848dfc31fc0
     """
     cursor = conn.execute(
         """
