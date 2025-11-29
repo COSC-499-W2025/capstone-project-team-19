@@ -1,6 +1,6 @@
 from src.models.project_summary import ProjectSummary
 
-def code_complexity_score(ps: ProjectSummary) -> tuple[float, bool]:
+def code_complexity(ps: ProjectSummary) -> tuple[float, bool]:
     """
     Compute 0-1 code complexity score using:
         - total files
@@ -45,7 +45,7 @@ def code_complexity_score(ps: ProjectSummary) -> tuple[float, bool]:
 
     return max(0.0, min(final_score, 1.0)), True
 
-def git_activity_score(ps: ProjectSummary) -> tuple[float, bool]:
+def git_activity(ps: ProjectSummary) -> tuple[float, bool]:
     """
     Score the git activity of a code project from 0-1
     Based on:
@@ -78,7 +78,7 @@ def git_activity_score(ps: ProjectSummary) -> tuple[float, bool]:
     return max(0.0, min(final_score, 1.0)), True
 
 
-def github_collaboration_score(ps: ProjectSummary) -> tuple[float, bool]:
+def github_collaboration(ps: ProjectSummary) -> tuple[float, bool]:
     """
     Score GitHub collaboration metrics from 0-1
     Only applies to collaborative code projects with GitHub data
@@ -105,7 +105,7 @@ def github_collaboration_score(ps: ProjectSummary) -> tuple[float, bool]:
     return max(0.0, min(final_score, 1.0)), True
 
 
-def tech_stack_score(ps: ProjectSummary) -> float:
+def tech_stack(ps: ProjectSummary) -> tuple[float, bool]:
     """
     Score the technical stack depth from 0-1
     Based on number of languages and frameworks used
@@ -117,9 +117,9 @@ def tech_stack_score(ps: ProjectSummary) -> float:
     language_score = min(len(languages) / 4, 1.0) # 4+ languages = max
     frameworks_score = min(len(frameworks) / 3, 1.0) # 3+ frameworks = max
 
-    final_score = (0.6 * language_score) + (0.4 * frameworks_score)
-
-    return max(0.0, min(final_score, 1.0))
+    score = (0.6 * language_score) + (0.4 * frameworks_score)
+    final_score = max(0.0, min(score, 1.0))
+    return final_score, True
 
 
 def code_contribution_strength(ps: ProjectSummary, is_collaborative: bool) -> tuple[float, bool]:

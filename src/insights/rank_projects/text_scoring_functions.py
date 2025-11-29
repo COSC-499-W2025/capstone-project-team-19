@@ -2,7 +2,7 @@ from src.models.project_summary import ProjectSummary
 
 import math
 
-def writing_quality_score(ps: ProjectSummary) -> tuple[float, bool]:
+def writing_quality(ps: ProjectSummary) -> tuple[float, bool]:
     """
     Compute a 0-1 writing quality score for text projects
 
