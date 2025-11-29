@@ -24,9 +24,6 @@ class ProjectSummary:
     # Contributions for collaborative projects
     contributions: Dict[str, Any] = field(default_factory=dict)
 
-    # Logged errors (non-fatal)
-    errors: List[str] = field(default_factory=list)
-
     # When this summary was generated
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
