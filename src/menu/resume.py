@@ -1,29 +1,101 @@
 """
 src/menu/resume.py
 
-Menu option for viewing resume items.
+Menu option for creating and viewing resume snapshots.
 """
 
 import json
-from typing import List
+from datetime import datetime
+from typing import List, Dict, Any
 
-from src.db import get_all_user_project_summaries
+from src.db import (
+    get_all_user_project_summaries,
+    insert_resume_snapshot,
+    list_resumes,
+    get_resume_snapshot,
+)
 from src.models.project_summary import ProjectSummary
 
 
 def view_resume_items(conn, user_id: int, username: str):
     """
-    Load stored project summaries for the user and prepare them for resume display.
+    Prompt to create a new resume snapshot or view an existing one.
     """
+    while True:
+        print("\nResume options:")
+        print("1. Create a new resume from current projects")
+        print("2. View an existing resume snapshot")
+        print("3. Back to main menu")
+        choice = input("Select an option (1-3): ").strip()
+
+        if choice == "1":
+            _handle_create_resume(conn, user_id, username)
+            return
+        elif choice == "2":
+            _handle_view_existing_resume(conn, user_id)
+            return
+        elif choice == "3":
+            return
+        else:
+            print("Invalid choice, please enter 1, 2, or 3.")
+
+
+def _handle_create_resume(conn, user_id: int, username: str):
     summaries = _load_project_summaries(conn, user_id)
-    print(f"\n[Resume] Loaded {len(summaries)} project summary record(s) for {username}.")
-    _render_resume(summaries)
+    if not summaries:
+        print("No project summaries available. Run an analysis first.")
+        return
+
+    snapshot = _build_resume_snapshot(summaries)
+    rendered = _render_snapshot(snapshot)
+
+    default_name = f"Resume {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    name = input(f"Enter a name for this resume [{default_name}]: ").strip() or default_name
+
+    resume_json = json.dumps(snapshot, default=str)
+    insert_resume_snapshot(conn, user_id, name, resume_json, rendered)
+    print(f"\n[Resume] Saved snapshot '{name}'.")
+
+
+def _handle_view_existing_resume(conn, user_id: int):
+    resumes = list_resumes(conn, user_id)
+    if not resumes:
+        print("No saved resumes yet. Create one first.")
+        return
+
+    print("\nSaved resumes:")
+    for idx, r in enumerate(resumes, 1):
+        print(f"{idx}. {r['name']} (created {r['created_at']})")
+
+    choice = input("Select a resume to view (number) or press Enter to cancel: ").strip()
+    if not choice.isdigit():
+        print("Cancelled.")
+        return
+
+    idx = int(choice)
+    if idx < 1 or idx > len(resumes):
+        print("Invalid selection.")
+        return
+
+    resume_id = resumes[idx - 1]["id"]
+    record = get_resume_snapshot(conn, user_id, resume_id)
+    if not record:
+        print("Unable to load the selected resume.")
+        return
+
+    # Prefer stored rendered text; fall back to rendering from stored JSON.
+    if record.get("rendered_text"):
+        print("\n" + record["rendered_text"])
+    else:
+        try:
+            snapshot = json.loads(record["resume_json"])
+            _render_snapshot(snapshot, print_output=True)
+        except Exception:
+            print("Stored resume is corrupted or unreadable.")
 
 
 def _load_project_summaries(conn, user_id: int) -> List[ProjectSummary]:
-    """
-    Fetch and deserialize all saved project summaries for the user.
-    """
+    """Fetch and deserialize all saved project summaries for the user."""
     rows = get_all_user_project_summaries(conn, user_id)
     projects: List[ProjectSummary] = []
 
@@ -38,104 +110,135 @@ def _load_project_summaries(conn, user_id: int) -> List[ProjectSummary]:
     return projects
 
 
-def _render_resume(summaries: List[ProjectSummary]) -> None:
-    """
-    Render per-project resume blocks and aggregate skills.
-    """
-    if not summaries:
-        print("No project summaries available yet. Run an analysis first.")
-        return
-
-    # Group projects
-    code_indiv = []
-    code_collab = []
-    text_indiv = []
-    text_collab = []
-
+def _build_resume_snapshot(summaries: List[ProjectSummary]) -> Dict[str, Any]:
+    """Build a structured snapshot of resume data from project summaries."""
+    projects = []
     for ps in summaries:
-        if ps.project_type == "code":
-            (code_collab if ps.project_mode == "collaborative" else code_indiv).append(ps)
-        elif ps.project_type == "text":
-            (text_collab if ps.project_mode == "collaborative" else text_indiv).append(ps)
+        entry: Dict[str, Any] = {
+            "project_name": ps.project_name,
+            "project_type": ps.project_type,
+            "project_mode": ps.project_mode,
+            "languages": ps.languages or [],
+            "frameworks": ps.frameworks or [],
+            "summary_text": ps.summary_text,
+            "skills": _extract_skills(ps),
+        }
 
-    # Render sections
-    if code_indiv:
-        print("\n=== Code Projects (Individual) ===")
-        for ps in code_indiv:
-            _render_code_project(ps)
+        if ps.project_type == "text":
+            entry["text_type"] = "Academic writing"
+            if ps.project_mode == "collaborative":
+                text_collab = ps.contributions.get("text_collab")
+                if isinstance(text_collab, dict):
+                    pct = text_collab.get("percent_of_document")
+                    if isinstance(pct, (int, float)):
+                        entry["contribution_percent"] = pct
+                    collab_skills = text_collab.get("skills")
+                    if isinstance(collab_skills, list) and collab_skills:
+                        entry["skills"] = collab_skills
+        else:  # code
+            entry["activities"] = _extract_activity(ps)
 
-    if code_collab:
-        print("\n=== Code Projects (Collaborative) ===")
-        for ps in code_collab:
-            _render_code_project(ps, collaborative=True)
+        projects.append(entry)
 
-    if text_indiv:
-        print("\n=== Text Projects (Individual) ===")
-        for ps in text_indiv:
-            _render_text_project(ps)
-
-    if text_collab:
-        print("\n=== Text Projects (Collaborative) ===")
-        for ps in text_collab:
-            _render_text_project(ps, collaborative=True)
-
-    _render_aggregated_skills(summaries)
+    agg = _aggregate_skills(summaries)
+    return {"projects": projects, "aggregated_skills": agg}
 
 
-def _render_code_project(ps: ProjectSummary, collaborative: bool = False) -> None:
-    print(f"\n- {ps.project_name}")
-    if ps.languages:
-        print(f"  Languages: {', '.join(sorted(set(ps.languages)))}")
-    if ps.frameworks:
-        print(f"  Frameworks: {', '.join(sorted(set(ps.frameworks)))}")
+def _render_snapshot(snapshot: Dict[str, Any], print_output: bool = True) -> str:
+    """Render a snapshot to text; optionally print to console."""
+    lines: List[str] = []
 
-    if ps.summary_text:
-        print(f"  Summary: {ps.summary_text}")
+    projects = snapshot.get("projects", [])
+    # Group by type/mode
+    groups = {
+        ("code", "individual"): "=== Code Projects (Individual) ===",
+        ("code", "collaborative"): "=== Code Projects (Collaborative) ===",
+        ("text", "individual"): "=== Text Projects (Individual) ===",
+        ("text", "collaborative"): "=== Text Projects (Collaborative) ===",
+    }
 
-    # Activity types with top file (if available)
+    for (ptype, pmode), header in groups.items():
+        group_entries = [p for p in projects if p.get("project_type") == ptype and p.get("project_mode") == pmode]
+        if not group_entries:
+            continue
+        lines.append("")
+        lines.append(header)
+        for p in group_entries:
+            lines.extend(_render_project_block(p))
+
+    agg = snapshot.get("aggregated_skills", {})
+    skills_lines = []
+    if agg.get("languages"):
+        skills_lines.append(f"Languages: {', '.join(sorted(set(agg['languages'])))}")
+    if agg.get("frameworks"):
+        skills_lines.append(f"Frameworks: {', '.join(sorted(set(agg['frameworks'])))}")
+    if agg.get("technical_skills"):
+        skills_lines.append(f"Technical skills: {', '.join(sorted(set(agg['technical_skills'])))}")
+    if agg.get("writing_skills"):
+        skills_lines.append(f"Writing skills: {', '.join(sorted(set(agg['writing_skills'])))}")
+
+    if skills_lines:
+        lines.append("")
+        lines.append("=== Skills Summary ===")
+        lines.extend(skills_lines)
+
+    rendered = "\n".join(lines).strip() + "\n"
+    if print_output:
+        print("\n" + rendered)
+    return rendered
+
+
+def _render_project_block(p: Dict[str, Any]) -> List[str]:
+    lines = [f"\n- {p.get('project_name', 'Unnamed project')}"]
+
+    langs = p.get("languages") or []
+    fws = p.get("frameworks") or []
+    if langs:
+        lines.append(f"  Languages: {', '.join(sorted(set(langs)))}")
+    if fws:
+        lines.append(f"  Frameworks: {', '.join(sorted(set(fws)))}")
+
+    if p.get("project_type") == "text":
+        lines.append(f"  Type: {p.get('text_type', 'Text')}")
+    if p.get("summary_text"):
+        lines.append(f"  Summary: {p['summary_text']}")
+
+    if p.get("project_type") == "code":
+        activities = p.get("activities") or []
+        if activities:
+            lines.append("  Contributions:")
+            for act in activities:
+                top = act.get("top_file")
+                top_info = f" (top: {top})" if top else ""
+                lines.append(f"    • {act.get('name', 'activity')}{top_info}")
+        else:
+            lines.append("  Contributions: (no activity data)")
+    elif p.get("project_type") == "text":
+        pct = p.get("contribution_percent")
+        if isinstance(pct, (int, float)):
+            lines.append(f"  Contribution: {pct:.1f}% of document")
+
+    skills = p.get("skills") or []
+    if skills:
+        lines.append("  Skills:")
+        lines.append("    • " + ", ".join(skills))
+
+    return lines
+
+
+def _extract_activity(ps: ProjectSummary) -> List[Dict[str, Any]]:
     activity = None
-    if collaborative:
+    if ps.project_mode == "collaborative":
         activity = ps.contributions.get("activity_type")
     activity = activity or ps.metrics.get("activity_type")
-    if isinstance(activity, dict):
-        print("  Contributions:")
-        for k, v in activity.items():
-            top_file = v.get("top_file") or v.get("top_file_overall")
-            top_info = f" (top: {top_file})" if top_file else ""
-            print(f"    • {k}{top_info}")
-    else:
-        print("  Contributions: (no activity data)")
+    if not isinstance(activity, dict):
+        return []
 
-    # Skills demonstrated
-    skills = _extract_skills(ps)
-    if skills:
-        print("  Skills:")
-        print("    • " + ", ".join(skills))
-
-
-def _render_text_project(ps: ProjectSummary, collaborative: bool = False) -> None:
-    print(f"\n- {ps.project_name}")
-    print("  Type: Academic writing")
-
-    if ps.summary_text:
-        print(f"  Summary: {ps.summary_text}")
-
-    skills = _extract_skills(ps)
-    # For collaborative text, prefer skills captured in text_collab contributions if present
-    if collaborative:
-        text_collab = ps.contributions.get("text_collab")
-        if isinstance(text_collab, dict):
-            # Percent contribution if available
-            pct = text_collab.get("percent_of_document")
-            if isinstance(pct, (int, float)):
-                print(f"  Contribution: {pct:.1f}% of document")
-            collab_skills = text_collab.get("skills")
-            if isinstance(collab_skills, list) and collab_skills:
-                skills = collab_skills
-
-    if skills:
-        print("  Skills:")
-        print("    • " + ", ".join(skills))
+    items = []
+    for k, v in activity.items():
+        top_file = v.get("top_file") or v.get("top_file_overall")
+        items.append({"name": k, "top_file": top_file})
+    return items
 
 
 def _extract_skills(ps: ProjectSummary) -> List[str]:
@@ -153,7 +256,7 @@ def _extract_skills(ps: ProjectSummary) -> List[str]:
     return []
 
 
-def _render_aggregated_skills(summaries: List[ProjectSummary]) -> None:
+def _aggregate_skills(summaries: List[ProjectSummary]) -> Dict[str, List[str]]:
     langs = set()
     frameworks = set()
     tech_skills = set()
@@ -174,12 +277,9 @@ def _render_aggregated_skills(summaries: List[ProjectSummary]) -> None:
             else:
                 tech_skills.add(s)
 
-    print("\n=== Skills Summary ===")
-    if langs:
-        print(f"Languages: {', '.join(sorted(langs))}")
-    if frameworks:
-        print(f"Frameworks: {', '.join(sorted(frameworks))}")
-    if tech_skills:
-        print(f"Technical skills: {', '.join(sorted(tech_skills))}")
-    if writing_skills:
-        print(f"Writing skills: {', '.join(sorted(writing_skills))}")
+    return {
+        "languages": sorted(langs),
+        "frameworks": sorted(frameworks),
+        "technical_skills": sorted(tech_skills),
+        "writing_skills": sorted(writing_skills),
+    }
