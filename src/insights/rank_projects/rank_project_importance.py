@@ -1,6 +1,6 @@
 import json
 
-from src.db import get_all_user_project_summaries, connect
+from src.db import get_all_user_project_summaries
 from src.models.project_summary import ProjectSummary
 from src.insights.rank_projects.extract_scores import _extract_base_scores, _extract_code_scores, _extract_text_scores
 
@@ -48,11 +48,3 @@ def combine_scores(results: list):
     # takes the sum of the scores and divides by the total number of scores (ex.: project score = (0.8 + 0.6 + 0.4) / 3)
     # this assumes all scores are equal, meaning the score is not weighted
     return weighted_sum / total_weight
-
-if __name__ == "__main__":
-    conn = connect()
-    user_id = 1
-    project_scores = collect_project_data(conn, user_id)
-    for name, score in project_scores:
-        print(f"{name}: {score:.3f}")
-    conn.close()
