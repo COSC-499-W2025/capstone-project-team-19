@@ -2,7 +2,7 @@ from src.models.project_summary import ProjectSummary
 
 import math
 
-def writing_quality_score(ps: ProjectSummary) -> float:
+def writing_quality_score(ps: ProjectSummary) -> tuple[float, bool]:
     """
     Compute a 0-1 writing quality score for text projects
 
@@ -30,14 +30,15 @@ def writing_quality_score(ps: ProjectSummary) -> float:
 
     text_metrics = ps.metrics.get("text", {})
     if not isinstance(text_metrics, dict):
-        return 0.0
+        return 0.0, False
     
     # LLM
     llm = text_metrics.get("llm")
     if isinstance(llm, dict):
         score = llm.get("overall_score")
         if isinstance(score, (float, int)):
-            return max(0.0, min(score, 1.0)) # no need to normalize, it already is when stored
+            final_score = max(0.0, min(score, 1.0))  # already normalized when stored
+            return final_score, True
 
     # reading complexity is based on Flesch-Kincaid
     non_llm = text_metrics.get("non_llm")
@@ -46,7 +47,8 @@ def writing_quality_score(ps: ProjectSummary) -> float:
         if isinstance(reading_level, (float, int)):
             # normalize to 0-1
             normalized = min(math.log(reading_level + 1) / math.log(20), 1)
-            return normalized
+            return normalized, True
         
-    return 0.0
+    # no usable metrics
+    return 0.0, False
         

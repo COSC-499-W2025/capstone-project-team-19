@@ -1,6 +1,6 @@
 from src.models.project_summary import ProjectSummary
 
-def code_complexity_score(ps: ProjectSummary) -> float:
+def code_complexity_score(ps: ProjectSummary) -> tuple[float, bool]:
     """
     Compute 0-1 code complexity score using:
         - total files
@@ -13,11 +13,11 @@ def code_complexity_score(ps: ProjectSummary) -> float:
 
     complexity = ps.metrics.get("complexity")
     if not isinstance(complexity, dict):
-        return 0.0
+        return 0.0, False
     
     summary = complexity.get("summary")
     if not isinstance(summary, dict):
-        return 0.0
+        return 0.0, False
     
     # Extract fields safely
     total_files = summary.get("total_files", 0)
@@ -43,9 +43,9 @@ def code_complexity_score(ps: ProjectSummary) -> float:
     # weighted final score
     final_score = (0.25 * file_score) + (0.25 * line_score) + (0.20 * function_score) + (0.15 * cyclo_score) + (0.15 * maintainability_score)
 
-    return max(0.0, min(final_score, 1.0))
+    return max(0.0, min(final_score, 1.0)), True
 
-def git_activity_score(ps: ProjectSummary) -> float:
+def git_activity_score(ps: ProjectSummary) -> tuple[float, bool]:
     """
     Score the git activity of a code project from 0-1
     Based on:
@@ -57,11 +57,11 @@ def git_activity_score(ps: ProjectSummary) -> float:
 
     git = ps.metrics.get("git")
     if not isinstance(git, dict):
-        return 0.0
+        return 0.0, False
 
     stats = git.get("commit_stats", {})
     if not isinstance(stats, dict):
-        return 0.0
+        return 0.0, False
 
     total_commits = stats.get("total_commits", 0)
     active_days = stats.get("active_days", 0)
@@ -75,10 +75,10 @@ def git_activity_score(ps: ProjectSummary) -> float:
     # Weighted sum
     final_score = (0.45 * commit_score) + (0.30 * activity_score) + (0.25 * span_score)
 
-    return max(0.0, min(final_score, 1.0))
+    return max(0.0, min(final_score, 1.0)), True
 
 
-def github_collaboration_score(ps: ProjectSummary) -> float:
+def github_collaboration_score(ps: ProjectSummary) -> tuple[float, bool]:
     """
     Score GitHub collaboration metrics from 0-1
     Only applies to collaborative code projects with GitHub data
@@ -86,7 +86,7 @@ def github_collaboration_score(ps: ProjectSummary) -> float:
 
     gh = ps.metrics.get("github")
     if not isinstance(gh, dict):
-        return 0.0
+        return 0.0, False
 
     prs = gh.get("prs_opened", 0)
     issues = gh.get("issues_opened", 0)
@@ -102,7 +102,7 @@ def github_collaboration_score(ps: ProjectSummary) -> float:
 
     final_score = (0.30 * contribution_score) + (0.25 * pr_score) + (0.25 * issue_score) + (0.20 * churn_score)
 
-    return max(0.0, min(final_score, 1.0))
+    return max(0.0, min(final_score, 1.0)), True
 
 
 def tech_stack_score(ps: ProjectSummary) -> float:
@@ -122,7 +122,7 @@ def tech_stack_score(ps: ProjectSummary) -> float:
     return max(0.0, min(final_score, 1.0))
 
 
-def code_contribution_strength(ps: ProjectSummary, is_collaborative: bool) -> float:
+def code_contribution_strength(ps: ProjectSummary, is_collaborative: bool) -> tuple[float, bool]:
     """
     Score collaboration contribution for code projects from 0-1
     Uses:
@@ -132,12 +132,13 @@ def code_contribution_strength(ps: ProjectSummary, is_collaborative: bool) -> fl
     """
 
     if not is_collaborative:
-        return 1.0
+        return 1.0, True
 
     gh = ps.metrics.get("github")
     if isinstance(gh, dict):
         percent = gh.get("contribution_percent")
         if isinstance(percent, (float, int)):
-            return max(0.0, min(percent / 100, 1.0))
+            return max(0.0, min(percent / 100, 1.0)), True
 
-    return 0.0
+    # no GitHub data available
+    return 0.0, False
