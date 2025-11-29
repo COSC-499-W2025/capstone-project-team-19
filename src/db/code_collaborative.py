@@ -1,47 +1,21 @@
 from __future__ import annotations
-import json
 import sqlite3
 from typing import Any, Mapping, Optional
-from datetime import datetime
 
 def insert_code_collaborative_metrics(
     conn: sqlite3.Connection,
     user_id: int,
     project_name: str,
-    metrics: Mapping[str, Any],
+    payload: Mapping[str, Any],
 ) -> None:
     """
-    Upsert collaborative code metrics for (user_id, project_name) into
-    code_collaborative_metrics using data from the compute_metrics() dict.
+    Basic upsert for collaborative code metrics.
 
-    Safely handles:
-      - missing metric sections
-      - missing focus fields
-      - datetime objects (converted to ISO strings)
+    All values in `payload` must already be normalized:
+    - datetimes → ISO strings
+    - list fields → JSON strings
+    - missing fields handled by caller
     """
-
-    totals = metrics.get("totals", {}) or {}
-    loc = metrics.get("loc", {}) or {}
-    history = metrics.get("history", {}) or {}
-    focus = metrics.get("focus", {}) or {}
-
-    repo_path = metrics.get("path") or metrics.get("project_path") or ""
-
-    # Normalize optional focus lists
-    languages = focus.get("languages") or []
-    folders = focus.get("folders") or []
-    top_files = focus.get("top_files") or []
-    frameworks = focus.get("frameworks") or []
-
-    # Convert datetime → ISO string
-    def _to_iso(value):
-        if isinstance(value, datetime):
-            return value.isoformat()
-        return value
-
-    first_commit = _to_iso(history.get("first"))
-    last_commit = _to_iso(history.get("last"))
-
     conn.execute(
         """
         INSERT INTO code_collaborative_metrics (
@@ -106,37 +80,32 @@ def insert_code_collaborative_metrics(
         (
             user_id,
             project_name,
-            repo_path,
-            # totals
-            totals.get("commits_all"),
-            totals.get("commits_yours"),
-            totals.get("commits_coauth"),
-            totals.get("merges"),
-            # loc
-            loc.get("added"),
-            loc.get("deleted"),
-            loc.get("net"),
-            loc.get("files_touched"),
-            loc.get("new_files"),
-            loc.get("renames"),
-            # history (ISO strings)
-            first_commit,
-            last_commit,
-            history.get("L30"),
-            history.get("L90"),
-            history.get("L365"),
-            history.get("longest_streak"),
-            history.get("current_streak"),
-            history.get("top_days"),
-            history.get("top_hours"),
-            # focus (JSON)
-            json.dumps(languages),
-            json.dumps(folders),
-            json.dumps(top_files),
-            json.dumps(frameworks),
+            payload["repo_path"],
+            payload["commits_all"],
+            payload["commits_yours"],
+            payload["commits_coauth"],
+            payload["merges"],
+            payload["loc_added"],
+            payload["loc_deleted"],
+            payload["loc_net"],
+            payload["files_touched"],
+            payload["new_files"],
+            payload["renames"],
+            payload["first_commit_at"],
+            payload["last_commit_at"],
+            payload["commits_L30"],
+            payload["commits_L90"],
+            payload["commits_L365"],
+            payload["longest_streak"],
+            payload["current_streak"],
+            payload["top_days"],
+            payload["top_hours"],
+            payload["languages_json"],
+            payload["folders_json"],
+            payload["top_files_json"],
+            payload["frameworks_json"],
         ),
     )
-
     conn.commit()
 
 

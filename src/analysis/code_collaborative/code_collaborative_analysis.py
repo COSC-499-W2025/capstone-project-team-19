@@ -1,6 +1,8 @@
 from __future__ import annotations
 import sqlite3
-from typing import Optional, Dict
+from typing import Optional, Dict, Mapping, Any
+import json
+from datetime import datetime
 
 from src.db import (
     store_github_account,
@@ -36,7 +38,6 @@ from .code_collaborative_analysis_helper import (
     print_portfolio_summary,
     prompt_collab_descriptions
 )
-
 
 
 _CODE_RUN_METRICS: list[dict] = []
@@ -171,10 +172,11 @@ def analyze_code_project(conn: sqlite3.Connection,
             store_file_contributions(conn, user_id, project_name, contributions_dict)
 
     # 8) save aggregated git metrics into DB
-    insert_code_collaborative_metrics(conn, user_id, project_name, metrics)
+    db_payload = _build_db_payload_from_metrics(metrics, repo_dir)
+    insert_code_collaborative_metrics(conn, user_id, project_name, db_payload)
     metrics_id = get_metrics_id(conn, user_id, project_name)
 
-    # 8.1) store manual description (non-LLM)
+    # 8.1) if we have a manual description, persist it as a non-LLM summary
     if metrics_id and desc:
         insert_code_collaborative_summary(
             conn,
@@ -182,7 +184,7 @@ def analyze_code_project(conn: sqlite3.Connection,
             user_id=user_id,
             project_name=project_name,
             summary_type="non-llm",
-            content=desc.strip(),
+            content=desc,
         )
 
     # 9) print
@@ -299,3 +301,57 @@ def _metrics_empty(m: dict) -> bool:
                 return False
 
     return True
+
+def _build_db_payload_from_metrics(metrics: Mapping[str, Any], repo_path: str) -> dict[str, Any]:
+    """
+    Flatten the compute_metrics() output into a dict that matches the
+    code_collaborative_metrics table columns. This keeps db/ as pure CRUD.
+    """
+    totals = metrics.get("totals", {}) or {}
+    loc = metrics.get("loc", {}) or {}
+    history = metrics.get("history", {}) or {}
+    focus = metrics.get("focus", {}) or {}
+
+    def _to_iso(v):
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return v
+
+    first_commit = _to_iso(history.get("first"))
+    last_commit = _to_iso(history.get("last"))
+
+    languages = focus.get("languages") or []
+    folders = focus.get("folders") or []
+    top_files = focus.get("top_files") or []
+    frameworks = focus.get("frameworks") or []
+
+    return {
+        "repo_path": repo_path,
+        # totals
+        "commits_all": totals.get("commits_all"),
+        "commits_yours": totals.get("commits_yours"),
+        "commits_coauth": totals.get("commits_coauth"),
+        "merges": totals.get("merges"),
+        # loc
+        "loc_added": loc.get("added"),
+        "loc_deleted": loc.get("deleted"),
+        "loc_net": loc.get("net"),
+        "files_touched": loc.get("files_touched"),
+        "new_files": loc.get("new_files"),
+        "renames": loc.get("renames"),
+        # history
+        "first_commit_at": first_commit,
+        "last_commit_at": last_commit,
+        "commits_L30": history.get("L30"),
+        "commits_L90": history.get("L90"),
+        "commits_L365": history.get("L365"),
+        "longest_streak": history.get("longest_streak"),
+        "current_streak": history.get("current_streak"),
+        "top_days": history.get("top_days"),
+        "top_hours": history.get("top_hours"),
+        # focus (already JSON here)
+        "languages_json": json.dumps(languages),
+        "folders_json": json.dumps(folders),
+        "top_files_json": json.dumps(top_files),
+        "frameworks_json": json.dumps(frameworks),
+    }
