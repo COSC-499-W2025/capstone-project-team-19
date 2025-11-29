@@ -2,11 +2,12 @@ from src.utils.language_detector import detect_languages
 from src.utils.framework_detector import detect_frameworks
 
 import sqlite3
+import json
 
 # TEXT ANALYSIS imports
 from src.analysis.text_individual.text_analyze import run_text_pipeline
 from src.analysis.text_individual.csv_analyze import analyze_all_csv
-from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
+from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics, get_text_activity_contribution
 from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
 from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
 
@@ -19,6 +20,8 @@ from src.analysis.code_collaborative.code_collaborative_analysis import analyze_
 from src.integrations.google_drive.process_project_files import process_project_files
 from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics
 from src.db.project_summaries import save_project_summary
+from src.db.skills import get_project_skills
+from src.db import get_text_llm_metrics, get_text_non_llm_metrics, get_classification_id
 from src.db.code_metrics import (
     insert_code_complexity_metrics,
     update_code_complexity_metrics,
@@ -176,6 +179,10 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
                 project_mode="individual"
             )
             run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary)
+            _load_skills_into_summary(conn, user_id, project_name, summary)
+            _load_text_metrics_into_summary(conn, user_id, project_name, summary)
+            if project_type == "text":
+                _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=False)
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
         return True
@@ -211,6 +218,10 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
                 project_mode="collaborative"
             )
             get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary)
+            _load_skills_into_summary(conn, user_id, project_name, summary)
+            _load_text_metrics_into_summary(conn, user_id, project_name, summary)
+            if project_type == "text":
+                _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=True)
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
 
@@ -227,6 +238,10 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
                 project_mode="collaborative"
             )
             get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary)
+            _load_skills_into_summary(conn, user_id, project_name, summary)
+            _load_text_metrics_into_summary(conn, user_id, project_name, summary)
+            if project_type == "text":
+                _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=True)
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
 
@@ -408,7 +423,7 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
     """Collaborative code analysis: Git data + LLM summary."""
     print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' (code)")
 
-    analyze_code_project(conn, user_id, project_name, zip_path)
+    analyze_code_project(conn, user_id, project_name, zip_path, summary)
 
     # activity-type summary for collaborative code
     activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
@@ -421,10 +436,17 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
         summary.contributions["github_contribution_metrics_generated"] = True
         summary.contributions["activity_type"] = activity_summary.per_activity
 
+    # Extract skills for collaborative code projects
+    extract_skills(conn, user_id, project_name)
+
     if current_ext_consent == 'accepted':
         parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
         if parsed_files:
             print(f"\n[COLLABORATIVE-CODE] Running LLM-based summary for '{project_name}'...")
+            llm_results = run_code_llm_analysis(parsed_files, zip_path, project_name)
+            if summary and llm_results:
+                summary.summary_text = llm_results.get("project_summary")
+                summary.contributions["llm_contribution_summary"] = llm_results.get("contribution_summary")
             run_code_llm_analysis(parsed_files, zip_path, project_name)
 
         else:
@@ -447,6 +469,10 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path)
     print(f"Frameworks detected in {project_name}: {frameworks}")
 
+    if summary:
+        summary.languages = languages or []
+        summary.frameworks = frameworks or []
+
     parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
     if not parsed_files:
         print(f"[INDIVIDUAL-CODE] No code files found for '{project_name}'.")
@@ -465,6 +491,9 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     if summary is not None:
         # store raw counts so you can reuse later in UI / JSON
         summary.metrics["activity_type"] = activity_summary.per_activity
+
+    # Extract skills for code projects
+    extract_skills(conn, user_id, project_name)
 
     # --- Run LLM summary LAST, and only once ---
     if current_ext_consent == "accepted":
@@ -544,3 +573,111 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
 def _run_skill_extraction_for_all(conn, user_id, assignments):
     for project_name in assignments.keys():
         extract_skills(conn, user_id, project_name)
+
+
+def _load_skills_into_summary(conn, user_id, project_name, summary):
+    """
+    Load skills from project_skills table and populate ProjectSummary.
+    Stores both skill names (for backward compatibility) and detailed skill data in metrics.
+    """
+    if not summary:
+        return
+    
+    rows = get_project_skills(conn, user_id, project_name)
+    if rows:
+        skills = []
+        for skill_name, level, score, evidence_json in rows:
+            # Only store skill name, level, and score - evidence is in project_skills table
+            skills.append({
+                "skill_name": skill_name,
+                "level": level,
+                "score": score
+            })
+        summary.skills = [s["skill_name"] for s in skills]
+        summary.metrics["skills_detailed"] = skills
+
+
+def _load_text_metrics_into_summary(conn, user_id, project_name, summary):
+    """
+    Load text metrics from database and populate ProjectSummary.metrics["text"].
+    Loads both LLM and non-LLM text metrics.
+    """
+    if not summary or summary.project_type != "text":
+        return
+    
+    classification_id = get_classification_id(conn, user_id, project_name)
+    if not classification_id:
+        return
+    
+    text_metrics = {}
+    
+    # Load non-LLM metrics
+    non_llm = get_text_non_llm_metrics(conn, classification_id)
+    if non_llm:
+        text_metrics["non_llm"] = {
+            "doc_count": non_llm.get("doc_count"),
+            "total_words": non_llm.get("total_words"),
+            "reading_level_avg": non_llm.get("reading_level_avg"),
+            "reading_level_label": non_llm.get("reading_level_label"),
+            "keywords": non_llm.get("keywords", [])
+        }
+    
+    # Load LLM metrics
+    llm = get_text_llm_metrics(conn, classification_id)
+    if llm:
+        text_metrics["llm"] = {
+            "word_count": llm.get("word_count"),
+            "sentence_count": llm.get("sentence_count"),
+            "flesch_kincaid_grade": llm.get("flesch_kincaid_grade"),
+            "lexical_diversity": llm.get("lexical_diversity"),
+            "overall_score": llm.get("overall_score"),
+            "strengths": json.loads(llm.get("strength_json")) if llm.get("strength_json") else [],
+            "weaknesses": json.loads(llm.get("weaknesses_json")) if llm.get("weaknesses_json") else []
+        }
+    
+    if text_metrics:
+        summary.metrics["text"] = text_metrics
+
+
+def _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=False):
+    """
+    Load text activity type data from database and populate ProjectSummary.
+    Transforms text activity data format to match code activity format for consistency.
+    
+    For individual projects: adds to summary.metrics["activity_type"]
+    For collaborative projects: adds to summary.contributions["activity_type"]
+    """
+    if not summary:
+        return
+    
+    classification_id = get_classification_id(conn, user_id, project_name)
+    if not classification_id:
+        return
+    
+    activity_data = get_text_activity_contribution(conn, classification_id)
+    if not activity_data:
+        return
+    
+    # Transform text activity data to match code format
+    # Code format: {activity_name: {"count": int, "top_file": Optional[str]}}
+    activity_classification = activity_data.get('activity_classification', {})
+    activity_counts = activity_data.get('summary', {}).get('activity_counts', {})
+    
+    per_activity = {}
+    for activity_name, count in activity_counts.items():
+        # Get top file for this activity (first file in classification list, if any)
+        top_file = None
+        files_list = activity_classification.get(activity_name, [])
+        if files_list:
+            top_file = files_list[0]  # Use first file as top_file
+        
+        per_activity[activity_name] = {
+            "count": count,
+            "top_file": top_file
+        }
+    
+    if per_activity:
+        if is_collaborative:
+            summary.contributions["activity_type"] = per_activity
+        else:
+            summary.metrics["activity_type"] = per_activity
