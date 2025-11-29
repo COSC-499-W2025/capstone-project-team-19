@@ -162,6 +162,12 @@ def analyze_code_project(conn: sqlite3.Connection,
         # Clean language names (remove "(from DB)" suffix if present)
         summary.languages = [lang.split(" (from DB)")[0] if " (from DB)" in lang else lang for lang in languages]
         summary.frameworks = focus.get("frameworks", [])
+        # Store only the last commit date for skills timeline (minimal data)
+        history = metrics.get("history", {})
+        if history.get("last"):
+            summary.metrics["collaborative_git"] = {
+                "last_commit_date": history["last"]
+            }
 
     # 7.5) save file contributions to database for skill extraction filtering
     file_contributions_data = metrics.get("file_contributions", {})

@@ -58,6 +58,11 @@ def get_skill_events(conn, user_id):
         - actual_activity_date (end_date for text, last_commit_date for code, NULL if neither exists)
         - recorded_at (upload/classification date, always present)
     
+    For code projects, last_commit_date is retrieved from:
+        1. github_repo_metrics.last_commit_date (if GitHub connection exists)
+        2. project_summaries.summary_json->metrics->git->commit_stats->last_commit_date (individual projects with local git)
+        3. project_summaries.summary_json->metrics->collaborative_git->last_commit_date (collaborative projects with local git)
+    
     Returns tuples: (skill_name, level, score, project_name, actual_activity_date, recorded_at)
     """
 
@@ -69,7 +74,12 @@ def get_skill_events(conn, user_id):
             ps.project_name,
             CASE
                 WHEN pc.project_type = 'text' THEN tac.end_date
-                WHEN pc.project_type = 'code' THEN grm.last_commit_date
+                WHEN pc.project_type = 'code' THEN 
+                    COALESCE(
+                        grm.last_commit_date,
+                        json_extract(ps_summary.summary_json, '$.metrics.git.commit_stats.last_commit_date'),
+                        json_extract(ps_summary.summary_json, '$.metrics.collaborative_git.last_commit_date')
+                    )
                 ELSE NULL
             END AS actual_activity_date,
             pc.recorded_at
@@ -82,6 +92,9 @@ def get_skill_events(conn, user_id):
         LEFT JOIN github_repo_metrics grm
             ON ps.user_id = grm.user_id
             AND ps.project_name = grm.project_name
+        LEFT JOIN project_summaries ps_summary
+            ON ps.user_id = ps_summary.user_id
+            AND ps.project_name = ps_summary.project_name
         WHERE 
             ps.user_id = ?
             AND ps.score > 0
