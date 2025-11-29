@@ -103,6 +103,8 @@ def _render_code_project(ps: ProjectSummary, collaborative: bool = False) -> Non
             top_file = v.get("top_file") or v.get("top_file_overall")
             top_info = f" (top: {top_file})" if top_file else ""
             print(f"    • {k}{top_info}")
+    else:
+        print("  Contributions: (no activity data)")
 
     # Skills demonstrated
     skills = _extract_skills(ps)
