@@ -124,6 +124,7 @@ from .project_summaries import (
     save_project_summary,
     get_project_summaries_list,
     get_project_summary_by_name,
+    get_all_projects_with_dates,
 )
 
 __all__ = [
@@ -175,4 +176,5 @@ __all__ = [
     "save_project_summary",
     "get_project_summaries_list",
     "get_project_summary_by_name",
+    "get_all_projects_with_dates", 
 ]

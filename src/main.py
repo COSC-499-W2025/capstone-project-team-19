@@ -16,6 +16,7 @@ from src.menu import (
     view_resume_items,
     view_portfolio_items,
     delete_old_insights,
+    project_list,
 )
 from src.consent.consent import CONSENT_TEXT, get_user_consent, record_consent
 from src.consent.external_consent import get_external_consent, record_external_consent
@@ -66,7 +67,9 @@ def prompt_and_store():
             view_portfolio_items(conn, user_id, username)
         elif menu_choice == 5:
             delete_old_insights(conn, user_id, username)
-        elif menu_choice == 6:
+        elif menu_choice == 8:
+            project_list(conn, user_id, username)
+        elif menu_choice == 9:
             print("\nThank you for using the system. Goodbye!")
             return None
         elif menu_choice == 1:
