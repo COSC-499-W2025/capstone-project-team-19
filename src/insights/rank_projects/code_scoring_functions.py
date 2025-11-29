@@ -120,25 +120,3 @@ def tech_stack(ps: ProjectSummary) -> tuple[float, bool]:
     score = (0.6 * language_score) + (0.4 * frameworks_score)
     final_score = max(0.0, min(score, 1.0))
     return final_score, True
-
-
-def code_contribution_strength(ps: ProjectSummary, is_collaborative: bool) -> tuple[float, bool]:
-    """
-    Score collaboration contribution for code projects from 0-1
-    Uses:
-        - GitHub contribution_percent if available
-        - Otherwise falls back to 0.0 for collaborative
-        - Individual projects always return 1.0
-    """
-
-    if not is_collaborative:
-        return 1.0, True
-
-    gh = ps.metrics.get("github")
-    if isinstance(gh, dict):
-        percent = gh.get("contribution_percent")
-        if isinstance(percent, (float, int)):
-            return max(0.0, min(percent / 100, 1.0)), True
-
-    # no GitHub data available
-    return 0.0, False

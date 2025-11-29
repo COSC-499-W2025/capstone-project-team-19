@@ -9,8 +9,7 @@ from .code_scoring_functions import (
     code_complexity,
     git_activity,
     github_collaboration,
-    tech_stack,
-    code_contribution_strength,
+    tech_stack
 )
 
 __all__ = [
@@ -24,8 +23,7 @@ __all__ = [
     "code_complexity",
     "git_activity",
     "github_collaboration",
-    "tech_stack",
-    "code_contribution_strength",
+    "tech_stack"
 ]
 
 

@@ -1,4 +1,4 @@
-from src.insights.rank_projects import writing_quality, skill_strength, contribution_strength, activity_diversity, code_complexity, git_activity, github_collaboration, tech_stack, code_contribution_strength
+from src.insights.rank_projects import writing_quality, skill_strength, contribution_strength, activity_diversity, code_complexity, git_activity, github_collaboration, tech_stack
 
 def _extract_base_scores(summary, is_collab):
     skill_strength_score, skill_available = skill_strength(summary)
@@ -20,12 +20,10 @@ def _extract_code_scores(summary, is_collab):
     git_activity_score, git_activity_available = git_activity(summary)
     github_collab_score, github_collab_available = github_collaboration(summary)
     tech_stack_score, tech_stack_available = tech_stack(summary)
-    code_contr_score, code_contr_available = code_contribution_strength(summary, is_collab)
 
     return [
         (code_complex_score, code_complexity_available, 0.25),
         (git_activity_score, git_activity_available, 0.20),
         (github_collab_score, github_collab_available, 0.03),
-        (tech_stack_score, tech_stack_available, 0.15),
-        (code_contr_score, code_contr_available, 0.05),
+        (tech_stack_score, tech_stack_available, 0.15)
     ]

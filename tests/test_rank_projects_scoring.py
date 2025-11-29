@@ -5,7 +5,7 @@ import pytest
 import math
 from src.models.project_summary import ProjectSummary
 from src.insights.rank_projects.code_scoring_functions import (
-    code_complexity, git_activity, github_collaboration, tech_stack, code_contribution_strength
+    code_complexity, git_activity, github_collaboration, tech_stack
 )
 from src.insights.rank_projects.text_scoring_functions import writing_quality
 from src.insights.rank_projects.shared_scoring_functions import (
@@ -55,22 +55,6 @@ def test_tech_stack_with_languages():
     score, available = tech_stack(ps)
     assert available is True
     assert score > 0.0
-
-
-@pytest.mark.parametrize("is_collab,metrics,contributions,expected_avail", [
-    (False, {}, {}, True),  # Individual always returns 1.0
-    (True, {"github": {"contribution_percent": 75}}, {}, True),
-    (True, {}, {}, False),
-])
-def test_code_contribution_strength(is_collab, metrics, contributions, expected_avail):
-    """Test code_contribution_strength for individual vs collaborative."""
-    ps = _ps(metrics=metrics, contributions=contributions)
-    score, available = code_contribution_strength(ps, is_collab)
-    assert available == expected_avail
-    if is_collab and expected_avail:
-        assert score == 0.75
-    elif not is_collab:
-        assert score == 1.0
 
 
 @pytest.mark.parametrize("is_collab,metrics,contributions,expected_avail", [

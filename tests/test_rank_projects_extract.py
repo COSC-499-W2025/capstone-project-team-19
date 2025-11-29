@@ -70,7 +70,7 @@ def test_extract_code_scores_happy_path():
         "github": {"prs_opened": 5, "issues_opened": 3, "contribution_percent": 100, "total_additions": 2000, "total_deletions": 500}
     })
     results = _extract_code_scores(ps, is_collab=False)
-    assert len(results) == 5
+    assert len(results) == 4
     assert all(isinstance(r[0], float) and isinstance(r[1], bool) for r in results)
 
 
@@ -81,6 +81,5 @@ def test_extract_code_scores_collaborative():
         "github": {"contribution_percent": 60}
     })
     results = _extract_code_scores(ps, is_collab=True)
-    assert len(results) == 5
-    assert results[4][1] is True  # code_contribution_strength available
-    assert results[4][0] == 0.6
+    assert len(results) == 4
+    assert all(isinstance(r[0], float) and isinstance(r[1], bool) for r in results)
