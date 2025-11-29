@@ -109,11 +109,11 @@ CREATE TABLE IF NOT EXISTS config_files (
 CREATE TABLE IF NOT EXISTS non_llm_text (
     metrics_id        INTEGER PRIMARY KEY AUTOINCREMENT,
     classification_id INTEGER UNIQUE NOT NULL,
-    doc_count         INTEGER,
-    total_words       INTEGER,
-    reading_level_avg REAL,
-    reading_level_label TEXT,
-    keywords_json     TEXT,
+    doc_count         INTEGER, -- always 1 (main file)
+    total_words       INTEGER, -- of main file
+    reading_level_avg REAL, -- of main file
+    reading_level_label TEXT, -- of main file
+    keywords_json     TEXT, -- currently empty in case we want to bring back TF IDF to determine user's "topics of interest"
     summary_json      TEXT,
     csv_metadata TEXT,
     generated_at      TEXT NOT NULL DEFAULT (datetime('now')),
