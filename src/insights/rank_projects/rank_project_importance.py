@@ -1,37 +1,39 @@
 import json
 
 from src.db import get_all_user_project_summaries, connect
+from src.models.project_summary import ProjectSummary
 
 def collect_project_data(conn, user_id):
-    summaries = get_all_user_project_summaries(conn, user_id)
+    rows = get_all_user_project_summaries(conn, user_id)
 
-    for summary in summaries:
-        project_name = summary["project_name"]
-        project_type = summary["project_type"]
-        project_mode = summary["project_mode"]
+    for row in rows:
+        project_name = row["project_name"]
+        project_type = row["project_type"]
+        project_mode = row["project_mode"]
 
-        summary_json = json.loads(summary["summary_json"])
+        summary_dict = json.loads(row["summary_json"])
+        project_summary = ProjectSummary.from_dict(summary_dict)
 
         print("\nproject_name:", project_name)
         print("\nproject_type:", project_type)
         print("\nproject_mode:", project_mode)
-        print("\nsummary_json:", summary_json)
-        print()
+        print("\nproject_summary:", project_summary)
         print()
 
         if project_type == "text":
-            score_text_project(summary_json)
+            score_text_project(project_summary)
         else: # project will be code
-            score_code_project(summary_json)
+            score_code_project(project_summary)
 
 
-def score_text_project(project_mode, summary):
-    is_collaborative = (project_mode == "collaborative")
+def score_text_project(summary):
+    is_collaborative = (summary.project_mode == "collaborative")
+
 
     pass
 
-def score_code_project(project_mode, summary):
-    is_collaborative = (project_mode == "collaborative")
+def score_code_project(summary):
+    is_collaborative = (summary.project_mode == "collaborative")
 
     pass
 
