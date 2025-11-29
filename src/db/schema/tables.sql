@@ -109,33 +109,14 @@ CREATE TABLE IF NOT EXISTS config_files (
 CREATE TABLE IF NOT EXISTS non_llm_text (
     metrics_id        INTEGER PRIMARY KEY AUTOINCREMENT,
     classification_id INTEGER UNIQUE NOT NULL,
-    doc_count         INTEGER,
-    total_words       INTEGER,
-    reading_level_avg REAL,
-    reading_level_label TEXT,
-    keywords_json     TEXT,
+    doc_count         INTEGER, -- always 1 (main file)
+    total_words       INTEGER, -- of main file
+    reading_level_avg REAL, -- of main file
+    reading_level_label TEXT, -- of main file
+    keywords_json     TEXT, -- currently empty in case we want to bring back TF IDF to determine user's "topics of interest"
     summary_json      TEXT,
+    csv_metadata TEXT,
     generated_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS llm_text (
-    text_metric_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    classification_id INTEGER NOT NULL,
-    file_path TEXT,
-    file_name TEXT,
-    project_name TEXT,
-    word_count INTEGER,
-    sentence_count INTEGER,
-    flesch_kincaid_grade REAL,
-    lexical_diversity REAL,
-    summary TEXT NOT NULL,
-    skills_json JSON,
-    strength_json JSON,
-    weaknesses_json JSON,
-    overall_score TEXT,
-    processed_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(text_metric_id),
     FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
 );
 

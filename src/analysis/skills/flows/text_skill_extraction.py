@@ -6,6 +6,10 @@ from src.analysis.skills.detectors.text.text_detector_registry import TEXT_DETEC
 from src.analysis.skills.buckets.text_buckets import TEXT_SKILL_BUCKETS
 from src.db import insert_project_skill
 
+from src.db.text_metrics import store_text_offline_metrics
+from src.analysis.text_individual.alt_analyze import analyze_linguistic_complexity
+from src.db import get_classification_id
+
 
 def extract_text_skills(
     main_text,
@@ -90,6 +94,23 @@ def extract_text_skills(
     # 4. OVERALL PROJECT SCORE
     # ------------------------------
     overall_score = sum(b["score"] for b in bucket_output.values()) / len(bucket_output)
+    
+    classification_id = get_classification_id(conn, user_id, project_name)
+
+    if classification_id:
+        ling = analyze_linguistic_complexity(main_text)
+
+        project_metrics = {
+            "summary": {
+                "total_documents": 1,
+                "total_words": ling["word_count"],
+                "reading_level_average": ling["flesch_kincaid_grade"],
+                "reading_level_label": ling["reading_level"]
+            },
+            "keywords": [],  # TF-IDF can be added later
+        }
+
+        store_text_offline_metrics(conn, classification_id, project_metrics, csv_metadata=csv_metadata)
 
     return {
         "overall_score": overall_score,
