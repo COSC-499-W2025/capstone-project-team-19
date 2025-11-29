@@ -65,8 +65,9 @@ def analyze_collaborative_text_project(
     # Recombine normalized paragraphs into a clean text block
     full_main_text = "\n\n".join(normalized)
 
-    # store main summary in project_summary
+    # store main summary and skills in project_summary
     summary_obj.summary_text = pipeline_result["project_summary"]
+    summary_obj.skills = pipeline_result.get("skills", [])
 
     print("\n" + "="*80)
     print("MAIN DOCUMENT SUMMARY:")
@@ -302,12 +303,19 @@ def analyze_collaborative_text_project(
     # ---------------------------------------------------------
     # STEP 6 — Store in project summary
     # ---------------------------------------------------------
+    # Store buckets without evidence to reduce size (evidence contains verbose CSV metadata)
+    buckets_clean = {}
+    for bucket_name, bucket_data in skill_output.get("buckets", {}).items():
+        buckets_clean[bucket_name] = {
+            "description": bucket_data.get("description"),
+            "score": bucket_data.get("score")
+        }
+    
     summary_obj.contributions["text_collab"] = {
-        "contributed_text": contributed_text,
         "percent_of_document": pct,
         "contribution_summary": contribution_summary,
         "skills": skill_output.get("skills", []),
-        "buckets": skill_output.get("buckets", {}),
+        "buckets": buckets_clean,
         "overall_score": skill_output.get("overall_score")
     }
     

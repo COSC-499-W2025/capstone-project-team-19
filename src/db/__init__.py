@@ -64,6 +64,7 @@ from .text_metrics import (
     store_text_offline_metrics,
     store_text_llm_metrics,
     get_text_llm_metrics,
+    get_text_non_llm_metrics,
 )
 
 # Code metrics operations
@@ -150,6 +151,7 @@ __all__ = [
     "store_text_offline_metrics",
     "store_text_llm_metrics",
     "get_text_llm_metrics",
+    "get_text_non_llm_metrics",
     "code_complexity_metrics_exists",
     "insert_code_complexity_metrics",
     "update_code_complexity_metrics",

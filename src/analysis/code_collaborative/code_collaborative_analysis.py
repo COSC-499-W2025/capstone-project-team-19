@@ -68,7 +68,8 @@ def print_code_portfolio_summary() -> None:
 def analyze_code_project(conn: sqlite3.Connection,
                          user_id: int,
                          project_name: str,
-                         zip_path: str) -> Optional[dict]:
+                         zip_path: str,
+                         summary=None) -> Optional[dict]:
     # 1) get base dirs from the uploaded zip
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
 
@@ -81,13 +82,13 @@ def analyze_code_project(conn: sqlite3.Connection,
         )
 
         _handle_no_git_repo(conn, user_id, project_name)
-        _enhance_with_github(conn, user_id, project_name, repo_dir)
+        _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
 
         return None
 
     print(f"Found local Git repo for {project_name}")
 
-    _enhance_with_github(conn, user_id, project_name, repo_dir)
+    repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
 
     if DEBUG:
         print(f"[debug] repo resolved → {repo_dir}")
@@ -153,6 +154,14 @@ def analyze_code_project(conn: sqlite3.Connection,
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path)
     if frameworks:
         metrics.setdefault("focus", {})["frameworks"] = sorted(frameworks)
+
+    # 7.25) store languages and frameworks in summary
+    if summary:
+        focus = metrics.get("focus", {})
+        languages = focus.get("languages", [])
+        # Clean language names (remove "(from DB)" suffix if present)
+        summary.languages = [lang.split(" (from DB)")[0] if " (from DB)" in lang else lang for lang in languages]
+        summary.frameworks = focus.get("frameworks", [])
 
     # 7.5) save file contributions to database for skill extraction filtering
     file_contributions_data = metrics.get("file_contributions", {})
@@ -228,7 +237,7 @@ def _handle_no_git_repo(conn, user_id, project_name):
     return None
 
 
-def _enhance_with_github(conn, user_id, project_name, repo_dir):
+def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None):
     ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
     if ans not in {"y", "yes"}:
         return
@@ -281,9 +290,14 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir):
         else:
             print_collaboration_summary(collab_profile)
 
+        if summary:
+            summary.metrics["github"] = repo_metrics
+
+        return repo_metrics
+
     except Exception as e:
         print(f"[GitHub] Error occurred ({e}). Skipping GitHub and continuing.")
-        return
+        return None
 
 # Determine if all metric categories show zero activity
 def _metrics_empty(m: dict) -> bool:
