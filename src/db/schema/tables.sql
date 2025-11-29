@@ -468,8 +468,8 @@ CREATE TABLE IF NOT EXISTS code_activity_metrics (
 CREATE INDEX IF NOT EXISTS idx_code_activity_metrics_lookup
 ON code_activity_metrics (user_id, project_name, scope, source);
 
--- Local git metrics for collaborative code projects
-CREATE TABLE IF NOT EXISTS local_git_metrics_collaborative (
+-- Code Collaborative Metrics (pure numeric metrics)
+CREATE TABLE IF NOT EXISTS code_collaborative_metrics (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL,
     project_name    TEXT    NOT NULL,
@@ -477,19 +477,19 @@ CREATE TABLE IF NOT EXISTS local_git_metrics_collaborative (
     -- totals
     commits_all     INTEGER,
     commits_yours   INTEGER,
-    commits_coauth  INTEGER,
+    commits_coauth  INTEGER,    -- commits where the user is co-author
     merges          INTEGER,
     -- LOC (lines of code)
     loc_added       INTEGER,
     loc_deleted     INTEGER,
-    loc_net         INTEGER,
-    files_touched   INTEGER,
-    new_files       INTEGER,
+    loc_net         INTEGER,    -- net LOC added (add - delete)
+    files_touched   INTEGER,    -- number of file-change events
+    new_files       INTEGER,    -- number of new files created
     renames         INTEGER,
     -- history
     first_commit_at TEXT,
     last_commit_at  TEXT,
-    commits_L30     INTEGER,
+    commits_L30     INTEGER,    -- commits by user in last 30 days
     commits_L90     INTEGER,
     commits_L365    INTEGER,
     longest_streak  INTEGER,
@@ -498,14 +498,32 @@ CREATE TABLE IF NOT EXISTS local_git_metrics_collaborative (
     top_hours       TEXT,
     -- focus
     languages_json  TEXT,
-    folders_json    TEXT,
-    top_files_json  TEXT,
+    folders_json    TEXT,   -- top folders by activity
+    top_files_json  TEXT,   -- most edited files
     frameworks_json TEXT,
-    -- optional manual description
-    desc            TEXT,
+    -- description / summary
+    desc_type       TEXT,   -- 'non-llm' or 'llm' (or NULL if none yet)
+    desc_content    TEXT,   -- full summary text (manual or LLM)
+    -- others
     created_at      TEXT DEFAULT (datetime('now')),
     UNIQUE(user_id, project_name)
 );
--- useful for listing all repos for a user
-CREATE INDEX IF NOT EXISTS idx_git_metrics_collab_user
-    ON local_git_metrics_collaborative (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_code_collab_metrics_user_project
+    ON code_collaborative_metrics (user_id, project_name);
+
+-- Summaries for collaborative code contributions (non-llm or llm)
+CREATE TABLE IF NOT EXISTS code_collaborative_summary (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    metrics_id      INTEGER NOT NULL,    -- FK to code_collaborative_metrics.id
+    user_id         INTEGER NOT NULL,
+    project_name    TEXT    NOT NULL,
+    summary_type    TEXT    NOT NULL,    -- 'llm' or 'non-llm'
+    content         TEXT    NOT NULL,    -- full manually-written or LLM summaries (project+contribution)
+    created_at      TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (metrics_id) REFERENCES code_collaborative_metrics(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_code_collab_summary_user_project
+    ON code_collaborative_summary (user_id, project_name);
