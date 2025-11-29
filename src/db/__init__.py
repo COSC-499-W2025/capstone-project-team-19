@@ -126,6 +126,9 @@ from .project_summaries import (
     get_project_summary_by_name,
 )
 
+# local git metrics for code collaborative projects
+from .code_collaborative import insert_code_collaborative_metrics, get_metrics_id, insert_code_collaborative_summary
+
 __all__ = [
     "connect",
     "init_schema",
@@ -176,4 +179,7 @@ __all__ = [
     "get_project_summaries_list",
     "get_project_summary_by_name",
     "get_skill_events"
+    "insert_code_collaborative_metrics",
+    "get_metrics_id",
+    "insert_code_collaborative_summary",
 ]
