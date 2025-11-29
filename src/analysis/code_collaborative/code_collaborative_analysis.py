@@ -2,7 +2,14 @@ from __future__ import annotations
 import sqlite3
 from typing import Optional, Dict
 
-from src.db import store_github_account, store_collaboration_profile, store_file_contributions, store_local_git_metrics_collaborative
+from src.db import (
+    store_github_account,
+    store_collaboration_profile,
+    store_file_contributions,
+    insert_code_collaborative_metrics,
+    get_metrics_id,
+    insert_code_collaborative_summary
+)
 from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
 from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo, get_gh_repo_name_and_owner
@@ -164,7 +171,19 @@ def analyze_code_project(conn: sqlite3.Connection,
             store_file_contributions(conn, user_id, project_name, contributions_dict)
 
     # 8) save aggregated git metrics into DB
-    store_local_git_metrics_collaborative(conn, user_id, project_name, metrics)
+    insert_code_collaborative_metrics(conn, user_id, project_name, metrics)
+    metrics_id = get_metrics_id(conn, user_id, project_name)
+
+    # 8.1) store manual description (non-LLM)
+    if metrics_id and desc:
+        insert_code_collaborative_summary(
+            conn,
+            metrics_id=metrics_id,
+            user_id=user_id,
+            project_name=project_name,
+            summary_type="non-llm",
+            content=desc.strip(),
+        )
 
     # 9) print
     print_project_card(metrics)

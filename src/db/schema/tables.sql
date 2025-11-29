@@ -501,9 +501,6 @@ CREATE TABLE IF NOT EXISTS code_collaborative_metrics (
     folders_json    TEXT,   -- top folders by activity
     top_files_json  TEXT,   -- most edited files
     frameworks_json TEXT,
-    -- description / summary
-    desc_type       TEXT,   -- 'non-llm' or 'llm' (or NULL if none yet)
-    desc_content    TEXT,   -- full summary text (manual or LLM)
     -- others
     created_at      TEXT DEFAULT (datetime('now')),
     UNIQUE(user_id, project_name)

@@ -32,6 +32,7 @@ from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
 from src.db import store_code_activity_metrics
+from src.db import get_metrics_id, insert_code_collaborative_summary
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -424,7 +425,31 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
         parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
         if parsed_files:
             print(f"\n[COLLABORATIVE-CODE] Running LLM-based summary for '{project_name}'...")
-            run_code_llm_analysis(parsed_files, zip_path, project_name)
+            llm_results = run_code_llm_analysis(parsed_files, zip_path, project_name)
+
+            if llm_results:
+                # update ProjectSummary object as before
+                if summary:
+                    summary.summary_text = llm_results.get("project_summary")
+                    summary.contributions["llm_contribution_summary"] = llm_results.get("contribution_summary")
+
+                # also store in code_collaborative_summary table
+                metrics_id = get_metrics_id(conn, user_id, project_name)
+                if metrics_id:
+                    combined_text = (
+                        f"Project Summary:\n{llm_results.get('project_summary','')}\n\n"
+                        f"Contribution Summary:\n{llm_results.get('contribution_summary','')}"
+                    ).strip()
+
+                    if combined_text:
+                        insert_code_collaborative_summary(
+                            conn,
+                            metrics_id=metrics_id,
+                            user_id=user_id,
+                            project_name=project_name,
+                            summary_type="llm",
+                            content=combined_text,
+                        )
 
         else:
             print(f"[COLLABORATIVE-CODE] No code files found for '{project_name}'.")
