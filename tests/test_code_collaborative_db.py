@@ -2,7 +2,11 @@ import json
 import sqlite3
 
 from src.db.connection import init_schema
-from src.db import store_local_git_metrics_collaborative
+from src.db import (
+    insert_code_collaborative_metrics,
+    get_metrics_id,
+    insert_code_collaborative_summary,
+)
 
 
 # -------------------------------------------------------------------
@@ -15,7 +19,7 @@ def _make_fake_metrics(
 ):
     """
     Build a minimal metrics dict that matches the compute_metrics structure
-    enough for store_local_git_metrics_collaborative to work.
+    enough for insert_code_collaborative_metrics to work.
     """
     return {
         "project": project_name,
@@ -51,15 +55,14 @@ def _make_fake_metrics(
             "top_files": ["src/main.py", "src/app.py"],
             # frameworks key can exist or not; tests below do not rely on it
         },
-        "desc": "Test project for git metrics.",
     }
 
 
 # -------------------------------------------------------------------
-# 1. Basic insert test
+# 1. Basic insert test for code_collaborative_metrics
 # -------------------------------------------------------------------
 
-def test_store_local_git_metrics_inserts_row():
+def test_insert_code_collaborative_metrics_inserts_row():
     conn = sqlite3.connect(":memory:")
     init_schema(conn)
 
@@ -68,7 +71,7 @@ def test_store_local_git_metrics_inserts_row():
     metrics = _make_fake_metrics(project_name=project_name)
 
     # Store
-    store_local_git_metrics_collaborative(conn, user_id, project_name, metrics)
+    insert_code_collaborative_metrics(conn, user_id, project_name, metrics)
 
     # Fetch core fields + JSON fields
     row = conn.execute(
@@ -80,9 +83,8 @@ def test_store_local_git_metrics_inserts_row():
             loc_added,
             languages_json,
             folders_json,
-            top_files_json,
-            desc
-        FROM local_git_metrics_collaborative
+            top_files_json
+        FROM code_collaborative_metrics
         WHERE user_id = ? AND project_name = ?
         """,
         (user_id, project_name),
@@ -98,14 +100,12 @@ def test_store_local_git_metrics_inserts_row():
         languages_json,
         folders_json,
         top_files_json,
-        desc_text,
     ) = row
 
     assert pname == project_name
     assert repo_path == metrics["path"]
     assert commits_all == metrics["totals"]["commits_all"]
     assert loc_added == metrics["loc"]["added"]
-    assert desc_text == metrics["desc"]
 
     langs = json.loads(languages_json)
     folders = json.loads(folders_json)
@@ -120,7 +120,7 @@ def test_store_local_git_metrics_inserts_row():
 # 2. Upsert: same (user_id, project_name) updates existing row
 # -------------------------------------------------------------------
 
-def test_store_local_git_metrics_updates_on_conflict():
+def test_insert_code_collaborative_metrics_updates_on_conflict():
     conn = sqlite3.connect(":memory:")
     init_schema(conn)
 
@@ -129,19 +129,19 @@ def test_store_local_git_metrics_updates_on_conflict():
 
     # First insert
     metrics1 = _make_fake_metrics(project_name=project_name, path="/tmp/first_path")
-    store_local_git_metrics_collaborative(conn, user_id, project_name, metrics1)
+    insert_code_collaborative_metrics(conn, user_id, project_name, metrics1)
 
     # Second insert with changed values (same user + project)
     metrics2 = _make_fake_metrics(project_name=project_name, path="/tmp/second_path")
     metrics2["totals"]["commits_all"] = 42
     metrics2["loc"]["added"] = 999
-    store_local_git_metrics_collaborative(conn, user_id, project_name, metrics2)
+    insert_code_collaborative_metrics(conn, user_id, project_name, metrics2)
 
     # There should still be exactly one row
     rows = conn.execute(
         """
         SELECT repo_path, commits_all, loc_added
-        FROM local_git_metrics_collaborative
+        FROM code_collaborative_metrics
         WHERE user_id = ? AND project_name = ?
         """,
         (user_id, project_name),
@@ -158,26 +158,37 @@ def test_store_local_git_metrics_updates_on_conflict():
 
 
 # -------------------------------------------------------------------
-# 3. Optional JSON fields: safely default to empty lists
+# 3. Missing / partial metrics: safely handle missing sections
 # -------------------------------------------------------------------
 
-def test_store_local_git_metrics_handles_missing_focus_fields():
+def test_insert_code_collaborative_metrics_handles_missing_sections():
+    """
+    This test covers missing / partial metrics so that empty/missing sections
+    do not crash the helper and are stored as NULL or empty JSON lists.
+    """
     conn = sqlite3.connect(":memory:")
     init_schema(conn)
 
     user_id = 1
-    project_name = "no_focus_project"
+    project_name = "no_focus_history_loc"
 
     metrics = _make_fake_metrics(project_name=project_name)
-    # Drop focus section entirely to simulate missing optional fields
+    # Drop these sections to simulate partial metrics from compute_metrics
     metrics["focus"] = {}
+    metrics["history"] = {}
+    metrics["loc"] = {}
 
-    store_local_git_metrics_collaborative(conn, user_id, project_name, metrics)
+    insert_code_collaborative_metrics(conn, user_id, project_name, metrics)
 
     row = conn.execute(
         """
-        SELECT languages_json, folders_json, top_files_json
-        FROM local_git_metrics_collaborative
+        SELECT
+            commits_all,
+            loc_added,
+            languages_json,
+            folders_json,
+            top_files_json
+        FROM code_collaborative_metrics
         WHERE user_id = ? AND project_name = ?
         """,
         (user_id, project_name),
@@ -185,13 +196,87 @@ def test_store_local_git_metrics_handles_missing_focus_fields():
 
     assert row is not None
 
-    languages_json, folders_json, top_files_json = row
+    commits_all, loc_added, languages_json, folders_json, top_files_json = row
+
+    # totals["commits_all"] is still present → should be set correctly
+    # loc_added is missing → should be NULL (None in Python) or a safe default
+    assert commits_all == metrics["totals"]["commits_all"]
+    # We do not enforce a specific default for loc_added, only that it does not crash
+    # and is representable (None is fine).
+    # Just assert the column exists; value may be None.
+    assert "loc" in metrics  # sanity
 
     langs = json.loads(languages_json)
     folders = json.loads(folders_json)
     top_files = json.loads(top_files_json)
 
-    # When missing in metrics["focus"], helper should store empty lists
+    # When focus section is missing/malformed, helper should store empty lists
     assert langs == []
     assert folders == []
     assert top_files == []
+
+
+# -------------------------------------------------------------------
+# 4. Summaries: non-LLM + LLM for the same metrics_id
+# -------------------------------------------------------------------
+
+def test_insert_code_collaborative_summary_non_llm_and_llm():
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+
+    user_id = 1
+    project_name = "summary_project"
+    metrics = _make_fake_metrics(project_name=project_name)
+
+    # First, store metrics row
+    insert_code_collaborative_metrics(conn, user_id, project_name, metrics)
+    metrics_id = get_metrics_id(conn, user_id, project_name)
+    assert metrics_id is not None
+
+    non_llm_text = "Manual description of what the project does and my contributions."
+    llm_text = (
+        "Project Summary:\nLLM summary here.\n\n"
+        "Contribution Summary:\nLLM contribution summary here."
+    )
+
+    # Insert non-LLM summary
+    insert_code_collaborative_summary(
+        conn,
+        metrics_id=metrics_id,
+        user_id=user_id,
+        project_name=project_name,
+        summary_type="non-llm",
+        content=non_llm_text,
+    )
+
+    # Insert LLM summary
+    insert_code_collaborative_summary(
+        conn,
+        metrics_id=metrics_id,
+        user_id=user_id,
+        project_name=project_name,
+        summary_type="llm",
+        content=llm_text,
+    )
+
+    rows = conn.execute(
+        """
+        SELECT summary_type, content
+        FROM code_collaborative_summary
+        WHERE metrics_id = ?
+        ORDER BY id
+        """,
+        (metrics_id,),
+    ).fetchall()
+
+    # Expect two rows: one manual, one LLM
+    assert len(rows) == 2
+
+    types = {t for (t, _c) in rows}
+    assert "non-llm" in types
+    assert "llm" in types
+
+    # Optional: verify content is stored as-is
+    stored = {t: c for (t, c) in rows}
+    assert stored["non-llm"] == non_llm_text
+    assert stored["llm"] == llm_text

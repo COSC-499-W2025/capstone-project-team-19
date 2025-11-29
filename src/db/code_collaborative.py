@@ -1,9 +1,8 @@
 from __future__ import annotations
-
 import json
 import sqlite3
 from typing import Any, Mapping, Optional
-
+from datetime import datetime
 
 def insert_code_collaborative_metrics(
     conn: sqlite3.Connection,
@@ -14,7 +13,13 @@ def insert_code_collaborative_metrics(
     """
     Upsert collaborative code metrics for (user_id, project_name) into
     code_collaborative_metrics using data from the compute_metrics() dict.
+
+    Safely handles:
+      - missing metric sections
+      - missing focus fields
+      - datetime objects (converted to ISO strings)
     """
+
     totals = metrics.get("totals", {}) or {}
     loc = metrics.get("loc", {}) or {}
     history = metrics.get("history", {}) or {}
@@ -22,10 +27,20 @@ def insert_code_collaborative_metrics(
 
     repo_path = metrics.get("path") or metrics.get("project_path") or ""
 
+    # Normalize optional focus lists
     languages = focus.get("languages") or []
     folders = focus.get("folders") or []
     top_files = focus.get("top_files") or []
     frameworks = focus.get("frameworks") or []
+
+    # Convert datetime → ISO string
+    def _to_iso(value):
+        if isinstance(value, datetime):
+            return value.isoformat()
+        return value
+
+    first_commit = _to_iso(history.get("first"))
+    last_commit = _to_iso(history.get("last"))
 
     conn.execute(
         """
@@ -104,9 +119,9 @@ def insert_code_collaborative_metrics(
             loc.get("files_touched"),
             loc.get("new_files"),
             loc.get("renames"),
-            # history
-            history.get("first"),
-            history.get("last"),
+            # history (ISO strings)
+            first_commit,
+            last_commit,
             history.get("L30"),
             history.get("L90"),
             history.get("L365"),
@@ -121,6 +136,7 @@ def insert_code_collaborative_metrics(
             json.dumps(frameworks),
         ),
     )
+
     conn.commit()
 
 
