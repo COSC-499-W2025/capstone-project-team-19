@@ -16,6 +16,7 @@ from src.menu import (
     view_resume_items,
     view_portfolio_items,
     delete_old_insights,
+    view_chronological_skills,
 )
 from src.consent.consent import CONSENT_TEXT, get_user_consent, record_consent
 from src.consent.external_consent import get_external_consent, record_external_consent
@@ -67,6 +68,11 @@ def prompt_and_store():
         elif menu_choice == 5:
             delete_old_insights(conn, user_id, username)
         elif menu_choice == 6:
+            # Reserved for PR
+            print("\nThis option is reserved.")
+        elif menu_choice == 7:
+            view_chronological_skills(conn, user_id, username)
+        elif menu_choice == 8:
             print("\nThank you for using the system. Goodbye!")
             return None
         elif menu_choice == 1:
