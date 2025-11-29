@@ -15,6 +15,7 @@ def show_start_menu(username: str) -> int:
     print("3. View resume items")
     print("4. View portfolio items")
     print("5. Delete old insights")
+    print("8. View all projects (chronological list)")
     print("6. Exit")
 
     while True:
