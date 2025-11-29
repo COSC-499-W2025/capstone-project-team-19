@@ -17,7 +17,7 @@ class TestShowStartMenu:
 
     @pytest.mark.parametrize("invalid_input,valid_input", [
         ("0", "1"),  # Number out of range (too low)
-        ("9", "2"),  # Number out of range (too high, 6 is reserved)
+        ("9", "2"),  # Number out of range (too high)
         ("99", "3"),  # Number out of range (way too high)
         ("-1", "4"),  # Negative number
     ])
@@ -83,6 +83,7 @@ class TestShowStartMenu:
             "3. View resume items",
             "4. View portfolio items",
             "5. Delete old insights",
+            "6. View all projects ranked",
             "7. View chronological skills",
             "8. Exit"
         ]
