@@ -72,8 +72,22 @@ def store_text_offline_metrics(
 
     # ---------- UPDATE ----------
     if existing:
-        if csv_metadata_json is None:
-            csv_metadata_json = existing[6]
+        existing_doc_count, existing_total_words, existing_rl_avg, existing_rl_label, \
+            existing_keywords_json, existing_summary_json, existing_csv_metadata = existing
+
+        # Preserve keywords if not provided
+        if "keywords" in project_metrics:
+            # use new value
+            keywords_json = json.dumps(
+                sanitize_for_json(keywords), ensure_ascii=False
+            )
+        else:
+            # keep old
+            keywords_json = existing_keywords_json
+
+        # Preserve csv_metadata if not provided
+        if csv_metadata is None:
+            csv_metadata_json = existing_csv_metadata
 
         conn.execute(
             """
@@ -90,10 +104,10 @@ def store_text_offline_metrics(
             WHERE classification_id = ?
             """,
             (
-                doc_count,
-                total_words,
-                reading_level_avg,
-                reading_level_label,
+                doc_count if doc_count is not None else existing_doc_count,
+                total_words if total_words is not None else existing_total_words,
+                reading_level_avg if reading_level_avg is not None else existing_rl_avg,
+                reading_level_label if reading_level_label is not None else existing_rl_label,
                 keywords_json,
                 summary_json,
                 csv_metadata_json,

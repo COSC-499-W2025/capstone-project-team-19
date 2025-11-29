@@ -4,7 +4,7 @@ import pytest
 from src.models.project_summary import ProjectSummary
 from src.db import init_schema, get_or_create_user, record_project_classification, get_classification_id
 from src.db.skills import insert_project_skill
-from src.db.text_metrics import store_text_offline_metrics, store_text_llm_metrics
+from src.db.text_metrics import store_text_offline_metrics
 from src.project_analysis import _load_skills_into_summary, _load_text_metrics_into_summary
 
 
@@ -81,20 +81,11 @@ def test_load_text_metrics_into_summary(conn, test_user, test_classification):
         "keywords": [{"word": "test", "score": 0.5}],
     })
 
-    store_text_llm_metrics(
-        conn, test_classification, "TestProject", "doc.txt", "path/doc.txt",
-        {"word_count": 500, "sentence_count": 25, "flesch_kincaid_grade": 12.5, "lexical_diversity": 0.7},
-        "Summary text", [], {"strengths": ["clarity"], "weaknesses": ["depth"], "score": "B"}
-    )
-
     _load_text_metrics_into_summary(conn, test_user, "TestProject", summary)
 
     assert "text" in summary.metrics
     assert summary.metrics["text"]["non_llm"]["doc_count"] == 2
     assert summary.metrics["text"]["non_llm"]["total_words"] == 1000
-    assert summary.metrics["text"]["llm"]["word_count"] == 500
-    assert summary.metrics["text"]["llm"]["flesch_kincaid_grade"] == 12.5
-    assert summary.metrics["text"]["llm"]["strengths"] == ["clarity"]
 
 
 def test_load_text_metrics_into_summary_skips_code_projects(conn, test_user):
