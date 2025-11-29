@@ -119,6 +119,18 @@ def _render_text_project(ps: ProjectSummary, collaborative: bool = False) -> Non
         print(f"  Summary: {ps.summary_text}")
 
     skills = _extract_skills(ps)
+    # For collaborative text, prefer skills captured in text_collab contributions if present
+    if collaborative:
+        text_collab = ps.contributions.get("text_collab")
+        if isinstance(text_collab, dict):
+            # Percent contribution if available
+            pct = text_collab.get("percent_of_document")
+            if isinstance(pct, (int, float)):
+                print(f"  Contribution: {pct:.1f}% of document")
+            collab_skills = text_collab.get("skills")
+            if isinstance(collab_skills, list) and collab_skills:
+                skills = collab_skills
+
     if skills:
         print("  Skills:")
         print("    • " + ", ".join(skills))
