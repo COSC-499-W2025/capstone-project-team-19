@@ -89,7 +89,7 @@ from .contributions import (
 from .tokens import save_token_placeholder
 
 # skills
-from .skills import insert_project_skill
+from .skills import insert_project_skill, get_skill_events
 
 # file contributions
 from .file_contributions import (
@@ -175,4 +175,5 @@ __all__ = [
     "save_project_summary",
     "get_project_summaries_list",
     "get_project_summary_by_name",
+    "get_skill_events"
 ]
