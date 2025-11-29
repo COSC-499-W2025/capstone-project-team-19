@@ -7,10 +7,9 @@ import json
 # TEXT ANALYSIS imports
 from src.analysis.text_individual.text_analyze import run_text_pipeline
 from src.analysis.text_individual.csv_analyze import analyze_all_csv
-from src.db import get_classification_id, store_text_offline_metrics, store_text_llm_metrics, get_text_activity_contribution
+from src.db import get_classification_id, get_text_activity_contribution
 from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
 from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
-
 
 # CODE ANALYSIS imports
 from src.analysis.code_individual.code_llm_analyze import run_code_llm_analysis
@@ -20,7 +19,7 @@ from src.analysis.code_collaborative.code_collaborative_analysis import analyze_
 from src.integrations.google_drive.process_project_files import process_project_files
 from src.db.project_summaries import save_project_summary
 from src.db.skills import get_project_skills
-from src.db import get_text_llm_metrics, get_text_non_llm_metrics, get_classification_id
+from src.db import get_text_non_llm_metrics, get_classification_id
 from src.db.code_metrics import (
     insert_code_complexity_metrics,
     update_code_complexity_metrics,
@@ -548,13 +547,7 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
             summary.summary_text = text_results.get("project_summary")
             summary.skills = text_results.get("skills", [])
 
-#        if classification_id and text_results:
-#            store_text_offline_metrics(
-#                conn,
-#                classification_id,
-#                text_results.get("project_summary")
-#            )
-#commenting out to be fixed next pr
+
     else:
         # --- Run non-LLM code analysis (static + Git metrics) ---
         classification_id=get_classification_id(conn, user_id, project_name)
@@ -619,19 +612,6 @@ def _load_text_metrics_into_summary(conn, user_id, project_name, summary):
             "reading_level_avg": non_llm.get("reading_level_avg"),
             "reading_level_label": non_llm.get("reading_level_label"),
             "keywords": non_llm.get("keywords", [])
-        }
-    
-    # Load LLM metrics
-    llm = get_text_llm_metrics(conn, classification_id)
-    if llm:
-        text_metrics["llm"] = {
-            "word_count": llm.get("word_count"),
-            "sentence_count": llm.get("sentence_count"),
-            "flesch_kincaid_grade": llm.get("flesch_kincaid_grade"),
-            "lexical_diversity": llm.get("lexical_diversity"),
-            "overall_score": llm.get("overall_score"),
-            "strengths": json.loads(llm.get("strength_json")) if llm.get("strength_json") else [],
-            "weaknesses": json.loads(llm.get("weaknesses_json")) if llm.get("weaknesses_json") else []
         }
     
     if text_metrics:

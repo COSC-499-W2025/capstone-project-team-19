@@ -62,8 +62,6 @@ from .consent import (
 # Text metrics operations
 from .text_metrics import (
     store_text_offline_metrics,
-    store_text_llm_metrics,
-    get_text_llm_metrics,
     get_text_non_llm_metrics,
 )
 
@@ -139,8 +137,6 @@ __all__ = [
     "get_latest_consent",
     "get_latest_external_consent",
     "store_text_offline_metrics",
-    "store_text_llm_metrics",
-    "get_text_llm_metrics",
     "get_text_non_llm_metrics",
     "code_complexity_metrics_exists",
     "insert_code_complexity_metrics",

@@ -115,27 +115,8 @@ CREATE TABLE IF NOT EXISTS non_llm_text (
     reading_level_label TEXT,
     keywords_json     TEXT,
     summary_json      TEXT,
+    csv_metadata TEXT,
     generated_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS llm_text (
-    text_metric_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    classification_id INTEGER NOT NULL,
-    file_path TEXT,
-    file_name TEXT,
-    project_name TEXT,
-    word_count INTEGER,
-    sentence_count INTEGER,
-    flesch_kincaid_grade REAL,
-    lexical_diversity REAL,
-    summary TEXT NOT NULL,
-    skills_json JSON,
-    strength_json JSON,
-    weaknesses_json JSON,
-    overall_score TEXT,
-    processed_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(text_metric_id),
     FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
 );
 
