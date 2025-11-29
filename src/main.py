@@ -10,6 +10,13 @@ from src.db import (
     get_latest_external_consent,
     record_project_classifications,
 )
+from src.menu import (
+    show_start_menu,
+    view_old_project_summaries,
+    view_resume_items,
+    view_portfolio_items,
+    delete_old_insights,
+)
 from src.consent.consent import CONSENT_TEXT, get_user_consent, record_consent
 from src.consent.external_consent import get_external_consent, record_external_consent
 from src.project_analysis import detect_project_type, send_to_analysis
@@ -45,6 +52,25 @@ def prompt_and_store():
     else:
         user_id = existing_user[0]
         is_new_user = False
+
+    while True:
+        # Show main menu after username
+        menu_choice = show_start_menu(username)
+
+        # Handle menu choices
+        if menu_choice == 2:
+            view_old_project_summaries(conn, user_id, username)
+        elif menu_choice == 3:
+            view_resume_items(conn, user_id, username)
+        elif menu_choice == 4:
+            view_portfolio_items(conn, user_id, username)
+        elif menu_choice == 5:
+            delete_old_insights(conn, user_id, username)
+        elif menu_choice == 6:
+            print("\nThank you for using the system. Goodbye!")
+            return None
+        elif menu_choice == 1:
+            break
 
     stored_user_consent = get_latest_consent(conn, user_id)
     stored_external_consent = get_latest_external_consent(conn, user_id)
