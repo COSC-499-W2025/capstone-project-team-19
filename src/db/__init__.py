@@ -128,6 +128,14 @@ from .project_summaries import (
 # local git metrics for code collaborative projects
 from .code_collaborative import insert_code_collaborative_metrics, get_metrics_id, insert_code_collaborative_summary
 
+# portfolio
+from .portfolio import (
+    get_project_summary_row,
+    get_code_activity_percentages,
+    get_code_collaborative_duration,
+    get_code_collaborative_non_llm_summary,
+)
+
 __all__ = [
     "connect",
     "init_schema",
@@ -179,5 +187,9 @@ __all__ = [
     "insert_code_collaborative_metrics",
     "get_metrics_id",
     "insert_code_collaborative_summary",
-    "get_all_user_project_summaries"
+    "get_all_user_project_summaries",
+    "get_project_summary_row",
+    "get_code_activity_percentages",
+    "get_code_collaborative_duration",
+    "get_code_collaborative_non_llm_summary",
 ]
