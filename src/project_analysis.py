@@ -13,7 +13,7 @@ from src.integrations.google_drive.google_drive_auth.text_project_setup import s
 
 # CODE ANALYSIS imports
 from src.analysis.code_individual.code_llm_analyze import run_code_llm_analysis
-from src.analysis.code_individual.code_non_llm_analysis import run_code_non_llm_analysis
+from src.analysis.code_individual.code_non_llm_analysis import run_code_non_llm_analysis, prompt_manual_code_project_summary
 from src.utils.helpers import _fetch_files
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
 from src.integrations.google_drive.process_project_files import process_project_files
@@ -34,6 +34,7 @@ from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
 from src.db import store_code_activity_metrics
 from src.db import get_metrics_id, insert_code_collaborative_summary
+
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -467,8 +468,12 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
                             content=combined_text,
                         )
 
-        else:
-            print(f"[COLLABORATIVE-CODE] No code files found for '{project_name}'.")
+    else:
+        print(f"[COLLABORATIVE-CODE] Skipping LLM summary (no external consent).")
+
+        # capture manual project summary for collab code
+        if summary is not None and not getattr(summary, "summary_text", None):
+            summary.summary_text = prompt_manual_code_project_summary(project_name)
 
 
 def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary):
@@ -522,6 +527,10 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
             summary.contributions["llm_contribution_summary"] = llm_results.get("contribution_summary")
     else:
         print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")
+        
+        # capture manual project summary
+        if summary is not None and not getattr(summary, "summary_text", None):
+            summary.summary_text = prompt_manual_code_project_summary(project_name)
     
         
 def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text, summary=None):
