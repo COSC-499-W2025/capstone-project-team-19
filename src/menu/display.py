@@ -9,7 +9,7 @@ def show_start_menu(username: str) -> int:
     """
     Display the main menu and return user's choice.
     """
-    print(f"Welcome, {username}!")
+    print(f"\nWelcome, {username}!")
     print("1. Analyze new project")
     print("2. View old project summaries")
     print("3. View resume items")

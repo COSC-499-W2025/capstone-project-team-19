@@ -98,12 +98,14 @@ from .file_contributions import (
 )
 
 # files
-from .files import (
-    get_files_with_timestamps,)
+from .files import get_files_for_project, get_files_with_timestamps
+
 # text activity type contribution
 from .text_activity import (
     store_text_activity_contribution,
-    get_text_activity_contribution,)
+    get_text_activity_contribution,
+)
+
 # code activity type
 from .code_activity import (
     delete_code_activity_metrics_for_project,
@@ -114,9 +116,6 @@ from .code_activity import (
 # github prs
 from .github_pull_requests import get_pull_requests_for_project
 
-# files
-from .files import get_files_for_project, get_files_with_timestamps
-
 # project summaries
 from .project_summaries import (
     save_project_summary,
@@ -126,7 +125,32 @@ from .project_summaries import (
 )
 
 # local git metrics for code collaborative projects
-from .code_collaborative import insert_code_collaborative_metrics, get_metrics_id, insert_code_collaborative_summary
+from .code_collaborative import (
+    insert_code_collaborative_metrics,
+    get_metrics_id,
+    insert_code_collaborative_summary,
+)
+
+# resume snapshots
+from .resumes import (
+    insert_resume_snapshot,
+    list_resumes,
+    get_resume_snapshot,
+    update_resume_snapshot,      
+    delete_resume_snapshot
+)
+
+from .delete_project import delete_project_everywhere
+
+
+# portfolio
+from .portfolio import (
+    get_project_summary_row,
+    get_code_activity_percentages,
+    get_code_collaborative_duration,
+    get_code_collaborative_non_llm_summary,
+    get_text_duration,
+)
 
 __all__ = [
     "connect",
@@ -138,8 +162,10 @@ __all__ = [
     "record_project_classifications",
     "get_project_classifications",
     "get_classification_id",
+    "get_project_metadata",
     "save_project_repo",
     "get_project_repo",
+    "store_collaboration_profile",
     "store_github_account",
     "has_github_account",
     "store_file_link",
@@ -157,18 +183,17 @@ __all__ = [
     "store_text_contribution_revision",
     "store_text_contribution_summary",
     "save_token_placeholder",
-    "get_project_metadata",
     "insert_project_skill",
+    "get_project_skills",
     "store_file_contributions",
     "get_user_contributed_files",
     "get_file_contribution_stats",
     "has_contribution_data",
-    "store_collaboration_profile"
     "delete_code_activity_metrics_for_project",
     "insert_code_activity_metric",
+    "store_code_activity_metrics",
     "get_pull_requests_for_project",
     "get_files_for_project",
-    "store_code_activity_metrics",
     "get_files_with_timestamps",
     "store_text_activity_contribution",
     "get_text_activity_contribution",
@@ -179,5 +204,10 @@ __all__ = [
     "insert_code_collaborative_metrics",
     "get_metrics_id",
     "insert_code_collaborative_summary",
-    "get_all_user_project_summaries"
+    "get_all_user_project_summaries",
+    "get_project_summary_row",
+    "get_code_activity_percentages",
+    "get_code_collaborative_duration",
+    "get_code_collaborative_non_llm_summary",
+    "get_text_duration,"
 ]

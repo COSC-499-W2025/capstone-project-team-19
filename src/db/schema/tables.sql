@@ -505,3 +505,17 @@ CREATE TABLE IF NOT EXISTS code_collaborative_summary (
 
 CREATE INDEX IF NOT EXISTS idx_code_collab_summary_user_project
     ON code_collaborative_summary (user_id, project_name);
+
+-- Resume snapshots (frozen resume outputs)
+CREATE TABLE IF NOT EXISTS resume_snapshots (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL,
+    name          TEXT    NOT NULL,
+    resume_json   TEXT    NOT NULL,
+    rendered_text TEXT,
+    created_at    TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_resume_snapshots_user
+    ON resume_snapshots (user_id, created_at);
