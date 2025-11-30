@@ -1,8 +1,8 @@
 """
-src/menu/resume_flow.py
+src/menu/resume/flow.py
 
 Flow handlers for creating and viewing resume snapshots.
-Separated from resume_menu.py to keep menu wiring light.
+Separated from menu.py to keep menu wiring light.
 """
 
 import json
@@ -15,7 +15,7 @@ from src.db import (
     get_resume_snapshot,
 )
 from src.insights.rank_projects.rank_project_importance import collect_project_data
-from .resume_helpers import load_project_summaries, build_resume_snapshot, render_snapshot
+from .helpers import load_project_summaries, build_resume_snapshot, render_snapshot
 
 
 def _handle_create_resume(conn, user_id: int, username: str):

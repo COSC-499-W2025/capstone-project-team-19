@@ -1,5 +1,5 @@
 """
-src/menu/resume_helpers.py
+src/menu/resume/helpers.py
 
 Helper functions for building and rendering resume snapshots.
 """

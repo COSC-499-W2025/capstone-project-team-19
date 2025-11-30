@@ -1,11 +1,11 @@
 """
-src/menu/resume_menu.py
+src/menu/resume/menu.py
 
 Menu option for creating and viewing resume snapshots.
-Delegates heavy lifting to resume_flow.py.
+Delegates heavy lifting to flow.py.
 """
 
-from .resume_flow import _handle_create_resume, _handle_view_existing_resume
+from .flow import _handle_create_resume, _handle_view_existing_resume
 
 
 def view_resume_items(conn, user_id: int, username: str):
@@ -14,6 +14,7 @@ def view_resume_items(conn, user_id: int, username: str):
     """
     while True:
         print("\nResume options:")
+        print("")
         print("1. Create a new resume from current projects")
         print("2. View an existing resume snapshot")
         print("3. Back to main menu")
@@ -22,12 +23,12 @@ def view_resume_items(conn, user_id: int, username: str):
         if choice == "1":
             _handle_create_resume(conn, user_id, username)
             print("")
-            return
+            continue
         elif choice == "2":
             handled = _handle_view_existing_resume(conn, user_id)
             if handled:
                 print("")
-                return
+                continue
             # otherwise loop back to resume menu
         elif choice == "3":
             print("")
