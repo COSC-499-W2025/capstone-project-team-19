@@ -72,19 +72,103 @@ def test_contribution_strength(is_collab, metrics, contributions, expected_avail
         assert score == 1.0
 
 
-@pytest.mark.parametrize("is_collab,metrics,contributions,expected_avail", [
-    (False, {"activity_type": {"writing": 1, "editing": 1}}, {}, True),
-    (True, {}, {"activity_type": {"writing": 1}}, True),
-    (True, {"activity_type": {"writing": 1}}, {}, True),  # Fallback to metrics
-    (False, {}, {}, False),
-])
-def test_activity_diversity(is_collab, metrics, contributions, expected_avail):
-    """Test activity_diversity for individual vs collaborative."""
-    ps = _ps(metrics=metrics, contributions=contributions)
-    score, available = activity_diversity(ps, is_collab)
-    assert available == expected_avail
-    if expected_avail:
-        assert 0.0 <= score <= 1.0
+def test_activity_diversity_availability():
+    """Test activity_diversity availability for individual vs collaborative."""
+    # Test individual project with metrics
+    ps = _ps(metrics={"activity_type": {"writing": 1, "editing": 1}})
+    score, available = activity_diversity(ps, is_collaborative=False)
+    assert available is True
+    assert 0.0 <= score <= 1.0
+    
+    # Test collaborative project with contributions
+    ps = _ps(contributions={"activity_type": {"writing": 1}})
+    score, available = activity_diversity(ps, is_collaborative=True)
+    assert available is True
+    
+    # Test fallback to metrics for collaborative
+    ps = _ps(metrics={"activity_type": {"writing": 1}})
+    score, available = activity_diversity(ps, is_collaborative=True)
+    assert available is True
+    
+    # Test missing data
+    ps = _ps()
+    score, available = activity_diversity(ps, is_collaborative=False)
+    assert available is False
+
+
+def test_activity_diversity_single_activity():
+    """Test that single activity type returns 0.0 diversity."""
+    ps = _ps(metrics={"activity_type": {"writing": 100}})
+    score, available = activity_diversity(ps, is_collaborative=False)
+    assert available is True
+    assert score == 0.0  # No diversity with only one activity type
+
+
+def test_activity_diversity_two_evenly_distributed():
+    """Test two evenly distributed activities (50/50)."""
+    ps = _ps(metrics={"activity_type": {"writing": 50, "editing": 50}})
+    score, available = activity_diversity(ps, is_collaborative=False)
+    assert available is True
+    # 2 activities, 50/50: normalized entropy = 1.0, count_factor = 2/5 = 0.4
+    # Result should be approximately 0.4
+    assert abs(score - 0.4) < 0.01
+
+
+def test_activity_diversity_highly_uneven():
+    """Test highly uneven distribution (dominant activity with minimal other)."""
+    # 99.5% one activity, 0.5% another - should have very low diversity
+    ps = _ps(metrics={"activity_type": {"coding": 995, "documentation": 5}})
+    score, available = activity_diversity(ps, is_collaborative=False)
+    assert available is True
+    assert score < 0.05  # Very low diversity score
+
+
+def test_activity_diversity_five_evenly_distributed():
+    """Test five evenly distributed activities should approach maximum diversity."""
+    ps = _ps(metrics={"activity_type": {
+        "coding": 20, "testing": 20, "documentation": 20, 
+        "refactoring": 20, "debugging": 20
+    }})
+    score, available = activity_diversity(ps, is_collaborative=False)
+    assert available is True
+    # 5 activities, evenly distributed: normalized entropy ≈ 1.0, count_factor = 1.0
+    # Result should be close to 1.0
+    assert score > 0.95
+
+
+def test_activity_diversity_three_evenly_distributed():
+    """Test three evenly distributed activities."""
+    ps = _ps(metrics={"activity_type": {"coding": 33, "testing": 33, "documentation": 34}})
+    score, available = activity_diversity(ps, is_collaborative=False)
+    assert available is True
+    # 3 activities, evenly distributed: normalized entropy ≈ 1.0, count_factor = 3/5 = 0.6
+    # Result should be approximately 0.6
+    assert abs(score - 0.6) < 0.1
+
+
+def test_activity_diversity_complex_format():
+    """Test complex format with count in nested dict."""
+    ps = _ps(metrics={"activity_type": {
+        "feature_coding": {"count": 60, "top_file": "main.py"},
+        "testing": {"count": 40, "top_file": "test.py"}
+    }})
+    score, available = activity_diversity(ps, is_collaborative=False)
+    assert available is True
+    assert 0.0 <= score <= 1.0
+    # Should work the same as simple format with 60/40 distribution
+    assert score > 0.0
+
+
+def test_activity_diversity_mixed_format():
+    """Test mixed simple and complex formats."""
+    ps = _ps(metrics={"activity_type": {
+        "coding": 50,  # Simple format
+        "testing": {"count": 50, "top_file": "test.py"}  # Complex format
+    }})
+    score, available = activity_diversity(ps, is_collaborative=False)
+    assert available is True
+    # Should handle both formats and treat as 50/50 distribution
+    assert abs(score - 0.4) < 0.01  # Same as two evenly distributed activities
 
 
 def test_writing_quality_capped():
