@@ -33,8 +33,10 @@ def view_resume_items(conn, user_id: int, username: str):
             _handle_create_resume(conn, user_id, username)
             return
         elif choice == "2":
-            _handle_view_existing_resume(conn, user_id)
-            return
+            handled = _handle_view_existing_resume(conn, user_id)
+            if handled:
+                return
+            # otherwise loop back to resume menu
         elif choice == "3":
             return
         else:
@@ -65,11 +67,11 @@ def _handle_create_resume(conn, user_id: int, username: str):
     print(f"\n[Resume] Saved snapshot '{name}'.")
 
 
-def _handle_view_existing_resume(conn, user_id: int):
+def _handle_view_existing_resume(conn, user_id: int) -> bool:
     resumes = list_resumes(conn, user_id)
     if not resumes:
         print("No saved resumes yet. Create one first.")
-        return
+        return False
 
     print("\nSaved resumes:")
     for idx, r in enumerate(resumes, 1):
@@ -78,18 +80,18 @@ def _handle_view_existing_resume(conn, user_id: int):
     choice = input("Select a resume to view (number) or press Enter to cancel: ").strip()
     if not choice.isdigit():
         print("Cancelled.")
-        return
+        return False
 
     idx = int(choice)
     if idx < 1 or idx > len(resumes):
         print("Invalid selection.")
-        return
+        return False
 
     resume_id = resumes[idx - 1]["id"]
     record = get_resume_snapshot(conn, user_id, resume_id)
     if not record:
         print("Unable to load the selected resume.")
-        return
+        return False
 
     # Prefer stored rendered text; fall back to rendering from stored JSON.
     if record.get("rendered_text"):
@@ -100,7 +102,9 @@ def _handle_view_existing_resume(conn, user_id: int):
             _render_snapshot(snapshot, print_output=True)
         except Exception:
             print("Stored resume is corrupted or unreadable.")
+            return False
 
+    return True
 
 def _load_project_summaries(conn, user_id: int) -> List[ProjectSummary]:
     """Fetch and deserialize all saved project summaries for the user."""

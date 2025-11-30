@@ -93,11 +93,12 @@ def test_view_existing_resume_lists_and_renders(monkeypatch, capsys):
     inputs = iter(["1"])
     monkeypatch.setattr("builtins.input", lambda _: next(inputs))
 
-    resume_mod._handle_view_existing_resume(conn, user_id)
+    handled = resume_mod._handle_view_existing_resume(conn, user_id)
 
     captured = capsys.readouterr().out
     assert "MyResume" in captured
     assert "Rendered text" in captured
+    assert handled is True
 
 
 def test_view_existing_resume_no_resumes(capsys):
@@ -105,9 +106,10 @@ def test_view_existing_resume_no_resumes(capsys):
     init_schema(conn)
     user_id = 1
 
-    resume_mod._handle_view_existing_resume(conn, user_id)
+    handled = resume_mod._handle_view_existing_resume(conn, user_id)
     captured = capsys.readouterr().out
     assert "No saved resumes yet" in captured
+    assert handled is False
 
 
 def test_create_resume_with_fewer_than_five_projects(monkeypatch):
