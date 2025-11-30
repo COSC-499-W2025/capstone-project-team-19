@@ -6,7 +6,7 @@ Menu module for user interface navigation.
 
 from .display import show_start_menu
 from .project_summaries import view_old_project_summaries
-from .resume import view_resume_items
+from .resume_menu import view_resume_items
 from .portfolio import view_portfolio_items
 from .delete import delete_old_insights
 from .skills_list import view_chronological_skills
