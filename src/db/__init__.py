@@ -122,6 +122,7 @@ from .project_summaries import (
     save_project_summary,
     get_project_summaries_list,
     get_project_summary_by_name,
+    get_all_projects_with_dates,
     get_all_user_project_summaries
 )
 
@@ -175,6 +176,7 @@ __all__ = [
     "save_project_summary",
     "get_project_summaries_list",
     "get_project_summary_by_name",
+    "get_all_projects_with_dates", 
     "get_skill_events"
     "insert_code_collaborative_metrics",
     "get_metrics_id",

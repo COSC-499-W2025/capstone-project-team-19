@@ -104,3 +104,69 @@ def get_project_summary_by_name(conn, user_id, project_name):
         "created_at": row[5]
     }
 
+
+def get_all_projects_with_dates(conn, user_id):
+    """
+    Returns all projects for a user ordered by actual project completion date (newest first).
+    
+    Returns list of dicts with keys: project_name, actual_project_date
+    """
+    query = """
+        WITH latest_classification AS (
+            SELECT pc.project_name,
+                   pc.project_type,
+                   pc.classification_id
+            FROM project_classifications pc
+            WHERE pc.user_id = ?
+              AND pc.classification_id = (
+                  SELECT pc2.classification_id
+                  FROM project_classifications pc2
+                  WHERE pc2.user_id = pc.user_id
+                    AND pc2.project_name = pc.project_name
+                  ORDER BY pc2.recorded_at DESC, pc2.classification_id DESC
+                  LIMIT 1
+              )
+        ),
+        project_dates AS (
+            SELECT 
+                ps.project_name,
+                CASE
+                    WHEN lc.project_type = 'text' THEN tac.end_date
+                    WHEN lc.project_type = 'code' THEN 
+                        COALESCE(
+                            grm.last_commit_date,
+                            json_extract(ps.summary_json, '$.metrics.git.commit_stats.last_commit_date'),
+                            json_extract(ps.summary_json, '$.metrics.collaborative_git.last_commit_date')
+                        )
+                    ELSE NULL
+                END AS actual_project_date
+            FROM project_summaries ps
+            LEFT JOIN latest_classification lc
+                ON ps.user_id = ?  -- Note: need user_id in join for safety
+                AND ps.project_name = lc.project_name
+            LEFT JOIN text_activity_contribution tac
+                ON lc.classification_id = tac.classification_id
+            LEFT JOIN github_repo_metrics grm
+                ON ps.user_id = grm.user_id
+                AND ps.project_name = grm.project_name
+            WHERE ps.user_id = ?
+        )
+        SELECT 
+            project_name,
+            MAX(actual_project_date) AS actual_project_date
+        FROM project_dates
+        GROUP BY project_name
+        ORDER BY 
+            actual_project_date DESC NULLS LAST,
+            project_name;
+    """
+    
+    rows = conn.execute(query, (user_id, user_id, user_id)).fetchall()
+    
+    return [
+        {
+            "project_name": row[0],
+            "actual_project_date": row[1]
+        }
+        for row in rows
+    ]
