@@ -69,3 +69,41 @@ def get_resume_snapshot(conn: sqlite3.Connection, user_id: int, resume_id: int) 
         "rendered_text": row[3],
         "created_at": row[4],
     }
+
+def update_resume_snapshot(
+    conn: sqlite3.Connection,
+    user_id: int,
+    resume_id: int,
+    resume_json: str,
+    rendered_text: Optional[str] = None,
+) -> None:
+    """
+    Update an existing resume snapshot's JSON + rendered text.
+    """
+    conn.execute(
+        """
+        UPDATE resume_snapshots
+        SET resume_json = ?, rendered_text = ?
+        WHERE user_id = ? AND id = ?
+        """,
+        (resume_json, rendered_text, user_id, resume_id),
+    )
+    conn.commit()
+
+
+def delete_resume_snapshot(
+    conn: sqlite3.Connection,
+    user_id: int,
+    resume_id: int,
+) -> None:
+    """
+    Permanently delete a resume snapshot for a user.
+    """
+    conn.execute(
+        """
+        DELETE FROM resume_snapshots
+        WHERE user_id = ? AND id = ?
+        """,
+        (user_id, resume_id),
+    )
+    conn.commit()
