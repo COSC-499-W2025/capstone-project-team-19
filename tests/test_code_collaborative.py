@@ -121,14 +121,20 @@ def test_analyze_code_project_happy_path(tmp_sqlite_conn, temp_zip_layout, monke
 
 def test_no_repo_found_prints_skip(tmp_sqlite_conn, temp_zip_layout, monkeypatch, capsys):
     """
-    If neither allowed path exists, we should print a single [skip] line.
+    If neither allowed path exists, we should print a message explaining
+    that no .git was found and that local Git history is being skipped.
     """
     # Patch zip_paths to a zip_name that doesn't exist under zip_data_dir
     def fake_zip_paths(_zip_path):
-        return (temp_zip_layout["zip_data_dir"], "nonexistent_zip",
-                os.path.join(temp_zip_layout["zip_data_dir"], "nonexistent_zip"))
+        return (
+            temp_zip_layout["zip_data_dir"],
+            "nonexistent_zip",
+            os.path.join(temp_zip_layout["zip_data_dir"], "nonexistent_zip"),
+        )
+
     monkeypatch.setattr(cc, "zip_paths", fake_zip_paths)
 
+    # Say "no" to "Enhance analysis with GitHub data? (y/n):"
     monkeypatch.setattr("builtins.input", lambda _="": "n")
 
     m = cc.analyze_code_project(
@@ -140,8 +146,13 @@ def test_no_repo_found_prints_skip(tmp_sqlite_conn, temp_zip_layout, monkeypatch
 
     assert m is None
     out = capsys.readouterr().out
-    assert "[skip]" in out
+
+    # New behavior: no "[skip]" string; instead we get these:
+    assert "No .git detected for" in out
+    assert "[info] Skipping local Git history analysis for this project." in out
+    # Still make sure the project name appears somewhere
     assert temp_zip_layout["project_name"] in out
+
 
 def test_identity_prompt_and_persist(tmp_sqlite_conn, temp_zip_layout, monkeypatch, capsys):
     """
