@@ -134,6 +134,7 @@ from .portfolio import (
     get_code_activity_percentages,
     get_code_collaborative_duration,
     get_code_collaborative_non_llm_summary,
+    get_text_duration,
 )
 
 __all__ = [
@@ -192,4 +193,5 @@ __all__ = [
     "get_code_activity_percentages",
     "get_code_collaborative_duration",
     "get_code_collaborative_non_llm_summary",
+    "get_text_duration,"
 ]

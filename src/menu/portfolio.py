@@ -16,7 +16,68 @@ from src.db import (
     get_code_activity_percentages,
     get_code_collaborative_duration,
     get_code_collaborative_non_llm_summary,
+    get_text_duration,
 )
+
+def view_portfolio_items(conn, user_id: int, username: str) -> None:
+    """
+    Display a ranked portfolio view for the user.
+    """
+    try:
+        project_scores = collect_project_data(conn, user_id)
+
+        if not project_scores:
+            print(f"\n{'=' * 80}")
+            print("No projects found. Please analyze some projects first.")
+            print(f"{'=' * 80}\n")
+            return
+
+        print(f"\n{'=' * 80}")
+        print(f"Portfolio view for {username}")
+        print(f"{'=' * 80}\n")
+
+        for rank, (project_name, score) in enumerate(project_scores, start=1):
+            row = get_project_summary_row(conn, user_id, project_name)
+            if row is None:
+                continue
+
+            summary = row["summary"]
+            project_type = row.get("project_type") or summary.get("project_type") or "unknown"
+            project_mode = row.get("project_mode") or summary.get("project_mode") or "individual"
+            created_at = row.get("created_at") or ""
+
+            print(f"[{rank}] {project_name} — Score {score:.3f}")
+            print(f"  Type: {project_type} ({project_mode})")
+            print(
+                f"  {_format_duration(project_type, project_mode, created_at, user_id, project_name, conn)}"
+            )
+
+            # Code: show languages + frameworks.
+            # Text: skip languages/frameworks.
+            if project_type == "code":
+                print(f"  {_format_languages(summary)}")
+                print(f"  {_format_frameworks(summary)}")
+
+            # Activity (same for code/text)
+            print(f"  {_format_activity_line(project_type, project_mode, conn, user_id, project_name, summary)}")
+
+            # Skills block (bullets)
+            for line in _format_skills_block(summary):
+                print(f"  {line}")
+
+            # Summary block (LLM vs non-LLM)
+            for line in _format_summary_block(
+                project_type, project_mode, summary, conn, user_id, project_name
+            ):
+                print(f"  {line}")
+
+            print()  # blank line between projects
+
+        print(f"{'=' * 80}\n")
+
+    except Exception as e:
+        print(f"Error displaying portfolio items: {e}")
+        print(f"{'=' * 80}\n")
 
 
 def _format_duration(
@@ -30,10 +91,25 @@ def _format_duration(
     """
     Build a simple 'Duration: start – end' (or single date / N/A) line.
 
-    For now:
+    Priority:
+    - text projects: use text_activity_contribution start/end via project_classifications
     - code(collaborative): use code_collaborative_metrics first/last commit
-    - other projects: fall back to created_at date
+    - fallback: created_at date
     """
+
+    # 1) Text projects: use text_activity_contribution
+    if project_type == "text":
+        text_duration = get_text_duration(conn, user_id, project_name)
+        if text_duration is not None:
+            start, end = text_duration
+            if start and end:
+                return f"Duration: {start[:10]} – {end[:10]}"
+            if start:
+                return f"Duration: {start[:10]}"
+            if end:
+                return f"Duration: {end[:10]}"
+
+    # 2) Collaborative code: use git first/last commit
     if project_type == "code" and project_mode == "collaborative":
         duration = get_code_collaborative_duration(conn, user_id, project_name)
         if duration is not None:
@@ -45,6 +121,7 @@ def _format_duration(
             if last:
                 return f"Duration: {last[:10]}"
 
+    # 3) Fallback: created_at date
     if created_at:
         return f"Duration: {created_at[:10]}"
 
@@ -114,10 +191,11 @@ def _activity_from_json_code(summary: Dict[str, Any]) -> List[Tuple[str, float]]
 
 def _activity_from_json_text(summary: Dict[str, Any]) -> List[Tuple[str, float]]:
     """
-    For text projects, use metrics.activity_type counts to compute percentages.
+    For text projects, use contributions.activity_type counts to compute percentages.
     """
-    metrics = summary.get("metrics") or {}
-    activity = metrics.get("activity_type")
+    contributions = summary.get("contributions") or {}
+    activity = contributions.get("activity_type")
+
     if not isinstance(activity, dict):
         return []
 
@@ -142,6 +220,7 @@ def _activity_from_json_text(summary: Dict[str, Any]) -> List[Tuple[str, float]]
         percent = (count / total) * 100.0
         result.append((name, percent))
 
+    # Sort by percent DESC, so e.g. "Final 100%"
     result.sort(key=lambda x: x[1], reverse=True)
     return result
 
@@ -286,79 +365,3 @@ def _format_summary_block(
     # Fallback
     lines.append(f"Summary: {project_summary}")
     return lines
-
-
-def view_portfolio_items(conn, user_id: int, username: str) -> None:
-    """
-    Display a short, ranked portfolio view for the user.
-
-    Format example:
-
-    [1] BuddyCart — Score 0.912
-      Type: code (collaborative)
-      Duration: 2025-04-01 – 2025-04-09
-      Languages: XML 48%, Java 43%
-      Frameworks: Android
-      Activity: feature_coding 98%, testing 2%
-      Skills:
-        - ...
-        - ...
-      Summary:
-        - ...
-        - ...
-    """
-    try:
-        project_scores = collect_project_data(conn, user_id)
-
-        if not project_scores:
-            print(f"\n{'=' * 80}")
-            print("No projects found. Please analyze some projects first.")
-            print(f"{'=' * 80}\n")
-            return
-
-        print(f"\n{'=' * 80}")
-        print(f"Portfolio view for {username}")
-        print(f"{'=' * 80}\n")
-
-        for rank, (project_name, score) in enumerate(project_scores, start=1):
-            row = get_project_summary_row(conn, user_id, project_name)
-            if row is None:
-                continue
-
-            summary = row["summary"]
-            project_type = row.get("project_type") or summary.get("project_type") or "unknown"
-            project_mode = row.get("project_mode") or summary.get("project_mode") or "individual"
-            created_at = row.get("created_at") or ""
-
-            print(f"[{rank}] {project_name} — Score {score:.3f}")
-            print(f"  Type: {project_type} ({project_mode})")
-            print(
-                f"  {_format_duration(project_type, project_mode, created_at, user_id, project_name, conn)}"
-            )
-
-            # Code: show languages + frameworks.
-            # Text: skip languages/frameworks.
-            if project_type == "code":
-                print(f"  {_format_languages(summary)}")
-                print(f"  {_format_frameworks(summary)}")
-
-            # Activity (same for code/text)
-            print(f"  {_format_activity_line(project_type, project_mode, conn, user_id, project_name, summary)}")
-
-            # Skills block (bullets)
-            for line in _format_skills_block(summary):
-                print(f"  {line}")
-
-            # Summary block (LLM vs non-LLM)
-            for line in _format_summary_block(
-                project_type, project_mode, summary, conn, user_id, project_name
-            ):
-                print(f"  {line}")
-
-            print()  # blank line between projects
-
-        print(f"{'=' * 80}\n")
-
-    except Exception as e:
-        print(f"Error displaying portfolio items: {e}")
-        print(f"{'=' * 80}\n")

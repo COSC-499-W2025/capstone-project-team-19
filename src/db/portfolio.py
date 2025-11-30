@@ -161,3 +161,37 @@ def get_code_collaborative_non_llm_summary(
     )
     row = cur.fetchone()
     return row[0] if row is not None else None
+
+def get_text_duration(
+    conn: sqlite3.Connection,
+    user_id: int,
+    project_name: str,
+) -> Optional[Tuple[Optional[str], Optional[str]]]:
+    """
+    Fetch start_date and end_date for a text project.
+
+    Assumes:
+      - text_activity_contribution.classification_id references project_classifications.classification_id
+      - project_classifications has user_id and project_name columns.
+
+    Returns:
+      (start_date, end_date) as strings, or None if no row found.
+    """
+    cur = conn.execute(
+        """
+        SELECT tac.start_date, tac.end_date
+        FROM text_activity_contribution AS tac
+        JOIN project_classifications AS pc
+          ON tac.classification_id = pc.classification_id
+        WHERE pc.user_id = ?
+          AND pc.project_name = ?
+        ORDER BY tac.generated_at DESC
+        LIMIT 1
+        """,
+        (user_id, project_name),
+    )
+    row = cur.fetchone()
+    if row is None:
+        return None
+    return row[0], row[1]
+
