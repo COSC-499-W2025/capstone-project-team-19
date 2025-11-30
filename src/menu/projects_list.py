@@ -46,6 +46,6 @@ def project_list(conn, user_id: int, username: str):
         
         # Format with right-aligned date (using 60 char width to match header)
         print(f"- {project_name:<45} [{formatted_date}]")
-
-    input("\nPress Enter to return to main menu...")
+        
+    print("\n" + "="*60 + "\n")
     return None
