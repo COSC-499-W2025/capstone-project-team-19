@@ -121,6 +121,7 @@ from .project_summaries import (
     save_project_summary,
     get_project_summaries_list,
     get_project_summary_by_name,
+    get_all_projects_with_dates,
     get_all_user_project_summaries
 )
 
@@ -151,6 +152,17 @@ from .portfolio import (
     get_code_collaborative_non_llm_summary,
     get_text_duration,
 )
+
+# git individual metrics
+from .git_individual_metrics import (
+    git_individual_metrics_exists,
+    insert_git_individual_metrics,
+    update_git_individual_metrics,
+    get_git_individual_metrics
+)
+
+# git metrics helpers (data extraction/transformation)
+from .git_metrics_helpers import extract_git_metrics
 
 __all__ = [
     "connect",
@@ -200,7 +212,8 @@ __all__ = [
     "save_project_summary",
     "get_project_summaries_list",
     "get_project_summary_by_name",
-    "get_skill_events"
+    "get_all_projects_with_dates", 
+    "get_skill_events",
     "insert_code_collaborative_metrics",
     "get_metrics_id",
     "insert_code_collaborative_summary",
@@ -209,5 +222,10 @@ __all__ = [
     "get_code_activity_percentages",
     "get_code_collaborative_duration",
     "get_code_collaborative_non_llm_summary",
-    "get_text_duration,"
+    "get_text_duration",
+    "git_individual_metrics_exists",
+    "insert_git_individual_metrics",
+    "update_git_individual_metrics",
+    "get_git_individual_metrics",
+    "extract_git_metrics",
 ]
