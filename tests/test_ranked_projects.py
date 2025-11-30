@@ -10,7 +10,7 @@ from src.menu.ranked_projects import view_ranked_projects, view_top_projects_sum
 
 def _summary_dict(**kwargs):
     """Helper to create ProjectSummary dict."""
-    return {
+    result = {
         "project_name": kwargs.get("project_name", "Test"),
         "project_type": kwargs.get("project_type", "code"),
         "project_mode": kwargs.get("project_mode", "individual"),
@@ -20,6 +20,10 @@ def _summary_dict(**kwargs):
         "contributions": kwargs.get("contributions", {}),
         "created_at": "2024-01-01T00:00:00+00:00"
     }
+    # Add summary_text if provided
+    if "summary_text" in kwargs:
+        result["summary_text"] = kwargs["summary_text"]
+    return result
 
 
 @pytest.fixture
