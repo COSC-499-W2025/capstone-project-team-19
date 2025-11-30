@@ -129,6 +129,17 @@ from .project_summaries import (
 # local git metrics for code collaborative projects
 from .code_collaborative import insert_code_collaborative_metrics, get_metrics_id, insert_code_collaborative_summary
 
+# git individual metrics
+from .git_individual_metrics import (
+    git_individual_metrics_exists,
+    insert_git_individual_metrics,
+    update_git_individual_metrics,
+    get_git_individual_metrics
+)
+
+# git metrics helpers (data extraction/transformation)
+from .git_metrics_helpers import extract_git_metrics
+
 __all__ = [
     "connect",
     "init_schema",
@@ -177,9 +188,14 @@ __all__ = [
     "get_project_summaries_list",
     "get_project_summary_by_name",
     "get_all_projects_with_dates", 
-    "get_skill_events"
+    "get_skill_events",
     "insert_code_collaborative_metrics",
     "get_metrics_id",
     "insert_code_collaborative_summary",
-    "get_all_user_project_summaries"
+    "get_all_user_project_summaries",
+    "git_individual_metrics_exists",
+    "insert_git_individual_metrics",
+    "update_git_individual_metrics",
+    "get_git_individual_metrics",
+    "extract_git_metrics"
 ]
