@@ -50,6 +50,12 @@ def test_run_code_non_llm_analysis_both_successful(tmp_sqlite_conn, monkeypatch,
     monkeypatch.setattr(cnlla, 'analyze_code_complexity', lambda conn, user_id, pn, zp: mock_complexity_data)
     monkeypatch.setattr(cnlla, 'analyze_git_individual_project', lambda conn, user_id, pn, zp: mock_git_data)
 
+    # Mock the storage functions
+    monkeypatch.setattr(cnlla, 'extract_git_metrics', lambda data: (50, '2024-01-01', '2024-06-01', 150, 2.3, 10.0, 1, 1000, 500, 500, 20, 50, 5, 1.0, '2024-03-15', 5, '2024-03', 25))
+    monkeypatch.setattr(cnlla, 'git_individual_metrics_exists', lambda conn, user_id, pn: False)
+    monkeypatch.setattr(cnlla, 'insert_git_individual_metrics', lambda conn, user_id, pn, *metrics: None)
+    monkeypatch.setattr(cnlla, 'update_git_individual_metrics', lambda conn, user_id, pn, *metrics: None)
+
     # Mock display functions to verify they're called
     display_complexity_called = False
     display_git_called = False
@@ -87,6 +93,12 @@ def test_run_code_non_llm_analysis_no_complexity_data(tmp_sqlite_conn, monkeypat
 
     monkeypatch.setattr(cnlla, 'analyze_code_complexity', lambda conn, user_id, pn, zp: None)
     monkeypatch.setattr(cnlla, 'analyze_git_individual_project', lambda conn, user_id, pn, zp: mock_git_data)
+
+    # Mock the storage functions
+    monkeypatch.setattr(cnlla, 'extract_git_metrics', lambda data: (10, None, None, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, None, None, None, None))
+    monkeypatch.setattr(cnlla, 'git_individual_metrics_exists', lambda conn, user_id, pn: False)
+    monkeypatch.setattr(cnlla, 'insert_git_individual_metrics', lambda conn, user_id, pn, *metrics: None)
+    monkeypatch.setattr(cnlla, 'update_git_individual_metrics', lambda conn, user_id, pn, *metrics: None)
 
     display_complexity_called = False
     display_git_called = False
@@ -191,6 +203,12 @@ def test_run_code_non_llm_analysis_passes_correct_params(tmp_sqlite_conn, monkey
     monkeypatch.setattr(cnlla, 'analyze_git_individual_project', mock_analyze_git)
     monkeypatch.setattr(cnlla, 'display_complexity_results', lambda data: None)
     monkeypatch.setattr(cnlla, 'display_git_results', lambda data: None)
+
+    # Mock the storage functions
+    monkeypatch.setattr(cnlla, 'extract_git_metrics', lambda data: (0, None, None, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, None, None, None, None))
+    monkeypatch.setattr(cnlla, 'git_individual_metrics_exists', lambda conn, user_id, pn: False)
+    monkeypatch.setattr(cnlla, 'insert_git_individual_metrics', lambda conn, user_id, pn, *metrics: None)
+    monkeypatch.setattr(cnlla, 'update_git_individual_metrics', lambda conn, user_id, pn, *metrics: None)
 
     test_conn = tmp_sqlite_conn
     test_user_id = 42
