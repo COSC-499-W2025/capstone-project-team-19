@@ -1,3 +1,4 @@
+import math
 from src.models.project_summary import ProjectSummary
 
 def skill_strength(project_summary: ProjectSummary) -> tuple[float, bool]:
@@ -87,24 +88,83 @@ def contribution_strength(project_summary: ProjectSummary, is_collaborative: boo
 
 def activity_diversity(project_summary: ProjectSummary, is_collaborative: bool) -> tuple[float, bool]:
     """
-    Compute 0-1 activity diversity score
-    uses either:
-        - project_summary.metrics["activity_type"] (individual)
-        - project_summary.contributions["activity_type"] (collaborative) 
+    Compute a 0-1 activity diversity score using normalized Shannon entropy.
+    
+    What this function does:
+        - Extracts activity counts from either collaborative contributions or individual metrics (supports both simple and complex formats)
+        - Converts raw counts into proportions of total activity
+        - Computes Shannon entropy: the negative sum of (p * log2(p)) for every activity proportion p 
+          (so the value returned is higher when activities are evenly distirbuted, and lower when they are not)
+        - Normalizes by the theoretical maximum entropy for N activity types to produce a 0-1 balance score
+        - Applies an activity-count scaling factor so projects with more activity types can reach higher potential diversity (up to 5 types, so capped at 5)
+
+    Result:
+    Returns a mathematical diversity score where:
+        - 0.0 means all activity types are concentrated in one activity
+        - 1.0 means the activity types are evenly distributed amongst one another
+        - Intermediate values reflect both the number of activities and how balanced the distribution is
+    
+    Why this works:
+        - Shannon entropy rewards activity distributions that are more balanced and penalizes activity distributions where one activity dominates the project
+        - Unlike simple activity counts or threshold checks, entropy prevents small activitys (e.g. 0.05% documentation) from inflating the diversity score
     """
 
+    # Get activity data (collab first, fallback to metrics)
     activity = None
 
-    # first attempt to get activity
-    if is_collaborative: # primary location for collaborative
+    if is_collaborative:
         activity = project_summary.contributions.get("activity_type")
-    
+
     if activity is None:
         activity = project_summary.metrics.get("activity_type")
 
     if not isinstance(activity, dict):
         return 0.0, False
+    
+    """
+    Extract numerical activity counts
+    Supports both simple and complex counts (e.g. {"coding": 12} AND {"coding": {"count": 12, ...}})
+    """
+    activity_counts = {}
+    for name, value in activity.items():
+        if isinstance(value, dict):
+            count = value.get("count", 0)
+        else:
+            count = value
 
-    number_of_activities = len(activity.keys())
+        if isinstance(count, (int, float)) and count > 0:
+            activity_counts[name] = count
 
-    return min(number_of_activities / 5, 1.0), True  # 5+ types of activity is max diversity
+    if not activity_counts:
+        return 0.0, False
+    
+    # basic properties
+    total = sum(activity_counts.values())
+    num_types = len(activity_counts)
+
+    if total == 0 or num_types == 1:
+        return 0.0, True # data exists but there is no diversity
+    
+    """
+    Compute normalized Shannon entropy:
+        entropy = -sum(p * log2(p)
+        max_entropy = log2(num_types)
+        normalized = entropy / max_entropy
+
+        `entropy`: The actual distribution the data (activity_types) creates
+        `max_entropy`: For N activity types the maximum possible Shannon entropy occurs when all activity types are perfectly evenly distributed (documentation: 33%, feature coding: 33%, testing: 33%)
+    """
+    proportions = [count / total for count in activity_counts.values()]
+
+    entropy = 0.0
+    for p in proportions:
+        entropy -= p * math.log2(p)
+
+    max_entropy = math.log2(num_types)
+    normalized_entropy = entropy / max_entropy
+
+    # scale by activity count factor
+    count_factor = min(num_types / 5.0, 1.0)
+
+    diversity = normalized_entropy * count_factor
+    return min(diversity, 1.0), True

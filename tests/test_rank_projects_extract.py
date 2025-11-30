@@ -25,13 +25,14 @@ def test_extract_base_scores_happy_path():
     """Test _extract_base_scores with all metrics for individual project."""
     ps = _ps(metrics={
         "skills_detailed": [{"score": 0.8}],
-        "activity_type": {"writing": 1}
+        "activity_type": {"writing": 50, "editing": 50}  # Multiple activities for diversity
     })
     results = _extract_base_scores(ps, is_collab=False)
     # Individual projects exclude contribution_strength
     assert len(results) == 2
     assert all(isinstance(r[0], float) and isinstance(r[1], bool) and isinstance(r[2], float) for r in results)
-    assert results[0][2] == 0.30 and results[1][2] == 0.10
+    assert results[0][2] == 0.30 and results[1][2] == 0.10  # activity_diversity weight
+    assert results[1][1] is True  # activity_diversity should be available
 
 
 def test_extract_base_scores_missing_data():
@@ -90,13 +91,14 @@ def test_extract_base_scores_collaborative():
     """Test _extract_base_scores for collaborative project includes contribution_strength."""
     ps = _ps(project_mode="collaborative", metrics={
         "skills_detailed": [{"score": 0.8}],
-        "activity_type": {"writing": 1}
+        "activity_type": {"writing": 50, "editing": 50}  # Multiple activities for diversity
     }, contributions={"text_collab": {"percent_of_document": 60}})
     results = _extract_base_scores(ps, is_collab=True)
     # Collaborative projects include contribution_strength
     assert len(results) == 3
     assert all(isinstance(r[0], float) and isinstance(r[1], bool) and isinstance(r[2], float) for r in results)
     assert results[0][2] == 0.30  # skill_strength
-    assert results[1][2] == 0.10  # activity_diversity
+    assert results[1][2] == 0.10  # activity_diversity weight
     assert results[2][2] == 0.20  # contribution_strength
+    assert results[1][1] is True   # activity_diversity should be available
     assert results[2][1] is True   # contribution_strength should be available
