@@ -1,10 +1,8 @@
-# src/menu/portfolio.py
 """
 Menu option for viewing portfolio items.
 - Ordered by existing project importance scores
 - One compact "card" per project
 """
-
 
 from __future__ import annotations
 
@@ -90,11 +88,9 @@ def _format_duration(
 ) -> str:
     """
     Build a simple 'Duration: start – end' (or single date / N/A) line.
-
     Priority:
     - text projects: use text_activity_contribution start/end via project_classifications
     - code(collaborative): use code_collaborative_metrics first/last commit
-    - fallback: created_at date
     """
 
     # 1) Text projects: use text_activity_contribution
@@ -121,10 +117,6 @@ def _format_duration(
             if last:
                 return f"Duration: {last[:10]}"
 
-    # 3) Fallback: created_at date
-    if created_at:
-        return f"Duration: {created_at[:10]}"
-
     return "Duration: N/A"
 
 
@@ -143,58 +135,23 @@ def _format_frameworks(summary: Dict[str, Any]) -> str:
     display = ", ".join(frameworks)
     return f"Frameworks: {display}"
 
-
-def _activity_from_json_code(summary: Dict[str, Any]) -> List[Tuple[str, float]]:
+def _activity_from_json_text(summary: Dict[str, Any]) -> List[Tuple[str, float]]:
     """
-    Fallback: compute activity percentages from JSON if DB metrics are missing.
+    For text projects, compute activity percentages from JSON.
     Handles both:
-    - code collaborative: contributions.activity_type
-    - code individual:   metrics.activity_type
+    - collaborative text: contributions.activity_type
+    - individual text:    metrics.activity_type
     """
     activity = None
 
-    metrics = summary.get("metrics") or {}
-    if "activity_type" in metrics:
-        activity = metrics["activity_type"]
-
-    if activity is None:
-        contributions = summary.get("contributions") or {}
-        activity = contributions.get("activity_type")
-
-    if not isinstance(activity, dict):
-        return []
-
-    totals = 0
-    for v in activity.values():
-        try:
-            totals += int(v.get("count", 0))
-        except Exception:
-            continue
-
-    if totals <= 0:
-        return []
-
-    result: List[Tuple[str, float]] = []
-    for name, v in activity.items():
-        try:
-            count = int(v.get("count", 0))
-        except Exception:
-            continue
-        if count <= 0:
-            continue
-        percent = (count / totals) * 100.0
-        result.append((name, percent))
-
-    result.sort(key=lambda x: x[1], reverse=True)
-    return result
-
-
-def _activity_from_json_text(summary: Dict[str, Any]) -> List[Tuple[str, float]]:
-    """
-    For text projects, use contributions.activity_type counts to compute percentages.
-    """
+    # 1) Collaborative text: contributions.activity_type
     contributions = summary.get("contributions") or {}
     activity = contributions.get("activity_type")
+
+    # 2) Individual text: metrics.activity_type
+    if not isinstance(activity, dict):
+        metrics = summary.get("metrics") or {}
+        activity = metrics.get("activity_type")
 
     if not isinstance(activity, dict):
         return []
@@ -220,7 +177,6 @@ def _activity_from_json_text(summary: Dict[str, Any]) -> List[Tuple[str, float]]
         percent = (count / total) * 100.0
         result.append((name, percent))
 
-    # Sort by percent DESC, so e.g. "Final 100%"
     result.sort(key=lambda x: x[1], reverse=True)
     return result
 
@@ -235,15 +191,15 @@ def _format_activity_line(
 ) -> str:
     """
     Build 'Activity: feature_coding 98%, testing 2%' line.
-
-    - For code: use code_activity_metrics (source='combined') if present,
-      otherwise fall back to JSON.
-    - For text: use JSON-based activity percentages.
+    - Code: ONLY use code_activity_metrics (source='combined')
+    - Text: use JSON-based activity percentages
     """
     activities: List[Tuple[str, float]] = []
 
     if project_type == "code":
         scope = project_mode or "individual"
+
+        # ❗ Code activity ONLY from DB
         activities = get_code_activity_percentages(
             conn=conn,
             user_id=user_id,
@@ -251,15 +207,22 @@ def _format_activity_line(
             scope=scope,
             source="combined",
         )
+
+        # ❗ If DB has nothing → show N/A (no fallback)
         if not activities:
-            activities = _activity_from_json_code(summary)
+            return "Activity: N/A"
 
     elif project_type == "text":
+        # Text still uses JSON counts
         activities = _activity_from_json_text(summary)
 
-    if not activities:
+        if not activities:
+            return "Activity: N/A"
+
+    else:
         return "Activity: N/A"
 
+    # Only show top 2 categories
     top = activities[:2]
     parts = [f"{name} {percent:.0f}%" for (name, percent) in top]
     return "Activity: " + ", ".join(parts)
@@ -268,8 +231,6 @@ def _format_activity_line(
 def _format_skills_block(summary: Dict[str, Any]) -> List[str]:
     """
     Build a block:
-
-    Skills:
       - skill1
       - skill2
     """
@@ -316,12 +277,10 @@ def _format_summary_block(
 ) -> List[str]:
     """
     Build summary lines:
-
-    LLM-style:
+    LLM:
       Summary:
         - Project: ...
         - My contribution: ...
-
     Non-LLM:
       Summary: <summary_text>
     """
