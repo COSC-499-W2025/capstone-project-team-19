@@ -186,16 +186,15 @@ FRAMEWORK_KEYWORDS = {
     "Prettier": ["prettier"],
 }
 
-def detect_frameworks(conn, project_name, user_id,zip_path):
+def detect_frameworks(conn, project_name, user_id, zip_path):
     """
     Detect frameworks used in a project by scanning config files.
     Returns a set of framework names.
     """
-    #path for accessing files
-    REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
+    # Use the analysis/zip_data path (used in parsing.py)
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
-    base_path = os.path.join(ZIP_DATA_DIR, zip_name)
+    base_path = os.path.join(repo_root, "analysis", "zip_data", zip_name)
 
     cur = conn.cursor()
     frameworks = set()
@@ -213,6 +212,10 @@ def detect_frameworks(conn, project_name, user_id,zip_path):
 
     for (file_path,) in files:
         full_path = os.path.join(base_path, file_path)
+
+        if not os.path.isfile(full_path):
+            continue
+
         try:
             with open(full_path, "r", encoding="utf-8") as f:
                 for line in f:

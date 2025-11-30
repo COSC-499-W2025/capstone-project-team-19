@@ -9,7 +9,8 @@ def select_from_matches(
     local_file_name: str,
     maybe_matches: List[Tuple[str, str, str]],
     all_drive_files: List[Tuple[str, str, str]],
-    search_function: Callable
+    search_function: Callable,
+    load_all_drive_files: Optional[Callable[[], List[Dict]]] = None,
 ) -> Optional[Tuple[str, str, str]]:
     """
     Show potential matches and get user selection.
@@ -34,7 +35,19 @@ def select_from_matches(
                 return selected
             elif choice_num == len(maybe_matches) + 1:
                 # User wants to search or browse
-                return handle_no_matches(local_file_name, all_drive_files, search_function)
+                browse_list = all_drive_files
+                if load_all_drive_files is not None:
+                    try:
+                        print("  Loading full Google Drive file list (may take up to a minute)...")
+                        full_files = load_all_drive_files() or []
+                        browse_list = [
+                            (f["id"], f["name"], f.get("mimeType", ""))
+                            if isinstance(f, dict) else f
+                            for f in full_files
+                        ]
+                    except Exception:
+                        browse_list = all_drive_files
+                return handle_no_matches(local_file_name, browse_list, search_function)
             elif choice_num == len(maybe_matches) + 2:
                 # Skip
                 print(f"  X Skipped: {local_file_name}")
@@ -161,4 +174,3 @@ def browse_all_files(
         except (ValueError, IndexError):
             print("  Invalid selection")
             return None
-

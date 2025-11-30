@@ -17,6 +17,8 @@ from src.menu import (
     view_portfolio_items,
     delete_old_insights,
     project_list,
+    view_chronological_skills,
+    view_ranked_projects,
 )
 from src.consent.consent import CONSENT_TEXT, get_user_consent, record_consent
 from src.consent.external_consent import get_external_consent, record_external_consent
@@ -67,6 +69,10 @@ def prompt_and_store():
             view_portfolio_items(conn, user_id, username)
         elif menu_choice == 5:
             delete_old_insights(conn, user_id, username)
+        elif menu_choice == 6:
+            view_ranked_projects(conn, user_id, username)
+        elif menu_choice == 7:
+            view_chronological_skills(conn, user_id, username)
         elif menu_choice == 8:
             project_list(conn, user_id, username)
         elif menu_choice == 9:

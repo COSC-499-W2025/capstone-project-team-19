@@ -79,6 +79,8 @@ def run_text_pipeline(
         print(f"{'=' * 80}\n")
 
     # Group text files by project folder
+    # Use the passed project_name parameter instead of deriving from folder names
+    # This ensures consistency with the database project_name
     projects: Dict[str, List[dict]] = {}
     for f in text_files:
         path_parts = f["file_path"].replace("\\", "/").split("/")
@@ -90,9 +92,13 @@ def run_text_pipeline(
             continue
         projects.setdefault(folder, []).append(f)
 
-    for project_name, files in projects.items():
+    # Use the passed project_name parameter if available, otherwise use folder names
+    # When called from analyze_files, project_name is already set correctly
+    for folder_name, files in projects.items():
+        # Use the passed project_name parameter to ensure database consistency
+        current_project_name = project_name if project_name else folder_name
         if not suppress_print:
-            print(f"\n→ {project_name}")
+            print(f"\n→ {current_project_name}")
         files_sorted = sorted(files, key=lambda x: x["file_name"])
 
         # --- Select main file ---
@@ -100,14 +106,14 @@ def run_text_pipeline(
 
         # --- Activity type analysis (only for individual mode) ---
         if not suppress_print:
-            all_project_files=get_files_with_timestamps(conn,user_id, project_name)
+            all_project_files=get_files_with_timestamps(conn,user_id, current_project_name)
         # Store activity type data to database (only if conn is available)
             if conn is not None:
-                classification_id=get_classification_id(conn, user_id, project_name)
+                classification_id=get_classification_id(conn, user_id, current_project_name)
                 activity_data=get_activity_contribution_data(all_project_files, main_file_name=main_file['file_name'])
                 if classification_id and activity_data:
                     store_text_activity_contribution(conn, classification_id, activity_data)
-            print_activity(all_project_files,project_name,main_file_name=main_file['file_name'])
+            print_activity(all_project_files,current_project_name,main_file_name=main_file['file_name'])
 
         # --- Load main file content ---
         main_path = os.path.join(base_path, main_file["file_path"])
@@ -132,7 +138,7 @@ def run_text_pipeline(
                     print(f"  • {s['filename']}")
 
         # --- Supporting CSV files (based on folder) ---
-        csv_supporting = _csv_files_for_project(project_name, csv_metadata["files"])
+        csv_supporting = _csv_files_for_project(folder_name, csv_metadata["files"])
         if csv_supporting and not suppress_print:
             print("Detected CSV supporting files:")
             for c in csv_supporting:
@@ -158,7 +164,7 @@ def run_text_pipeline(
             main_text=main_text,
             supporting_texts=supporting_texts,
             csv_metadata=csv_metadata,
-            project_name=project_name,
+            project_name=current_project_name,
             user_id=user_id,
             conn=conn,
         )

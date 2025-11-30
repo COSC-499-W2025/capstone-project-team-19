@@ -62,8 +62,6 @@ from .consent import (
 # Text metrics operations
 from .text_metrics import (
     store_text_offline_metrics,
-    store_text_llm_metrics,
-    get_text_llm_metrics,
     get_text_non_llm_metrics,
 )
 
@@ -89,7 +87,7 @@ from .contributions import (
 from .tokens import save_token_placeholder
 
 # skills
-from .skills import insert_project_skill
+from .skills import insert_project_skill, get_skill_events
 
 # file contributions
 from .file_contributions import (
@@ -125,7 +123,11 @@ from .project_summaries import (
     get_project_summaries_list,
     get_project_summary_by_name,
     get_all_projects_with_dates,
+    get_all_user_project_summaries
 )
+
+# local git metrics for code collaborative projects
+from .code_collaborative import insert_code_collaborative_metrics, get_metrics_id, insert_code_collaborative_summary
 
 __all__ = [
     "connect",
@@ -147,8 +149,6 @@ __all__ = [
     "get_latest_consent",
     "get_latest_external_consent",
     "store_text_offline_metrics",
-    "store_text_llm_metrics",
-    "get_text_llm_metrics",
     "get_text_non_llm_metrics",
     "code_complexity_metrics_exists",
     "insert_code_complexity_metrics",
@@ -177,4 +177,9 @@ __all__ = [
     "get_project_summaries_list",
     "get_project_summary_by_name",
     "get_all_projects_with_dates", 
+    "get_skill_events"
+    "insert_code_collaborative_metrics",
+    "get_metrics_id",
+    "insert_code_collaborative_summary",
+    "get_all_user_project_summaries"
 ]

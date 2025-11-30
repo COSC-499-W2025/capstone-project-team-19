@@ -39,10 +39,10 @@ def test_find_and_link_files_successful_matching(monkeypatch, conn, mock_service
     user_id = get_or_create_user(conn, "TestUser")
     
     # Mock file_selector functions to simulate user selecting matches
-    def mock_select_from_matches(local_name, matches, all_files, search_func):
+    def mock_select_from_matches(local_name, matches, all_files, search_func, **kwargs):
         return matches[0] if matches else None
     
-    def mock_handle_no_matches(local_name, all_files, search_func):
+    def mock_handle_no_matches(local_name, all_files, search_func, **kwargs):
         return None
     
     monkeypatch.setattr(
@@ -78,14 +78,14 @@ def test_find_and_link_files_partial_matching(monkeypatch, conn, mock_service):
     
     # Mock select_from_matches - return match for first, None for second
     call_count = [0]
-    def mock_select_from_matches(local_name, matches, all_files, search_func):
+    def mock_select_from_matches(local_name, matches, all_files, search_func, **kwargs):
         call_count[0] += 1
         if call_count[0] == 1:
             return matches[0] if matches else None
         else:
             return None
     
-    def mock_handle_no_matches(local_name, all_files, search_func):
+    def mock_handle_no_matches(local_name, all_files, search_func, **kwargs):
         return None
     
     monkeypatch.setattr(
@@ -121,10 +121,10 @@ def test_no_duplicate_storage(monkeypatch, conn, mock_service):
     """Test that files are not stored multiple times."""
     user_id = get_or_create_user(conn, "TestUser")
     
-    def mock_select_from_matches(local_name, matches, all_files, search_func):
+    def mock_select_from_matches(local_name, matches, all_files, search_func, **kwargs):
         return matches[0] if matches else None
     
-    def mock_handle_no_matches(local_name, all_files, search_func):
+    def mock_handle_no_matches(local_name, all_files, search_func, **kwargs):
         return None
     
     monkeypatch.setattr(

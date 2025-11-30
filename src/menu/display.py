@@ -15,6 +15,8 @@ def show_start_menu(username: str) -> int:
     print("3. View resume items")
     print("4. View portfolio items")
     print("5. Delete old insights")
+    print("6. View all projects ranked")
+    print("7. View chronological skills")
     print("8. View all projects")
     print("9. Exit")
 
@@ -23,3 +25,4 @@ def show_start_menu(username: str) -> int:
         if choice in {"1", "2", "3", "4", "5", "6", "7", "8", "9"}:
             return int(choice)
         print("Invalid choice. Please enter a number between 1 and 9.")
+

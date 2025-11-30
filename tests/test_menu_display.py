@@ -83,6 +83,8 @@ class TestShowStartMenu:
             "3. View resume items",
             "4. View portfolio items",
             "5. Delete old insights",
+            "6. View all projects ranked",
+            "7. View chronological skills",
             "8. View all projects",
             "9. Exit"
         ]

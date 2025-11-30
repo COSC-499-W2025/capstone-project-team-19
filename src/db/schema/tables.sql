@@ -109,33 +109,14 @@ CREATE TABLE IF NOT EXISTS config_files (
 CREATE TABLE IF NOT EXISTS non_llm_text (
     metrics_id        INTEGER PRIMARY KEY AUTOINCREMENT,
     classification_id INTEGER UNIQUE NOT NULL,
-    doc_count         INTEGER,
-    total_words       INTEGER,
-    reading_level_avg REAL,
-    reading_level_label TEXT,
-    keywords_json     TEXT,
+    doc_count         INTEGER, -- always 1 (main file)
+    total_words       INTEGER, -- of main file
+    reading_level_avg REAL, -- of main file
+    reading_level_label TEXT, -- of main file
+    keywords_json     TEXT, -- currently empty in case we want to bring back TF IDF to determine user's "topics of interest"
     summary_json      TEXT,
+    csv_metadata TEXT,
     generated_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS llm_text (
-    text_metric_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    classification_id INTEGER NOT NULL,
-    file_path TEXT,
-    file_name TEXT,
-    project_name TEXT,
-    word_count INTEGER,
-    sentence_count INTEGER,
-    flesch_kincaid_grade REAL,
-    lexical_diversity REAL,
-    summary TEXT NOT NULL,
-    skills_json JSON,
-    strength_json JSON,
-    weaknesses_json JSON,
-    overall_score TEXT,
-    processed_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(text_metric_id),
     FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
 );
 
@@ -450,6 +431,7 @@ CREATE TABLE IF NOT EXISTS text_activity_contribution (
 
 CREATE INDEX IF NOT EXISTS idx_text_activity_contribution_lookup
     ON text_activity_contribution(classification_id);
+
 -- Code activity metrics (per user, project, scope, and source)
 CREATE TABLE IF NOT EXISTS code_activity_metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -464,3 +446,62 @@ CREATE TABLE IF NOT EXISTS code_activity_metrics (
     recorded_at  TEXT    NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+CREATE INDEX IF NOT EXISTS idx_code_activity_metrics_lookup
+ON code_activity_metrics (user_id, project_name, scope, source);
+
+-- Code Collaborative Metrics (pure numeric metrics)
+CREATE TABLE IF NOT EXISTS code_collaborative_metrics (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    project_name    TEXT    NOT NULL,
+    repo_path       TEXT    NOT NULL,
+    -- totals
+    commits_all     INTEGER,
+    commits_yours   INTEGER,
+    commits_coauth  INTEGER,    -- commits where the user is co-author
+    merges          INTEGER,
+    -- LOC (lines of code)
+    loc_added       INTEGER,
+    loc_deleted     INTEGER,
+    loc_net         INTEGER,    -- net LOC added (add - delete)
+    files_touched   INTEGER,    -- number of file-change events
+    new_files       INTEGER,    -- number of new files created
+    renames         INTEGER,
+    -- history
+    first_commit_at TEXT,
+    last_commit_at  TEXT,
+    commits_L30     INTEGER,    -- commits by user in last 30 days
+    commits_L90     INTEGER,
+    commits_L365    INTEGER,
+    longest_streak  INTEGER,
+    current_streak  INTEGER,
+    top_days        TEXT,
+    top_hours       TEXT,
+    -- focus
+    languages_json  TEXT,
+    folders_json    TEXT,   -- top folders by activity
+    top_files_json  TEXT,   -- most edited files
+    frameworks_json TEXT,
+    -- others
+    created_at      TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, project_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_code_collab_metrics_user_project
+    ON code_collaborative_metrics (user_id, project_name);
+
+-- Summaries for collaborative code contributions (non-llm or llm)
+CREATE TABLE IF NOT EXISTS code_collaborative_summary (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    metrics_id      INTEGER NOT NULL,    -- FK to code_collaborative_metrics.id
+    user_id         INTEGER NOT NULL,
+    project_name    TEXT    NOT NULL,
+    summary_type    TEXT    NOT NULL,    -- 'llm' or 'non-llm'
+    content         TEXT    NOT NULL,    -- full manually-written or LLM summaries (project+contribution)
+    created_at      TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (metrics_id) REFERENCES code_collaborative_metrics(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_code_collab_summary_user_project
+    ON code_collaborative_summary (user_id, project_name);

@@ -158,3 +158,50 @@ def search_by_name(search_term: str, drive_files: List[Tuple[str, str, str]]) ->
     
     return matches
 
+
+def _search_supported_files_by_names(service: Resource, name_substrings: List[str], page_size: int = 100) -> List[Dict]:
+    """
+    Fetch supported files whose names contain any of the given substrings.
+    Batches substrings to reduce API calls and avoid full-drive scans.
+    """
+    all_files: Dict[str, Dict] = {}
+    mime_type_conditions = " or ".join([f"mimeType='{mime}'" for mime in SUPPORTED_MIME_TYPES])
+
+    chunk_size = 5
+    for i in range(0, len(name_substrings), chunk_size):
+        chunk = [s for s in name_substrings[i : i + chunk_size] if s]
+        if not chunk:
+            continue
+        name_parts = []
+        for raw in chunk:
+            escaped = raw.replace("'", "\\'")
+            name_parts.append(f"name contains '{escaped}'")
+        query = f"trashed=false and ({mime_type_conditions}) and ({' or '.join(name_parts)})"
+
+        page_token = None
+        while True:
+            try:
+                results = service.files().list(
+                    pageSize=page_size,
+                    fields="nextPageToken, files(id, name, mimeType)",
+                    pageToken=page_token,
+                    q=query,
+                    corpora="user"
+                ).execute()
+                items = results.get("files", [])
+                for item in items:
+                    mime = item.get("mimeType", "")
+                    if mime in SUPPORTED_MIME_TYPES:
+                        all_files[item["id"]] = {
+                            "id": item["id"],
+                            "name": item["name"],
+                            "mimeType": mime
+                        }
+                page_token = results.get("nextPageToken")
+                if not page_token:
+                    break
+            except Exception as e:
+                print(f"Error searching Drive files: {e}")
+                break
+
+    return list(all_files.values())
