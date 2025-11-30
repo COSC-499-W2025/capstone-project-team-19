@@ -32,6 +32,51 @@ def collect_project_data(conn, user_id):
     return project_scores
 
 def combine_scores(results: list):
+    """
+    Calculate weighted final score by combining normalized component scores.
+    
+    The final score is computed as: weighted_sum / total_weight, where each component
+    score is multiplied by its assigned weight before summing. This ensures that
+    different metrics contribute proportionally to the final importance ranking.
+    
+    Weight Distribution Rationale:
+    
+    Base Scores (applied to all projects):
+    - Skill Strength (30%): The most important factor as it directly measures technical
+      competency demonstrated in the project. Higher weight reflects that skills are
+      the primary indicator of project importance for career development.
+    
+    - Activity Diversity (10%): Lower weight because while diverse activities show
+      versatility, it's less critical than skill depth for ranking importance.
+    
+    - Contribution Strength (20%, collaborative only): Measures individual impact in
+      team projects. Only included for collaborative projects since individual projects
+      always have 100% contribution. Weighted to reflect collaborative work's importance
+      but not as heavily as skill strength.
+    
+    Text Project Additions:
+    - Writing Quality (40%): Primary differentiator for text projects, weighted heavily
+      to emphasize communication and writing skills which are core to text-based work.
+    
+    Code Project Additions:
+    - Code Complexity (25%): High weight reflects that complex code demonstrates
+      advanced problem-solving and technical depth.
+    
+    - Git Activity (20%): Represents development engagement and workflow maturity,
+      important but secondary to code quality.
+    
+    - Tech Stack (15%): Measures breadth of technologies used, weighted moderately
+      as variety is valuable but not as important as code quality.
+    
+    - GitHub Collaboration (3%): Minimal weight as this metric is often unavailable
+      or less reliable, and collaboration is already captured in contribution_strength
+      for collaborative projects.
+    
+    Note: Weights are normalized dynamically - if a score is unavailable, its weight
+    is excluded from total_weight, so the final score represents the weighted average
+    of only available metrics. This ensures projects aren't penalized for missing
+    optional data points.
+    """
     weighted_sum = 0.0
     total_weight = 0.0
 
@@ -45,6 +90,6 @@ def combine_scores(results: list):
     if total_weight == 0:
         return 0.0
     
-    # takes the sum of the scores and divides by the total number of scores (ex.: project score = (0.8 + 0.6 + 0.4) / 3)
-    # this assumes all scores are equal, meaning the score is not weighted
+    # Calculate weighted average: sum of (score * weight) divided by sum of weights
+    # Example: scores=[0.8, 0.6], weights=[0.3, 0.7] → (0.8*0.3 + 0.6*0.7) / (0.3+0.7) = 0.66
     return weighted_sum / total_weight
