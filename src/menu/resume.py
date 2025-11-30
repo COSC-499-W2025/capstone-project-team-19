@@ -121,7 +121,7 @@ def _build_resume_snapshot(summaries: List[ProjectSummary]) -> Dict[str, Any]:
             "languages": ps.languages or [],
             "frameworks": ps.frameworks or [],
             "summary_text": ps.summary_text,
-            "skills": _extract_skills(ps),
+            "skills": _extract_skills(ps, map_labels=True),
         }
 
         if ps.project_type == "text":
@@ -241,8 +241,32 @@ def _extract_activity(ps: ProjectSummary) -> List[Dict[str, Any]]:
     return items
 
 
-def _extract_skills(ps: ProjectSummary) -> List[str]:
+def _extract_skills(ps: ProjectSummary, map_labels: bool = False) -> List[str]:
     skills = ps.metrics.get("skills_detailed")
+    tech_skill_map = {
+        "architecture_and_design": "Architecture & design",
+        "data_structures": "Data structures",
+        "frontend_skills": "Frontend development",
+        "object_oriented_programming": "Object-oriented programming",
+        "security_and_error_handling": "Security & error handling",
+        "testing_and_ci": "Testing & CI",
+        "algorithms": "Algorithms",
+        "backend_development": "Backend development",
+        "clean_code_and_quality": "Clean code & quality",
+        "devops_and_ci_cd": "DevOps & CI/CD",
+    }
+    writing_skill_map = {
+        "clarity": "Clear communication",
+        "structure": "Structured writing",
+        "vocabulary": "Strong vocabulary",
+        "argumentation": "Analytical writing",
+        "depth": "Critical thinking",
+        "process": "Revision & editing",
+        "planning": "Planning & organization",
+        "research": "Research integration",
+        "data_collection": "Data collection",
+        "data_analysis": "Data analysis",
+    }
     if isinstance(skills, list):
         names = [s.get("skill_name") for s in skills if isinstance(s, dict) and s.get("skill_name")]
         # Deduplicate while preserving order
@@ -251,7 +275,11 @@ def _extract_skills(ps: ProjectSummary) -> List[str]:
         for n in names:
             if n not in seen:
                 seen.add(n)
-                unique.append(n)
+                if map_labels:
+                    mapped = writing_skill_map.get(n) or tech_skill_map.get(n) or n
+                    unique.append(mapped)
+                else:
+                    unique.append(n)
         return unique
     return []
 
