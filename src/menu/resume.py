@@ -262,9 +262,30 @@ def _aggregate_skills(summaries: List[ProjectSummary]) -> Dict[str, List[str]]:
     tech_skills = set()
     writing_skills = set()
 
-    writing_skill_names = {
-        "clarity", "structure", "vocabulary", "argumentation", "depth", "process",
-        "planning", "research", "data_collection", "data_analysis"
+    tech_skill_map = {
+        "architecture_and_design": "Architecture & design",
+        "data_structures": "Data structures",
+        "frontend_skills": "Frontend development",
+        "object_oriented_programming": "Object-oriented programming",
+        "security_and_error_handling": "Security & error handling",
+        "testing_and_ci": "Testing & CI",
+        "algorithms": "Algorithms",
+        "backend_development": "Backend development",
+        "clean_code_and_quality": "Clean code & quality",
+        "devops_and_ci_cd": "DevOps & CI/CD",
+    }
+
+    writing_skill_map = {
+        "clarity": "Clear communication",
+        "structure": "Structured writing",
+        "vocabulary": "Strong vocabulary",
+        "argumentation": "Analytical writing",
+        "depth": "Critical thinking",
+        "process": "Revision & editing",
+        "planning": "Planning & organization",
+        "research": "Research integration",
+        "data_collection": "Data collection",
+        "data_analysis": "Data analysis",
     }
 
     for ps in summaries:
@@ -272,10 +293,10 @@ def _aggregate_skills(summaries: List[ProjectSummary]) -> Dict[str, List[str]]:
         frameworks.update(ps.frameworks or [])
         skills = _extract_skills(ps)
         for s in skills:
-            if s in writing_skill_names:
-                writing_skills.add(s)
+            if s in writing_skill_map:
+                writing_skills.add(writing_skill_map[s])
             else:
-                tech_skills.add(s)
+                tech_skills.add(tech_skill_map.get(s, s))
 
     return {
         "languages": sorted(langs),
