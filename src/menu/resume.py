@@ -15,6 +15,7 @@ from src.db import (
     get_resume_snapshot,
 )
 from src.models.project_summary import ProjectSummary
+from src.insights.rank_projects.rank_project_importance import collect_project_data
 
 
 def view_resume_items(conn, user_id: int, username: str):
@@ -45,6 +46,13 @@ def _handle_create_resume(conn, user_id: int, username: str):
     if not summaries:
         print("No project summaries available. Run an analysis first.")
         return
+
+    # Rank projects and select top 5 by score
+    ranked = collect_project_data(conn, user_id)
+    top_names = [name for name, _score in ranked[:5]]
+    if top_names:
+        summaries = [s for s in summaries if s.project_name in top_names]
+        print(f"[Resume] Using top {len(summaries)} ranked projects: {', '.join(top_names)}")
 
     snapshot = _build_resume_snapshot(summaries)
     rendered = _render_snapshot(snapshot)
