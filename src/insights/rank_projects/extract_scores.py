@@ -2,14 +2,20 @@ from src.insights.rank_projects import writing_quality, skill_strength, contribu
 
 def _extract_base_scores(summary, is_collab):
     skill_strength_score, skill_available = skill_strength(summary)
-    cont_strength_score, cont_available = contribution_strength(summary, is_collab)
     activity_div_score, activity_available = activity_diversity(summary, is_collab)
 
-    return [
+    results = [
         (skill_strength_score, skill_available, 0.30),
-        (cont_strength_score, cont_available, 0.20),
         (activity_div_score, activity_available, 0.10),
     ]
+    
+    # Only include contribution_strength for collaborative projects
+    # For individual projects, contribution is always 1.0, so it doesn't provide meaningful differentiation
+    if is_collab:
+        cont_strength_score, cont_available = contribution_strength(summary, is_collab)
+        results.append((cont_strength_score, cont_available, 0.20))
+    
+    return results
 
 def _extract_text_scores(summary):
     writing_quality_score, writing_available = writing_quality(summary)

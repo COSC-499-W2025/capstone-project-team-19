@@ -22,26 +22,27 @@ def _ps(**kwargs):
 
 
 def test_extract_base_scores_happy_path():
-    """Test _extract_base_scores with all metrics."""
+    """Test _extract_base_scores with all metrics for individual project."""
     ps = _ps(metrics={
         "skills_detailed": [{"score": 0.8}],
         "activity_type": {"writing": 1}
     })
     results = _extract_base_scores(ps, is_collab=False)
-    assert len(results) == 3
+    # Individual projects exclude contribution_strength
+    assert len(results) == 2
     assert all(isinstance(r[0], float) and isinstance(r[1], bool) and isinstance(r[2], float) for r in results)
-    assert results[0][2] == 0.30 and results[1][2] == 0.20 and results[2][2] == 0.10
+    assert results[0][2] == 0.30 and results[1][2] == 0.10
 
 
 def test_extract_base_scores_missing_data():
-    """Test _extract_base_scores with missing metrics."""
+    """Test _extract_base_scores with missing metrics for individual project."""
     ps = _ps()
     results = _extract_base_scores(ps, is_collab=False)
-    assert len(results) == 3
-    # skill_strength and activity_diversity unavailable, but contribution_strength is available for individual
+    # Individual projects exclude contribution_strength
+    assert len(results) == 2
+    # skill_strength and activity_diversity unavailable
     assert results[0][1] is False  # skill_strength
-    assert results[1][1] is True   # contribution_strength (individual always 1.0)
-    assert results[2][1] is False  # activity_diversity
+    assert results[1][1] is False  # activity_diversity
 
 
 def test_extract_text_scores_happy_path():
@@ -83,3 +84,19 @@ def test_extract_code_scores_collaborative():
     results = _extract_code_scores(ps, is_collab=True)
     assert len(results) == 4
     assert all(isinstance(r[0], float) and isinstance(r[1], bool) for r in results)
+
+
+def test_extract_base_scores_collaborative():
+    """Test _extract_base_scores for collaborative project includes contribution_strength."""
+    ps = _ps(project_mode="collaborative", metrics={
+        "skills_detailed": [{"score": 0.8}],
+        "activity_type": {"writing": 1}
+    }, contributions={"text_collab": {"percent_of_document": 60}})
+    results = _extract_base_scores(ps, is_collab=True)
+    # Collaborative projects include contribution_strength
+    assert len(results) == 3
+    assert all(isinstance(r[0], float) and isinstance(r[1], bool) and isinstance(r[2], float) for r in results)
+    assert results[0][2] == 0.30  # skill_strength
+    assert results[1][2] == 0.10  # activity_diversity
+    assert results[2][2] == 0.20  # contribution_strength
+    assert results[2][1] is True   # contribution_strength should be available
