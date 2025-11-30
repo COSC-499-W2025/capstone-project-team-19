@@ -134,6 +134,15 @@ from .code_collaborative import (
 # resume snapshots
 from .resumes import insert_resume_snapshot, list_resumes, get_resume_snapshot
 
+# portfolio
+from .portfolio import (
+    get_project_summary_row,
+    get_code_activity_percentages,
+    get_code_collaborative_duration,
+    get_code_collaborative_non_llm_summary,
+    get_text_duration,
+)
+
 __all__ = [
     "connect",
     "init_schema",
@@ -186,5 +195,10 @@ __all__ = [
     "insert_code_collaborative_metrics",
     "get_metrics_id",
     "insert_code_collaborative_summary",
-    "get_all_user_project_summaries"
+    "get_all_user_project_summaries",
+    "get_project_summary_row",
+    "get_code_activity_percentages",
+    "get_code_collaborative_duration",
+    "get_code_collaborative_non_llm_summary",
+    "get_text_duration,"
 ]
