@@ -122,7 +122,6 @@ from .project_summaries import (
     get_project_summaries_list,
     get_project_summary_by_name,
     get_all_user_project_summaries
-    get_all_user_project_summaries
 )
 
 # local git metrics for code collaborative projects
