@@ -451,7 +451,7 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
     """Collaborative code analysis: Git data + LLM summary."""
     print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' (code)")
 
-    analyze_code_project(conn, user_id, project_name, zip_path, summary)
+    metrics = analyze_code_project(conn, user_id, project_name, zip_path, summary)
 
     # activity-type summary for collaborative code
     activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
@@ -461,7 +461,7 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
     store_code_activity_metrics(conn, user_id, activity_summary)
     
     if summary:
-        summary.contributions["github_contribution_metrics_generated"] = True
+        summary.contributions["github_contribution_metrics_generated"] = bool(metrics)
         summary.contributions["activity_type"] = activity_summary.per_activity
 
     # Extract skills for collaborative code projects

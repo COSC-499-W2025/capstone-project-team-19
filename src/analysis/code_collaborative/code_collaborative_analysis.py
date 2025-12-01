@@ -72,6 +72,8 @@ def analyze_code_project(conn: sqlite3.Connection,
                          summary=None) -> Optional[dict]:
     # 1) get base dirs from the uploaded zip
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
+    # Capture any pre-collected manual description (non-LLM path)
+    desc = get_manual_desc(project_name)
 
     # Debug: show basic context for this project run
     print("\n" + "=" * 80)
@@ -95,6 +97,16 @@ def analyze_code_project(conn: sqlite3.Connection,
 
         # Still allow GitHub-only enhancement even without local repo_dir
         _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
+
+        # Populate whatever we can so the project summary isn't empty
+        _apply_basic_summary_without_git(
+            conn=conn,
+            user_id=user_id,
+            project_name=project_name,
+            zip_path=zip_path,
+            summary=summary,
+            desc=desc,
+        )
         print("=" * 80)
         return None
 
@@ -134,8 +146,6 @@ def analyze_code_project(conn: sqlite3.Connection,
     metrics["project_name"] = project_name
 
     # 5.1) attach manual description if it was collected up-front
-    desc = get_manual_desc(project_name)
-
     if not desc:
         # Try to read external_consent; ignore errors if table/row doesn't exist.
         try:
@@ -325,6 +335,34 @@ def _metrics_empty(m: dict) -> bool:
                 return False
 
     return True
+
+
+def _apply_basic_summary_without_git(
+    conn: sqlite3.Connection,
+    user_id: int,
+    project_name: str,
+    zip_path: str,
+    summary,
+    desc: str | None,
+) -> None:
+    """
+    Populate summary fields when no local Git repository is available.
+    """
+    if summary is None:
+        return
+
+    clean_desc = (desc or "").strip()
+    if clean_desc:
+        summary.contributions["non_llm_contribution_summary"] = clean_desc
+        # Only fill summary_text if nothing else is set
+        if not getattr(summary, "summary_text", None):
+            summary.summary_text = clean_desc
+
+    # Basic language/framework detection still works from parsed files/configs
+    summary.languages = detect_languages(conn, project_name) or []
+    frameworks = detect_frameworks(conn, project_name, user_id, zip_path) or set()
+    summary.frameworks = sorted(frameworks) if frameworks else []
+
 
 def _build_db_payload_from_metrics(metrics: Mapping[str, Any], repo_path: str) -> dict[str, Any]:
     """
