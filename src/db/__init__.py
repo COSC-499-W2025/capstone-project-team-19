@@ -224,17 +224,10 @@ __all__ = [
     "get_code_collaborative_duration",
     "get_code_collaborative_non_llm_summary",
     "get_text_duration",
-<<<<<<< HEAD
-=======
     "get_code_individual_duration",
->>>>>>> generate-portfolio-info
     "git_individual_metrics_exists",
     "insert_git_individual_metrics",
     "update_git_individual_metrics",
     "get_git_individual_metrics",
-<<<<<<< HEAD
-    "extract_git_metrics",
-=======
     "extract_git_metrics"
->>>>>>> generate-portfolio-info
 ]
