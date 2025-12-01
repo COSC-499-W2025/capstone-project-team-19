@@ -101,7 +101,7 @@ My PRs:
 - 185 - GitHub metrics
 
 
-## (Week 11) Monday November 17 - Sunday November 23
+## (Week 12) Monday November 17 - Sunday November 23
 
 ![Screenshot of this week's peer evaluation](./screenshots/Timmi-Nov17-Nov23.PNG)
 
@@ -127,3 +127,27 @@ Next Week:
 - Clarify (and possibly implement) the things Salma mentioned in PR #225 (GitHub API not returning ALL comments on a PR, only some, and ensuring all comments are being stored)
 
 I also plan to refactor the print statements throughout the codebase. Right now the system prints too much during a run, so my goal is to reduce unnecessary output and ensure that only the final project summaries are displayed to the user.
+
+
+## (Week 13) Monday November 24 - Sunday November 30
+
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Nov17-Nov23.PNG)
+
+Week Recap:
+This week I focused on the tasks assigned to me during our Wednesday meeting after the lecture. My main job was to implement the project ranking system, which meant figuring out how to combine all the different metrics we collect into one meaningful score. This required a lot of thought, since each metric represents a different aspect of a project, and it was not immediately obvious how to balance them. To keep things consistent, I separated the ranking process into two paths: one for code projects and one for text projects. They still shared some common scoring steps, but each type also needed its own specific functions because of how different the stored metrics are. Once each metric was calculated, I normalized everything so that all the scores were on the same scale. This made it possible to combine them and avoid situations where one metric overshadowed the others. Updating the `project_summaries` table was also necessary so that all the information needed for ranking was stored consistently.
+
+I additionally implemented the chronological list of skills, which required pulling together data from several tables (one complete query seemed to be the easiest and best solution) and making sure each skill was tied to the correct project and timestamp. Alongside that, I added the feature to list all project summaries so users can easily view the summaries for each uploaded project.
+
+While working on the ranking system, I got helpful feedback on my PR #273 from my team members, but it was especially Salma who pointed out that the activity diversity metric was not distinguishing between small and large contributions. After researching different approaches, I decided to use Shannon entropy, as it is a good way to measure how spread out or varied a set of data (activities) is. I included a detailed comment on what Shannon entropy is and how it works inside the code (file: `/src/insights/rank_projects`, function: `activity_diversity()`). This improved the overall balance of the ranking system. I implemented this in a separate PR (#280) because my ranking feature was needed for my other team members to complete their PRs.
+
+Overall, the work went smoothly this week, but coming up with a fair and realistic ranking method was definitely difficult and required a lot of time looking at the different metrics and analyses. The implementation itself was not too bad once the approach was decided. I also reviewed multiple PRs to keep the teams flow moving forward.
+
+My PRs:
+- #267 (Filling project summaries) - Completed the project summaries by ensuring all necessary data was being stored in the table `project_summaries`
+- #273 (Feature/rank projects) - Implemented the scoring functions and incorporated the list of ranked projects into the main menu
+- #274 (producing a chronological list of skills) - Implemented query to retrieve all project summaries for a user and incorporated the list into the main menu
+- #280 (Activity Diversity Scoring function Change) - Changed the ranking system function `activity_diversity()` to use Shannon entropy
+- #281 (getting top project summaries and tests) - Listed only the top three ranked projects and their attached summaries
+
+Next Week:
+Next week, I plan to implement any remaining changes assigned to me that we decide are necessary for the Milestone 1 deliverable. I will also be working with my team to build the demo slides for our presentation on Wednesday and will be contributing to the Milestone 1 deliverable that is due Sunday, December 7th.
