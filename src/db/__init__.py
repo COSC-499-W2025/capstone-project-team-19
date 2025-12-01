@@ -146,6 +146,16 @@ from .git_individual_metrics import (
 # git metrics helpers (data extraction/transformation)
 from .git_metrics_helpers import extract_git_metrics
 
+# portfolio
+from .portfolio import (
+    get_project_summary_row,
+    get_code_activity_percentages,
+    get_code_collaborative_duration,
+    get_code_collaborative_non_llm_summary,
+    get_text_duration,
+    get_code_individual_duration,
+)
+
 __all__ = [
     "connect",
     "init_schema",
@@ -200,6 +210,12 @@ __all__ = [
     "get_metrics_id",
     "insert_code_collaborative_summary",
     "get_all_user_project_summaries",
+    "get_project_summary_row",
+    "get_code_activity_percentages",
+    "get_code_collaborative_duration",
+    "get_code_collaborative_non_llm_summary",
+    "get_text_duration",
+    "get_code_individual_duration",
     "git_individual_metrics_exists",
     "insert_git_individual_metrics",
     "update_git_individual_metrics",
