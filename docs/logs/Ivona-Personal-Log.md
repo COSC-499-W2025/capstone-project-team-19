@@ -89,3 +89,21 @@ This was the start of the implementation of utilizing GoogleDrive for computing 
 Next Week:
 I plan to finnish the contributation skills from text projects by getting the metrics from the comments API and stroing them in the database.
 
+
+## (Week 13) Monday Nov 24th - Sunday November 30th 
+![Screenshot of this week's peer eval](./screenshots/Ivona-Nov.24-30.PNG)
+
+This Week:
+I worked on PR 275, attended team meetings, reviewed PRs and did project planning with Timmi about how the flow of adding new zip files should work in our system.
+
+PR 275:
+This PR added the functionality to list all of user's projects in chronological order. This is a requirement for milestone 1, hence the implementation. 
+
+In the PR I wrote a query to the DB to retrieve all the project names along with the completion dates which we calculated previous during anlayis. I added a function that uses this to print out all the projects for a user and the completion dates in chronological order. And added an option on the menu for the user to select this. And I added full unit testing.
+
+Next Week Plan:
+I have started working on cleaning up the terminal and only outputting necessary information to be ready for the presentation however I don't have a PR up for this yet hence it will be counted for next week. 
+
+Working with the team on the presentation slide and demo video.
+
+Finishing the contributation skills from text projects by getting the metrics from the comments API and stroing them in the database.
