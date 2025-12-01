@@ -8,8 +8,8 @@ from src.db import (
     get_code_collaborative_duration,
     get_code_activity_percentages,
     get_code_collaborative_non_llm_summary,
+    get_code_individual_duration,
 )
-
 
 def format_duration(
     project_type: str,
@@ -24,9 +24,10 @@ def format_duration(
     Priority:
     - text projects: use text_activity_contribution start/end via project_classifications
     - code(collaborative): use code_collaborative_metrics first/last commit
+    - code(individual):   use git_individual_metrics first/last commit
     """
 
-    # 1) Text projects: use text_activity_contribution
+    # 1) Text projects
     if project_type == "text":
         text_duration = get_text_duration(conn, user_id, project_name)
         if text_duration is not None:
@@ -38,7 +39,7 @@ def format_duration(
             if end:
                 return f"Duration: {end[:10]}"
 
-    # 2) Collaborative code: use git first/last commit
+    # 2) Collaborative code
     if project_type == "code" and project_mode == "collaborative":
         duration = get_code_collaborative_duration(conn, user_id, project_name)
         if duration is not None:
@@ -50,8 +51,19 @@ def format_duration(
             if last:
                 return f"Duration: {last[:10]}"
 
-    return "Duration: N/A"
+    # 3) Individual code
+    if project_type == "code" and (project_mode == "individual" or not project_mode):
+        duration = get_code_individual_duration(conn, user_id, project_name)
+        if duration is not None:
+            first, last = duration
+            if first and last:
+                return f"Duration: {first[:10]} – {last[:10]}"
+            if first:
+                return f"Duration: {first[:10]}"
+            if last:
+                return f"Duration: {last[:10]}"
 
+    return "Duration: N/A"
 
 def format_languages(summary: Dict[str, Any]) -> str:
     languages = summary.get("languages") or []

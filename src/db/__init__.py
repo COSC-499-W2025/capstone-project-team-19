@@ -153,6 +153,7 @@ from .portfolio import (
     get_code_collaborative_duration,
     get_code_collaborative_non_llm_summary,
     get_text_duration,
+    get_code_individual_duration,
 )
 
 __all__ = [
@@ -213,7 +214,8 @@ __all__ = [
     "get_code_activity_percentages",
     "get_code_collaborative_duration",
     "get_code_collaborative_non_llm_summary",
-    "get_text_duration,"
+    "get_text_duration",
+    "get_code_individual_duration",
     "git_individual_metrics_exists",
     "insert_git_individual_metrics",
     "update_git_individual_metrics",
