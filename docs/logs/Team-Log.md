@@ -372,11 +372,11 @@ This week, the team focused on refactoring and fixing issues, and updated the st
 
 ### Plan for the next cycle
 
-Additional contribution extraction from google api will be implemented next week, we'll also do optimization needed to improve the performance, and any changes needed for the deliverables of milestone 1. We'll start working on the presentation, updating readme, and demo video. Starting to plan for milestone 2, and any further plans will be discussed after the presentation.
+we'll do optimization needed to improve the performance, and any changes needed for the deliverables of milestone 1. We'll start working on the presentation, updating readme, and demo video. Starting to plan for milestone 2, and any further plans will be discussed after the presentation.
 
 ### Burnup chart
 
-![Burnup chart for Nov 17 - Nov 23](screenshots/week13-burnupchart.png)
+![Burnup chart for Nov 24 - Nov 30](screenshots/week13-burnupchart.png)
 
 ### Github usernames
 
