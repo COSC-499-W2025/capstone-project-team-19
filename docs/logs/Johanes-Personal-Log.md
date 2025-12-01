@@ -61,3 +61,10 @@ Week recap: I created a new table to store the metrics, with foreign key to the 
 
 Next week plan: I plan to modify start menu to display options such as analyze new project, view old project, delete old project, and view resume items and view portfolio items
 
+# (Week 13) Monday 24th November - Sunday 30th November
+![Screenshot of week 13 peer eval](./screenshots/Johanes-Nov24-30.PNG)
+Week recap: I stored necessary code metrics that was not merged last week, and also stored the individual github analysis metrics. I started modifying the menu options to show 6 choices, retrieve old summaries, retrieve portfolio, retrieve resume, delete old insights, start new analysis, and quit. The implementation is done in src/menu to separate the menu files. I also implemented the retrieve old summaries menu by taking the summary_text in the project_summaries table. In further PR, my teammate modified the list menu to show another menu for requirement of milestone 1. 
+
+I also reviewed Ammaar's PR, Adara's PR, and some other teammates.
+
+Next week plan: I plan to help with the video demo and presentation slides.
