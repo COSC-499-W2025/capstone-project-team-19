@@ -4,8 +4,9 @@ from datetime import datetime, UTC
 
 import pytest
 
-from src.db import init_schema, save_project_summary, list_resumes, get_resume_snapshot
-from src.menu import resume as resume_mod
+from src.db import init_schema, save_project_summary, list_resumes, get_resume_snapshot, insert_resume_snapshot
+from src.menu.resume import menu as resume_menu
+from src.menu.resume import flow as resume_flow
 
 
 def _make_summary(project_name: str, project_type: str = "code", project_mode: str = "individual") -> str:
@@ -47,9 +48,9 @@ def test_create_resume_uses_top_five(monkeypatch):
 
     # Always accept default resume name
     monkeypatch.setattr("builtins.input", lambda _: "")
-    monkeypatch.setattr(resume_mod, "collect_project_data", fake_collect_project_data)
+    monkeypatch.setattr(resume_flow, "collect_project_data", fake_collect_project_data)
 
-    resume_mod._handle_create_resume(conn, user_id, "TestUser")
+    resume_flow._handle_create_resume(conn, user_id, "TestUser")
 
     snapshots = list_resumes(conn, user_id)
     assert len(snapshots) == 1
@@ -73,7 +74,7 @@ def test_create_resume_no_summaries(monkeypatch):
     # No summaries seeded
     monkeypatch.setattr("builtins.input", lambda _: "")
 
-    resume_mod._handle_create_resume(conn, user_id, "TestUser")
+    resume_flow._handle_create_resume(conn, user_id, "TestUser")
 
     snapshots = list_resumes(conn, user_id)
     assert snapshots == []
@@ -87,17 +88,18 @@ def test_view_existing_resume_lists_and_renders(monkeypatch, capsys):
     # Seed one summary and a resume snapshot
     save_project_summary(conn, user_id, "projA", _make_summary("projA"))
     snap_data = {"projects": [{"project_name": "projA"}], "aggregated_skills": {}}
-    resume_mod.insert_resume_snapshot(conn, user_id, "MyResume", json.dumps(snap_data), "Rendered text")
+    insert_resume_snapshot(conn, user_id, "MyResume", json.dumps(snap_data), "Rendered text")
 
     # Mock selection of first resume
     inputs = iter(["1"])
     monkeypatch.setattr("builtins.input", lambda _: next(inputs))
 
-    resume_mod._handle_view_existing_resume(conn, user_id)
+    handled = resume_flow._handle_view_existing_resume(conn, user_id)
 
     captured = capsys.readouterr().out
     assert "MyResume" in captured
     assert "Rendered text" in captured
+    assert handled is True
 
 
 def test_view_existing_resume_no_resumes(capsys):
@@ -105,9 +107,10 @@ def test_view_existing_resume_no_resumes(capsys):
     init_schema(conn)
     user_id = 1
 
-    resume_mod._handle_view_existing_resume(conn, user_id)
+    handled = resume_flow._handle_view_existing_resume(conn, user_id)
     captured = capsys.readouterr().out
     assert "No saved resumes yet" in captured
+    assert handled is False
 
 
 def test_create_resume_with_fewer_than_five_projects(monkeypatch):
@@ -124,9 +127,9 @@ def test_create_resume_with_fewer_than_five_projects(monkeypatch):
         return [("p1", 1.0), ("p2", 0.9), ("p3", 0.8)]
 
     monkeypatch.setattr("builtins.input", lambda _: "")
-    monkeypatch.setattr(resume_mod, "collect_project_data", fake_collect_project_data)
+    monkeypatch.setattr(resume_flow, "collect_project_data", fake_collect_project_data)
 
-    resume_mod._handle_create_resume(conn, user_id, "TestUser")
+    resume_flow._handle_create_resume(conn, user_id, "TestUser")
 
     snaps = list_resumes(conn, user_id)
     assert len(snaps) == 1

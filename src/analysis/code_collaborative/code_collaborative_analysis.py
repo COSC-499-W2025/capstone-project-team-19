@@ -73,25 +73,39 @@ def analyze_code_project(conn: sqlite3.Connection,
     # 1) get base dirs from the uploaded zip
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
 
+    # Debug: show basic context for this project run
+    print("\n" + "=" * 80)
+    print(f"[debug] project={project_name}")
+    print(f"[debug] zip_path arg={zip_path}")
+    print(f"[debug] zip_data_dir={zip_data_dir}")
+    print(f"[debug] zip_name={zip_name}")
+
     # 2) find repo (collaborative/ → DB classifications → files.file_path)
     repo_dir = resolve_repo_for_project(conn, zip_data_dir, zip_name, project_name, user_id)
+    print(f"[debug] resolve_repo_for_project → {repo_dir}")
+
     if not repo_dir:
         print(
-            f"\nNo local Git repo found under allowed paths. "
-            f"Zip a local clone (not GitHub 'Download ZIP') so .git is included."
+            "\nNo local Git repo found under allowed paths. "
+            "Zip a local clone (not GitHub 'Download ZIP') so .git is included."
         )
 
+        # Handle 'no local .git' case (offer GitHub linking etc.)
         _handle_no_git_repo(conn, user_id, project_name)
-        _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
 
+        # Still allow GitHub-only enhancement even without local repo_dir
+        _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
+        print("=" * 80)
         return None
 
-    print(f"Found local Git repo for {project_name}")
+    print(f"Found local Git repo for {project_name} at: {repo_dir}")
 
-    repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
-
+    # Optional: show again when DEBUG is enabled
     if DEBUG:
-        print(f"[debug] repo resolved → {repo_dir}")
+        print(f"[debug] using repo_dir={repo_dir}")
+
+    # Enhance with GitHub metrics (if user says yes)
+    repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
 
     # 3) identity table + load user aliases
     ensure_user_github_table(conn)
@@ -168,6 +182,9 @@ def analyze_code_project(conn: sqlite3.Connection,
             summary.metrics["collaborative_git"] = {
                 "last_commit_date": history["last"]
             }
+        # store non llm contribution summary    
+        if desc and "llm_contribution_summary" not in summary.contributions:
+            summary.contributions["non_llm_contribution_summary"] = desc.strip()
 
     # 7.5) save file contributions to database for skill extraction filtering
     file_contributions_data = metrics.get("file_contributions", {})
@@ -207,39 +224,26 @@ def analyze_code_project(conn: sqlite3.Connection,
     # accumulate for portfolio summary
     _CODE_RUN_METRICS.append(metrics)
 
+    print("=" * 80)
     return metrics
 
 
 def _handle_no_git_repo(conn, user_id, project_name):
+    """
+    Called when no local .git is found for a collaborative project.
+    """
     token = get_github_token(conn, user_id)
 
     if token:
         print(f"\nNo local .git found for {project_name}, but a GitHub login already exists.")
         if ensure_repo_link(conn, user_id, project_name, token):
             print(f"[info] GitHub repo already linked for {project_name}")
-            return None
-
-        ans = input("Link this project to GitHub? (y/n): ").strip().lower()
-        if ans in {"y", "yes"}:
-            select_and_store_repo(conn, user_id, project_name, token)
+        # No further questions here; _enhance_with_github() will handle prompts.
         return None
 
-    ans = input(
-        f"No .git detected for {project_name}.\n"
-        "Connect GitHub to analyze this project? (y/n): "
-    ).strip().lower()
+    print(f"\nNo .git detected for {project_name}.")
+    print("[info] Skipping local Git history analysis for this project.")
 
-    if ans in {"y", "yes"}:
-        token = github_oauth(conn, user_id)
-
-        # get user's GitHub account info
-        github_user = get_authenticated_user(token)
-        store_github_account(conn, user_id, github_user)
-
-        select_and_store_repo(conn, user_id, project_name, token)
-        return None
-
-    print(f"[skip] Skipping collaborative analysis for {project_name}")
     return None
 
 

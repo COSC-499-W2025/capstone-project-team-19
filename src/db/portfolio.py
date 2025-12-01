@@ -1,7 +1,4 @@
-# src/db/portfolio.py
-
 from __future__ import annotations
-
 import json
 import sqlite3
 from typing import Any, Dict, List, Optional, Tuple
@@ -195,3 +192,31 @@ def get_text_duration(
         return None
     return row[0], row[1]
 
+def get_code_individual_duration(
+    conn: sqlite3.Connection,
+    user_id: int,
+    project_name: str,
+) -> Optional[tuple[str | None, str | None]]:
+    """
+    Return (first_commit_date, last_commit_date) for an individual code project.
+
+    Dates are taken from git_individual_metrics.first_commit_date / last_commit_date.
+    Returns None if there is no row or both dates are missing.
+    """
+    cur = conn.execute(
+        """
+        SELECT first_commit_date, last_commit_date
+        FROM git_individual_metrics
+        WHERE user_id = ? AND project_name = ?
+        """,
+        (user_id, project_name),
+    )
+    row = cur.fetchone()
+    if row is None:
+        return None
+
+    first, last = row[0], row[1]
+    if not first and not last:
+        return None
+
+    return first, last

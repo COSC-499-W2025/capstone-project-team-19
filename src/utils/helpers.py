@@ -118,33 +118,6 @@ def is_git_repo(path: str) -> bool:
             return False
     return False
 
-def bfs_find_repo(root: str, max_depth: int = 2) -> Optional[str]:
-    """
-    Breadth-first search to find a nested repo under root, up to max_depth.
-    Returns the first directory containing .git.
-    """
-    if not os.path.isdir(root):
-        return None
-    if is_git_repo(root):
-        return root
-    queue: List[Tuple[str, int]] = [(root, 0)]
-    while queue:
-        path, depth = queue.pop(0)
-        if depth > max_depth:
-            continue
-        try:
-            entries = [os.path.join(path, ent) for ent in os.listdir(path)]
-        except Exception:
-            continue
-        for p in entries:
-            if os.path.isdir(p):
-                if is_git_repo(p):
-                    return p
-                if depth < max_depth:
-                    queue.append((p, depth + 1))
-    return None
-
-
 ## Text Extraction
 
 def extract_text_file(filepath: str, conn: sqlite3.Connection, user_id: int) -> Optional[str]:
