@@ -258,6 +258,43 @@ CREATE TABLE IF NOT EXISTS github_repo_metrics (
     UNIQUE (user_id, project_name, repo_owner, repo_name)
 );
 
+-- GIT INDIVIDUAL METRICS (for local git repository analysis)
+CREATE TABLE IF NOT EXISTS git_individual_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    user_id INTEGER NOT NULL,
+    project_name TEXT NOT NULL,
+
+    -- Commit statistics
+    total_commits INTEGER,
+    first_commit_date TEXT,
+    last_commit_date TEXT,
+    time_span_days INTEGER,
+    average_commits_per_week REAL,
+    average_commits_per_month REAL,
+    unique_authors INTEGER,
+
+    -- Code change summary
+    total_lines_added INTEGER,
+    total_lines_deleted INTEGER,
+    net_lines_changed INTEGER,
+    total_weeks_active INTEGER,
+
+    -- Activity patterns
+    total_active_days INTEGER,
+    total_active_months INTEGER,
+    average_commits_per_active_day REAL,
+    busiest_day TEXT,
+    busiest_day_commits INTEGER,
+    busiest_month TEXT,
+    busiest_month_commits INTEGER,
+
+    last_analyzed TEXT DEFAULT (datetime('now')),
+
+    UNIQUE (user_id, project_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
 -- PROJECT SUMMARIES
 
 CREATE TABLE IF NOT EXISTS project_summaries (
@@ -505,3 +542,17 @@ CREATE TABLE IF NOT EXISTS code_collaborative_summary (
 
 CREATE INDEX IF NOT EXISTS idx_code_collab_summary_user_project
     ON code_collaborative_summary (user_id, project_name);
+
+-- Resume snapshots (frozen resume outputs)
+CREATE TABLE IF NOT EXISTS resume_snapshots (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL,
+    name          TEXT    NOT NULL,
+    resume_json   TEXT    NOT NULL,
+    rendered_text TEXT,
+    created_at    TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_resume_snapshots_user
+    ON resume_snapshots (user_id, created_at);

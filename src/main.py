@@ -16,6 +16,7 @@ from src.menu import (
     view_resume_items,
     view_portfolio_items,
     delete_old_insights,
+    project_list,
     view_chronological_skills,
     view_ranked_projects,
 )
@@ -73,6 +74,8 @@ def prompt_and_store():
         elif menu_choice == 7:
             view_chronological_skills(conn, user_id, username)
         elif menu_choice == 8:
+            project_list(conn, user_id, username)
+        elif menu_choice == 9:
             print("\nThank you for using the system. Goodbye!")
             return None
         elif menu_choice == 1:
