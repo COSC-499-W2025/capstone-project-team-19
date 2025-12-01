@@ -133,7 +133,16 @@ from .code_collaborative import (
 )
 
 # resume snapshots
-from .resumes import insert_resume_snapshot, list_resumes, get_resume_snapshot
+from .resumes import (
+    insert_resume_snapshot,
+    list_resumes,
+    get_resume_snapshot,
+    update_resume_snapshot,      
+    delete_resume_snapshot
+)
+
+from .delete_project import delete_project_everywhere
+
 
 # git individual metrics
 from .git_individual_metrics import (
