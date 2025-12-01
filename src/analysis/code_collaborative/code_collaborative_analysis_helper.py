@@ -698,38 +698,23 @@ Top files: {top_files}
 """.rstrip())
     
 def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) -> dict[str, str]:
-    """
-    Ask once for project descriptions if LLM consent is not accepted.
-    Returns {project_name: description}.
-    """
     if consent == "accepted" or not projects:
         return {}
 
-    print(
-        "\nSince you’ve opted out of LLM analysis, we’ll use your manual descriptions "
-        "to summarize your focus and contributions. Evidence (e.g., commits, code structure, "
-        "languages, and algorithms) will still be extracted automatically to support your summary.\n\n"
-        "Include:\n"
-        " - What the project does\n"
-        " - Languages/frameworks used\n"
-        " - Technical focus (e.g., architecture, data structures, optimization)\n"
-        " - Your main contributions\n\n"
-        "Example: "
-        '"Movie recommendation system built with Python and Flask. '
-        "Focused on implementing collaborative filtering using hash maps for faster lookups "
-        "and optimizing SQL queries with indexing. "
-        "Developed the recommendation module and integrated it into the web interface.\""
-    )
+    print("\n[NON-LLM] CONTRIBUTION SUMMARIES")
+    print("Describe only your personal contributions to the collaborative project.")
+    print("Write 1–3 sentences.\n")
 
     descs = {}
     for project_name, _ in projects:
-        print()
         try:
-            user_input = input(f"> {project_name}:\n> ").strip()
+            user_input = input(f"Your contribution to '{project_name}': ").strip()
         except EOFError:
             user_input = ""
-        descs[project_name] = user_input
+        descs[project_name] = user_input or "[No manual contribution summary provided]"
+
     return descs
+
 
 
 # ------------------------------------------------------------

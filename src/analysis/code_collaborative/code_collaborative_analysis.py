@@ -168,6 +168,9 @@ def analyze_code_project(conn: sqlite3.Connection,
             summary.metrics["collaborative_git"] = {
                 "last_commit_date": history["last"]
             }
+        # store non llm contribution summary    
+        if desc and "llm_contribution_summary" not in summary.contributions:
+            summary.contributions["non_llm_contribution_summary"] = desc.strip()
 
     # 7.5) save file contributions to database for skill extraction filtering
     file_contributions_data = metrics.get("file_contributions", {})
