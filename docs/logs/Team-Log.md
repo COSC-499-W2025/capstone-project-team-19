@@ -363,3 +363,39 @@ Next week, the team will complete the remaining Milestone 1 requirements. The te
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Nov17-Nov23.png) |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Nov17-Nov23.png)     |
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Nov17-Nov23.png)     |
+
+
+## (Week 13) Monday November 24 - Sunday November 30
+
+### Week recap
+This week, the team focused on refactoring and fixing issues, and updated the start menu. Starting from modifying the menu, to give user options such as, retrieve portfolio, retrieve resume, delete insights, etc. Once all skills and metrics produced, project_summaries table started to be filled with necessary information obtained from analysis worked on the previous weeks. Project_summaries table is used in the retrieval of informations such as portfolio and resume, skills list in chronological order, deletion of projects and resume, producing chronological list of project, project ranking. The issues that are fixed and refactored such as file path handling which is now using the project_name from database, file text sections extractions, adding prompt for user's summary in non llm analysis, framework detection path issue, optimization of google drive analysis and word counting fix. Overall, this week concentrated on using all the project_summaries table information to create the portfolio and resume, fulfilling the milestone requirements, and fixing issues that existed from previous weeks. 
+
+### Plan for the next cycle
+
+we'll do optimization needed to improve the performance, and any changes needed for the deliverables of milestone 1. We'll start working on the presentation, updating readme, and demo video. Starting to plan for milestone 2, and any further plans will be discussed after the presentation.
+
+### Burnup chart
+
+![Burnup chart for Nov 24 - Nov 30](screenshots/week13-burnupchart.png)
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshot                                                                    |
+| --------------- | ----------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Nov24-Nov30.png)     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Nov24-Nov30.png)   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Nov24-Nov30.png)     |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Nov24-Nov30.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Nov24-Nov30.png)     |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Nov24-Nov30.png)     |
