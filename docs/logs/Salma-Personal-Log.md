@@ -94,9 +94,9 @@ Week recap:
 
 Next week: I plan to store non-LLM code collaborative metrics (was unsure about the DB refactoring but now resolved). If time allows, I also plan to refactor the repo structure to include subfolders such as e.g., consent/, common/, text_individual_analysis/, etc.
 
-## (Week 11) Monday November 17 - Sunday November 23
+## (Week 12) Monday November 17 - Sunday November 23
 
-![Screenshot of week 11 peer eval](./screenshots/Salma-Nov17-Nov23.PNG)
+![Screenshot of week 12 peer eval](./screenshots/Salma-Nov17-Nov23.PNG)
 
 I postponed storing the non-LLM collaborative code metrics because a few milestone-1 tasks became higher priority. Here’s what I completed over the past weeks:
 
@@ -127,3 +127,22 @@ I postponed storing the non-LLM collaborative code metrics because a few milesto
   - Ammaar’s PR on collaborative code-skill detection, suggesting a clearer table name change from user_file_contributions to user_code_contributions.
 
 Next Week: I plan to re-run main to identify and fix remaining issues/possible edge cases (e.g., the text-individual flow) to finish Milestone 1. I’ll also discuss with the team whether the terminal-output reformatting task can be split into smaller subtasks. If still needed, I’ll also store the non-LLM collaborative code metrics.
+
+## (Week 13) Monday November 24 - Sunday November 30
+
+![Screenshot of week 13 peer eval](./screenshots/Salma-Nov24-Nov30.PNG)
+
+Week Recap
+
+- In Monday’s class, I discussed team contract and coordinated the plan for the week with teammates.
+- PR #269: I implemented storage for code-collaborative metrics and both LLM and non-LLM summaries. I also wrote tests covering metric insertion and updates, safe handling of missing or partial sections, and storing both summary types for the same project.
+- PR #283: I worked on retrieving previously generated portfolio information, including each project's title, importance score, type, mode, duration, activity breakdown, skills, and summary. I loaded primary metadata from the project_summaries table and fetched missing details from the relevant supporting tables. I added tests for scenarios such as no projects, a single project, multiple projects, and missing values. I also integrated teammate feedback by adding a shared test helper and moving helpers outside src/menu/portfolio.py.
+- PR #291: I fixed path-resolution issues for code and text projects. This included addressing incorrect detection of the same .git directory across multiple projects, ensuring text-analysis tasks properly detect supporting files, etc. I implemented a three-path lookup (zip_name/project_name, zip_name/individual/project_name, zip_name/collaborative/project_name). I removed unused functions and updated all related tests.
+
+I also reviewed and provided feedback on several PRs, including:
+
+- Ammaar’s PR on speeding up Google Drive linking, where I asked clarifying questions and identified test issues.
+- Timmi’s PR on project-ranking scoring, where I recommended a threshold-based approach, though a stronger weighted method using Shannon entropy was ultimately implemented.
+- Johanes’ and Adara’s PR, where I helped verify that code metrics and text offline metrics were stored correctly in the database.
+
+Next week: I plan to help with the presentation or demo, and update the README to prevent zip path issues. I will also re-run main to identify and fix remaining issues and edge cases if available.
