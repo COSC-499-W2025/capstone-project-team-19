@@ -106,8 +106,6 @@ For PR reviews, I reviewed Johannes's text activity type detection (#228), which
 
 Next week's focus: I'll continue working on the follow-up items from the code skill detection PRs and ensure the code skills are completely finished for milestone 1.
 
-I'll help you write your Week 13 log. First, let me check the documents you've uploaded to understand what work you did this week.Based on the documents you've provided, here's your Week 13 log (November 24-30, 2025):
-
 ## (Week 13) Monday 24th November - Saturday 30th November
 
 ![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Nov24-Nov30.png)
