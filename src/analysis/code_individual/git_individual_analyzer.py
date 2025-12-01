@@ -18,10 +18,11 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from collections import defaultdict, Counter
 import pandas as pd
-from src.utils.helpers import is_git_repo, bfs_find_repo
+from src.utils.helpers import is_git_repo
 from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
 from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo
+from pathlib import Path
 
 
 def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_path: str) -> Dict:
@@ -35,21 +36,52 @@ def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_pa
     - Activity patterns
     """
 
-    # Determine base path
-    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    zip_data_dir = os.path.join(repo_root, "zip_data")
-    zip_name = os.path.splitext(os.path.basename(zip_path))[0]
-    base_path = os.path.join(zip_data_dir, zip_name)
+    # Figure out where this zip was extracted under zip_data
+    repo_root = Path(__file__).resolve().parents[1]  # .../src/analysis
+    zip_data_dir = repo_root / "zip_data"
 
-    # Look for git repository
-    repo_path = bfs_find_repo(base_path, max_depth=3)
+    zip_name = Path(zip_path).stem  # e.g. real_test4 from ../real_test4.zip
+
+    # Possible base roots where project folders might live:
+    #   zip_data/zip_name/zip_name/...
+    #   zip_data/zip_name/...
+    base_roots = [
+        zip_data_dir / zip_name / zip_name,
+        zip_data_dir / zip_name,
+    ]
+
+    print("\n" + "=" * 80)
+    print(f"[debug] project={project_name}")
+    print(f"[debug] zip_path arg={zip_path}")
+    for base in base_roots:
+        print(f"[debug] base_root candidate={base} (exists? {base.exists()})")
+
+    # Candidate locations for this project's repo
+    candidate_roots: List[Path] = []
+    for base in base_roots:
+        candidate_roots.extend([
+            base / project_name,
+            base / "individual" / project_name,
+            base / "collaborative" / project_name,
+        ])
+
+    repo_path: Optional[str] = None
+    for root in candidate_roots:
+        print(f"[debug] trying candidate root: {root} (exists? {root.exists()})")
+        if root.exists() and is_git_repo(str(root)):
+            repo_path = str(root)
+            print(f"[debug] found git repo at: {repo_path}")
+            break
 
     if not repo_path:
-        print(f"\n{'='*80}")
+        print("\n" + "=" * 80)
         print(f"No local git repository found for project '{project_name}'")
-        print(f"{'='*80}")
+        print("[debug] Searched under:")
+        for root in candidate_roots:
+            print(f"  - {root}")
+        print("=" * 80)
 
-        # Offer GitHub connection option
+        # Offer GitHub connection option / gracefully skip
         return _handle_no_git_repo(conn, user_id, project_name)
 
     print(f"\n{'='*80}")
@@ -64,12 +96,12 @@ def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_pa
     activity_timeline = generate_activity_timeline(timeline_data)
 
     return {
-        'has_git': True,
-        'repo_path': repo_path,
-        'commit_stats': commit_stats,
-        'timeline_data': timeline_data,
-        'weekly_changes': weekly_changes,
-        'activity_timeline': activity_timeline
+        "has_git": True,
+        "repo_path": repo_path,
+        "commit_stats": commit_stats,
+        "timeline_data": timeline_data,
+        "weekly_changes": weekly_changes,
+        "activity_timeline": activity_timeline,
     }
 
 

@@ -15,17 +15,37 @@ def make_subprocess_result(stdout="", stderr="", returncode=0):
     result.returncode = returncode
     return result
 
+import os
+from pathlib import Path
+from src.analysis.code_individual import git_individual_analyzer as gia
 
 def test_analyze_git_individual_project_with_repo(tmp_sqlite_conn, tmp_path, monkeypatch, capsys):
     """
     Test happy path: local git repository found and analyzed successfully.
-    """
-    # Create fake git directory
-    fake_repo = tmp_path / "fake_project" / ".git"
-    fake_repo.mkdir(parents=True)
 
-    # Mock bfs_find_repo to return our fake repo
-    monkeypatch.setattr(gia, 'bfs_find_repo', lambda base, max_depth: str(fake_repo.parent))
+    Matches the current implementation, which looks for a repo under:
+      src/analysis/zip_data/<zip_name>/<zip_name>/<project_name>
+      or src/analysis/zip_data/<zip_name>/<...>
+    """
+
+    # Figure out the real zip_data_dir used by the analyzer
+    repo_root = Path(gia.__file__).resolve().parents[1]  # .../src/analysis
+    zip_data_dir = repo_root / "zip_data"
+
+    zip_name = "test"  # stem of the zip we will pass
+    project_name = "test_project"
+
+    # This is the first candidate root in the function's logic:
+    #   zip_data/zip_name/zip_name/project_name
+    fake_repo_dir = zip_data_dir / zip_name / zip_name / project_name
+    fake_repo_dir.mkdir(parents=True, exist_ok=True)
+
+    # Make is_git_repo return True only for our fake_repo_dir
+    monkeypatch.setattr(
+        gia,
+        "is_git_repo",
+        lambda path: os.path.abspath(path) == os.path.abspath(fake_repo_dir),
+    )
 
     # Mock get_commit_statistics
     mock_commit_stats = {
@@ -38,14 +58,20 @@ def test_analyze_git_individual_project_with_repo(tmp_sqlite_conn, tmp_path, mon
         'unique_authors': 1,
         'recent_commits': [
             {'date': '2024-06-01 10:00:00', 'message': 'Latest commit'}
-        ]
+        ],
     }
     monkeypatch.setattr(gia, 'get_commit_statistics', lambda repo_path: mock_commit_stats)
 
     # Mock get_lines_timeline
     mock_timeline = [
-        {'commit_hash': 'abc1234', 'date': '2024-01-01', 'timestamp': 1704067200,
-         'lines_added': 100, 'lines_deleted': 20, 'net_lines': 80}
+        {
+            'commit_hash': 'abc1234',
+            'date': '2024-01-01',
+            'timestamp': 1704067200,
+            'lines_added': 100,
+            'lines_deleted': 20,
+            'net_lines': 80,
+        }
     ]
     monkeypatch.setattr(gia, 'get_lines_timeline', lambda repo_path: mock_timeline)
 
@@ -55,7 +81,7 @@ def test_analyze_git_individual_project_with_repo(tmp_sqlite_conn, tmp_path, mon
         'additions_per_week': [100],
         'deletions_per_week': [20],
         'net_per_week': [80],
-        'total_weeks': 1
+        'total_weeks': 1,
     }
     monkeypatch.setattr(gia, 'calculate_weekly_changes', lambda timeline: mock_weekly)
 
@@ -67,28 +93,32 @@ def test_analyze_git_individual_project_with_repo(tmp_sqlite_conn, tmp_path, mon
         'busiest_month': {'month': '2024-01', 'commits': 1},
         'total_active_days': 1,
         'total_active_months': 1,
-        'average_commits_per_active_day': 1.0
+        'average_commits_per_active_day': 1.0,
     }
     monkeypatch.setattr(gia, 'generate_activity_timeline', lambda timeline: mock_activity)
 
+    # Provide a fake zip path whose stem is 'test'
+    zip_path = str(tmp_path / "test.zip")
+
     # Run analysis
     result = gia.analyze_git_individual_project(
-        tmp_sqlite_conn, 1, 'test_project', str(tmp_path / 'test.zip')
+        tmp_sqlite_conn, 1, project_name, zip_path
     )
 
     # Verify result structure
     assert result is not None
     assert result['has_git'] is True
-    assert result['repo_path'] == str(fake_repo.parent)
+    assert result['repo_path'] == str(fake_repo_dir)
     assert result['commit_stats'] == mock_commit_stats
     assert result['timeline_data'] == mock_timeline
     assert result['weekly_changes'] == mock_weekly
     assert result['activity_timeline'] == mock_activity
 
-    # Verify output contains project name
+    # Verify output contains project name and the "Analyzing" header
     out = capsys.readouterr().out
-    assert 'test_project' in out
+    assert project_name in out
     assert 'Analyzing Git Repository' in out
+
 
 def test_get_commit_statistics_success(tmp_path, monkeypatch):
     """
