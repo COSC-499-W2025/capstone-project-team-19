@@ -196,6 +196,13 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
         # split: code first, then text
         code_collab = [(n, t) for (n, t) in collaborative if t == "code"]
         text_collab = [(n, t) for (n, t) in collaborative if t == "text"]
+        
+        # capture manual PROJECT summaries for collab code when LLM is disabled
+        manual_project_summaries: dict[str, str] = {}
+        if code_collab and current_ext_consent != "accepted":
+            for name, _ptype in code_collab:
+                manual_project_summaries[name] = prompt_manual_code_project_summary(name)
+
 
         # ask once for user descriptions for CODE collab projects (non-LLM path)
         if code_collab:
@@ -208,7 +215,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
             # no code collab → clear any previous state
             set_manual_descs_store({})
 
-        # 1) run all CODE collab
+                # 1) run all CODE collab
         for project_name, project_type in code_collab:
             print(f"  → {project_name} ({project_type})")
             summary = ProjectSummary(
@@ -216,13 +223,35 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
                 project_type=project_type,
                 project_mode="collaborative"
             )
-            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary)
+
+            # For non-LLM collab code, attach the PROJECT summary collected earlier
+            if current_ext_consent != "accepted":
+                proj_summary = manual_project_summaries.get(project_name)
+                if proj_summary:
+                    summary.summary_text = proj_summary
+
+            get_individual_contributions(
+                conn,
+                user_id,
+                project_name,
+                project_type,
+                current_ext_consent,
+                zip_path,
+                summary,
+            )
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
             if project_type == "text":
-                _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=True)
+                _load_text_activity_type_into_summary(
+                    conn,
+                    user_id,
+                    project_name,
+                    summary,
+                    is_collaborative=True,
+                )
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
+
 
         # print summary right after all CODE collab finished
         if code_collab:

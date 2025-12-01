@@ -23,19 +23,14 @@ def run_code_non_llm_analysis(conn, user_id, project_name, zip_path, summary=Non
     }
     
 def prompt_manual_code_project_summary(project_name: str) -> str:
-    print(f"\n[NON-LLM] Let's capture a short summary for '{project_name}'.")
+    print(f"\n[NON-LLM] PROJECT SUMMARY for '{project_name}'")
     print("Describe what the project does (purpose, main features, tech stack).")
-    print("Use 1–3 sentences. Press ENTER on a blank line to finish.\n")
+    print("Write 1–3 sentences.\n")
 
-    lines = []
-    while True:
-        try:
-            line = input()
-        except EOFError:
-            break
-        if not line.strip():
-            break
-        lines.append(line.strip())
+    try:
+        summary = input("Project summary: ").strip()
+    except EOFError:
+        summary = ""
 
-    summary = " ".join(lines).strip()
     return summary or "[No manual project summary provided]"
+
