@@ -1,8 +1,7 @@
 from __future__ import annotations
-
 from typing import Any, Dict, List, Tuple
 import json
-
+import re
 from src.db import (
     get_text_duration,
     get_code_collaborative_duration,
@@ -76,44 +75,42 @@ def format_languages(summary: Dict[str, Any]) -> str:
 def format_frameworks(summary: Dict[str, Any]) -> str:
     frameworks = summary.get("frameworks") or []
 
-    # If it's already a list of strings, good.
+    # CASE 1 — Already a list
     if isinstance(frameworks, list):
-        names = [str(f) for f in frameworks]
-
-    # If it's a dict like {"React": {...}, "Express": {...}}, use the keys.
-    elif isinstance(frameworks, dict):
-        names = list(frameworks.keys())
-
-    # If it's a set, turn into list.
-    elif isinstance(frameworks, set):
-        names = [str(f) for f in frameworks]
-
-    # If it's a string, try to parse or fall back to comma-split.
-    elif isinstance(frameworks, str):
-        cleaned = frameworks.strip()
-        parsed = None
-
-        # Try JSON first: '["React", "Express"]'
-        try:
-            parsed = json.loads(cleaned)
-        except Exception:
-            parsed = None
-
-        if isinstance(parsed, list):
-            names = [str(f) for f in parsed]
-        else:
-            # Fallback: "React, Express, Next.js"
-            names = [part.strip() for part in cleaned.split(",") if part.strip()]
-
-    else:
-        names = []
-
-    if not names:
+        cleaned = [str(f).strip() for f in frameworks if str(f).strip()]
+        if cleaned:
+            return f"Frameworks: {', '.join(cleaned)}"
         return "Frameworks: N/A"
 
-    # Optional: sort + cap to avoid gigantic lines
-    display = ", ".join(sorted(names)[:8])
-    return f"Frameworks: {display}"
+    # CASE 2 — Already a dict (use keys)
+    if isinstance(frameworks, dict):
+        keys = [str(k).strip() for k in frameworks.keys()]
+        if keys:
+            return f"Frameworks: {', '.join(keys)}"
+        return "Frameworks: N/A"
+
+    # CASE 3 — A Python set/string like:
+    #   "{'AVA', 'Axios', 'Babel'}"
+    #   "{'AVA', 'Axios'}, 'Electron'"
+    if isinstance(frameworks, str):
+        s = frameworks.strip()
+
+        # Remove surrounding braces if present
+        s = re.sub(r'^\{|\}$', '', s).strip()
+
+        # Remove single quotes
+        s = s.replace("'", "")
+
+        # Now split by comma
+        parts = [p.strip() for p in s.split(",") if p.strip()]
+
+        if parts:
+            return f"Frameworks: {', '.join(parts)}"
+
+        return "Frameworks: N/A"
+
+    # Unknown type
+    return "Frameworks: N/A"
 
 
 def _activity_from_json_text(summary: Dict[str, Any]) -> List[Tuple[str, float]]:
