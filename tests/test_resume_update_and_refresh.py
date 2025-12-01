@@ -9,7 +9,8 @@ from src.db.resumes import (
     update_resume_snapshot,
     delete_resume_snapshot,
 )
-from src.menu import resume as resume_mod
+from src.menu.resume import resume as resume_mod
+
 
 
 def _make_conn():

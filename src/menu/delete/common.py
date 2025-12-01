@@ -1,5 +1,5 @@
 from src.menu.portfolio import view_portfolio_items
-from src.menu.resume import create_resume_from_current_projects
+from src.menu.resume.resume import create_resume_from_current_projects
 
 
 def post_delete_next_steps(conn, user_id: int, username: str) -> None:

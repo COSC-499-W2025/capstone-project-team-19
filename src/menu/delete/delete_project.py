@@ -4,7 +4,7 @@ from src.db import (
     get_project_summaries_list,
     delete_project_everywhere,
 )
-from src.menu.resume import refresh_saved_resumes_after_project_delete
+from src.menu.resume.resume import refresh_saved_resumes_after_project_delete
 from src.menu.delete.common import post_delete_next_steps
 
 
