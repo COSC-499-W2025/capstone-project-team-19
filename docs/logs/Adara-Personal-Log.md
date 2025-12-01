@@ -103,3 +103,22 @@ I also rewrote the test suites (test_alt_analyze.py, test_csv_analyze.py, test_t
 For PR 227, I built the collaborative text-contribution flow. Previously, the system only handled individual text files and had no way of determining which parts of a group project a user actually worked on. I added an interactive contribution-selection pipeline that asks the user which sections of the main file they wrote, which supporting text files they contributed to, and which CSVs they worked with, then feeds only those selected portions into the skill detectors. I also added another llm prompt function to evaluate the impact of those contributions to the overall main file.
 
 Next week: As I disabled calling store_text_offline_metrics() in PR 222, I will enable the call and update the function to pass the updated metrics and skills (it is currently breaking the code as the parameters are not updated based on the new flow yet, which is what I have to refactor).
+
+
+## (Week 13) Monday 24th - Sunday 30th November
+
+![Screenshot of tasks done from this sprint](./screenshots/Adara-Nov24-30.png)
+
+Week recap:
+
+This week I refactored and fully restored our offline text-metrics storage pipeline (PR 272). I updated store_text_offline_metrics() and get_text_non_llm_metrics() to match the new text-analysis architecture, removed legacy LLM dependencies, and added support for storing csv_metadata alongside linguistic metrics. I also integrated the metrics flow directly into extract_text_skills(), ensuring that every text project—LLM or non-LLM—saves complete non-LLM metrics reliably. Finally, I fixed the test suite to support the new schema and updated fieldnames for the non_llm_text table.
+
+I also completed the full “delete old insights” feature set (PR 284). I implemented project-level and resume-level deletion options, letting users safely remove outdated data without affecting shared resources. I added a hard-delete routine that cascades through all linked tables (files, classifications, summaries, metrics, GitHub/Drive ingestion) and introduced helpers for updating and refreshing resume snapshots. I added comprehensive tests for deleting a project, refreshing saved resumes, and validating the interactive menu behavior.
+
+I then fixed the missing non-LLM summary collection for code projects (PR 285). Previously, only LLM-enabled analyses produced code summaries, meaning that projects without LLM consent had no stored summaries at all. I reworked the flow so that both individual and collaborative code projects now prompt users for a manual project summary, and all manual contribution summaries are saved under summary_json in the project_summaries table. This closes the gap in our summary coverage and ensures consistent downstream behavior.
+
+Lastly, I redesigned the entire text-extraction pipeline to correctly detect real sections and paragraphs across all document formats (PR 287). The old logic collapsed or over-fragmented content depending on file type, causing PDFs, TXTs, and Markdown files to generate inaccurate section lists. I introduced a unified paragraph-normalization system that detects true headers, merges wrapped lines, respects blank-line boundaries, and properly groups Markdown content under its correct headings. This results in clean, meaningful section options for users in collaborative text analysis.
+
+Along with these, I reviewed 5 PRs of my teammates.
+
+Next week: I will focus on finalizing our milestone 1 presentation, and working with the team to prepare for the demo.
