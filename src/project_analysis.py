@@ -13,7 +13,7 @@ from src.integrations.google_drive.google_drive_auth.text_project_setup import s
 
 # CODE ANALYSIS imports
 from src.analysis.code_individual.code_llm_analyze import run_code_llm_analysis
-from src.analysis.code_individual.code_non_llm_analysis import run_code_non_llm_analysis
+from src.analysis.code_individual.code_non_llm_analysis import run_code_non_llm_analysis, prompt_manual_code_project_summary
 from src.utils.helpers import _fetch_files
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
 from src.integrations.google_drive.process_project_files import process_project_files
@@ -34,6 +34,7 @@ from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
 from src.db import store_code_activity_metrics
 from src.db import get_metrics_id, insert_code_collaborative_summary
+
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -195,6 +196,13 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
         # split: code first, then text
         code_collab = [(n, t) for (n, t) in collaborative if t == "code"]
         text_collab = [(n, t) for (n, t) in collaborative if t == "text"]
+        
+        # capture manual PROJECT summaries for collab code when LLM is disabled
+        manual_project_summaries: dict[str, str] = {}
+        if code_collab and current_ext_consent != "accepted":
+            for name, _ptype in code_collab:
+                manual_project_summaries[name] = prompt_manual_code_project_summary(name)
+
 
         # ask once for user descriptions for CODE collab projects (non-LLM path)
         if code_collab:
@@ -207,7 +215,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
             # no code collab → clear any previous state
             set_manual_descs_store({})
 
-        # 1) run all CODE collab
+                # 1) run all CODE collab
         for project_name, project_type in code_collab:
             print(f"  → {project_name} ({project_type})")
             summary = ProjectSummary(
@@ -215,13 +223,35 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
                 project_type=project_type,
                 project_mode="collaborative"
             )
-            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary)
+
+            # For non-LLM collab code, attach the PROJECT summary collected earlier
+            if current_ext_consent != "accepted":
+                proj_summary = manual_project_summaries.get(project_name)
+                if proj_summary:
+                    summary.summary_text = proj_summary
+
+            get_individual_contributions(
+                conn,
+                user_id,
+                project_name,
+                project_type,
+                current_ext_consent,
+                zip_path,
+                summary,
+            )
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
             if project_type == "text":
-                _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=True)
+                _load_text_activity_type_into_summary(
+                    conn,
+                    user_id,
+                    project_name,
+                    summary,
+                    is_collaborative=True,
+                )
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
+
 
         # print summary right after all CODE collab finished
         if code_collab:
@@ -467,8 +497,12 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
                             content=combined_text,
                         )
 
-        else:
-            print(f"[COLLABORATIVE-CODE] No code files found for '{project_name}'.")
+    else:
+        print(f"[COLLABORATIVE-CODE] Skipping LLM summary (no external consent).")
+
+        # capture manual project summary for collab code
+        if summary is not None and not getattr(summary, "summary_text", None):
+            summary.summary_text = prompt_manual_code_project_summary(project_name)
 
 
 def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary):
@@ -522,6 +556,10 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
             summary.contributions["llm_contribution_summary"] = llm_results.get("contribution_summary")
     else:
         print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")
+        
+        # capture manual project summary
+        if summary is not None and not getattr(summary, "summary_text", None):
+            summary.summary_text = prompt_manual_code_project_summary(project_name)
     
         
 def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text, summary=None):

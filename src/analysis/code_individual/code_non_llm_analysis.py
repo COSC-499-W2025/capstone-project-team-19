@@ -40,3 +40,16 @@ def run_code_non_llm_analysis(conn, user_id, project_name, zip_path, summary=Non
         'complexity_data': complexity_data,
         'git_data': git_data
     }
+    
+def prompt_manual_code_project_summary(project_name: str) -> str:
+    print(f"\n[NON-LLM] PROJECT SUMMARY for '{project_name}'")
+    print("Describe what the project does (purpose, main features, tech stack).")
+    print("Write 1–3 sentences.\n")
+
+    try:
+        summary = input("Project summary: ").strip()
+    except EOFError:
+        summary = ""
+
+    return summary or "[No manual project summary provided]"
+
