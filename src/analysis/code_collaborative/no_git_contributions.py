@@ -146,6 +146,8 @@ def store_contributions_without_git(
         for path in inferred:
             print(f"  - {path}")
 
+    # Note: we store nominal counts (lines_changed=1) because we don't have git stats.
+    # These values are only used for ordering/filtering in get_user_contributed_files and aren't used in the analysis in any way.
     contributions_dict = {
         path: {"lines_changed": 1, "commits_count": 0}
         for path in inferred
