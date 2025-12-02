@@ -56,7 +56,12 @@ def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
     print(f"[SKILLS] Extracting skills for {project_name} ({classification}, {project_type})")
 
     if project_type == "code":
+        import time
+        start = time.time()
         extract_code_skills(conn, user_id, project_name, classification, files)
+
+        end = time.time()
+        print(f"extract_code_skills took {end - start:.4f} seconds")
     else:
         print(f"[SKILLS] Project type is not valid, skipping skill extraction for '{project_name}'")
 
