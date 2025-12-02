@@ -64,9 +64,6 @@ def detect_classes(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect class definitions such as `class Foo:`."""
     # Must be at start of line (possibly after whitespace) to avoid strings/comments
     for i, line in enumerate(lines, 1):
-        # Skip empty or very short lines
-        if len(line.strip()) < 5:
-            continue
         # Fast string check first
         if "class " not in line:
             continue
@@ -82,9 +79,6 @@ def detect_inheritance(lines: List[str], file_name: str) -> Tuple[bool, List[Dic
     # Must have something in parentheses or 'extends' keyword
     # Must be at start of line to avoid strings
     for i, line in enumerate(lines, 1):
-        # Skip empty or very short lines
-        if len(line.strip()) < 8:
-            continue
         if INHERITANCE_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
