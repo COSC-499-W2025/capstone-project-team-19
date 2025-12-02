@@ -150,13 +150,16 @@ def run_all_code_detectors(files) -> Dict[str, Dict]:
     """
 
     results = {name: {"hits": 0, "evidence": []} for name in CODE_DETECTOR_FUNCTIONS}
-
+    detectors = CODE_DETECTOR_FUNCTIONS.items()
+    
     for file in files:
         file_text = file.get("content", "")
         file_name = file.get("file_name", "")
 
-        for detector_name, detector_fn in CODE_DETECTOR_FUNCTIONS.items():
-            hit, evidence_list = detector_fn(file_text, file_name)
+        lines = file_text.split("\n")
+
+        for detector_name, detector_fn in detectors:
+            hit, evidence_list = detector_fn(lines, file_name)
 
             if hit:
                 results[detector_name]["hits"] += 1
