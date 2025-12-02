@@ -8,86 +8,36 @@ Each detector should return:
 import re
 from typing import Tuple, List, Dict
 
-# Compiling patterns with regex (one per detector)
-
-# hash maps
+# Compiling patterns with regex (one per detector for all lines instead of one per detector per line)
 PY_DICT_PATTERN = re.compile(r'^\s*\w+\s*=\s*(dict\s*\(|\{\s*["\']?\w+["\']?\s*:)', re.IGNORECASE)
 JAVA_MAP_PATTERN = re.compile(r'\b(HashMap|Map<\w+,\s*\w+>)', re.IGNORECASE)
 JS_MAP_PATTERN = re.compile(r'\bnew\s+Map\s*\(', re.IGNORECASE)
 JS_OBJECT_LITERAL = re.compile(r'^\s*\w+\s*=\s*\{\s*\w+\s*:.*\}$')
 FALSE_MAP_IDENTIFIER = re.compile(r'\w*map\w*', re.IGNORECASE)
-
-# queues and stacks
 QUEUE_STACK_PATTERN = re.compile(r'(Queue|Stack|Deque|\.push\(|\.pop\(|\.enqueue|\.dequeue)')
-
-# recursion
 RECURSION_PATTERN = re.compile(r'(def|function|func)\s+(\w+)\s*\(')
-
-# sort and search
-SORT_SEARCH_PATTERN = re.compile(r'(\.sort\(|\bsorted\(|Arrays\.sort|Collections\.sort|binary.?search|linear.?search)')
-
-# large function pattern
+SORT_SEARCH_PATTERN = re.compile(r'(\.sort\(|\bsorted\(|Arrays\.sort|Collections\.sort|binary.?search|linear.?search)', re.IGNORECASE)
 LARGE_FUNCTION_PATTERN = re.compile(r'^\s*(def|function|func|public|private|protected)\s+\w+\s*\(')
-
-# comments and docstrings pattern
 COMMENT_DOCSTRING_PATTERN = re.compile(r'(^\s*#|^\s*//|/\*|\"\"\"|\'\'\'|<!--)')
-
-# modular pattern
 MODULAR_PATTERN = re.compile(r'(^import\s+|^from\s+.*\s+import|^require\(|^#include)')
-
-# test pattern
-TEST_PATTERN = re.compile(r'(test_|_test\.|spec\.|\.test\.|__tests__|/tests?/)')
-
-# ci workflow pattern
+TEST_PATTERN = re.compile(r'(test_|_test\.|spec\.|\.test\.|__tests__|/tests?/)', re.IGNORECASE)
 CI_WORKFLOW_PATTERN = re.compile(r'(\.github/workflows/|\.gitlab-ci\.|Jenkinsfile|\.circleci/|\.travis\.yml)')
-
-# assertion pattern
-ASSERTION_PATTERN = re.compile(r'(\bassert\b|expect\(|should\.|chai\.)')
-
-# mocking or fixture pattern
+ASSERTION_PATTERN = re.compile(r'(\bassert\b|expect\(|should\.|chai\.)', re.IGNORECASE)
 MOCKING_FIXTURE_PATTERN = re.compile(r'(mock|Mock|@patch|@fixture|stub|@pytest\.fixture)')
-
-# error handling pattern
-ERROR_HANDLING_PATTERN = re.compile(r'(^\s*try:|^\s*except\b|catch\s*\(|throw\s+new|raises\()')
-
-# input validator pattern
-INPUT_VALIDATOR_PATTERN = re.compile(r'(\bvalidate\(|validator|sanitize\(|schema\.validate|\.is_valid\()')
-
-# env variable pattern
+ERROR_HANDLING_PATTERN = re.compile(r'(^\s*try:|^\s*except\b|catch\s*\(|throw\s+new|raises\()', re.IGNORECASE)
+INPUT_VALIDATOR_PATTERN = re.compile(r'(\bvalidate\(|validator|sanitize\(|schema\.validate|\.is_valid\()', re.IGNORECASE)
 ENV_USAGE_PATTERN = re.compile(r'(process\.env|os\.environ|\bgetenv\(|import dotenv|load_dotenv)')
-
-# crypto usage pattern
-CRYPTO_PATTERN = re.compile(r'(import hashlib|import bcrypt|crypto\.|encrypt\(|decrypt\(|jwt\.|hashlib\.|bcrypt\.)')
-
-# MVC pattern
-MVC_PATTERN = re.compile(r'/(models|views|controllers)/')
-
-# api routes pattern
+CRYPTO_PATTERN = re.compile(r'(import hashlib|import bcrypt|crypto\.|encrypt\(|decrypt\(|jwt\.|hashlib\.|bcrypt\.)', re.IGNORECASE)
+MVC_PATTERN = re.compile(r'/(models|views|controllers)/', re.IGNORECASE)
 API_ROUTES_PATTERN = re.compile(r'(^\s*@app\.route|^\s*@router\.|^\s*@(Get|Post|Put|Delete)Mapping|app\.(get|post|put|delete)\()')
-
-# components pattern
 COMPONENTS_PATTERN = re.compile(r'(React\.Component|class \w+ extends Component|Vue\.component|^\s*@Component|createComponent)')
-
-# serialization pattern
 SERIALIZATION_PATTERN = re.compile(r'(JSON\.stringify|json\.dumps|\bserialize\(|\.toJSON\(|JsonSerializer|pickle\.dump)')
-
-# database query pattern
 DB_QUERY_PATTERN = re.compile(r'(\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b|cursor\.execute|\.query\(|\.findOne|\.findMany|\.find\(|\.save\()')
-
-# caching pattern
 CACHING_PATTERN = re.compile(r'(^\s*@cached|^\s*@lru_cache|import redis|Redis\(|memcached|\.cache\(|cache\.get|cache\.set)')
-
-# sets pattern
 SETS_PATTERN = re.compile(r'(HashSet|set\(|Set<|\bset\s*=)')
-
-#classes pattern 
 CLASSES_PATTERN = re.compile(r'^\s*class\s+\w+')
-
-# inheritance pattern
 INHERITANCE_PATTERN = re.compile(r'^\s*(class\s+\w+\s*\([^)]+\)|class\s+\w+\s+extends\s+\w+|class\s+\w+\s*:\s*(public|private|protected))')
-
-# polymorphism pattern
-POLYMORPHISM_PATTERN = re.compile(r'(@override|@Override|virtual\s+\w+|abstract\s+class|abstract\s+def)')
+POLYMORPHISM_PATTERN = re.compile(r'(@override|@Override|virtual\s+\w+|abstract\s+class|abstract\s+def)', re.IGNORECASE)
 
 # HELPER FUNCTIONS
 
@@ -142,7 +92,7 @@ def detect_polymorphism(file_text: str, file_name: str) -> Tuple[bool, List[Dict
     evidence = []
 
     for i, line in enumerate(file_text.split('\n'), 1):
-        if POLYMORPHISM_PATTERN.search(line, re.IGNORECASE):
+        if POLYMORPHISM_PATTERN.search(line):
             evidence.append({"file": file_name, "line": i})
 
     return (len(evidence) > 0, evidence)
@@ -263,7 +213,7 @@ def detect_sorting_or_search(file_text: str, file_name: str) -> Tuple[bool, List
         stripped = line.strip()
         if stripped.startswith('#') or stripped.startswith('//'):
             continue
-        if SORT_SEARCH_PATTERN.search(line, re.IGNORECASE):
+        if SORT_SEARCH_PATTERN.search(line):
             evidence.append({"file": file_name, "line": i})
 
     return (len(evidence) > 0, evidence)
@@ -332,7 +282,7 @@ def detect_test_files(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]
     """Detect pytest/unittest test cases or test file naming."""
     # Check filename patterns: test_, _test., spec., .test., __tests__, /tests/
 
-    if TEST_PATTERN.search(file_name, re.IGNORECASE):
+    if TEST_PATTERN.search(file_name):
         return True, [{"file": file_name, "line": 0}]
 
     return False, []
@@ -358,7 +308,7 @@ def detect_assertions(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]
     for i, line in enumerate(file_text.split('\n'), 1):
         if _is_comment_line(line):
             continue
-        if ASSERTION_PATTERN.search(line, re.IGNORECASE):
+        if ASSERTION_PATTERN.search(line):
             evidence.append({"file": file_name, "line": i})
 
     return (len(evidence) > 0, evidence)
@@ -387,7 +337,7 @@ def detect_error_handling(file_text: str, file_name: str) -> Tuple[bool, List[Di
     for i, line in enumerate(file_text.split('\n'), 1):
         if _is_comment_line(line):
             continue
-        if ERROR_HANDLING_PATTERN.search(line, re.IGNORECASE):
+        if ERROR_HANDLING_PATTERN.search(line):
             evidence.append({"file": file_name, "line": i})
 
     return (len(evidence) > 0, evidence)
@@ -401,7 +351,7 @@ def detect_input_validation(file_text: str, file_name: str) -> Tuple[bool, List[
     for i, line in enumerate(file_text.split('\n'), 1):
         if _is_comment_line(line):
             continue
-        if INPUT_VALIDATOR_PATTERN.search(line, re.IGNORECASE):
+        if INPUT_VALIDATOR_PATTERN.search(line):
             evidence.append({"file": file_name, "line": i})
 
     return (len(evidence) > 0, evidence)
@@ -429,7 +379,7 @@ def detect_crypto_usage(file_text: str, file_name: str) -> Tuple[bool, List[Dict
     for i, line in enumerate(file_text.split('\n'), 1):
         if _is_comment_line(line):
             continue
-        if CRYPTO_PATTERN.search(line, re.IGNORECASE):
+        if CRYPTO_PATTERN.search(line):
             evidence.append({"file": file_name, "line": i})
 
     return (len(evidence) > 0, evidence)
@@ -441,7 +391,7 @@ def detect_mvc_folders(file_text: str, file_name: str) -> Tuple[bool, List[Dict]
     """Detect MVC folder structure."""
     # Check filepath for models, views, controllers folders
 
-    if MVC_PATTERN.search(file_name, re.IGNORECASE):
+    if MVC_PATTERN.search(file_name):
         return True, [{"file": file_name, "line": 0}]
 
     return False, []
@@ -517,7 +467,7 @@ def detect_caching(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
     for i, line in enumerate(file_text.split('\n'), 1):
         if _is_comment_line(line):
             continue
-        if CACHING_PATTERN.search(line, re.IGNORECASE):
+        if CACHING_PATTERN.search(line):
             evidence.append({"file": file_name, "line": i})
 
     return (len(evidence) > 0, evidence)
