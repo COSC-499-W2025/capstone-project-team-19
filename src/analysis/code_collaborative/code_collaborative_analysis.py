@@ -23,6 +23,9 @@ from src.integrations.github.github_analysis import fetch_github_metrics
 from src.integrations.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics, print_github_metrics_summary, store_github_detailed_metrics
 from src.analysis.code_collaborative.github_collaboration.build_collab_metrics import run_collaboration_analysis
 from src.analysis.code_collaborative.github_collaboration.print_collaboration_summary import print_collaboration_summary
+from src.analysis.code_collaborative.no_git_contributions import (
+    store_contributions_without_git,
+)
 
 from .code_collaborative_analysis_helper import (
     DEBUG,
@@ -107,6 +110,7 @@ def analyze_code_project(conn: sqlite3.Connection,
             summary=summary,
             desc=desc,
         )
+        store_contributions_without_git(conn, user_id, project_name, desc, debug=DEBUG)
         print("=" * 80)
         return None
 
@@ -362,7 +366,6 @@ def _apply_basic_summary_without_git(
     summary.languages = detect_languages(conn, project_name) or []
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path) or set()
     summary.frameworks = sorted(frameworks) if frameworks else []
-
 
 def _build_db_payload_from_metrics(metrics: Mapping[str, Any], repo_path: str) -> dict[str, Any]:
     """
