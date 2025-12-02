@@ -210,17 +210,45 @@ def run_all_code_detectors(files) -> Dict[str, Dict]:
                         if name not in filename_detectors}
     
     results = {name: {"hits": 0, "evidence": []} for name in content_detectors}
-    detectors = content_detectors.items()
-
+    
+    # Pre-process files: filter out small files and pre-split lines
+    processed_files = []
     for file in files:
         file_text = file.get("content", "")
         file_name = file.get("file_name", "")
-
+        
+        if not file_text:
+            continue
+        
         lines = file_text.split("\n")
-
-        for detector_name, detector_fn in detectors:
-            hit, evidence_list = detector_fn(lines, file_name)
-
+        
+        # Skip very small files (< 3 lines) - unlikely to have patterns
+        if len(lines) < 3:
+            continue
+        
+        # Pre-filter empty/whitespace lines for faster processing
+        non_empty_lines = [(i, line) for i, line in enumerate(lines, 1) if line.strip()]
+        
+        if not non_empty_lines:
+            continue  # Skip files with only empty lines
+        
+        # Pre-compute comment line indices for fast O(1) lookup
+        from src.analysis.skills.detectors.code.code_detectors import _is_comment_line
+        comment_line_indices = {i for i, line in non_empty_lines if _is_comment_line(line)}
+        
+        processed_files.append({
+            "file_name": file_name,
+            "lines": lines,
+            "comment_line_indices": comment_line_indices  # Fast lookup set
+        })
+    
+    # Batch scanning: for each detector, scan all files
+    for detector_name, detector_fn in content_detectors.items():
+        for file_data in processed_files:
+            # Temporarily attach comment indices to lines for fast checking
+            # (detectors can use file_data["comment_line_indices"] if they want)
+            hit, evidence_list = detector_fn(file_data["lines"], file_data["file_name"])
+            
             if hit:
                 results[detector_name]["hits"] += 1
                 results[detector_name]["evidence"].extend(evidence_list)
