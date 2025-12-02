@@ -124,6 +124,8 @@ def test_no_repo_found_prints_skip(tmp_sqlite_conn, temp_zip_layout, monkeypatch
     If neither allowed path exists, we should print a message explaining
     that no .git was found and that local Git history is being skipped.
     """
+    init_schema(tmp_sqlite_conn)
+
     # Patch zip_paths to a zip_name that doesn't exist under zip_data_dir
     def fake_zip_paths(_zip_path):
         return (
@@ -342,4 +344,3 @@ def test_portfolio_summary_keywords(tmp_sqlite_conn, temp_zip_layout, monkeypatc
     assert "grocery" in out.lower()
     # and the second description
     assert "contributions" in out.lower() or "git" in out.lower()
-
