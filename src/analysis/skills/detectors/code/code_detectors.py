@@ -64,6 +64,12 @@ def detect_classes(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect class definitions such as `class Foo:`."""
     # Must be at start of line (possibly after whitespace) to avoid strings/comments
     for i, line in enumerate(lines, 1):
+        # Skip empty or very short lines
+        if len(line.strip()) < 5:
+            continue
+        # Fast string check first
+        if "class " not in line:
+            continue
         if CLASSES_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -76,6 +82,9 @@ def detect_inheritance(lines: List[str], file_name: str) -> Tuple[bool, List[Dic
     # Must have something in parentheses or 'extends' keyword
     # Must be at start of line to avoid strings
     for i, line in enumerate(lines, 1):
+        # Skip empty or very short lines
+        if len(line.strip()) < 8:
+            continue
         if INHERITANCE_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -86,6 +95,10 @@ def detect_polymorphism(lines: List[str], file_name: str) -> Tuple[bool, List[Di
     """Detect overridden methods or same method names across classes."""
     # Matches: @override, @Override, virtual void, abstract class
     for i, line in enumerate(lines, 1):
+        # Fast string checks first
+        line_lower = line.lower()
+        if "@override" not in line_lower and "abstract" not in line_lower and "virtual" not in line_lower:
+            continue
         if POLYMORPHISM_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -128,6 +141,15 @@ def detect_hash_maps(lines: List[str], file_name: str):
         if FALSE_MAP_IDENTIFIER.search(stripped) and not (JAVA_MAP_PATTERN.search(stripped) or JS_MAP_PATTERN.search(stripped)):
             continue
 
+        # Fast string checks before regex
+        stripped_lower = stripped.lower()
+        has_dict = "dict(" in stripped_lower or ("{" in stripped and ":" in stripped)
+        has_java_map = "hashmap" in stripped_lower or "map<" in stripped
+        has_js_map = "new map(" in stripped_lower
+        
+        if not (has_dict or has_java_map or has_js_map):
+            continue
+
         # Now check actual hashmap patterns
         if (
             PY_DICT_PATTERN.search(stripped)
@@ -143,6 +165,10 @@ def detect_sets(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect set literals, set() calls, or other set usage."""
     # Matches: HashSet, set(), Set<String>, set =
     for i, line in enumerate(lines, 1):
+        # Fast string checks first
+        line_lower = line.lower()
+        if "set(" not in line_lower and "hashset" not in line_lower and "set<" not in line_lower and " set " not in line_lower:
+            continue
         if SETS_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -155,6 +181,10 @@ def detect_queues_or_stacks(lines: List[str], file_name: str) -> Tuple[bool, Lis
     """
     # Matches: Queue, Stack, Deque, .push(), .pop(), .enqueue, .dequeue
     for i, line in enumerate(lines, 1):
+        # Fast string checks first
+        line_lower = line.lower()
+        if "queue" not in line_lower and "stack" not in line_lower and "deque" not in line_lower and ".push(" not in line_lower and ".pop(" not in line_lower:
+            continue
         if QUEUE_STACK_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -194,6 +224,10 @@ def detect_sorting_or_search(lines: List[str], file_name: str) -> Tuple[bool, Li
         stripped = line.strip()
         if stripped.startswith('#') or stripped.startswith('//'):
             continue
+        # Fast string checks first
+        line_lower = line.lower()
+        if ".sort(" not in line_lower and "sorted(" not in line_lower and "sort" not in line_lower and "search" not in line_lower:
+            continue
         if SORT_SEARCH_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -228,6 +262,9 @@ def detect_comments_docstrings(lines: List[str], file_name: str) -> Tuple[bool, 
     """Detect comments or docstrings for clarity/documentation."""
     # Matches: #, //, /* */, """, ''', <!--
     for i, line in enumerate(lines, 1):
+        # Fast string checks first
+        if "#" not in line and "//" not in line and "/*" not in line and '"""' not in line and "'''" not in line and "<!--" not in line:
+            continue
         if COMMENT_DOCSTRING_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -246,6 +283,10 @@ def detect_modular_design(lines: List[str], file_name: str) -> Tuple[bool, List[
     """Detect evidence of modular design (imports, multiple modules)."""
     # Matches: import, from X import, require(), #include
     for i, line in enumerate(lines, 1):
+        # Fast string checks first
+        line_lower = line.lower()
+        if "import " not in line_lower and "from " not in line_lower and "require(" not in line_lower and "#include" not in line:
+            continue
         if MODULAR_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -280,6 +321,10 @@ def detect_assertions(lines: List[str], file_name: str) -> Tuple[bool, List[Dict
     for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
+        # Fast string checks first
+        line_lower = line.lower()
+        if "assert" not in line_lower and "expect(" not in line_lower and "should." not in line_lower and "chai." not in line_lower:
+            continue
         if ASSERTION_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -290,6 +335,10 @@ def detect_mocking_or_fixtures(lines: List[str], file_name: str) -> Tuple[bool, 
     """Detect mocking or fixture usage in tests."""
     # Matches: mock, Mock, @patch, fixture, stub
     for i, line in enumerate(lines, 1):
+        # Fast string checks first
+        line_lower = line.lower()
+        if "mock" not in line_lower and "@patch" not in line and "@fixture" not in line and "fixture" not in line_lower and "stub" not in line_lower:
+            continue
         if MOCKING_FIXTURE_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -305,6 +354,10 @@ def detect_error_handling(lines: List[str], file_name: str) -> Tuple[bool, List[
     for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
+        # Fast string checks first
+        line_lower = line.lower()
+        if "try:" not in line_lower and "except" not in line_lower and "catch" not in line_lower and "throw" not in line_lower and "raises(" not in line_lower:
+            continue
         if ERROR_HANDLING_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -316,6 +369,10 @@ def detect_input_validation(lines: List[str], file_name: str) -> Tuple[bool, Lis
     # Matches: validate, validator, sanitize, schema.validate
     for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
+            continue
+        # Fast string checks first
+        line_lower = line.lower()
+        if "validate" not in line_lower and "validator" not in line_lower and "sanitize" not in line_lower:
             continue
         if INPUT_VALIDATOR_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
@@ -329,6 +386,9 @@ def detect_env_variable_usage(lines: List[str], file_name: str) -> Tuple[bool, L
     for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
+        # Fast string checks first
+        if "process.env" not in line and "os.environ" not in line and "getenv" not in line and "dotenv" not in line.lower() and "load_dotenv" not in line:
+            continue
         if ENV_USAGE_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -340,6 +400,10 @@ def detect_crypto_usage(lines: List[str], file_name: str) -> Tuple[bool, List[Di
     # Matches: hashlib, bcrypt, crypto imports/usage, encrypt/decrypt functions
     for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
+            continue
+        # Fast string checks first
+        line_lower = line.lower()
+        if "hashlib" not in line_lower and "bcrypt" not in line_lower and "crypto" not in line_lower and "encrypt" not in line_lower and "decrypt" not in line_lower and "jwt" not in line_lower:
             continue
         if CRYPTO_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
@@ -366,6 +430,9 @@ def detect_api_routes(lines: List[str], file_name: str) -> Tuple[bool, List[Dict
     for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
+        # Fast string checks first
+        if "@app.route" not in line and "@router" not in line and "app.get(" not in line and "app.post(" not in line and "@GetMapping" not in line and "@PostMapping" not in line:
+            continue
         if API_ROUTES_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -379,6 +446,9 @@ def detect_components(lines: List[str], file_name: str) -> Tuple[bool, List[Dict
     # Matches: React.Component, extends Component, Vue.component, @Component
     for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
+            continue
+        # Fast string checks first
+        if "React.Component" not in line and "extends Component" not in line and "Vue.component" not in line and "@Component" not in line and "createComponent" not in line:
             continue
         if COMPONENTS_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
@@ -394,6 +464,10 @@ def detect_serialization(lines: List[str], file_name: str) -> Tuple[bool, List[D
     for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
+        # Fast string checks first
+        line_lower = line.lower()
+        if "json.stringify" not in line_lower and "json.dumps" not in line_lower and "serialize" not in line_lower and "tojson" not in line_lower and "jsonserializer" not in line_lower and "pickle.dump" not in line_lower:
+            continue
         if SERIALIZATION_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -407,6 +481,10 @@ def detect_database_queries(lines: List[str], file_name: str) -> Tuple[bool, Lis
     for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
+        # Fast string checks first
+        line_upper = line.upper()
+        if "SELECT" not in line_upper and "INSERT" not in line_upper and "UPDATE" not in line_upper and "DELETE" not in line_upper and "cursor.execute" not in line and ".query(" not in line and ".findOne" not in line and ".findMany" not in line and ".find(" not in line and ".save(" not in line:
+            continue
         if DB_QUERY_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
 
@@ -418,6 +496,10 @@ def detect_caching(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     # Matches: @cached, @lru_cache, Redis, memcached, .cache
     for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
+            continue
+        # Fast string checks first
+        line_lower = line.lower()
+        if "@cached" not in line and "@lru_cache" not in line and "redis" not in line_lower and "memcached" not in line_lower and ".cache(" not in line and "cache.get" not in line and "cache.set" not in line:
             continue
         if CACHING_PATTERN.search(line):
             return (True, [{"file": file_name, "line": i}])
