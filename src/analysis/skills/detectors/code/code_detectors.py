@@ -8,6 +8,36 @@ Each detector should return:
 import re
 from typing import Tuple, List, Dict
 
+# Compiling patterns with regex (one per detector for all lines instead of one per detector per line)
+PY_DICT_PATTERN = re.compile(r'^\s*\w+\s*=\s*(dict\s*\(|\{\s*["\']?\w+["\']?\s*:)', re.IGNORECASE)
+JAVA_MAP_PATTERN = re.compile(r'\b(HashMap|Map<\w+,\s*\w+>)', re.IGNORECASE)
+JS_MAP_PATTERN = re.compile(r'\bnew\s+Map\s*\(', re.IGNORECASE)
+JS_OBJECT_LITERAL = re.compile(r'^\s*\w+\s*=\s*\{\s*\w+\s*:.*\}$')
+FALSE_MAP_IDENTIFIER = re.compile(r'\w*map\w*', re.IGNORECASE)
+QUEUE_STACK_PATTERN = re.compile(r'(Queue|Stack|Deque|\.push\(|\.pop\(|\.enqueue|\.dequeue)')
+RECURSION_PATTERN = re.compile(r'(def|function|func)\s+(\w+)\s*\(')
+SORT_SEARCH_PATTERN = re.compile(r'(\.sort\(|\bsorted\(|Arrays\.sort|Collections\.sort|binary.?search|linear.?search)', re.IGNORECASE)
+LARGE_FUNCTION_PATTERN = re.compile(r'^\s*(def|function|func|public|private|protected)\s+\w+\s*\(')
+COMMENT_DOCSTRING_PATTERN = re.compile(r'(^\s*#|^\s*//|/\*|\"\"\"|\'\'\'|<!--)')
+MODULAR_PATTERN = re.compile(r'(^import\s+|^from\s+.*\s+import|^require\(|^#include)')
+TEST_PATTERN = re.compile(r'(test_|_test\.|spec\.|\.test\.|__tests__|/tests?/)', re.IGNORECASE)
+CI_WORKFLOW_PATTERN = re.compile(r'(\.github/workflows/|\.gitlab-ci\.|Jenkinsfile|\.circleci/|\.travis\.yml)')
+ASSERTION_PATTERN = re.compile(r'(\bassert\b|expect\(|should\.|chai\.)', re.IGNORECASE)
+MOCKING_FIXTURE_PATTERN = re.compile(r'(mock|Mock|@patch|@fixture|stub|@pytest\.fixture)')
+ERROR_HANDLING_PATTERN = re.compile(r'(^\s*try:|^\s*except\b|catch\s*\(|throw\s+new|raises\()', re.IGNORECASE)
+INPUT_VALIDATOR_PATTERN = re.compile(r'(\bvalidate\(|validator|sanitize\(|schema\.validate|\.is_valid\()', re.IGNORECASE)
+ENV_USAGE_PATTERN = re.compile(r'(process\.env|os\.environ|\bgetenv\(|import dotenv|load_dotenv)')
+CRYPTO_PATTERN = re.compile(r'(import hashlib|import bcrypt|crypto\.|encrypt\(|decrypt\(|jwt\.|hashlib\.|bcrypt\.)', re.IGNORECASE)
+MVC_PATTERN = re.compile(r'/(models|views|controllers)/', re.IGNORECASE)
+API_ROUTES_PATTERN = re.compile(r'(^\s*@app\.route|^\s*@router\.|^\s*@(Get|Post|Put|Delete)Mapping|app\.(get|post|put|delete)\()')
+COMPONENTS_PATTERN = re.compile(r'(React\.Component|class \w+ extends Component|Vue\.component|^\s*@Component|createComponent)')
+SERIALIZATION_PATTERN = re.compile(r'(JSON\.stringify|json\.dumps|\bserialize\(|\.toJSON\(|JsonSerializer|pickle\.dump)')
+DB_QUERY_PATTERN = re.compile(r'(\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b|cursor\.execute|\.query\(|\.findOne|\.findMany|\.find\(|\.save\()')
+CACHING_PATTERN = re.compile(r'(^\s*@cached|^\s*@lru_cache|import redis|Redis\(|memcached|\.cache\(|cache\.get|cache\.set)')
+SETS_PATTERN = re.compile(r'(HashSet|set\(|Set<|\bset\s*=)')
+CLASSES_PATTERN = re.compile(r'^\s*class\s+\w+')
+INHERITANCE_PATTERN = re.compile(r'^\s*(class\s+\w+\s*\([^)]+\)|class\s+\w+\s+extends\s+\w+|class\s+\w+\s*:\s*(public|private|protected))')
+POLYMORPHISM_PATTERN = re.compile(r'(@override|@Override|virtual\s+\w+|abstract\s+class|abstract\s+def)', re.IGNORECASE)
 
 # HELPER FUNCTIONS
 
@@ -30,70 +60,60 @@ def _is_likely_in_string(line: str, pattern_match_pos: int) -> bool:
 
 # OOP DETECTORS
 
-def detect_classes(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_classes(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect class definitions such as `class Foo:`."""
     # Must be at start of line (possibly after whitespace) to avoid strings/comments
-    pattern = r'^\s*class\s+\w+'
-    evidence = []
+    for i, line in enumerate(lines, 1):
+        # Fast string check first
+        if "class " not in line:
+            continue
+        if CLASSES_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    for i, line in enumerate(file_text.split('\n'), 1):
-        if re.search(pattern, line):
-            evidence.append({"file": file_name, "line": i})
-
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_inheritance(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_inheritance(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect class inheritance such as `class Foo(Bar):`."""
     # Matches: class Dog(Animal), class User extends Base, class Foo : public Bar
     # Must have something in parentheses or 'extends' keyword
     # Must be at start of line to avoid strings
-    pattern = r'^\s*(class\s+\w+\s*\([^)]+\)|class\s+\w+\s+extends\s+\w+|class\s+\w+\s*:\s*(public|private|protected))'
-    evidence = []
+    for i, line in enumerate(lines, 1):
+        if INHERITANCE_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    for i, line in enumerate(file_text.split('\n'), 1):
-        if re.search(pattern, line):
-            evidence.append({"file": file_name, "line": i})
-
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_polymorphism(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_polymorphism(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect overridden methods or same method names across classes."""
     # Matches: @override, @Override, virtual void, abstract class
-    pattern = r'(@override|@Override|virtual\s+\w+|abstract\s+class|abstract\s+def)'
-    evidence = []
+    for i, line in enumerate(lines, 1):
+        # Fast string checks first
+        line_lower = line.lower()
+        if "@override" not in line_lower and "abstract" not in line_lower and "virtual" not in line_lower:
+            continue
+        if POLYMORPHISM_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    for i, line in enumerate(file_text.split('\n'), 1):
-        if re.search(pattern, line, re.IGNORECASE):
-            evidence.append({"file": file_name, "line": i})
-
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
 # DATA STRUCTURE DETECTORS
 
-def detect_hash_maps(file_text: str, file_name: str):
-    evidence = []
-    lines = file_text.split("\n")
-
+def detect_hash_maps(lines: List[str], file_name: str):
     # Regex rules:
     # 1. Detect Python dict usage: x = {}  OR x = dict(...)
     # Allow both quoted and unquoted keys: {"key": ...} or {key: ...}
-    py_dict_pattern = re.compile(r'^\s*\w+\s*=\s*(dict\s*\(|\{\s*["\']?\w+["\']?\s*:)', re.IGNORECASE)
 
     # 2. Detect Java / C# HashMap, Map<K,V>
-    java_map_pattern = re.compile(r'\b(HashMap|Map<\w+,\s*\w+>)', re.IGNORECASE)
 
     # 3. Detect JavaScript/TypeScript Map()
-    js_map_pattern = re.compile(r'\bnew\s+Map\s*\(', re.IGNORECASE)
 
     # Helper: pattern to skip JS object literals:  foo = { a:1 }
     # Only skip if it's clearly a JS object (single line with closing brace)
-    js_object_literal = re.compile(r'^\s*\w+\s*=\s*\{\s*\w+\s*:.*\}$')
 
     # Helper: avoid identifiers containing "map" (heatmap, mymap, colormap)
-    false_map_identifier = re.compile(r'\w*map\w*', re.IGNORECASE)
 
     for i, line in enumerate(lines, 1):
         stripped = line.strip()
@@ -107,69 +127,75 @@ def detect_hash_maps(file_text: str, file_name: str):
             continue
 
         # Avoid JS object literal false positives
-        if js_object_literal.search(stripped):
+        if JS_OBJECT_LITERAL.search(stripped):
             continue
 
         # Avoid variable names that contain "map"
         # unless it's actually Map<K,V>, HashMap, or new Map()
-        if false_map_identifier.search(stripped) and not (java_map_pattern.search(stripped) or js_map_pattern.search(stripped)):
+        if FALSE_MAP_IDENTIFIER.search(stripped) and not (JAVA_MAP_PATTERN.search(stripped) or JS_MAP_PATTERN.search(stripped)):
+            continue
+
+        # Fast string checks before regex
+        stripped_lower = stripped.lower()
+        has_dict = "dict(" in stripped_lower or ("{" in stripped and ":" in stripped)
+        has_java_map = "hashmap" in stripped_lower or "map<" in stripped
+        has_js_map = "new map(" in stripped_lower
+        
+        if not (has_dict or has_java_map or has_js_map):
             continue
 
         # Now check actual hashmap patterns
         if (
-            py_dict_pattern.search(stripped)
-            or java_map_pattern.search(stripped)
-            or js_map_pattern.search(stripped)
+            PY_DICT_PATTERN.search(stripped)
+            or JAVA_MAP_PATTERN.search(stripped)
+            or JS_MAP_PATTERN.search(stripped)
         ):
-            evidence.append({"file": file_name, "line": i})
+            return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_sets(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_sets(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect set literals, set() calls, or other set usage."""
     # Matches: HashSet, set(), Set<String>, set =
-    pattern = r'(HashSet|set\(|Set<|\bset\s*=)'
-    evidence = []
+    for i, line in enumerate(lines, 1):
+        # Fast string checks first
+        line_lower = line.lower()
+        if "set(" not in line_lower and "hashset" not in line_lower and "set<" not in line_lower and " set " not in line_lower:
+            continue
+        if SETS_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    for i, line in enumerate(file_text.split('\n'), 1):
-        if re.search(pattern, line):
-            evidence.append({"file": file_name, "line": i})
-
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_queues_or_stacks(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_queues_or_stacks(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """
     Detect simple queue/stack usage (append/pop patterns or collections.deque).
     """
     # Matches: Queue, Stack, Deque, .push(), .pop(), .enqueue, .dequeue
-    pattern = r'(Queue|Stack|Deque|\.push\(|\.pop\(|\.enqueue|\.dequeue)'
-    evidence = []
+    for i, line in enumerate(lines, 1):
+        # Fast string checks first
+        line_lower = line.lower()
+        if "queue" not in line_lower and "stack" not in line_lower and "deque" not in line_lower and ".push(" not in line_lower and ".pop(" not in line_lower:
+            continue
+        if QUEUE_STACK_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    for i, line in enumerate(file_text.split('\n'), 1):
-        if re.search(pattern, line):
-            evidence.append({"file": file_name, "line": i})
-
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
 # ALGORITHM DETECTORS
 
-def detect_recursion(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_recursion(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect recursive function calls."""
-    evidence = []
-    lines = file_text.split('\n')
-
     # Find function definitions and track their names
-    func_pattern = r'(def|function|func)\s+(\w+)\s*\('
-
     current_function = None
     function_start_line = 0
 
     for i, line in enumerate(lines, 1):
         # Check if this line defines a function
-        match = re.search(func_pattern, line)
+        match = RECURSION_PATTERN.search(line)
         if match:
             current_function = match.group(2)
             function_start_line = i
@@ -177,43 +203,39 @@ def detect_recursion(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
         # If we're inside a function, check if it calls itself
         if current_function:
             # Look for the function name followed by a parenthesis (function call)
-            if re.search(rf'\b{current_function}\s*\(', line) and i != function_start_line:
-                evidence.append({"file": file_name, "line": i})
-                current_function = None  # Reset to avoid duplicate detections
+            call_pattern = f"{current_function}("
+            if call_pattern in line and i != function_start_line:
+                return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_sorting_or_search(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_sorting_or_search(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect calls to `sort`, `sorted`, or binary search patterns."""
     # Matches: .sort(), sorted(), Arrays.sort, Collections.sort, binary_search, binarySearch
-    pattern = r'(\.sort\(|\bsorted\(|Arrays\.sort|Collections\.sort|binary.?search|linear.?search)'
-    evidence = []
-
-    for i, line in enumerate(file_text.split('\n'), 1):
+    for i, line in enumerate(lines, 1):
         # Skip comment lines
         stripped = line.strip()
         if stripped.startswith('#') or stripped.startswith('//'):
             continue
-        if re.search(pattern, line, re.IGNORECASE):
-            evidence.append({"file": file_name, "line": i})
+        # Fast string checks first
+        line_lower = line.lower()
+        if ".sort(" not in line_lower and "sorted(" not in line_lower and "sort" not in line_lower and "search" not in line_lower:
+            continue
+        if SORT_SEARCH_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
 # CODE QUALITY DETECTORS
 
-def detect_large_functions(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_large_functions(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect very long functions that may indicate low-quality structure."""
-    evidence = []
-    lines = file_text.split('\n')
-
     # Pattern to detect function definitions
-    func_pattern = r'^\s*(def|function|func|public|private|protected)\s+\w+\s*\('
-
     function_starts = []
     for i, line in enumerate(lines):
-        if re.search(func_pattern, line):
+        if LARGE_FUNCTION_PATTERN.search(line):
             function_starts.append(i)
 
     # Check function lengths (threshold: 50 lines)
@@ -225,25 +247,25 @@ def detect_large_functions(file_text: str, file_name: str) -> Tuple[bool, List[D
 
         function_length = end - start
         if function_length > 50:
-            evidence.append({"file": file_name, "line": start + 1})
+            return (True, [{"file": file_name, "line": start + 1}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_comments_docstrings(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_comments_docstrings(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect comments or docstrings for clarity/documentation."""
     # Matches: #, //, /* */, """, ''', <!--
-    pattern = r'(^\s*#|^\s*//|/\*|\"\"\"|\'\'\'|<!--)'
-    evidence = []
+    for i, line in enumerate(lines, 1):
+        # Fast string checks first
+        if "#" not in line and "//" not in line and "/*" not in line and '"""' not in line and "'''" not in line and "<!--" not in line:
+            continue
+        if COMMENT_DOCSTRING_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    for i, line in enumerate(file_text.split('\n'), 1):
-        if re.search(pattern, line):
-            evidence.append({"file": file_name, "line": i})
-
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_duplicate_code(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_duplicate_code(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect repeated code blocks (basic duplicate detection)."""
     # To be implemented in another PR due to complexity.
     return False, []
@@ -251,36 +273,35 @@ def detect_duplicate_code(file_text: str, file_name: str) -> Tuple[bool, List[Di
 
 # STRUCTURE / SOFTWARE ENGINEERING
 
-def detect_modular_design(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_modular_design(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect evidence of modular design (imports, multiple modules)."""
     # Matches: import, from X import, require(), #include
-    pattern = r'(^import\s+|^from\s+.*\s+import|^require\(|^#include)'
-    evidence = []
+    for i, line in enumerate(lines, 1):
+        # Fast string checks first
+        line_lower = line.lower()
+        if "import " not in line_lower and "from " not in line_lower and "require(" not in line_lower and "#include" not in line:
+            continue
+        if MODULAR_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    for i, line in enumerate(file_text.split('\n'), 1):
-        if re.search(pattern, line):
-            evidence.append({"file": file_name, "line": i})
-
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_test_files(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_test_files(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect pytest/unittest test cases or test file naming."""
     # Check filename patterns: test_, _test., spec., .test., __tests__, /tests/
-    pattern = r'(test_|_test\.|spec\.|\.test\.|__tests__|/tests?/)'
 
-    if re.search(pattern, file_name, re.IGNORECASE):
+    if TEST_PATTERN.search(file_name):
         return True, [{"file": file_name, "line": 0}]
 
     return False, []
 
 
-def detect_ci_workflows(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_ci_workflows(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect presence of CI/CD workflow configs (GitHub Actions)."""
     # Check filepath patterns: .github/workflows/, .gitlab-ci., Jenkinsfile, .circleci/, .travis.yml
-    pattern = r'(\.github/workflows/|\.gitlab-ci\.|Jenkinsfile|\.circleci/|\.travis\.yml)'
 
-    if re.search(pattern, file_name):
+    if CI_WORKFLOW_PATTERN.search(file_name):
         return True, [{"file": file_name, "line": 0}]
 
     return False, []
@@ -288,186 +309,193 @@ def detect_ci_workflows(file_text: str, file_name: str) -> Tuple[bool, List[Dict
 
 # TESTING DETECTORS
 
-def detect_assertions(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_assertions(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect test assertions."""
     # Matches: assert, expect, should, chai.
-    pattern = r'(\bassert\b|expect\(|should\.|chai\.)'
-    evidence = []
-
-    for i, line in enumerate(file_text.split('\n'), 1):
+    for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
-        if re.search(pattern, line, re.IGNORECASE):
-            evidence.append({"file": file_name, "line": i})
+        # Fast string checks first
+        line_lower = line.lower()
+        if "assert" not in line_lower and "expect(" not in line_lower and "should." not in line_lower and "chai." not in line_lower:
+            continue
+        if ASSERTION_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_mocking_or_fixtures(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_mocking_or_fixtures(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect mocking or fixture usage in tests."""
     # Matches: mock, Mock, @patch, fixture, stub
-    pattern = r'(mock|Mock|@patch|@fixture|stub|@pytest\.fixture)'
-    evidence = []
+    for i, line in enumerate(lines, 1):
+        # Fast string checks first
+        line_lower = line.lower()
+        if "mock" not in line_lower and "@patch" not in line and "@fixture" not in line and "fixture" not in line_lower and "stub" not in line_lower:
+            continue
+        if MOCKING_FIXTURE_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    for i, line in enumerate(file_text.split('\n'), 1):
-        if re.search(pattern, line):
-            evidence.append({"file": file_name, "line": i})
-
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
 # ERROR HANDLING & SECURITY
 
-def detect_error_handling(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_error_handling(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect error handling patterns."""
     # Matches: try:, except, catch, throw, raises
     # Must be at start of line or after whitespace for try/except
-    pattern = r'(^\s*try:|^\s*except\b|catch\s*\(|throw\s+new|raises\()'
-    evidence = []
-
-    for i, line in enumerate(file_text.split('\n'), 1):
+    for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
-        if re.search(pattern, line, re.IGNORECASE):
-            evidence.append({"file": file_name, "line": i})
+        # Fast string checks first
+        line_lower = line.lower()
+        if "try:" not in line_lower and "except" not in line_lower and "catch" not in line_lower and "throw" not in line_lower and "raises(" not in line_lower:
+            continue
+        if ERROR_HANDLING_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_input_validation(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_input_validation(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect input validation patterns."""
     # Matches: validate, validator, sanitize, schema.validate
-    pattern = r'(\bvalidate\(|validator|sanitize\(|schema\.validate|\.is_valid\()'
-    evidence = []
-
-    for i, line in enumerate(file_text.split('\n'), 1):
+    for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
-        if re.search(pattern, line, re.IGNORECASE):
-            evidence.append({"file": file_name, "line": i})
+        # Fast string checks first
+        line_lower = line.lower()
+        if "validate" not in line_lower and "validator" not in line_lower and "sanitize" not in line_lower:
+            continue
+        if INPUT_VALIDATOR_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_env_variable_usage(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_env_variable_usage(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect environment variable usage."""
     # Matches: process.env, os.environ, getenv, .env (but not "environment" variable)
-    pattern = r'(process\.env|os\.environ|\bgetenv\(|import dotenv|load_dotenv)'
-    evidence = []
-
-    for i, line in enumerate(file_text.split('\n'), 1):
+    for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
-        if re.search(pattern, line):
-            evidence.append({"file": file_name, "line": i})
+        # Fast string checks first
+        if "process.env" not in line and "os.environ" not in line and "getenv" not in line and "dotenv" not in line.lower() and "load_dotenv" not in line:
+            continue
+        if ENV_USAGE_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_crypto_usage(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_crypto_usage(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect cryptography and security library usage."""
     # Matches: hashlib, bcrypt, crypto imports/usage, encrypt/decrypt functions
-    pattern = r'(import hashlib|import bcrypt|crypto\.|encrypt\(|decrypt\(|jwt\.|hashlib\.|bcrypt\.)'
-    evidence = []
-
-    for i, line in enumerate(file_text.split('\n'), 1):
+    for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
-        if re.search(pattern, line, re.IGNORECASE):
-            evidence.append({"file": file_name, "line": i})
+        # Fast string checks first
+        line_lower = line.lower()
+        if "hashlib" not in line_lower and "bcrypt" not in line_lower and "crypto" not in line_lower and "encrypt" not in line_lower and "decrypt" not in line_lower and "jwt" not in line_lower:
+            continue
+        if CRYPTO_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
 # ARCHITECTURE DETECTORS
 
-def detect_mvc_folders(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_mvc_folders(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect MVC folder structure."""
     # Check filepath for models, views, controllers folders
-    pattern = r'/(models|views|controllers)/'
 
-    if re.search(pattern, file_name, re.IGNORECASE):
+    if MVC_PATTERN.search(file_name):
         return True, [{"file": file_name, "line": 0}]
 
     return False, []
 
 
-def detect_api_routes(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_api_routes(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect API route definitions."""
     # Matches: @app.route, @router., app.get(, @GetMapping, @PostMapping
     # Must be at start of line (decorator) or actual function call
-    pattern = r'(^\s*@app\.route|^\s*@router\.|^\s*@(Get|Post|Put|Delete)Mapping|app\.(get|post|put|delete)\()'
-    evidence = []
-
-    for i, line in enumerate(file_text.split('\n'), 1):
+    for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
-        if re.search(pattern, line):
-            evidence.append({"file": file_name, "line": i})
+        # Fast string checks first
+        if "@app.route" not in line and "@router" not in line and "app.get(" not in line and "app.post(" not in line and "@GetMapping" not in line and "@PostMapping" not in line:
+            continue
+        if API_ROUTES_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
 # FRONTEND DETECTORS
 
-def detect_components(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_components(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect frontend component usage."""
     # Matches: React.Component, extends Component, Vue.component, @Component
-    pattern = r'(React\.Component|class \w+ extends Component|Vue\.component|^\s*@Component|createComponent)'
-    evidence = []
-
-    for i, line in enumerate(file_text.split('\n'), 1):
+    for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
-        if re.search(pattern, line):
-            evidence.append({"file": file_name, "line": i})
+        # Fast string checks first
+        if "React.Component" not in line and "extends Component" not in line and "Vue.component" not in line and "@Component" not in line and "createComponent" not in line:
+            continue
+        if COMPONENTS_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
 # BACKEND DETECTORS
 
-def detect_serialization(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_serialization(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect data serialization patterns."""
     # Matches: JSON.stringify, json.dumps, serialize, toJSON, JsonSerializer
-    pattern = r'(JSON\.stringify|json\.dumps|\bserialize\(|\.toJSON\(|JsonSerializer|pickle\.dump)'
-    evidence = []
-
-    for i, line in enumerate(file_text.split('\n'), 1):
+    for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
-        if re.search(pattern, line):
-            evidence.append({"file": file_name, "line": i})
+        # Fast string checks first
+        line_lower = line.lower()
+        if "json.stringify" not in line_lower and "json.dumps" not in line_lower and "serialize" not in line_lower and "tojson" not in line_lower and "jsonserializer" not in line_lower and "pickle.dump" not in line_lower:
+            continue
+        if SERIALIZATION_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_database_queries(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_database_queries(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect database query usage."""
     # Matches: SELECT, INSERT, UPDATE, cursor.execute, query(, findOne
     # For SQL keywords, require word boundaries or start of string
-    pattern = r'(\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b|cursor\.execute|\.query\(|\.findOne|\.findMany|\.find\(|\.save\()'
-    evidence = []
-
-    for i, line in enumerate(file_text.split('\n'), 1):
+    for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
-        if re.search(pattern, line):
-            evidence.append({"file": file_name, "line": i})
+        # Fast string checks first
+        line_upper = line.upper()
+        if "SELECT" not in line_upper and "INSERT" not in line_upper and "UPDATE" not in line_upper and "DELETE" not in line_upper and "cursor.execute" not in line and ".query(" not in line and ".findOne" not in line and ".findMany" not in line and ".find(" not in line and ".save(" not in line:
+            continue
+        if DB_QUERY_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
 
 
-def detect_caching(file_text: str, file_name: str) -> Tuple[bool, List[Dict]]:
+def detect_caching(lines: List[str], file_name: str) -> Tuple[bool, List[Dict]]:
     """Detect caching implementation."""
     # Matches: @cached, @lru_cache, Redis, memcached, .cache
-    pattern = r'(^\s*@cached|^\s*@lru_cache|import redis|Redis\(|memcached|\.cache\(|cache\.get|cache\.set)'
-    evidence = []
-
-    for i, line in enumerate(file_text.split('\n'), 1):
+    for i, line in enumerate(lines, 1):
         if _is_comment_line(line):
             continue
-        if re.search(pattern, line, re.IGNORECASE):
-            evidence.append({"file": file_name, "line": i})
+        # Fast string checks first
+        line_lower = line.lower()
+        if "@cached" not in line and "@lru_cache" not in line and "redis" not in line_lower and "memcached" not in line_lower and ".cache(" not in line and "cache.get" not in line and "cache.set" not in line:
+            continue
+        if CACHING_PATTERN.search(line):
+            return (True, [{"file": file_name, "line": i}])
 
-    return (len(evidence) > 0, evidence)
+    return (False, [])
