@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 from src.integrations.google_drive.google_drive_auth.google_drive_oauth import google_drive_oauth
 
-
+# HELPERS & FIXTURES
 @pytest.fixture
 def mock_credentials_file(tmp_path):
     """Create a temporary credentials.json file."""
@@ -20,7 +20,30 @@ def mock_credentials_file(tmp_path):
     creds_file.write_text(json.dumps(creds_data))
     return str(creds_file)
 
+def _setup_get_user_info_mocks(monkeypatch, user_info_data):
+    """Helper to set up mocks for get_user_info tests."""
+    mock_creds = Mock()
+    mock_userinfo = Mock()
+    mock_userinfo.get.return_value.execute.return_value = user_info_data
+    mock_service = Mock()
+    mock_service.userinfo.return_value = mock_userinfo
+    
+    def mock_build(api_name, api_version, credentials=None):
+        if api_name == "oauth2":
+            return mock_service
+        raise AssertionError(f"Unexpected build: {api_name}")
+    
+    monkeypatch.setattr(
+        "src.integrations.google_drive.google_drive_auth.google_drive_oauth.build",
+        mock_build
+    )
+    
+    from src.integrations.google_drive.google_drive_auth.google_drive_oauth import get_user_info
+    
+    result = get_user_info(mock_creds)
+    return mock_creds, result
 
+#Tests
 def test_google_drive_oauth_happy_path(monkeypatch, mock_credentials_file):
     """Test successful OAuth flow."""
     # Mock credentials object
@@ -156,3 +179,28 @@ def test_google_drive_oauth_default_credentials_path(monkeypatch, tmp_path):
     assert creds == mock_creds
     assert drive_service == mock_drive_service
     assert docs_service == mock_docs_service
+
+def test_get_user_info_success(monkeypatch):
+    """Test successful retrieval of user info."""
+    _, result = _setup_get_user_info_mocks(monkeypatch, {
+        "email": "user@example.com",
+        "name": "Test User",
+        "given_name": "Test",
+        "family_name": "User"
+    })
+    
+    assert result["email"] == "user@example.com"
+    assert result["displayName"] == "Test User"
+
+
+def test_get_user_info_missing_name(monkeypatch):
+    """Test when name field is missing (falls back to given_name)."""
+    _, result = _setup_get_user_info_mocks(monkeypatch, {
+        "email": "user@example.com",
+        "given_name": "Test",
+        "family_name": "User"
+        # No "name" field
+    })
+    
+    assert result["email"] == "user@example.com"
+    assert result["displayName"] == "Test"  # Falls back to given_name
