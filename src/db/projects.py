@@ -158,3 +158,21 @@ def get_project_metadata(conn, user_id, project_name):
         return None, None
 
     return row[0], row[1]
+
+
+def get_zip_name_for_project(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[str]:
+    """
+    Return the zip_name associated with a project for a given user.
+    Uses the most recent classification record.
+    """
+    row = conn.execute(
+        """
+        SELECT zip_name
+        FROM project_classifications
+        WHERE user_id = ? AND project_name = ?
+        ORDER BY recorded_at DESC
+        LIMIT 1
+        """,
+        (user_id, project_name),
+    ).fetchone()
+    return row[0] if row else None

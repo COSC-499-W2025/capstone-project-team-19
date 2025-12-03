@@ -13,7 +13,11 @@ import os
 import sqlite3
 from typing import Iterable
 
-from src.db import get_files_for_project, store_file_contributions
+from src.db import (
+    get_files_for_project,
+    store_file_contributions,
+    get_zip_name_for_project,
+)
 from .code_collaborative_analysis_helper import _top_keywords_from_descriptions
 
 
@@ -21,15 +25,7 @@ def _zip_base_dir(conn: sqlite3.Connection, user_id: int, project_name: str) -> 
     """
     Resolve the base directory for extracted files: src/analysis/zip_data/<zip_name>.
     """
-    try:
-        cur = conn.execute(
-            "SELECT zip_name FROM project_classifications WHERE user_id = ? AND project_name = ? LIMIT 1",
-            (user_id, project_name),
-        )
-        row = cur.fetchone()
-        zip_name = row[0] if row else None
-    except Exception:
-        zip_name = None
+    zip_name = get_zip_name_for_project(conn, user_id, project_name)
 
     if not zip_name:
         return None
