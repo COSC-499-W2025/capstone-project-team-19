@@ -614,7 +614,8 @@ def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) ->
 
     print("\n[NON-LLM] CONTRIBUTION SUMMARIES")
     print("Describe only your personal contributions to the collaborative project.")
-    print("Write 1–3 sentences.\n")
+    print("Write 1-3 sentences. Be specific about features/files you primarily worked on.")
+    print("Example: “Implemented login API in FastAPI and wrote tests for user_routes.py”.\n")
 
     descs = {}
     for project_name, _ in projects:

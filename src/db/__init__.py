@@ -33,7 +33,8 @@ from .projects import (
     record_project_classifications,
     get_project_classifications,
     get_classification_id,
-    get_project_metadata
+    get_project_metadata,
+    get_zip_name_for_project,
 )
 
 # GitHub repository operations
