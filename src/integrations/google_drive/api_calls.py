@@ -89,9 +89,7 @@ def fetch_drive_comments(drive_service, file_id, user_email, user_display_name=N
     """
     from googleapiclient.errors import HttpError
     from datetime import datetime
-    
-    print(f"[DEBUG] Looking for comments by email: {user_email}, displayName: {user_display_name}")
-    
+        
     try:
         # Fetch all comments for the file
         comments_response = drive_service.comments().list(
@@ -185,9 +183,7 @@ def fetch_drive_comments(drive_service, file_id, user_email, user_display_name=N
                 if is_user_reply:
                     user_replies.append(reply_content)
                     user_reply_timestamps.append(reply_timestamp)
-        
-        print(f"[DEBUG] User comments matched: {len(user_comments)}, User replies matched: {len(user_replies)}")
-        
+                
         return {
             "status": "success",
             "user": {
@@ -205,8 +201,6 @@ def fetch_drive_comments(drive_service, file_id, user_email, user_display_name=N
         }
     
     except HttpError as e:
-        print(f"[DEBUG] HttpError fetching comments: {e}")
         return {"status": "failed", "error": str(e)}
     except Exception as e:
-        print(f"[DEBUG] Exception fetching comments: {e}")
         return {"status": "failed", "error": str(e)}
