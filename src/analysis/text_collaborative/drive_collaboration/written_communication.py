@@ -40,9 +40,9 @@ def _is_constructive(comment: str) -> bool:
     return any(keyword in comment_lower for keyword in constructive_keywords)
 
 
-def compute_comment_quality(comment_texts: List[str]):
+def compute_written_communication(comment_texts: List[str]):
     """
-    Estimate comment helpfulness using simple heuristics:
+    Assess written communication skill through comment analysis:
     - average comment length
     - ratio of meaningful (non-trivial) comments
     - word diversity to prevent spam
@@ -91,3 +91,4 @@ def compute_comment_quality(comment_texts: List[str]):
         "constructive_ratio": constructive_ratio,
         "total_comments": total_comments,
     }
+

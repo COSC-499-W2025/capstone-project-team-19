@@ -31,7 +31,7 @@ def test_participation_single_channel():
     u1 = make_user(3, 0, 0, ["comment1", "comment2", "comment3"], ["file1"])
     r1 = compute_participation(u1)
     assert r1["channels_used"] == 1
-    assert r1["activity_score"] > 0  # 3 * 1.2 * quality_multiplier
+    assert r1["activity_score"] == 3 * 1.2  # 3.6 (no quality multiplier)
     assert r1["files_engaged"] == 1
     
     # Replies only
@@ -63,12 +63,12 @@ def test_participation_multiple_channels():
     # channels: comments, replies, questions = 3
     assert result["channels_used"] == 3
     assert result["files_engaged"] == 2
-    # activity = (2*1.2*quality) + (3*1.0) + (1*1.3)
-    assert result["activity_score"] > 0
+    # activity = (2*1.2) + (3*1.0) + (1*1.3) = 2.4 + 3.0 + 1.3 = 6.7
+    assert result["activity_score"] == 6.7
 
 
-def test_participation_high_quality_comments_boost():
-    """High-quality comments should boost participation score"""
+def test_participation_independent_of_quality():
+    """Participation score should be independent of comment quality"""
     high_quality = [
         "This section could be improved by adding more examples and clearer explanations.",
         "Consider restructuring this paragraph for better flow and readability.",
@@ -83,12 +83,10 @@ def test_participation_high_quality_comments_boost():
     
     result = compute_participation(user)
     
-    # High quality should give multiplier > 1.0
-    # Base: 2 * 1.2 = 2.4
-    # With quality boost, should be higher
-    assert result["activity_score"] > 2.4
+    # Base: 2 * 1.2 = 2.4 (no quality multiplier)
+    assert result["activity_score"] == 2.4
     
-    # Compare to low quality
+    # Low quality should have same participation score
     low_quality_user = make_user(
         comments=2,
         replies=0,
@@ -98,4 +96,5 @@ def test_participation_high_quality_comments_boost():
     )
     low_result = compute_participation(low_quality_user)
     
-    assert result["activity_score"] > low_result["activity_score"]
+    # Participation should be the same regardless of quality
+    assert result["activity_score"] == low_result["activity_score"]

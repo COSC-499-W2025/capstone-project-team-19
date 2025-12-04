@@ -28,8 +28,8 @@ def _call_setup(monkeypatch, fetch_files, user_input, oauth_return=None, link_re
     else:
         monkeypatch.setattr(f"{MODULE}.google_drive_oauth", lambda: oauth_return)
 
-    # patch get_user_email to avoid real Google calls
-    monkeypatch.setattr(f"{MODULE}.get_user_email", lambda creds: "user@example.com")
+    # patch get_user_info to avoid real Google calls
+    monkeypatch.setattr(f"{MODULE}.get_user_info", lambda creds: {"email": "user@example.com","displayName": "Test User"})
 
     # patch find_and_link_files
     if link_side_effect is not None:
