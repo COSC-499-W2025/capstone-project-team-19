@@ -57,6 +57,28 @@ def gh_get(token: str, url: str, retries: int = 6, delay: int = 2):
     print(f"[GitHub] Warning: API did not return data after {retries} retries. URL: {url}")
     return {}
 
+def paginated_gh_get(token, base_url):
+    page = 1
+    results = []
+
+    while True:
+        sep = "&" if "?" in base_url else "?"
+        url = f"{base_url}{sep}per_page=100&page={page}"
+
+        data = gh_get(token, url)
+
+        if not data or isinstance(data, dict):
+            break
+
+        results.extend(data)
+
+        if len(data) < 100:
+            break
+
+        page += 1
+
+    return results
+
 def list_user_repos(token):
     personal_repos = gh_get(token, "https://api.github.com/user/repos?per_page=200")
     repos = [repo["full_name"] for repo in personal_repos]
@@ -81,7 +103,7 @@ def get_authenticated_user(token):
     email = data.get("email")
 
     if not name or not str(name).strip():
-        name = login # sets the name to be th eusername if unavailable
+        name = login # sets the name to be the username if unavailable
 
     if email is None:
         email = "" # avoid null
@@ -122,84 +144,56 @@ def get_gh_repo_commit_activity(token, owner, repo, username):
     return dict(daily)
 
 # gets PRs and issues, so aggregate this function to only get issues
-def get_gh_repo_issues(token, owner, repo, github_username):    
+def get_gh_repo_issues(token, owner, repo, github_username, all_issue_comments):
     page = 1
     opened = defaultdict(int)
     closed = defaultdict(int)
-    user_issues = []
-    user_issue_comments = []
 
     while True:
         url = f"https://api.github.com/repos/{owner}/{repo}/issues?state=all&per_page=100&page={page}"
-        data = gh_get(token, url) 
-        
-        if not data: break
+        data = gh_get(token, url)
 
-        # skip PRs
+        if not data:
+            break
+
         for issue in data:
             if "pull_request" in issue:
                 continue
 
-            title = issue.get("title")
-            body = issue.get("body") or "" # in case body is empty
             created_at = issue.get("created_at", "").split("T")[0]
             closed_at = issue.get("closed_at")
-            labels = [l["name"].lower() for l in issue.get("labels", [])]
-            
-            # track global issues
+
             opened[created_at] += 1
             if closed_at:
                 closed[closed_at.split("T")[0]] += 1
 
-            author = issue.get("user", {}).get("login", "")
-            assignees = [a.get("login", "") for a in issue.get("assignees", [])]
-
-            if github_username == author or github_username in assignees:
-                user_issues.append({
-                    "title": title,
-                    "body": body,
-                    "labels": labels,
-                    "created_at": created_at,
-                    "closed_at": closed_at.split("T")[0] if closed_at else None
-                })
-
-            issue_number = issue["number"]
-            comments = get_issue_comments(token, owner, repo, issue_number)
-
-            # extract user comments
-            for c in comments:
-                if c.get("user", {}).get("login") == github_username:
-                    user_issue_comments.append({
-                        "issue_number": issue_number,
-                        "body": c.get("body", "") or "",
-                        "created_at": c.get("created_at", "")
-                    })
-
-        if len(data) < 100: break # break if no more pages
+        if len(data) < 100:
+            break
 
         page += 1
-    
+
+    # get comment counts from ALL comments
+    total_issue_comments = len(all_issue_comments)
+    user_issue_comments = sum(
+        1 for c in all_issue_comments
+        if c.get("user", {}).get("login") == github_username
+    )
+
     return {
         "opened": dict(opened),
         "closed": dict(closed),
         "total_opened": sum(opened.values()),
         "total_closed": sum(closed.values()),
-        "user_issues": user_issues,
-        "user_issue_comments": user_issue_comments
+        "total_issue_comments": total_issue_comments,
+        "user_issue_comments": user_issue_comments,
     }
 
-def get_issue_comments(token, owner, repo, issue_number):
+def get_all_issue_comments(token, owner, repo):
     """
-    Fetch all comments on a specific issue.
+    Fetch ALL issue comments in the repository (includes PR discussion comments).
     """
-    url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments"
-    data = gh_get(token, url)
-
-    if not data or isinstance(data, dict):
-        return []
-
-    # return full comment objects for filtering later
-    return data
+    url = f"https://api.github.com/repos/{owner}/{repo}/issues/comments"
+    return paginated_gh_get(token, url)
 
 def get_gh_repo_prs(token, owner, repo, github_username):
     page = 1
@@ -325,7 +319,7 @@ def get_gh_pr_reviews(token, owner, repo, pull_number):
     GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews
     """
     url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
-    return gh_get(token, url)
+    return paginated_gh_get(token, url)
 
 def get_gh_pr_review_comments(token, owner, repo, pull_number):
     """
@@ -334,7 +328,7 @@ def get_gh_pr_review_comments(token, owner, repo, pull_number):
     GET /repos/{owner}/{repo}/pulls/{pull_number}/comments
     """
     url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pull_number}/comments"
-    return gh_get(token, url)
+    return paginated_gh_get(token, url)
 
 def get_gh_reviews_for_repo(token, owner, repo, pulls):
     """
