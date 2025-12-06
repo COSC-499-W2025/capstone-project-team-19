@@ -116,12 +116,18 @@ def prompt_and_store():
 
     print("\nConsent recorded. Proceeding to file selection…\n")
 
-    # Ask whether analysis output should be verbose 
+    # Ask whether analysis output should be verbose
     while True:
-        choice = input("Show detailed logs? (y/n): ").strip().lower()
+        choice = input(
+            "Verbose mode prints extra debug information and execution traces.\n"
+            "If you prefer a cleaner view, normal mode shows only what you need.\n"
+            "Enable verbose mode? (y/n): "
+        ).strip().lower()
+
         if choice in ("y", "n"):
             constants.VERBOSE = (choice == "y")
             break
+
         print("Invalid choice – please enter y or n.")
 
     # Continue to file selection
