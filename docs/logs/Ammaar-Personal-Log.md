@@ -130,7 +130,7 @@ Week recap: This week I worked on one feature PR, reviewed one PR, and focused h
 
 For my feature PR (#300), I implemented keyword-based file contribution tracking for collaborative code projects without local .git directories. The system now infers contributed files by matching keywords from user descriptions against filenames, paths, and file content. This populates the same table used when .git is present, allowing activity summaries and skill extraction to run on user-scoped files instead of the entire codebase. I also fixed missing language, framework, and contribution summary data in the database for no-git collaborative projects and improved prompt guidance for users.
 
-I reviewed Timmi's skill detector optimization PR (#302) that reduced runtime from 130-190 seconds down to roughly 40 seconds (4x improvement) by precompiling regex patterns, switching detectors to operate on line lists instead of full text, using cheap string checks before regex, filtering non-code files, and implementing early termination after first match.
+I reviewed Timmi's skill detector optimization PR (#302) that reduced runtime by precompiling regex patterns, using string checks before regex and filtering non-code files.
 
 This week I also spent significant time working on our presentation slides and demo video. I presented during our scheduled time and peer-reviewed five other team presentations. I did some planning for the deliverables due Sunday, discussed the approach with the team, and worked with Adara on producing the demo video.
 
