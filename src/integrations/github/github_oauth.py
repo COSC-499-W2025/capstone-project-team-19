@@ -2,6 +2,7 @@ import webbrowser
 from .github_device_flow import request_device_code, poll_for_token
 from .token_store import save_github_token, mask_token
 from src.db import get_or_create_user
+import src.constants as constants
 
 """
 Handles GitHub authentication using the Device OAuth flow.
@@ -46,7 +47,8 @@ def github_oauth(conn, user_id):
     # save token in DB
     save_github_token(conn, user_id, token)
 
-    print(f"Token saved to database: {mask_token(token)}")
+    if constants.VERBOSE:
+        print(f"Token saved to database: {mask_token(token)}")
     return token
 
 if __name__ == "__main__":

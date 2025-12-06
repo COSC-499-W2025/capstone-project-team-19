@@ -34,7 +34,7 @@ from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
 from src.db import store_code_activity_metrics
 from src.db import get_metrics_id, insert_code_collaborative_summary
-
+import src.constants as constants
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -101,8 +101,9 @@ def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dic
         if project_type is None:
             print(f"Detected UNKNOWN project type for: {project_name} (skipping update)")
             continue  # skip database update if project is unknown
-
-        print(f"Detected {project_type.upper()} project: {project_name}")
+        
+        if constants.VERBOSE:
+            print(f"Detected {project_type.upper()} project: {project_name}")
 
         # Save detected project type into the database
         conn.execute("""
@@ -167,9 +168,11 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
 
     def run_individual_phase():
         if not individual:
-            print("\n[INDIVIDUAL] No individual projects.")
+            if constants.VERBOSE:
+                print("\n[INDIVIDUAL] No individual projects.")
             return False
-        print("\n[INDIVIDUAL] Running individual projects...")
+        if constants.VERBOSE:
+            print("\n[INDIVIDUAL] Running individual projects...")
         for project_name, project_type in individual:
             print(f"  → {project_name} ({project_type})")
             summary = ProjectSummary(
@@ -190,8 +193,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
         if not collaborative:
             print("\n[COLLABORATIVE] No collaborative projects.")
             return False
-
-        print("\n[COLLABORATIVE] Running collaborative projects...")
+        if constants.VERBOSE:
+            print("\n[COLLABORATIVE] Running collaborative projects...")
 
         # split: code first, then text
         code_collab = [(n, t) for (n, t) in collaborative if t == "code"]
@@ -331,8 +334,8 @@ def get_individual_contributions(conn, user_id, project_name, project_type, curr
     Analyze collaborative projects to get specific user contributions in a collaborative project.
     The process used to get the individual contributions changes depending on the type of project (code/text).
     """
-
-    print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' ({project_type})")
+    if constants.VERBOSE:
+        print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' ({project_type})")
 
     if project_type == "text":
         analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path)
@@ -449,13 +452,15 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
 
 def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary):
     """Collaborative code analysis: Git data + LLM summary."""
-    print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' (code)")
+    if constants.VERBOSE:
+        print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' (code)")
 
     metrics = analyze_code_project(conn, user_id, project_name, zip_path, summary)
 
     # activity-type summary for collaborative code
     activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
-    print("\n[COLLABORATIVE-CODE] Activity type summary:")
+    if constants.VERBOSE:
+        print("\n[COLLABORATIVE-CODE] Activity type summary:")
     print(format_activity_summary(activity_summary))
     print()
     store_code_activity_metrics(conn, user_id, activity_summary)

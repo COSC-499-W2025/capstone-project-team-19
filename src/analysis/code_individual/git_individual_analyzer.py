@@ -23,7 +23,7 @@ from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
 from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo
 from pathlib import Path
-
+import src.constants as constants
 
 def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_path: str) -> Dict:
     """
@@ -50,11 +50,12 @@ def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_pa
         zip_data_dir / zip_name,
     ]
 
-    print("\n" + "=" * 80)
-    print(f"[debug] project={project_name}")
-    print(f"[debug] zip_path arg={zip_path}")
-    for base in base_roots:
-        print(f"[debug] base_root candidate={base} (exists? {base.exists()})")
+    if constants.VERBOSE:
+        print("\n" + "=" * 80)
+        print(f"[debug] project={project_name}")
+        print(f"[debug] zip_path arg={zip_path}")
+        for base in base_roots:
+            print(f"[debug] base_root candidate={base} (exists? {base.exists()})")
 
     # Candidate locations for this project's repo
     candidate_roots: List[Path] = []
@@ -67,27 +68,31 @@ def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_pa
 
     repo_path: Optional[str] = None
     for root in candidate_roots:
-        print(f"[debug] trying candidate root: {root} (exists? {root.exists()})")
+        if constants.VERBOSE:
+            print(f"[debug] trying candidate root: {root} (exists? {root.exists()})")
         if root.exists() and is_git_repo(str(root)):
             repo_path = str(root)
-            print(f"[debug] found git repo at: {repo_path}")
+            if constants.VERBOSE:
+                print(f"[debug] found git repo at: {repo_path}")
             break
 
     if not repo_path:
-        print("\n" + "=" * 80)
-        print(f"No local git repository found for project '{project_name}'")
-        print("[debug] Searched under:")
-        for root in candidate_roots:
-            print(f"  - {root}")
-        print("=" * 80)
+        if constants.VERBOSE:
+            print("\n" + "=" * 80)
+            print(f"No local git repository found for project '{project_name}'")
+            print("[debug] Searched under:")
+            for root in candidate_roots:
+                print(f"  - {root}")
+            print("=" * 80)
 
         # Offer GitHub connection option / gracefully skip
         return _handle_no_git_repo(conn, user_id, project_name)
 
-    print(f"\n{'='*80}")
-    print(f"Analyzing Git Repository for: {project_name}")
-    print(f"Repository found at: {repo_path}")
-    print(f"{'='*80}\n")
+    if constants.VERBOSE:
+        print(f"\n{'='*80}")
+        print(f"Analyzing Git Repository for: {project_name}")
+        print(f"Repository found at: {repo_path}")
+        print(f"{'='*80}\n")
 
     # Extract git metrics
     commit_stats = get_commit_statistics(repo_path)

@@ -266,8 +266,10 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
         print("No project folders detected to classify.")
         return {}
 
+    
     if root_name:
-        print(f"\nUsing '{root_name}' as the root folder for this upload.")
+        if constants.VERBOSE:
+           print(f"\nUsing '{root_name}' as the root folder for this upload.")
 
     if auto_assignments:
         print("\nAutomatically classified projects based on folder placement:")

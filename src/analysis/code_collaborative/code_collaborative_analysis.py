@@ -243,6 +243,7 @@ def analyze_code_project(conn: sqlite3.Connection,
     _CODE_RUN_METRICS.append(metrics)
 
     print("=" * 80)
+    print()
     return metrics
 
 

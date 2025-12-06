@@ -6,6 +6,7 @@ from src.db.git_individual_metrics import (
     update_git_individual_metrics
 )
 from src.db.git_metrics_helpers import extract_git_metrics
+import src.constants as constants
 
 def run_code_non_llm_analysis(conn, user_id, project_name, zip_path, summary=None):
 
@@ -34,7 +35,8 @@ def run_code_non_llm_analysis(conn, user_id, project_name, zip_path, summary=Non
             # Calculate totals for logging
             total_lines_added = metrics[7]  # index for total_lines_added
             total_commits = metrics[0]  # index for total_commits
-            print(f"[Git] Stored individual metrics for {project_name}: commits={total_commits}, lines added={total_lines_added}")
+            if constants.VERBOSE:
+                print(f"[Git] Stored individual metrics for {project_name}: commits={total_commits}, lines added={total_lines_added}")
 
     return {
         'complexity_data': complexity_data,

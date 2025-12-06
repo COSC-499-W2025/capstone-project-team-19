@@ -161,6 +161,7 @@ def save_user_github(conn: sqlite3.Connection, user_id: int, emails: List[str], 
             (user_id, nm),
         )
     conn.commit()
+    
     print("\nSaved your identity for future runs")
 
 

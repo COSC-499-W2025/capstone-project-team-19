@@ -11,6 +11,7 @@ import os
 from src.db import get_project_metadata, has_contribution_data, get_user_contributed_files
 from src.utils.helpers import _fetch_files
 from src.analysis.skills.flows.code_skill_extraction import extract_code_skills
+import src.constants as constants
 
 def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
     """
@@ -45,7 +46,8 @@ def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
             ]
 
             filtered_count = len(files)
-            print(f"[SKILLS] Filtered to {filtered_count}/{original_count} files based on your contributions")
+            if constants.VERBOSE:
+                print(f"[SKILLS] Filtered to {filtered_count}/{original_count} files based on your contributions")
         else:
             print(f"[SKILLS] Warning: No contributions found for '{project_name}', using all files")
 
@@ -53,7 +55,8 @@ def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
         print(f"[SKILLS] No contributed files found for '{project_name}'. Skipping skill extraction.")
         return
 
-    print(f"[SKILLS] Extracting skills for {project_name} ({classification}, {project_type})")
+    if constants.VERBOSE:
+        print(f"[SKILLS] Extracting skills for {project_name} ({classification}, {project_type})")
 
     if project_type == "code":
         import time
@@ -61,8 +64,10 @@ def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
         extract_code_skills(conn, user_id, project_name, classification, files)
 
         end = time.time()
-        print(f"extract_code_skills took {end - start:.4f} seconds")
+        if constants.VERBOSE:
+            print(f"extract_code_skills took {end - start:.4f} seconds")
     else:
         print(f"[SKILLS] Project type is not valid, skipping skill extraction for '{project_name}'")
 
-    print(f"[SKILLS] Done extracting skills for {project_name}")
+    if constants.VERBOSE:
+        print(f"[SKILLS] Done extracting skills for {project_name}")
