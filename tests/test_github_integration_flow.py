@@ -78,8 +78,8 @@ def mock_metrics(monkeypatch, commits=2, issues=3, prs=1, contrib=5):
         lambda *a: {"total_opened": issues}
     )
     monkeypatch.setattr(
-        "src.integrations.github.github_analysis.get_gh_repo_prs",
-        lambda *a: {"total_opened": prs}
+        "src.integrations.github.github_analysis.fetch_pr_collaboration_graphql",
+        lambda *a: {"prs_opened": prs, "team_total_prs": prs, "team_total_reviews": 0, "user_prs": [], "reviews": {}}
     )
     monkeypatch.setattr(
         "src.integrations.github.github_analysis.get_gh_repo_contributions",
@@ -153,7 +153,7 @@ def test_fetch_github_metrics(monkeypatch):
     assert result["username"] == "username"
     assert result["commits"] == {"2024-01-01": 2}
     assert result["issues"] == {"total_opened": 3}
-    assert result["pull_requests"] == {"total_opened": 1}
+    assert result["pull_requests"]["total_opened"] == 1
     assert result["contributions"] == {"commits": 5}
 
 # _enhance_with_github skip path
