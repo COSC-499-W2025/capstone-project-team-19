@@ -284,10 +284,12 @@ def analyze_collaborative_text_project(
     else:
         contribution_summary = _manual_contribution_summary_prompt()
 
-    print("\n" + "="*80)
+    if constants.VERBOSE:
+        print("\n" + "="*80)
     print("YOUR CONTRIBUTION SUMMARY:")
     print(textwrap.fill(contribution_summary, width=80, subsequent_indent="  "))
-    print("="*80 + "\n")
+    if constants.VERBOSE:
+        print("="*80 + "\n")
 
     # ---------------------------------------------------------
     # STEP 5 — Run skill detectors on ONLY the contributed text

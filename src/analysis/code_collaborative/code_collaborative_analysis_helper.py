@@ -13,6 +13,8 @@ from src.utils.helpers import ensure_table
 
 import re
 
+import src.constants as constants
+
 DEBUG = False
 
 
@@ -613,7 +615,8 @@ def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) ->
     if consent == "accepted" or not projects:
         return {}
 
-    print("\n[NON-LLM] CONTRIBUTION SUMMARIES")
+    if constants.VERBOSE:
+        print("\n[NON-LLM] CONTRIBUTION SUMMARIES")
     print("Describe only your personal contributions to the collaborative project.")
     print("Write 1-3 sentences. Be specific about features/files you primarily worked on.")
     print("Example: “Implemented login API in FastAPI and wrote tests for user_routes.py”.\n")

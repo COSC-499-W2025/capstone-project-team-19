@@ -508,7 +508,8 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
                         )
 
     else:
-        print(f"[COLLABORATIVE-CODE] Skipping LLM summary (no external consent).")
+        if constants.VERBOSE:
+            print(f"[COLLABORATIVE-CODE] Skipping LLM summary (no external consent).")
 
         # capture manual project summary for collab code
         if summary is not None and not getattr(summary, "summary_text", None):
@@ -565,7 +566,8 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
             summary.summary_text = llm_results.get("project_summary")
             summary.contributions["llm_contribution_summary"] = llm_results.get("contribution_summary")
     else:
-        print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")
+        if constants.VERBOSE:
+            print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")
         
         # capture manual project summary
         if summary is not None and not getattr(summary, "summary_text", None):
