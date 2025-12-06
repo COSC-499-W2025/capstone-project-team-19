@@ -381,6 +381,8 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
             "Do you want to connect Google Drive to analyze revision history? (y/n): "
         ).strip().lower()
 
+        print()
+
         if choice in {"y", "yes"}:
             use_drive = True
             break
@@ -392,7 +394,8 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
 
     # Manual contribution mode
     if not use_drive:
-        print("[TEXT-COLLAB] Google Drive connection skipped. Using manual contribution mode.")
+        if constants.VERBOSE:
+            print("[TEXT-COLLAB] Google Drive connection skipped. Using manual contribution mode.")
         analyze_collaborative_text_project(
             conn=conn,
             user_id=user_id,
@@ -430,7 +433,9 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     # ------------------------------
 
     user_email = result.get("user_email")
-    print("\n[TEXT-COLLAB] Starting Google Drive revision analysis...")
+
+    if constants.VERBOSE:
+        print("\n[TEXT-COLLAB] Starting Google Drive revision analysis...")
 
     drive_result = process_project_files(
         conn=conn,

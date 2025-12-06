@@ -10,6 +10,7 @@ import re
 import docx2txt
 import fitz  # PyMuPDF
 from pypdf import PdfReader
+import src.constants as constants
 
 def _fetch_files(conn: sqlite3.Connection, user_id: int, project_name: str, only_text: bool = False) -> List[Dict[str, str]]:
     """
@@ -94,9 +95,11 @@ def cleanup_extracted_zip(zip_path: str) -> None:
     if os.path.isdir(zip_data_dir):
         try:
             shutil.rmtree(zip_data_dir)
-            print(f"\nCleaned up extracted files at: {zip_data_dir}")
+            if constants.VERBOSE:
+                print(f"\nCleaned up extracted files at: {zip_data_dir}")
         except OSError as exc:
-            print(f"\nWarning: Could not remove extracted files at {zip_data_dir}: {exc}")
+            if constants.VERBOSE:
+                print(f"\nWarning: Could not remove extracted files at {zip_data_dir}: {exc}")
 
 def ensure_table(conn: sqlite3.Connection, table: str, ddl: str) -> None:
     conn.execute(ddl)

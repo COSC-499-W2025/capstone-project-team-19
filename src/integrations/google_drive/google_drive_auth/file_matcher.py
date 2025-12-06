@@ -11,6 +11,7 @@ try:
 except ImportError:
     # For testing without googleapiclient installed
     Resource = type(None)
+import src.constants as constants
 
 # Supported MIME types for text files
 SUPPORTED_MIME_TYPES = [
@@ -119,7 +120,8 @@ def find_maybe_matches(local_file_name: str, project_name: Optional[str], drive_
         
         # Check case-insensitive base name match OR project name in drive file name
         if local_base == drive_base or (project_lower and project_lower in drive_lower):
-            print(f"  [POTENTIAL MATCH] '{local_file_name}' -> '{drive_name}'")
+            if constants.VERBOSE:
+                print(f"  [POTENTIAL MATCH] '{local_file_name}' -> '{drive_name}'")
             maybe_matches.append((file_id, drive_name, mime_type))
     
     # Remove duplicates (by file_id) and sort by relevance
@@ -137,7 +139,8 @@ def find_maybe_matches(local_file_name: str, project_name: Optional[str], drive_
     ))
     
     if not unique_matches:
-        print(f"  [NO MATCHES] '{local_file_name}'")
+        if constants.VERBOSE:
+            print(f"  [NO MATCHES] '{local_file_name}'")
     
     return unique_matches
 

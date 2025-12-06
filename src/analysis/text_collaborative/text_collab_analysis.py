@@ -7,7 +7,7 @@ from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.utils.helpers import normalize_pdf_paragraphs
 from src.db import get_files_with_timestamps, get_classification_id, store_text_activity_contribution
 from src.analysis.activity_type.text.activity_type import print_activity, get_activity_contribution_data
-
+import src.constants as constants
 
 def analyze_collaborative_text_project(
     conn,
@@ -28,7 +28,8 @@ def analyze_collaborative_text_project(
     6. Save structured output to summary.contributions["text_collab"].
     """
 
-    print("\n[TEXT-COLLAB] Starting collaborative text analysis…")
+    if constants.VERBOSE:
+        print("\n[TEXT-COLLAB] Starting collaborative text analysis…")
 
     # ---------------------------------------------------------
     # STEP 1 — Run main pipeline to get the full summary + skills
