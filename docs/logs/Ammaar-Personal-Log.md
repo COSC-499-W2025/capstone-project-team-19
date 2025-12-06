@@ -106,7 +106,7 @@ For PR reviews, I reviewed Johannes's text activity type detection (#228), which
 
 Next week's focus: I'll continue working on the follow-up items from the code skill detection PRs and ensure the code skills are completely finished for milestone 1.
 
-## (Week 13) Monday 24th November - Saturday 30th November
+## (Week 13) Monday 24th November - Sunday 30th November
 
 ![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Nov24-Nov30.png)
 
@@ -121,3 +121,17 @@ For my feature PR (#278), I fixed a critical bug where frameworks weren't being 
 For PR reviews, I reviewed Timmi's complete project summaries PR that stores all extracted analysis data into the `project_summaries` table, enabling proper project ranking and retrieval for Milestone 1 requirements. I reviewed Salma's code collaborative metrics storage PR that created `code_collaborative_metrics` and `code_collaborative_summary` tables to persist local git metrics and both manual/LLM summaries. I reviewed Timmi's project ranking PR implementing a fully weighted scoring system with availability scoring, base scoring (skills, contribution strength, activity diversity), code-specific scoring (complexity, git activity, github collaboration, tech stack), and text-specific scoring (writing quality), using weighted averaging so certain metrics carry more weight—this establishes the scoring foundation for resume/portfolio generation. I reviewed Ivona's chronological project listing PR that retrieves all analyzed projects sorted by completion date (newest first) and adds it as a menu item. I reviewed Timmi's activity diversity improvement PR that replaced the previous equal-weight approach with Shannon entropy to fix inflated diversity scores—previously, tiny activities (0.05% documentation) influenced the score as much as dominant ones (99.5% coding), and the Shannon entropy solution rewards balanced distributions while penalizing skewed ones without unfairly punishing projects for having small but important activities like documentation. Finally, I reviewed Timmi's top projects summaries PR that implements the "Summarize the top ranked projects" milestone requirement by adding a `view_top_projects_summaries()` function accessible via menu option [6] --> [2] that collects all project data, sorts by descending score, retrieves the top 3 projects, and prints their summaries in a formatted list.
 
 Next week's focus: I'll work on the presentation, demo video and updating the README.
+
+## (Week 14) Monday 1st December - Sunday 7th December
+
+![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Dec1-Dec7.png)
+
+Week recap: This week I worked on one feature PR, reviewed one PR, and focused heavily on presentation preparation and final deliverables.
+
+For my feature PR (#300), I implemented keyword-based file contribution tracking for collaborative code projects without local .git directories. The system now infers contributed files by matching keywords from user descriptions against filenames, paths, and file content. This populates the same table used when .git is present, allowing activity summaries and skill extraction to run on user-scoped files instead of the entire codebase. I also fixed missing language, framework, and contribution summary data in the database for no-git collaborative projects and improved prompt guidance for users.
+
+I reviewed Timmi's skill detector optimization PR (#302) that reduced runtime from 130-190 seconds down to roughly 40 seconds (4x improvement) by precompiling regex patterns, switching detectors to operate on line lists instead of full text, using cheap string checks before regex, filtering non-code files, and implementing early termination after first match.
+
+This week I also spent significant time working on our presentation slides and demo video. I presented during our scheduled time and peer-reviewed five other team presentations. I did some planning for the deliverables due Sunday, discussed the approach with the team, and worked with Adara on producing the demo video.
+
+Next week's focus: Relax and get back to it in January :)
