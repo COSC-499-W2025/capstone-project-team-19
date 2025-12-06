@@ -193,58 +193,7 @@ def get_all_issue_comments(token, owner, repo):
     Fetch ALL issue comments in the repository (includes PR discussion comments).
     """
     url = f"https://api.github.com/repos/{owner}/{repo}/issues/comments"
-    return paginated_gh_get(token, url)
-
-def get_gh_repo_prs(token, owner, repo, github_username):
-    page = 1
-    opened = defaultdict(int)
-    merged = defaultdict(int)
-    user_prs = []
-
-    while True:
-        url = f"https://api.github.com/repos/{owner}/{repo}/pulls?state=all&per_page=100&page={page}"
-        data = gh_get(token, url)
-
-        if not data: break
-
-        for pr in data:
-            author = pr.get("user", {}).get("login", "")
-            if author != github_username: continue # getting only prs from user, not whole repo
-
-            title = pr.get("title")
-            body = pr.get("body") or ""
-            created_at = pr.get("created_at", "").split("T")[0]
-            merged_at = pr.get("merged_at")
-            merged_date = merged_at.split("T")[0] if merged_at else None
-
-            labels= [l["name"].lower() for l in pr.get("labels", [])]
-
-            opened[created_at] += 1
-
-            if merged_date:
-                merged[merged_date] += 1
-
-            user_prs.append({
-                "number": pr.get("number"),
-                "title": title,
-                "body": body,
-                "labels": labels,
-                "created_at": created_at,
-                "merged_at": merged_date,
-                "state": pr.get("state"),
-                "merged": bool(merged_at)
-            })
-        if len(data) < 100: break # break if no more pages
-
-        page += 1
-
-    return {
-        "opened": dict(opened),
-        "merged": dict(merged),
-        "total_opened": sum(opened.values()),
-        "total_merged": sum(merged.values()),
-        "user_prs": user_prs
-    }        
+    return paginated_gh_get(token, url)   
 
 def get_gh_repo_contributions(token, owner, repo, github_username):
     """
@@ -383,3 +332,24 @@ def get_repo_commit_timestamps(token, owner, repo):
         page += 1
 
     return timestamps
+
+def get_pr_numbers_for_repo(token, owner, repo):
+    page = 1
+    pr_numbers = []
+
+    while True:
+        url = f"https://api.github.com/repos/{owner}/{repo}/pulls?state=all&per_page=100&page={page}"
+        data = gh_get(token, url)
+
+        if not data or isinstance(data, dict):
+            break
+
+        for pr in data:
+            pr_numbers.append(pr["number"])
+
+        if len(data) < 100:
+            break
+
+        page += 1
+
+    return pr_numbers
