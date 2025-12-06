@@ -25,7 +25,8 @@ from src.consent.external_consent import get_external_consent, record_external_c
 from src.project_analysis import detect_project_type, send_to_analysis
 from src.utils.upload_checks import handle_existing_zip
 from src.utils.helpers import cleanup_extracted_zip
-
+from src.config import VERBOSE  
+import src.config as config   # so we can modify VERBOSE
 
 def main():
     print("Welcome aboard! Let's turn your work into cool insights.")
@@ -235,6 +236,10 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
             continue
         
     if assignments and processed_zip_path:
+        # ask once whether analysis should be verbose
+        choice = input("\nShow detailed logs during analysis? (y/n): ").strip().lower()
+        config.VERBOSE = (choice == 'y')   # y = verbose, n = silent
+
         send_to_analysis(conn, user_id, assignments, external_consent_status, processed_zip_path)  # takes projects and sends them into the analysis flow
     else:
         if assignments:
