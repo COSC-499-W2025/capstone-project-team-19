@@ -115,8 +115,18 @@ def prompt_and_store():
     print("\nConsent recorded. Proceeding to file selection…\n")
 
     # Ask whether analysis output should be verbose BEFORE ZIP parsing begins
-    choice = input("Show detailed logs for ingestion + analysis? (y/n): ").strip().lower()
-    constants.VERBOSE = (choice == "y")
+    while True:
+        choice = input("\nShow detailed logs for ingestion + analysis? (y/n): ").strip().lower()
+        if choice in ("y", "yes"):
+            constants.VERBOSE = True
+            print("Verbose mode ON — detailed logs will be shown.\n")
+            break
+        elif choice in ("n", "no"):
+            constants.VERBOSE = False
+            print("Verbose mode OFF — only final results and essential prompts will show.\n")
+            break
+        else:
+            print("Invalid input — please enter 'y' or 'n'.")
 
     # Continue to file selection
     processed_zip_path = run_zip_ingestion_flow(conn, user_id, external_consent_status)
