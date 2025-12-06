@@ -5,7 +5,7 @@ import mimetypes
 import shutil
 from src.constants import CONFIG_FILES
 from src.utils.extension_catalog import code_extensions as pygments_code_extensions
-
+import src.constants as constants
 
 import warnings
 warnings.filterwarnings("ignore", message="Duplicate name:")
@@ -63,13 +63,15 @@ def parse_zip_file(zip_path, user_id: int | None = None, conn=None):
             
             key = (filename, size)
             if key in seen:
-                print(f"Duplicate found in ZIP: {name}")
+                if constants.VERBOSE:
+                    print(f"Duplicate found in ZIP: {name}")
                 duplicate_names.append(name)
             else:
                 seen[key] = True
 
         if duplicate_names:
-            print(f"Duplicate files found in ZIP: {len(duplicate_names)} duplicates detected")
+            if constants.VERBOSE:
+                print(f"Duplicate files found in ZIP: {len(duplicate_names)} duplicates detected")
 
         zip_name = os.path.splitext(os.path.basename(zip_path))[0]
         target_dir = os.path.join(ZIP_DATA_DIR, zip_name)
@@ -99,7 +101,8 @@ def parse_zip_file(zip_path, user_id: int | None = None, conn=None):
     #with open(METADATA_PATH, "w", encoding="utf-8") as f:
     #   json.dump(files_info, f, indent=4)
 
-    print(f"Extracted and stored {len(files_info)} files in database (user_id={user_id})")
+    if constants.VERBOSE:
+        print(f"Extracted and stored {len(files_info)} files in database (user_id={user_id})")
     return files_info
 
 
@@ -204,7 +207,8 @@ def collect_file_info(root_dir, zip_path=None):
                 continue
 
             if extension not in SUPPORTED_EXTENSIONS or not is_valid_mime(full_path, extension):
-                print(f"Unsupported file skipped: {file}")
+                if constants.VERBOSE:
+                    print(f"Unsupported file skipped: {file}")
                 continue
 
             stats = os.stat(full_path)
