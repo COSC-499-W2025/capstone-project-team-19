@@ -8,7 +8,10 @@ from .alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.analysis.activity_type.text.activity_type import print_activity, get_activity_contribution_data
 from src.db import get_files_with_timestamps, store_text_activity_contribution, get_classification_id
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def run_text_pipeline(
     parsed_files: List[dict],

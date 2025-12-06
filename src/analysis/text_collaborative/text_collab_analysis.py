@@ -7,7 +7,10 @@ from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.utils.helpers import normalize_pdf_paragraphs
 from src.db import get_files_with_timestamps, get_classification_id, store_text_activity_contribution
 from src.analysis.activity_type.text.activity_type import print_activity, get_activity_contribution_data
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def analyze_collaborative_text_project(
     conn,

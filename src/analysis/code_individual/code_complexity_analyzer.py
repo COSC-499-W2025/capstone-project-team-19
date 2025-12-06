@@ -16,7 +16,10 @@ from radon.metrics import mi_visit, mi_rank
 from radon.raw import analyze as raw_analyze
 import lizard
 from src.utils.extension_catalog import get_languages_for_extension
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 # Directories to exclude from analysis (third-party dependencies, build artifacts, etc.)
 EXCLUDE_DIRECTORIES = {

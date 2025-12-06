@@ -23,7 +23,10 @@ from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
 from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo
 from pathlib import Path
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_path: str) -> Dict:
     """

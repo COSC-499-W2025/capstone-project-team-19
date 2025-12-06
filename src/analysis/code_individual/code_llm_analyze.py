@@ -5,7 +5,10 @@ from typing import Any, Dict, Optional
 from src.utils.helpers import extract_code_file, extract_readme_file
 from dotenv import load_dotenv
 from groq import Groq
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))

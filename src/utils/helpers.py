@@ -10,7 +10,10 @@ import re
 import docx2txt
 import fitz  # PyMuPDF
 from pypdf import PdfReader
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def _fetch_files(conn: sqlite3.Connection, user_id: int, project_name: str, only_text: bool = False) -> List[Dict[str, str]]:
     """

@@ -34,7 +34,11 @@ from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
 from src.db import store_code_activity_metrics
 from src.db import get_metrics_id, insert_code_collaborative_summary
-import src.constants as constants
+
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:

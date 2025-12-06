@@ -1,5 +1,8 @@
 import json
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics):
     """Store parsed GitHub metrics into the normalized database schema."""

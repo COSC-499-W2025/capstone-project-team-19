@@ -4,7 +4,10 @@ Database operations for tracking user file contributions in collaborative projec
 
 import sqlite3
 from typing import List, Dict
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 
 def store_file_contributions(

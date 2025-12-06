@@ -11,7 +11,10 @@ try:
 except ImportError:
     # For testing without googleapiclient installed
     Resource = type(None)
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 # Supported MIME types for text files
 SUPPORTED_MIME_TYPES = [

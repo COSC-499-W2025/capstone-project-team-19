@@ -9,7 +9,10 @@ from src.analysis.skills.buckets.code_buckets import CODE_SKILL_BUCKETS
 from src.db import insert_project_skill
 from src.utils.helpers import read_file_content
 from src.utils.extension_catalog import code_extensions
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def extract_code_skills(conn, user_id, project_name, classification, files):
     """

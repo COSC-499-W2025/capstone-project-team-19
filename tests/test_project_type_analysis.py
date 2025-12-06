@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 
 from src.project_analysis import detect_project_type, get_individual_contributions, run_individual_analysis
-
+from src import constants
 
 # helper methods to create a test database, so the real database is not used
 def setup_in_memory_db():
@@ -159,20 +159,19 @@ def test_mixed_files_prompts_user(monkeypatch):
 
 
 # tests for send_to_analysis() function
+def test_send_to_analysis_calls_correct_flows_verbose(monkeypatch, capsys):
+    from src import constants
+    constants.VERBOSE = True
 
-def test_send_to_analysis_calls_correct_flows(monkeypatch, capsys):
     conn = setup_in_memory_db()
     user_id = 1
 
-    # Insert sample projects with known types
     insert_classification(conn, user_id, "projText", "individual", "text")
     insert_classification(conn, user_id, "projCode", "collaborative", "code")
     insert_classification(conn, user_id, "projNull", "individual", None)
 
-    # Mock the downstream functions so we can confirm routing
     called = {"text": False, "collab": False}
 
-    # run_individual_analysis now receives zip_path too, so keep *args
     monkeypatch.setattr(
         "src.project_analysis.run_individual_analysis",
         lambda *a, **kw: called.__setitem__("text", True),
@@ -182,68 +181,114 @@ def test_send_to_analysis_calls_correct_flows(monkeypatch, capsys):
         lambda *a, **kw: called.__setitem__("collab", True),
     )
 
-    # Mock user input: "run individual? y", "run collaborative? y"
     answers = iter(["y", "y"])
-    monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))
+    monkeypatch.setattr("builtins.input", lambda _="": next(answers))
 
-    # Run
     from src.project_analysis import send_to_analysis
-    send_to_analysis(
-        conn,
-        user_id,
-        {
-            "projText": "individual",
-            "projCode": "collaborative",
-            "projNull": "individual",
-        },
-        "accepted",
-        "/tmp/fake_upload.zip",  # zip_path
-    )
+    send_to_analysis(conn, user_id,
+                     {"projText": "individual", "projCode": "collaborative", "projNull": "individual"},
+                     "accepted", "/tmp/fake.zip")
 
     out = capsys.readouterr().out
 
-    # New output style: phase headers + arrowed lines
+    # VERBOSE prints clearly
     assert "[INDIVIDUAL] Running individual projects..." in out
     assert "  → projText (text)" in out
-
     assert "[COLLABORATIVE] Running collaborative projects..." in out
     assert "  → projCode (code)" in out
-
-    # Skips null-typed project; message may differ slightly, just check project name appears in a skip line
     assert "Skipping 'projNull'" in out
 
-    # Ensure the mocked calls were hit
+    assert called["text"]
+    assert called["collab"]
+
+def test_send_to_analysis_calls_correct_flows_non_verbose(monkeypatch, capsys):
+    from src import constants
+    constants.VERBOSE = False
+
+    conn = setup_in_memory_db()
+    user_id = 1
+
+    insert_classification(conn, user_id, "projText", "individual", "text")
+    insert_classification(conn, user_id, "projCode", "collaborative", "code")
+    insert_classification(conn, user_id, "projNull", "individual", None)
+
+    called = {"text": False, "collab": False}
+
+    monkeypatch.setattr(
+        "src.project_analysis.run_individual_analysis",
+        lambda *a, **kw: called.__setitem__("text", True),
+    )
+    monkeypatch.setattr(
+        "src.project_analysis.get_individual_contributions",
+        lambda *a, **kw: called.__setitem__("collab", True),
+    )
+
+    answers = iter(["y", "y"])
+    monkeypatch.setattr("builtins.input", lambda _="": next(answers))
+
+    from src.project_analysis import send_to_analysis
+    send_to_analysis(conn, user_id,
+                     {"projText": "individual", "projCode": "collaborative", "projNull": "individual"},
+                     "accepted", "/tmp/fake.zip")
+
+    out = capsys.readouterr().out
+
+    # Must still show item lines, but *no phase headers*
+    assert "projText" in out
+    assert "projCode" in out
+    assert "[INDIVIDUAL]" not in out
+    assert "[COLLABORATIVE]" not in out
+
     assert called["text"]
     assert called["collab"]
 
 
 # tests for routing layer (get_individual_contributions() function and run_individual_analysis() function)
-def test_get_individual_contributions_branches(monkeypatch, capsys, tmp_path):
+def test_get_individual_contributions_branches_verbose(monkeypatch, capsys, tmp_path):
+    from src import constants
+    constants.VERBOSE = True
+
     called = {"text": False, "code": False}
 
-    # Patch the functions in the SAME module where they're looked up
     from src import project_analysis as pa
-
-    monkeypatch.setattr(pa, "analyze_text_contributions",
-                        lambda *a, **kw: called.__setitem__("text", True))
-    monkeypatch.setattr(pa, "analyze_code_contributions",
-                        lambda *a, **kw: called.__setitem__("code", True))
+    monkeypatch.setattr(pa, "analyze_text_contributions", lambda *a, **kw: called.__setitem__("text", True))
+    monkeypatch.setattr(pa, "analyze_code_contributions", lambda *a, **kw: called.__setitem__("code", True))
 
     conn = setup_in_memory_db()
+    zip_path = str(tmp_path / "file.zip"); (tmp_path / "file.zip").write_text("")
 
-    # Provide a dummy zip_path because the router requires it
-    dummy_zip = str(tmp_path / "fake.zip")
-    (tmp_path / "fake.zip").write_text("")  # create the file
-
-    # Exercise both branches
     from src.project_analysis import get_individual_contributions
-    get_individual_contributions(conn, 1, "projT", "text", "accepted", dummy_zip)
-    get_individual_contributions(conn, 1, "projC", "code", "accepted", dummy_zip)
+    get_individual_contributions(conn, 1, "pA", "text", "acc", zip_path)
+    get_individual_contributions(conn, 1, "pB", "code", "acc", zip_path)
 
     out = capsys.readouterr().out
-    assert "[COLLABORATIVE] Preparing contribution analysis" in out
-    assert called["text"] is True
-    assert called["code"] is True
+
+    assert called["text"] and called["code"]
+    assert "[COLLABORATIVE] Preparing contribution analysis for 'pA' (text)" in out
+    assert "[COLLABORATIVE] Preparing contribution analysis for 'pB' (code)" in out
+
+def test_get_individual_contributions_branches_non_verbose(monkeypatch, capsys, tmp_path):
+    from src import constants
+    constants.VERBOSE = False
+
+    called = {"text": False, "code": False}
+
+    from src import project_analysis as pa
+    monkeypatch.setattr(pa, "analyze_text_contributions", lambda *a, **kw: called.__setitem__("text", True))
+    monkeypatch.setattr(pa, "analyze_code_contributions", lambda *a, **kw: called.__setitem__("code", True))
+
+    conn = setup_in_memory_db()
+    zip_path = str(tmp_path / "file.zip"); (tmp_path / "file.zip").write_text("")
+
+    from src.project_analysis import get_individual_contributions
+    get_individual_contributions(conn, 1, "pA", "text", "acc", zip_path)
+    get_individual_contributions(conn, 1, "pB", "code", "acc", zip_path)
+
+    out = capsys.readouterr().out
+
+    assert called["text"] and called["code"]
+    assert "[COLLABORATIVE]" not in out
+    assert "Preparing" not in out
 
 
 def test_run_individual_analysis_branches(monkeypatch):

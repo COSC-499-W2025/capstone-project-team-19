@@ -5,7 +5,10 @@ import mimetypes
 import shutil
 from src.constants import CONFIG_FILES
 from src.utils.extension_catalog import code_extensions as pygments_code_extensions
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 import warnings
 warnings.filterwarnings("ignore", message="Duplicate name:")

@@ -2,7 +2,10 @@ import sqlite3
 from typing import Any, Dict
 import src.db as db
 from .api_calls import analyze_google_doc
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def process_project_files(conn: sqlite3.Connection, creds, drive_service, docs_service, user_id: int, project_name: str, user_email: str):
     """ Process all linked Google Drive files for a given text project."""

@@ -6,7 +6,10 @@ from src.db.git_individual_metrics import (
     update_git_individual_metrics
 )
 from src.db.git_metrics_helpers import extract_git_metrics
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def run_code_non_llm_analysis(conn, user_id, project_name, zip_path, summary=None):
 

@@ -12,7 +12,10 @@ from typing import Dict, Any, Optional
 from src.utils.helpers import _fetch_files
 from .google_drive_oauth import get_user_email, google_drive_oauth
 from .link_files import find_and_link_files
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def setup_text_project_drive_connection(
     conn,

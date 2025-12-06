@@ -41,8 +41,10 @@ from .code_collaborative_analysis_helper import (
     print_portfolio_summary,
     prompt_collab_descriptions
 )
-
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 _CODE_RUN_METRICS: list[dict] = []
 _manual_descs_store: dict[str, str] = {}  # filled once per run for collab projects

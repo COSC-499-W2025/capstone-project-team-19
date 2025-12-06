@@ -11,7 +11,10 @@ import os
 from src.db import get_project_metadata, has_contribution_data, get_user_contributed_files
 from src.utils.helpers import _fetch_files
 from src.analysis.skills.flows.code_skill_extraction import extract_code_skills
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
     """

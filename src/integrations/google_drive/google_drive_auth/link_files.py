@@ -18,7 +18,10 @@ from .file_matcher import (
 )
 from .file_selector import select_from_matches, handle_no_matches
 from src.db import store_file_link
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def find_and_link_files(service: Resource,project_name: str,zip_files: List[str],conn,user_id: int) -> Dict[str, List[str]]:
     """

@@ -12,8 +12,10 @@ from src.utils.helpers import ensure_table
 # zip_paths stays in the main file because only the entrypoint needs it
 
 import re
-
-import src.constants as constants
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 DEBUG = False
 

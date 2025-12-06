@@ -25,8 +25,10 @@ from src.consent.external_consent import get_external_consent, record_external_c
 from src.project_analysis import detect_project_type, send_to_analysis
 from src.utils.upload_checks import handle_existing_zip
 from src.utils.helpers import cleanup_extracted_zip
-from src.constants import VERBOSE  
-import src.constants as constants   # so we can modify VERBOSE
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def main():
     print("Welcome aboard! Let's turn your work into cool insights.")
@@ -114,19 +116,13 @@ def prompt_and_store():
 
     print("\nConsent recorded. Proceeding to file selection…\n")
 
-    # Ask whether analysis output should be verbose BEFORE ZIP parsing begins
+    # Ask whether analysis output should be verbose 
     while True:
-        choice = input("\nShow detailed logs for ingestion + analysis? (y/n): ").strip().lower()
-        if choice in ("y", "yes"):
-            constants.VERBOSE = True
-            print("Verbose mode ON — detailed logs will be shown.\n")
+        choice = input("Show detailed logs? (y/n): ").strip().lower()
+        if choice in ("y", "n"):
+            constants.VERBOSE = (choice == "y")
             break
-        elif choice in ("n", "no"):
-            constants.VERBOSE = False
-            print("Verbose mode OFF — only final results and essential prompts will show.\n")
-            break
-        else:
-            print("Invalid input — please enter 'y' or 'n'.")
+        print("Invalid choice – please enter y or n.")
 
     # Continue to file selection
     processed_zip_path = run_zip_ingestion_flow(conn, user_id, external_consent_status)
