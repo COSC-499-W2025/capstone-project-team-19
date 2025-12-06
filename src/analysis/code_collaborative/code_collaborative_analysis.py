@@ -3,6 +3,7 @@ import sqlite3
 from typing import Optional, Dict, Mapping, Any
 import json
 from datetime import datetime
+import traceback
 
 from src.db import (
     store_github_account,
@@ -320,7 +321,9 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None):
         return repo_metrics
 
     except Exception as e:
-        print(f"[GitHub] Error occurred ({e}). Skipping GitHub and continuing.")
+        print("[GitHub] Error occurred. Full traceback:")
+        traceback.print_exc()
+        print("[GitHub] Skipping GitHub and continuing.")
         return None
 
 # Determine if all metric categories show zero activity

@@ -24,6 +24,17 @@ def fetch_github_metrics(token, owner, repo, gh_username):
         gh_username
     )
 
+    # Transform graphql_prs to pull_requests format for storage functions
+    user_prs = pr_collab.get("user_prs", [])
+    pull_requests = {
+        "total_opened": pr_collab.get("prs_opened", 0),
+        "total_merged": sum(1 for pr in user_prs if pr.get("merged")),
+        "user_prs": user_prs
+    }
+    
+    # Extract reviews from graphql_prs
+    reviews = pr_collab.get("reviews", {})
+
     return {
         "repository": f"{owner}/{repo}",
         "username": gh_username,
@@ -36,4 +47,6 @@ def fetch_github_metrics(token, owner, repo, gh_username):
 
         # GraphQL
         "graphql_prs": pr_collab,
+        "pull_requests": pull_requests,
+        "reviews": reviews,
     }

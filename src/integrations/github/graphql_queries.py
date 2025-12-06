@@ -1,15 +1,27 @@
 PR_REVIEW_QUERY = """
-query RepoPRs($owner: String!, $repo: String!) {
+query RepoPRs($owner: String!, $repo: String!, $cursor: String) {
   repository(owner: $owner, name: $repo) {
-    pullRequests(first: 50, orderBy: {field: CREATED_AT, direction: DESC}) {
+    pullRequests(first: 100, after: $cursor, orderBy: {field: CREATED_AT, direction: DESC}) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         number
+        title
+        body
         createdAt
+        mergedAt
+        state
+        merged
         author {
           login
         }
-        merged
-
+        labels(first: 10) {
+          nodes {
+            name
+          }
+        }
         comments(first: 50) {
           nodes {
             author {

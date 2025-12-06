@@ -148,6 +148,7 @@ def get_gh_repo_issues(token, owner, repo, github_username, all_issue_comments):
     page = 1
     opened = defaultdict(int)
     closed = defaultdict(int)
+    user_issues = []
 
     while True:
         url = f"https://api.github.com/repos/{owner}/{repo}/issues?state=all&per_page=100&page={page}"
@@ -166,6 +167,17 @@ def get_gh_repo_issues(token, owner, repo, github_username, all_issue_comments):
             opened[created_at] += 1
             if closed_at:
                 closed[closed_at.split("T")[0]] += 1
+
+            # Collect user-assigned issues for detailed storage (only assigned, not authored)
+            assignees = [a.get("login", "") for a in issue.get("assignees", [])]
+            if github_username in assignees:
+                user_issues.append({
+                    "title": issue.get("title", ""),
+                    "body": issue.get("body", "") or "",
+                    "labels": [l.get("name", "").lower() for l in issue.get("labels", [])],
+                    "created_at": created_at,
+                    "closed_at": closed_at.split("T")[0] if closed_at else None
+                })
 
         if len(data) < 100:
             break
@@ -186,6 +198,7 @@ def get_gh_repo_issues(token, owner, repo, github_username, all_issue_comments):
         "total_closed": sum(closed.values()),
         "total_issue_comments": total_issue_comments,
         "user_issue_comments": user_issue_comments,
+        "user_issues": user_issues,
     }
 
 def get_all_issue_comments(token, owner, repo):
