@@ -125,10 +125,12 @@ def prompt_and_store():
         ).strip().lower()
 
         if choice in ("y", "n"):
+            print()
             constants.VERBOSE = (choice == "y")
             break
 
         print("Invalid choice – please enter y or n.")
+        print()
 
     # Continue to file selection
     processed_zip_path = run_zip_ingestion_flow(conn, user_id, external_consent_status)
