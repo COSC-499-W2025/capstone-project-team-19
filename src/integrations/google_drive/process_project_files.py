@@ -2,6 +2,10 @@ import sqlite3
 from typing import Any, Dict
 import src.db as db
 from .api_calls import analyze_google_doc
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def process_project_files(conn: sqlite3.Connection, creds, drive_service, docs_service, user_id: int, project_name: str, user_email: str):
     """ Process all linked Google Drive files for a given text project."""
@@ -10,7 +14,9 @@ def process_project_files(conn: sqlite3.Connection, creds, drive_service, docs_s
     for f in files:
         file_id = f["drive_file_id"]
         mime_type = f["mime_type"]
-        print(f"Analyzing file: {f['drive_file_name']} ({file_id})")
+
+        if constants.VERBOSE:
+            print(f"Analyzing file: {f['drive_file_name']} ({file_id})")
 
         result = analyze_drive_file(
             creds=creds,
@@ -51,7 +57,9 @@ def process_project_files(conn: sqlite3.Connection, creds, drive_service, docs_s
             "total_revision_count": result.get("total_revision_count", 0),
         }
         db.store_text_contribution_summary(conn, summary_entry)
-        print(f"Stored text contributation metrics for {file_id}")
+
+        if constants.VERBOSE:
+            print(f"Stored text contributation metrics for {file_id}")
 
         # Add Store SUMMARY later
 

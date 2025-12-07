@@ -41,7 +41,10 @@ from .code_collaborative_analysis_helper import (
     print_portfolio_summary,
     prompt_collab_descriptions
 )
-
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 _CODE_RUN_METRICS: list[dict] = []
 _manual_descs_store: dict[str, str] = {}  # filled once per run for collab projects
@@ -79,15 +82,17 @@ def analyze_code_project(conn: sqlite3.Connection,
     desc = get_manual_desc(project_name)
 
     # Debug: show basic context for this project run
-    print("\n" + "=" * 80)
-    print(f"[debug] project={project_name}")
-    print(f"[debug] zip_path arg={zip_path}")
-    print(f"[debug] zip_data_dir={zip_data_dir}")
-    print(f"[debug] zip_name={zip_name}")
+    if constants.VERBOSE:
+        print("\n" + "=" * 80)
+        print(f"[debug] project={project_name}")
+        print(f"[debug] zip_path arg={zip_path}")
+        print(f"[debug] zip_data_dir={zip_data_dir}")
+        print(f"[debug] zip_name={zip_name}")
 
     # 2) find repo (collaborative/ → DB classifications → files.file_path)
     repo_dir = resolve_repo_for_project(conn, zip_data_dir, zip_name, project_name, user_id)
-    print(f"[debug] resolve_repo_for_project → {repo_dir}")
+    if constants.VERBOSE:
+        print(f"[debug] resolve_repo_for_project → {repo_dir}")
 
     if not repo_dir:
         print(
@@ -114,11 +119,12 @@ def analyze_code_project(conn: sqlite3.Connection,
         print("=" * 80)
         return None
 
-    print(f"Found local Git repo for {project_name} at: {repo_dir}")
+    if constants.VERBOSE:
+        print(f"Found local Git repo for {project_name} at: {repo_dir}")
 
-    # Optional: show again when DEBUG is enabled
-    if DEBUG:
-        print(f"[debug] using repo_dir={repo_dir}")
+        # Optional: show again when DEBUG is enabled
+        if DEBUG:
+            print(f"[debug] using repo_dir={repo_dir}")
 
     # Enhance with GitHub metrics (if user says yes)
     repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
@@ -239,6 +245,7 @@ def analyze_code_project(conn: sqlite3.Connection,
     _CODE_RUN_METRICS.append(metrics)
 
     print("=" * 80)
+    print()
     return metrics
 
 
@@ -292,7 +299,8 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None):
 
         gh_username = github_user["login"]
 
-        print("Collecting GitHub repository metrics...")
+        if constants.VERBOSE:
+            print("Collecting GitHub repository metrics...")
 
         # fetch metrics via github REST API then stoe metrics in db
         metrics = fetch_github_metrics(token, owner, repo, gh_username)

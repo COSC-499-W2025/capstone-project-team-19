@@ -8,6 +8,10 @@ from .alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.analysis.activity_type.text.activity_type import print_activity, get_activity_contribution_data
 from src.db import get_files_with_timestamps, store_text_activity_contribution, get_classification_id
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def run_text_pipeline(
     parsed_files: List[dict],
@@ -85,17 +89,19 @@ def run_text_pipeline(
 
     # Debug block
     if not suppress_print:
-        print("\n" + "=" * 80)
-        print(f"[debug] text project={project_name}")
-        print(f"[debug] zip_path arg={zip_path}")
-        print(f"[debug] ZIP_DATA_DIR={ZIP_DATA_DIR}")
-        print(f"[debug] zip_name={zip_name}")
-        print(f"[debug] base_path={base_path}")
-        print(f"[debug] base_path exists? {os.path.exists(base_path)}")
-        print("=" * 80)
+        if constants.VERBOSE:
+            print("\n" + "=" * 80)
+            print(f"[debug] text project={project_name}")
+            print(f"[debug] zip_path arg={zip_path}")
+            print(f"[debug] ZIP_DATA_DIR={ZIP_DATA_DIR}")
+            print(f"[debug] zip_name={zip_name}")
+            print(f"[debug] base_path={base_path}")
+            print(f"[debug] base_path exists? {os.path.exists(base_path)}")
+            print("=" * 80)
 
     if not suppress_print:
-        print(f"\nAnalyzing {len(text_files)} text file(s)...\n")
+        if constants.VERBOSE:
+            print(f"\nAnalyzing {len(text_files)} text file(s)...\n")
 
     # Group text files by project folder (collapse individual/collaborative)
     projects: Dict[str, List[dict]] = {}
@@ -114,7 +120,8 @@ def run_text_pipeline(
             continue
 
         if not suppress_print:
-            print(f"[debug] text file → project: {path_norm}  → {folder}")
+            if constants.VERBOSE:
+                print(f"[debug] text file → project: {path_norm}  → {folder}")
 
         projects.setdefault(folder, []).append(f)
 

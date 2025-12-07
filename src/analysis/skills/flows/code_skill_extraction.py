@@ -9,7 +9,10 @@ from src.analysis.skills.buckets.code_buckets import CODE_SKILL_BUCKETS
 from src.db import insert_project_skill
 from src.utils.helpers import read_file_content
 from src.utils.extension_catalog import code_extensions
-
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def extract_code_skills(conn, user_id, project_name, classification, files):
     """
@@ -23,12 +26,14 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
         6. Save results in the DB
     """
 
-    print(f"\n[SKILL EXTRACTION] Running CODE skill extraction for {project_name}")
+    if constants.VERBOSE:
+        print(f"\n[SKILL EXTRACTION] Running CODE skill extraction for {project_name}")
 
     # Get zip_name to construct correct file paths
     zip_name = _get_zip_name(conn, user_id, project_name)
     if not zip_name:
-        print(f"[SKILL EXTRACTION] Warning: Could not determine zip_name for {project_name}, skipping")
+        if constants.VERBOSE:
+            print(f"[SKILL EXTRACTION] Warning: Could not determine zip_name for {project_name}, skipping")
         return
 
     # Filter files before processing (skip non-code and very large files)
@@ -64,7 +69,9 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
         )
 
     conn.commit()
-    print(f"[SKILL EXTRACTION] Completed code skill extraction for: {project_name}")
+
+    if constants.VERBOSE:
+        print(f"[SKILL EXTRACTION] Completed code skill extraction for: {project_name}")
 
 
 def _filter_code_files(files: List[Dict], code_extensions: set) -> List[Dict]:
@@ -112,7 +119,8 @@ def _get_zip_name(conn, user_id: int, project_name: str) -> str:
         result = cursor.fetchone()
         return result[0] if result else None
     except Exception as e:
-        print(f"[SKILL EXTRACTION] Error querying zip_name: {e}")
+        if constants.VERBOSE:
+            print(f"[SKILL EXTRACTION] Error querying zip_name: {e}")
         return None
 
 def _load_single_file(file_info, zip_data_dir):
@@ -163,9 +171,11 @@ def _load_file_contents(files: List[Dict], zip_name: str) -> List[Dict]:
             else:
                 skipped_count += 1
 
-    print(f"[SKILL EXTRACTION] Loaded content for {loaded_count} file(s)")
+    if constants.VERBOSE:
+        print(f"[SKILL EXTRACTION] Loaded content for {loaded_count} file(s)")
     if skipped_count > 0:
-        print(f"[SKILL EXTRACTION] Skipped {skipped_count} file(s) (read error or missing path)")
+        if constants.VERBOSE:
+            print(f"[SKILL EXTRACTION] Skipped {skipped_count} file(s) (read error or missing path)")
 
     return files_with_content
 

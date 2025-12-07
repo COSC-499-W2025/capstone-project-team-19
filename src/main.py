@@ -25,7 +25,10 @@ from src.consent.external_consent import get_external_consent, record_external_c
 from src.project_analysis import detect_project_type, send_to_analysis
 from src.utils.upload_checks import handle_existing_zip
 from src.utils.helpers import cleanup_extracted_zip
-
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def main():
     print("Welcome aboard! Let's turn your work into cool insights.")
@@ -112,6 +115,22 @@ def prompt_and_store():
         return None
 
     print("\nConsent recorded. Proceeding to file selection…\n")
+
+    # Ask whether analysis output should be verbose
+    while True:
+        choice = input(
+            "Verbose mode prints extra debug information and execution traces.\n"
+            "If you prefer a cleaner view, normal mode shows only what you need.\n"
+            "Enable verbose mode? (y/n): "
+        ).strip().lower()
+
+        if choice in ("y", "n"):
+            print()
+            constants.VERBOSE = (choice == "y")
+            break
+
+        print("Invalid choice – please enter y or n.")
+        print()
 
     # Continue to file selection
     processed_zip_path = run_zip_ingestion_flow(conn, user_id, external_consent_status)
@@ -207,8 +226,9 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
         if not zip_path:
             print("No path entered. Exiting file selection.")
             break
-
-        print(f"\nReceived path: {zip_path}")
+        
+        if constants.VERBOSE:
+            print(f"\nReceived path: {zip_path}")
 
         # --- Restored duplicate zip check ---
         zip_path = handle_existing_zip(conn, user_id, zip_path)
@@ -260,8 +280,10 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
         print("No project folders detected to classify.")
         return {}
 
+    
     if root_name:
-        print(f"\nUsing '{root_name}' as the root folder for this upload.")
+        if constants.VERBOSE:
+           print(f"\nUsing '{root_name}' as the root folder for this upload.")
 
     if auto_assignments:
         print("\nAutomatically classified projects based on folder placement:")

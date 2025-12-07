@@ -12,6 +12,10 @@ from src.utils.helpers import ensure_table
 # zip_paths stays in the main file because only the entrypoint needs it
 
 import re
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 DEBUG = False
 
@@ -161,6 +165,7 @@ def save_user_github(conn: sqlite3.Connection, user_id: int, emails: List[str], 
             (user_id, nm),
         )
     conn.commit()
+    
     print("\nSaved your identity for future runs")
 
 
@@ -612,7 +617,8 @@ def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) ->
     if consent == "accepted" or not projects:
         return {}
 
-    print("\n[NON-LLM] CONTRIBUTION SUMMARIES")
+    if constants.VERBOSE:
+        print("\n[NON-LLM] CONTRIBUTION SUMMARIES")
     print("Describe only your personal contributions to the collaborative project.")
     print("Write 1-3 sentences. Be specific about features/files you primarily worked on.")
     print("Example: “Implemented login API in FastAPI and wrote tests for user_routes.py”.\n")

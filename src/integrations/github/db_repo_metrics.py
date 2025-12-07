@@ -1,4 +1,8 @@
 import json
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics):
     """Store parsed GitHub metrics into the normalized database schema."""
@@ -71,7 +75,9 @@ def store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics)
     ))
 
     conn.commit()
-    print(f"[GitHub] Stored metrics for {project_name}: commits={total_commits}, PRs={prs_opened}, issues={issues_opened}")
+
+    if constants.VERBOSE:
+        print(f"[GitHub] Stored metrics for {project_name}: commits={total_commits}, PRs={prs_opened}, issues={issues_opened}")
 
 # get a github repositories metrics from the local db
 def get_github_repo_metrics(conn, user_id, project_name, owner, repo):
@@ -269,4 +275,6 @@ def store_github_detailed_metrics(conn, user_id, project_name, owner, repo, metr
             ))
     
     conn.commit()
-    print(f"[GitHub] Stored detailed metrics: {len(user_issues)} issues, {len(user_prs)} PRs, {len(commit_timestamps)} commits, {len(reviews)} PR reviews")
+    
+    if constants.VERBOSE:
+        print(f"[GitHub] Stored detailed metrics: {len(user_issues)} issues, {len(user_prs)} PRs, {len(commit_timestamps)} commits, {len(reviews)} PR reviews")
