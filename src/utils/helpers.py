@@ -253,17 +253,31 @@ def extract_code_file(filepath: str)->Optional[str]:
     return None
 
 def extract_readme_file(base_path: str) -> Optional[str]:
-    for filename in os.listdir(base_path):
-        if filename.lower().startswith("readme") and filename.lower().endswith((".md", ".txt")):
-            filepath = os.path.join(base_path, filename)
-            try:
-                with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
-                    return f.read()
-            except Exception as e:
-                print(f"Error reading README: {e}")
-                return None
-    return None
+    """
+    Look for a README*.md / README*.txt anywhere under base_path.
+    Prefer the first one we find.
+    """
+    if not base_path or not os.path.isdir(base_path):
+        return None
 
+    try:
+        # Walk the tree so zipped repos like with_git/.../capstone-project-team-19/README.md are found
+        for root, dirs, files in os.walk(base_path):
+            for filename in files:
+                lower = filename.lower()
+                if lower.startswith("readme") and lower.endswith((".md", ".txt")):
+                    filepath = os.path.join(root, filename)
+                    try:
+                        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                            return f.read()
+                    except Exception as e:
+                        print(f"Error reading README: {e}")
+                        return None
+    except Exception as e:
+        print(f"Error scanning for README under {base_path}: {e}")
+        return None
+
+    return None
 
 
 SECTION_HEADERS = [

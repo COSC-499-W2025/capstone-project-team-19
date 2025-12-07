@@ -29,32 +29,37 @@ def run_code_llm_analysis(
 
     # If we know which files the user actually touched, restrict to those
     if focus_file_paths:
-        focus_set = set(focus_file_paths)
-        filtered = [f for f in all_code_files if f.get("file_path") in focus_set]
+        normalized_focus = [p.replace("\\", "/") for p in focus_file_paths]
+        filtered = []
+
+        for f in all_code_files:
+            fp = (f.get("file_path") or "").replace("\\", "/")
+            # Match if the parsed path *ends with* one of the focus paths
+            if any(fp.endswith(target) for target in normalized_focus):
+                filtered.append(f)
+
         if filtered:
             code_files = filtered
-
+            
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     base_path = os.path.join(ZIP_DATA_DIR, zip_name)
 
     print(f"\n{'='*80}")
-    if focus_file_paths:
-        print(
-            f"Analyzing {len(code_files)} of {len(all_code_files)} code file(s) "
-            f"selected from contribution data using LLM-based analysis..."
-        )
-    else:
-        print(f"Analyzing {len(code_files)} file(s) using LLM-based analysis...")
+    print(f"Analyzing {len(code_files)} file(s) using LLM-based analysis...")
     print(f"{'='*80}\n")
 
-    # README (still global)
+    # README (still global, but ONLY for project summary)
     readme_text = extract_readme_file(base_path)
     if readme_text and len(readme_text) > 8000:
         readme_text = readme_text[:8000]
 
-    project_context_parts = []
+    # We now build TWO contexts:
+    #  - project_context_parts: README + code snippets (for project summary)
+    #  - contrib_context_parts: code snippets ONLY (for contribution summary)
+    project_context_parts: list[str] = []
+    contrib_context_parts: list[str] = []
 
     if readme_text:
         project_context_parts.append(f"README:\n{readme_text}")
@@ -71,14 +76,21 @@ def run_code_llm_analysis(
             code_context = extract_code_file(file_path)
 
         if code_context:
-            project_context_parts.append(
-                f"### {file_info['file_name']} ###\n{code_context}"
-            )
+            snippet = f"### {file_info['file_name']} ###\n{code_context}"
+            project_context_parts.append(snippet)
+            contrib_context_parts.append(snippet)
 
     project_context = "\n\n".join(project_context_parts)
+    contribution_context = "\n\n".join(contrib_context_parts)
+
     if not project_context:
         print("No readable code context found. Skipping LLM analysis.\n")
         return None
+
+    # If somehow no code made it into contrib_context, fall back to project_context
+    # (rare; but keeps behaviour from totally breaking).
+    if not contribution_context:
+        contribution_context = project_context
 
     # 3. Infer a project name if not provided
     project_folders = sorted(
@@ -87,9 +99,11 @@ def run_code_llm_analysis(
     if not project_name:
         project_name = project_folders[0] if project_folders else zip_name
 
-    # 4. Call the existing LLM helpers (unchanged)
+    # 4. Call the existing LLM helpers
+    #    - Project summary: README + light code context
+    #    - Contribution summary: CODE-ONLY context (no README content)
     project_summary = generate_code_llm_project_summary(readme_text, project_context)
-    contribution_summary = generate_code_llm_contribution_summary(project_context)
+    contribution_summary = generate_code_llm_contribution_summary(contribution_context)
 
     display_code_llm_results(
         project_name,
@@ -191,6 +205,7 @@ Context (from source code & comments):
 {project_context[:8000]}
 
 Output one strong paragraph starting with a past-tense action verb (e.g., Implemented, Designed, Developed).
+DO NOT begin with "Here's a paragraph" or any sort of preamble and go into the paragrpah directly.
 """
     try:
         completion = client.chat.completions.create(
