@@ -2,6 +2,12 @@ from .github_graphql import gh_graphql
 from .graphql_queries import PR_REVIEW_QUERY
 
 def fetch_pr_collaboration_graphql(token, owner, repo, username):
+    """
+    Fetch PR collaboration data via GraphQL.
+    
+    NOTE: Distinguishes PR comments (regular discussion) from PR reviews
+    (formal submissions: approve/comment/request-changes).
+    """
     all_prs = []
     cursor = None
     

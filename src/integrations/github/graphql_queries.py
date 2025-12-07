@@ -1,3 +1,5 @@
+# NOTE: PR comments (pr.comments) are regular discussion messages.
+# PR reviews (pr.reviews) are formal submissions (approve/comment/request-changes).
 PR_REVIEW_QUERY = """
 query RepoPRs($owner: String!, $repo: String!, $cursor: String) {
   repository(owner: $owner, name: $repo) {

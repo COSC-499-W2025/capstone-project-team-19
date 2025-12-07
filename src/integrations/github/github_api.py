@@ -277,6 +277,11 @@ def get_gh_repo_contributions(token, owner, repo, github_username):
 def get_gh_pr_reviews(token, owner, repo, pull_number):
     """
     Fetch all review events on a pull request.
+    
+    NOTE: PR reviews are formal review submissions (approve/comment/request-changes)
+    created when someone submits a review. This is different from PR comments, which
+    are regular discussion messages (fetched via get_all_issue_comments()).
+    
     GitHub API: 
     GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews
     """
@@ -286,6 +291,10 @@ def get_gh_pr_reviews(token, owner, repo, pull_number):
 def get_gh_pr_review_comments(token, owner, repo, pull_number):
     """
     Fetch review comments left on a pull request (inline code comments).
+    
+    NOTE: These are inline code comments within PR reviews, not regular PR
+    discussion comments (which are fetched via get_all_issue_comments()).
+    
     GitHub API:
     GET /repos/{owner}/{repo}/pulls/{pull_number}/comments
     """
