@@ -50,12 +50,20 @@ pip install -r requirements.txt
 ```
 
 ### 4. Run Tests
+Ensure you are in the main directory `/capstone-project-team-19`.
 
 ```bash
-pytest
+pytest tests
 ```
 
 If everything is set up correctly, you should see the tests pass.
+
+### 5. Run the system
+Ensure you are in the main directory `/capstone-project-team-19`.
+
+```bash
+python -m src.main
+```
 
 ### Preparing Your ZIP Upload
 
@@ -90,6 +98,10 @@ my-workspace/
 ```
 
 After arranging your files, zip the root folder (e.g., zip `my-workspace/` into `my-workspace.zip`) and provide that ZIP file path to the CLI when prompted.
+
+> **Note:**
+> Do not change the name of the ZIP folder, it should match the root folder exactly.
+> Local .git analysis will not work if the folder names do not match.
 
 ## Google Drive Integration
 
@@ -178,8 +190,7 @@ To enable GitHub analysis:
 
 ### LLM Services (optional)
 
-Advanced text analysis features (e.g., project summaries and skill extraction using an LLM)
-use the **Groq API**. This integration is optional and fully consent-based.
+Advanced analysis features (e.g., project summaries using an LLM) use the **Groq API**. This integration is optional and fully consent-based.
 
 If no Groq API key is provided, the system will fall back to local-only analysis.
 
