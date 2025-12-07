@@ -124,11 +124,70 @@ Currently each team member is added as a test user for the Google Drive API with
 
 ![System Architecture Diagram](docs/plan/Updated-System-Architecture-Diagram.png)
 
-The System Architecture Diagram outlines the complete pipeline from user data consent through metrics generation and portfolio output. It starts when the user grants or denies consent for external services (LLM and relevant APIs) and uploads a zipped project folder. The system parses and inspects the uploaded archive, handling corrupted or duplicate files before classifying each by type and access level.
+The System Architecture Diagram outlines the complete pipeline from user data consent through metrics generation and outputs. 
+The flow starts when the user login, and choose one of the 8 menu:
 
-The File Type Detector directs text and code files into different processing paths depending on user permissions. When no external access is allowed, the Simple Text Function performs offline analysis using local tools for linguistic complexity, readability, and topic modeling, while the Code Function analyzes source files to detect programming languages, frameworks, and structure metrics like complexity and contribution frequency. When consent is granted, the Advanced Text Function extends this analysis with LLM summaries, skill extraction, and measure of success.
+- View old project summaries
 
-Outputs from all three functions flow into the Metrics Calculation module, which standardizes extracted data into project-level metrics like summaries, activity timelines, project rankings, skill frequencies, work type ratios, and collaboration indicators. Finally, the Visualization and Export module takes in stored metrics to generate a resume and web portfolio using Matplotlib, Seaborn, and optionally an LLM. Results are stored in a shared database to enable retrieval, incremental updates, and reuse across sessions.
+   List user's past projects that has been analyzed before, and ask user to choose which project summaries the user would like to view.
+
+- View all projects ranked
+
+   Ranking the project based on skills score, collaboration score, activity diversity, and metrics obtained from the analysis.
+
+- View resume items
+
+   Create a frozen resume snapshot or view an existing one. Retrieves data from project_summaries table, rank projects, and includes only the top five project. Show languages and frameworks (for code), summary, contributions, and skills. It also shows skills summary at the bottom of the resume.
+
+- View chronological skills
+
+   Shows skill timeline, what skills obtained, skill level, from what project, and score in a chronological list.
+
+- View portfolio items
+
+   Display each project with its title, importance score, project type, mode, duration, activity breakdown, skills, and summary. It retrieves data from the project_summaries table.
+
+- View all projects
+
+   List all projects chronologically from newest to oldest, and show the date of the project.
+
+- Delete old insight
+
+   Give options for user to delete resume, delete projects, refresh resume based on projects list after deleted, or keep the resume unchanged.
+
+- Analyze new project
+
+   The flow will continue to consent manager, where user will be asked for consent to analyze their files and external services. If consent is granted, the system will parse and inspect the uploaded archive, and files will be sent to analysis layer, then deleted after the analysis done.
+
+   The file type detector and project structure classifier will determine the path of the analysis whether it goes to code/text analysis and individual/collaborative analysis. 
+   
+   For all analysis, will go through the Non-LLM analysis first, then if LLM access is granted, summarization of project will be done by LLM, if not, user will be asked to enter their own summary.
+
+
+   There are four path of analysis:
+
+   - For individual code project, language, framework, complexity, git commits, author, and history will be analyzed. If .git does not exist, it will ask for github integration. If integration not granted, git analysis will be skipped.
+
+   - Individual Text Analysis will go through linguistic and readability analysis, CSV analysis, and activity type detection.
+
+   - Collaborative code project analysis will detect for .git file. If it exist, it will be used to filter user's files, and analyze contribution metrics. Github integration will be asked for despite the existence of .git files. If the user choose to integrate their github account, PRs, Issues, and Commits data will be fetched, and user's individual contribution will be analyzed. The github data will also be used to detect the collaborative skills.
+
+      However, if user chose not to integrate their github data, and if .git does not exist, user will be asked to enter their contribution summary. This summary will be used to detect their contribution by matching filenames, file paths and file content. 
+
+      Code files will go through the language & framework detection and activity type detection.
+
+   - Collaborative text project will ask the user to give access to their google drive. The Google API pipeline will extract contribution by fetching the comments, replies, questions in the document. It will be used to calculate collaborative skill.
+
+      However, if user does not give access to google, user will be asked which files and which part of main file did the user work on. Individual contribution files will be passed to the individual text pipeline and contribution will be calculated.
+
+   All files (and contributed files for collaborative project) will be passed to the skill bucket analysis layer, where existence check of each criteria of each skills will be done. Each skills will have score and will be given level based on it's score.
+
+   All of the analysis result has their own tables, and overall project summaries result will be stored to the project_summaries table.
+
+   Activity type analysis has two path:
+   - Code Activity, pattern match will be done on filename and PR Title/Body (if github integrated), then stored to database that lists activity type proportion, activity types list and files list for each activity type.
+
+   - Text activity, pattern match will be done on filename. Timestamp will be parsed that will be used to list activity type evolution (created, modified, type listed chronologically)
 
 ## Level 1 Data Flow Diagram
 
