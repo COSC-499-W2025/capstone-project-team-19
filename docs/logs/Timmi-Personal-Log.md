@@ -151,3 +151,28 @@ My PRs:
 
 Next Week:
 Next week, I plan to implement any remaining changes assigned to me that we decide are necessary for the Milestone 1 deliverable. I will also be working with my team to build the demo slides for our presentation on Wednesday and will be contributing to the Milestone 1 deliverable that is due Sunday, December 7th.
+
+## (Week 14) Monday December 1 - Sunday December 7
+
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Dec1-Dec7.PNG)
+
+Week recap:
+This week I worked on the tasks assigned to me. I optimized the skill detection with various different optimizations. Previously, the code skill detection was quite slow because it was reading the code line by line, so for large projects this would take awhile. Every file was being sent into the detector, where each detector broke the file down into lines to search for the regex patterns previously created. My PR description is quite detailed on what optimizations I implemented, but I will mention the main ones here:
+- Moved the regex patterns out of the detector functions so they are compiled only once, instead of each time the detector is called. This cut the time down quite a bit, but not enough for me to be happy with the speed.
+- Checking the string manually with startswith / substring before running the regex. Although regex is powerful, it is slow and bulky. By checking the substring first we cut down on how many regex is checked, speeding up the whole process.
+- Broke the file down into an array of lines *before* sending the array into the detector. This stopped each detector from having to break a file down itself. Previously, if there were 10 detectors they would each break the file down in the same way. Now, the file is broken down once and sent into each detector.
+
+All other optimizations were smaller, and did not have as much of an impact as I had wanted, hence why there were so many different optimizations implemented. For further details, look at PR #302. 
+
+Additionally, I fixed a bug in the GitHub Integration. It was not retrieving metrics accurately, so I went through the code to find the issues. Most of the issues were because the count for certain metrics (e.g., issues and review comments) were not counting just the user's counts. Also, there are different types of review, meaning just review comments are counted separately from approvals/request changes (this is a GitHub thing, not our code). While I was fixing these bugs, the retrieval for fetching GitHub metrics was slow, upwards of 5 minutes, so I optimized it by using GraphQL. GraphQL was specifically created for this very reason, that is, fetching tons of data from GitHub via their REST API. I only had the GraphGQL code retieve the paginated requests (review comments, PR comments, etc.), but eventually I would like to make it perform *all* the fetch requests, not just some.
+
+I also worked on updating the README. I ensured all steps for getting the .env variables and running the system were clear. I also added the team contract to the README.
+
+Lastly, I worked on the slides with the rest of my team, specifically the GitHub Integration slide and the Skill Buckets slide.
+
+My PRs:
+- #302 (optimizing skill detector) - Optimized the skill detector to run faster.
+- #309 (Fixing GitHub comments bug and optimizing requests) - Fixed the GH integration bug and optimized github fetch requests to the GitHub REST API.
+- #310 (updated README) - updated the README with the team contract and updated the .env file section to provide steps.
+
+Next week, there is no sprint. I will be studying for exams and waiting excitedly for winter break. In January, my team will reassess Milestone 2 and begin assigning tasks as needed.
