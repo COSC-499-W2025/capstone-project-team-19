@@ -166,24 +166,28 @@ The flow starts when the user login, and choose one of the 8 menu:
 
    There are four path of analysis:
 
-   - For individual code project, language, framework, complexity, git commits, author, and history will be analyzed.
+   - For individual code project, language, framework, complexity, git commits, author, and history will be analyzed. If .git does not exist, it will ask for github integration. If integration not granted, git analysis will be skipped.
 
    - Individual Text Analysis will go through linguistic and readability analysis, CSV analysis, and activity type detection.
 
-   - Collaborative code project will ask for github integration. If the user choose to integrate their github account, PRs, Issues, and Commits data will be fetched, and user's individual contribution will analyzed by running the individual code analysis. The github data will also be used to detect the collaborative skills.
+   - Collaborative code project analysis will detect for .git file. If it exist, it will be used to filter user's files, and analyze contribution metrics. Github integration will be asked for despite the existence of .git files. If the user choose to integrate their github account, PRs, Issues, and Commits data will be fetched, and user's individual contribution will be analyzed. The github data will also be used to detect the collaborative skills.
 
-      However, if user chose not to integrate their github data, .git files will still be analyzed if exist. It will be used to identify user's contribution. Finally, if .git does not exist, user will be asked to enter their contribution summary. This summary will be used to detect their contribution. 
+      However, if user chose not to integrate their github data, and if .git does not exist, user will be asked to enter their contribution summary. This summary will be used to detect their contribution by matching filenames, file paths and file content. 
 
-      All user's individual contribution will go through the individual code analysis.
+      Code files will go through the language & framework detection and activity type detection.
 
    - Collaborative text project will ask the user to give access to their google drive. The Google API pipeline will extract contribution by fetching the comments, replies, questions in the document. It will be used to calculate collaborative skill.
 
       However, if user does not give access to google, user will be asked which files and which part of main file did the user work on. Individual contribution files will be passed to the individual text pipeline and contribution will be calculated.
 
-   All files will be passed to the skill bucket analysis layer, where existence check of each criteria of each skills will be done. Each skills will have score and will be given level based on it's score.
+   All files (and contributed files for collaborative project) will be passed to the skill bucket analysis layer, where existence check of each criteria of each skills will be done. Each skills will have score and will be given level based on it's score.
 
    All of the analysis result has their own tables, and overall project summaries result will be stored to the project_summaries table.
 
+   Activity type analysis has two path:
+   - Code Activity, pattern match will be done on filename and PR Title/Body (if github integrated), then stored to database that lists activity type proportion, activity types list and files list for each activity type.
+
+   - Text activity, pattern match will be done on filename. Timestamp will be parsed that will be used to list activity type evolution (created, modified, type listed chronologically)
 
 ## Level 1 Data Flow Diagram
 
