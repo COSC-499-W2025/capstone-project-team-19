@@ -110,3 +110,59 @@ def test_project_name_comes_from_folder(
     # Assert we used the folder "portfolio-site" rather than the zip name
     assert "Project: portfolio-site" in out
     assert "Project: code_projects" not in out
+    
+    
+@patch("src.analysis.code_individual.code_llm_analyze.client")
+def test_contribution_summary_uses_top_files_only(
+    mock_client, mock_llm_response_factory, tmp_path, capsys
+):
+    """
+    Ensures that when focus_file_paths is provided (simulating .git top_files),
+    ONLY those files are included in the contribution context passed to the LLM.
+    """
+
+    # Simulated parsed_files: 3 code files
+    parsed_files = [
+        {"file_path": "proj/a.py", "file_name": "a.py", "file_type": "code"},
+        {"file_path": "proj/b.py", "file_name": "b.py", "file_type": "code"},
+        {"file_path": "proj/c.py", "file_name": "c.py", "file_type": "code"},
+    ]
+
+    # Fake top 5 files (here only 1)
+    focus_paths = ["proj/b.py"]
+
+    # Fake full file contents
+    def fake_read(path):
+        if path.endswith("b.py"):
+            return "print('B FILE CONTENT')"
+        return "SHOULD NOT APPEAR"
+
+    # Patch read_file_content so only b.py returns the expected content
+    with patch(
+        "src.analysis.code_individual.code_llm_analyze.read_file_content",
+        side_effect=fake_read,
+    ):
+
+        # Returned LLM content doesn't matter; we just need it to run.
+        mock_client.chat.completions.create.return_value = \
+            mock_llm_response_factory("Implemented logic in b.py")
+
+        zip_path = str(tmp_path / "proj.zip")
+
+        code_llm_analyze.run_code_llm_analysis(
+            parsed_files,
+            zip_path,
+            project_name="proj",
+            focus_file_paths=focus_paths,
+        )
+
+        # Get LLM prompt input
+        args, kwargs = mock_client.chat.completions.create.call_args
+        prompt_text = kwargs["messages"][1]["content"]
+
+        # Ensure contribution context includes ONLY the expected file
+        assert "B FILE CONTENT" in prompt_text
+        assert "SHOULD NOT APPEAR" not in prompt_text
+        assert "a.py" not in prompt_text
+        assert "c.py" not in prompt_text
+
