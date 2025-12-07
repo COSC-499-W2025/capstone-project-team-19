@@ -129,59 +129,60 @@ The flow starts when the user login, and choose one of the 8 menu:
 
 - View old project summaries
 
-List user's past projects that has been analyzed before, and ask user to choose which project summaries the user would like to view.
+   List user's past projects that has been analyzed before, and ask user to choose which project summaries the user would like to view.
 
 - View all projects ranked
 
-Ranking the project based on skills score, collaboration score, activity diversity, and metrics obtained from the analysis.
+   Ranking the project based on skills score, collaboration score, activity diversity, and metrics obtained from the analysis.
 
 - View resume items
 
-Create a frozen resume snapshot or view an existing one. Retrieves data from project_summaries table, rank projects, and includes only the top five project. Show languages and frameworks (for code), summary, contributions, and skills. It also shows skills summary at the bottom of the resume.
+   Create a frozen resume snapshot or view an existing one. Retrieves data from project_summaries table, rank projects, and includes only the top five project. Show languages and frameworks (for code), summary, contributions, and skills. It also shows skills summary at the bottom of the resume.
 
 - View chronological skills
 
-Shows skill timeline, what skills obtained, skill level, from what project, and score in a chronological list.
+   Shows skill timeline, what skills obtained, skill level, from what project, and score in a chronological list.
 
 - View portfolio items
 
-Display each project with its title, importance score, project type, mode, duration, activity breakdown, skills, and summary. It retrieves data from the project_summaries table.
+   Display each project with its title, importance score, project type, mode, duration, activity breakdown, skills, and summary. It retrieves data from the project_summaries table.
 
 - View all projects
 
-List all projects chronologically from newest to oldest, and show the date of the project.
+   List all projects chronologically from newest to oldest, and show the date of the project.
 
 - Delete old insight
 
-Give options for user to delete resume, delete projects, refresh resume based on projects list after deleted, or keep the resume unchanged.
+   Give options for user to delete resume, delete projects, refresh resume based on projects list after deleted, or keep the resume unchanged.
 
 - Analyze new project
 
-The flow will continue to consent manager, where user will be asked for consent to analyze their files and external services. If consent is granted, the system will parse and inspect the uploaded archive, and files will be sent to analysis layer, then deleted after the analysis done.
+   The flow will continue to consent manager, where user will be asked for consent to analyze their files and external services. If consent is granted, the system will parse and inspect the uploaded archive, and files will be sent to analysis layer, then deleted after the analysis done.
 
-The file type detector and project structure classifier will determine the path of the analysis whether it goes to code/text analysis and individual/collaborative analysis. 
-For all analysis, will go through the Non-LLM analysis first, then if LLM access is granted, summarization of project will be done by LLM, if not, user will be asked to enter their own summary.
+   The file type detector and project structure classifier will determine the path of the analysis whether it goes to code/text analysis and individual/collaborative analysis. 
+   
+   For all analysis, will go through the Non-LLM analysis first, then if LLM access is granted, summarization of project will be done by LLM, if not, user will be asked to enter their own summary.
 
 
-There are four path of analysis:
+   There are four path of analysis:
 
-- For individual code project, language, framework, complexity, git commits, author, and history will be analyzed.
+   - For individual code project, language, framework, complexity, git commits, author, and history will be analyzed.
 
-- Individual Text Analysis will go through linguistic and readability analysis, CSV analysis, and activity type detection.
+   - Individual Text Analysis will go through linguistic and readability analysis, CSV analysis, and activity type detection.
 
-- Collaborative code project will ask for github integration. If the user choose to integrate their github account, PRs, Issues, and Commits data will be fetched, and user's individual contribution will analyzed by running the individual code analysis. The github data will also be used to detect the collaborative skills.
+   - Collaborative code project will ask for github integration. If the user choose to integrate their github account, PRs, Issues, and Commits data will be fetched, and user's individual contribution will analyzed by running the individual code analysis. The github data will also be used to detect the collaborative skills.
 
-However, if user chose not to integrate their github data, .git files will still be analyzed if exist. It will be used to identify user's contribution. Finally, if .git does not exist, user will be asked to enter their contribution summary. This summary will be used to detect their contribution. 
+      However, if user chose not to integrate their github data, .git files will still be analyzed if exist. It will be used to identify user's contribution. Finally, if .git does not exist, user will be asked to enter their contribution summary. This summary will be used to detect their contribution. 
 
-All user's individual contribution will go through the individual code analysis.
+      All user's individual contribution will go through the individual code analysis.
 
-- Collaborative text project will ask the user to give access to their google drive. The Google API pipeline will extract contribution by fetching the comments, replies, questions in the document. It will be used to calculate collaborative skill.
+   - Collaborative text project will ask the user to give access to their google drive. The Google API pipeline will extract contribution by fetching the comments, replies, questions in the document. It will be used to calculate collaborative skill.
 
-However, if user does not give access to google, user will be asked which files and which part of main file did the user work on. Individual contribution files will be passed to the individual text pipeline and contribution will be calculated.
+      However, if user does not give access to google, user will be asked which files and which part of main file did the user work on. Individual contribution files will be passed to the individual text pipeline and contribution will be calculated.
 
-All files will be passed to the skill bucket analysis layer, where existence check of each criteria of each skills will be done. Each skills will have score and will be given level based on it's score.
+   All files will be passed to the skill bucket analysis layer, where existence check of each criteria of each skills will be done. Each skills will have score and will be given level based on it's score.
 
-All of the analysis result has their own tables, and overall project summaries result will be stored to the project_summaries table.
+   All of the analysis result has their own tables, and overall project summaries result will be stored to the project_summaries table.
 
 
 ## Level 1 Data Flow Diagram
