@@ -2,6 +2,12 @@
 
 # Capstone Project - Mining Digital Work Artifacts
 
+## Team Contract
+
+Our team contract outlining roles, responsibilities, communication expectations, and conflict resolution is available here:
+
+[View Team Contract](docs/team/COSC%20499%20-%20Team%20Contract.pdf)
+
 ## Local Development Setup
 
 ### 1. Clone the Repository
@@ -85,14 +91,114 @@ my-workspace/
 
 After arranging your files, zip the root folder (e.g., zip `my-workspace/` into `my-workspace.zip`) and provide that ZIP file path to the CLI when prompted.
 
-### Google Drive Setup
-Currently each team member is added as a test user for the Google Drive API with the email associated with our "COSC 499 - GROUP 19" Google Drive folder
+## Google Drive Integration
 
-1. Receive `credentials.json` from Ivona (via discord)
-2. Place the file at:`src/integrations/google_drive/google_drive_auth/credentials.json`
-3. Verify the path:
+This project optionally supports Google Drive analysis through the Google Drive API.
+All access is strictly consent-based and is not required for a project to be analyzed.
 
-**Note:** `credentials.json` contains sensitive OAuth credentials and is already in `.gitignore`.Never commit this file to version control.
+### For Course Evaluators (TAs)
+
+Google Drive integration **can be tested by course evaluators**.
+
+To support this, course evaluators have been added as **authorized test users**
+in the Google Drive API project. Due to OAuth security restrictions,
+credentials cannot be included in the repository and must be shared privately.
+
+To enable Google Drive integration during evaluation:
+
+1. Obtain `credentials.json` via private communication from the team.
+2. Place the file at: `src/integrations/google_drive/google_drive_auth/credentials.json`
+3. Verify the path is correct before running the application.
+
+If credentials are not provided, the system will fall back to local-only analysis,
+and all core functionality will remain available.
+
+> Note: Google Drive OAuth requires the evaluator’s email to be a Google account (e.g., Gmail).
+
+### For Team Development Use
+Each team member has been added as a test user in the Google Drive API project
+using the email associated with the **"COSC 499 - GROUP 19"** shared Google Drive folder.
+
+To enable Google Drive integration locally:
+
+1. Obtain `credentials.json` from the team (via private communication).
+2. Place the file at: `src/integrations/google_drive/google_drive_auth/credentials.json`
+3. Verify the path is correct before running the application.
+
+> **Security Note**  
+> `credentials.json` contains sensitive OAuth credentials.  
+> This file is included in `.gitignore` and must never be committed to version control.
+
+## Environment Variables and OAuth Setup
+
+This project requires a `.env` file to exist in the project root in order to run,
+even if optional API integrations are not used.
+
+A template file (`.env.example`) is provided and should be copied directly.
+
+### Required `.env` Setup
+
+1. Copy the example file (manually or using a command):
+    ```bash
+    cp .env.example .env
+    ```
+    (On Windows, create the `.env` file manually or use `copy .env.example .env`.)
+
+2. Ensure all variables below are present in `.env`:
+    ```env
+    GROQ_API_KEY=<your-api-key>
+    GITHUB_CLIENT_ID=""
+
+    DEVICE_CODE_URL="https://github.com/login/device/code"
+    TOKEN_URL="https://github.com/login/oauth/access_token"
+    ```
+    The values for GROQ_API_KEY and GITHUB_CLIENT_ID may be left empty.
+    The URL values are required and should not be modified.
+
+> **Security Note**
+> The `.env` file may contain sensitive information and is ignored by Git via `.gitignore`.
+> Never commit real API keys or OAuth credentials to version control.
+
+### GitHub OAuth (optional)
+
+GitHub OAuth is used to analyze collaboration metrics such as commits, pull requests, reviews, and contribution frequency. This integration uses GitHub's **Device Flow OAuth**.
+
+To enable GitHub analysis:
+1. Create a GitHub OAuth App:
+   - Visit https://github.com/settings/developers
+   - Select **OAuth Apps --> New OAuth App**
+   - Application name: `Capstone Portfolio Analyzer`
+   - Homepage URL: `http://localhost`
+   - Authorization callback URL: `http://localhost`
+2. Copy the **Client ID** from the OAuth app.
+3. Add the following to your `.env` file (as shown in `.env.example`):
+    ```env
+    GITHUB_CLIENT_ID=<your-client-id>
+    ```
+
+### LLM Services (optional)
+
+Advanced text analysis features (e.g., project summaries and skill extraction using an LLM)
+use the **Groq API**. This integration is optional and fully consent-based.
+
+If no Groq API key is provided, the system will fall back to local-only analysis.
+
+#### How to Set Up a Groq API Key
+
+1. Log in or create a Groq account:
+   - https://console.groq.com/login
+
+2. Create an API key:
+   - https://console.groq.com/keys
+
+3. Add the following to you `.env` file in the project root:
+    ```env
+    GROQ_API_KEY=<your-groq-api-key>
+    ```
+
+> **Security Note** 
+> API keys should never be committed to version control.
+> The `.env` file is ignored via `.gitignore`, and a template (`.env.example`) is provided for reference.
 
 ### Preparing a Local `.git` Repository for Collaborative Analysis
 
@@ -144,70 +250,70 @@ Once metrics are available, the dashboard layer surfaces them in several destina
 
 Work breakdown structure will be updated based on [this google sheets](https://docs.google.com/spreadsheets/d/1yeHoVlBvooq_YpePy--oXryqxtmau8V4wUhEGfgpzfs/edit?usp=sharing) (Milestone 2 and 3 will be updated based on what is updated on canvas.)
 
-| No     | Module/Functionality                                  | Description                                                                                                                                                                                     | Member(s)   | Time Estimation |
+| No     | Module/Functionality                                  | Description                                                                                                                                                                                     | Member(s)   | Status          |
 | ------ | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | --------------- |
 | **1**  | **Project Plan**                                      |                                                                                                                                                                                                 |             |                 |
-| 1.1    | Project Requirements                                  | Define project goal, do self research on gathering requirements                                                                                                                                 | All Members |                 |
-| 1.2    | System Architecture                                   | Generate system architecture diagram, use case diagram, DFD based on the requirements                                                                                                           | All Members |                 |
-| 1.3    | Project Proposal                                      | Generate project proposal based on requirements and system architecture                                                                                                                         | All Members |                 |
-| 1.4    | Updated Project Plan                                  | Update project plan based on evaluation, including System architecture diagram, DFD, and requirements                                                                                           | All Members |                 |
-| 1.5    | Local Environment                                     | Setup local environment based on project requirements                                                                                                                                           | Timmi       |                 |
+| 1.1    | Project Requirements                                  | Define project goal, do self research on gathering requirements                                                                                                                                 | All Members | Done            |
+| 1.2    | System Architecture                                   | Generate system architecture diagram, use case diagram, DFD based on the requirements                                                                                                           | All Members | Done            |
+| 1.3    | Project Proposal                                      | Generate project proposal based on requirements and system architecture                                                                                                                         | All Members | Done            |
+| 1.4    | Updated Project Plan                                  | Update project plan based on evaluation, including System architecture diagram, DFD, and requirements                                                                                           | All Members | Done            |
+| 1.5    | Local Environment                                     | Setup local environment based on project requirements                                                                                                                                           | Timmi       | Done            |
 | **2**  | **Backend**                                           |                                                                                                                                                                                                 |             |                 |
-| 2.1    | Consent Module                                        |                                                                                                                                                                                                 | Salma       |                 |
-| 2.1.1  | Ask for consent functionality                         | Ask user for consent of accessing data                                                                                                                                                          | Salma       |                 |
-| 2.1.2  | Consent store to database functionality               | Store consent to database for future configuration                                                                                                                                              | Salma       |                 |
-| 2.2    | Folder Processing Module                              |                                                                                                                                                                                                 | Timmi       |                 |
-| 2.2.1  | ZIP Extraction Functionality                          | Parse a specified zipped folder containing nested folders and files                                                                                                                             | Timmi       |                 |
-| 2.2.2  | File checking functionality                           | Check whether file in the folder is according to the accepted file format, if not, return error response                                                                                        | Timmi       |                 |
-| 2.2.3  | Storing to database functionality                     | Store file metadata in SQLite                                                                                                                                                                   | Timmi       |                 |
-| 2.3    | External Service Consent Module                       |                                                                                                                                                                                                 | Ivona       |                 |
-| 2.3.1  | Ask for consent functionality                         | Display permission text and risk                                                                                                                                                                | Ivona       |                 |
-| 2.3.2  | Consent Storage                                       | Store consent in database for future configuration                                                                                                                                              | Ivona       |                 |
-| 2.4    | File Processing Module                                |                                                                                                                                                                                                 |             |                 |
-| 2.4.1  | Link to External Service Functionality                | Use external service such as LLM to analyze files                                                                                                                                               |             |                 |
-| 2.4.2  | Alternative analysis modules                          | Implement local analysis alternatives that produce the same metrics                                                                                                                             |             |                 |
-| 2.4.3  | Metadata Extraction Functionality                     | Extract key information for each project/file                                                                                                                                                   |             |                 |
-| 2.4.5  | Skill Extraction Functionality                        | Extract key skills demonstrated in project                                                                                                                                                      |             |                 |
-| 2.4.6  | Project Identification Functionality                  | Distinguish individual/collaborative projects, Extrapolate individual contributions in collabortion projects, Extract metrics, identify programming language and framework used if it is a code |             |                 |
-| 2.4.7  | Project Information Storage Functionality             | Store identification result in database                                                                                                                                                         |             |                 |
-| 2.5    | Information Generator Module                          |                                                                                                                                                                                                 |             |                 |
-| 2.5.1  | Project Ranking Functionality                         | Rank importance of each project based on user's contributions                                                                                                                                   |             |                 |
-| 2.5.2  | Project Summarizing Functionality                     | Summarize top-ranked projects                                                                                                                                                                   |             |                 |
-| 2.5.3  | Chronological List Functionality                      | Produce chronological list of projects and skills exercised                                                                                                                                     |             |                 |
-| 2.6    | Past Data Modification Module                         |                                                                                                                                                                                                 |             |                 |
-| 2.6.1  | Retrieve Previous Portfolio information Functionality | Retrieve previous data for adding new data in the same project                                                                                                                                  |             |                 |
-| 2.6.2  | Retrieve Previous Resume Item Functionality           | Retrieve previous data for adding new data in the same project                                                                                                                                  |             |                 |
-| 2.6.3  | Delete Past Insights Functionality                    | Deleting past insights which is shared in multiple projects without affecting other projects                                                                                                    |             |                 |
+| 2.1    | Consent Module                                        |                                                                                                                                                                                                 | Salma       | Done            |
+| 2.1.1  | Ask for consent functionality                         | Ask user for consent of accessing data                                                                                                                                                          | Salma       | Done            |
+| 2.1.2  | Consent store to database functionality               | Store consent to database for future configuration                                                                                                                                              | Salma       | Done            |
+| 2.2    | Folder Processing Module                              |                                                                                                                                                                                                 | Timmi       | Done            |
+| 2.2.1  | ZIP Extraction Functionality                          | Parse a specified zipped folder containing nested folders and files                                                                                                                             | Timmi       | Done            |
+| 2.2.2  | File checking functionality                           | Check whether file in the folder is according to the accepted file format, if not, return error response                                                                                        | Timmi       | Done            |
+| 2.2.3  | Storing to database functionality                     | Store file metadata in SQLite                                                                                                                                                                   | Timmi       | Done            |
+| 2.3    | External Service Consent Module                       |                                                                                                                                                                                                 | Ivona       | Done            |
+| 2.3.1  | Ask for consent functionality                         | Display permission text and risk                                                                                                                                                                | Salma       | Done            |
+| 2.3.2  | Consent Storage                                       | Store consent in database for future configuration                                                                                                                                              | Salma       | Done            |
+| 2.4    | File Processing Module                                |                                                                                                                                                                                                 |             | Done            |
+| 2.4.1  | Link to External Service Functionality                | Use external service such as LLM to analyze files                                                                                                                                               | Adara, Salma| Done            |
+| 2.4.2  | Alternative analysis modules                          | Implement local analysis alternatives that produce the same metrics                                                                                                                             | All Members | Done            |
+| 2.4.3  | Metadata Extraction Functionality                     | Extract key information for each project/file                                                                                                                                                   | All Members | Done            |
+| 2.4.5  | Skill Extraction Functionality                        | Extract key skills demonstrated in project                                                                                                                                                      | All Members | Done            |
+| 2.4.6  | Project Identification Functionality                  | Distinguish individual/collaborative projects, Extrapolate individual contributions in collabortion projects, Extract metrics, identify programming language and framework used if it is a code | All Members | Done            |
+| 2.4.7  | Project Information Storage Functionality             | Store identification result in database                                                                                                                                                         | All Members | Done            |
+| 2.5    | Information Generator Module                          |                                                                                                                                                                                                 |             | Done            |
+| 2.5.1  | Project Ranking Functionality                         | Rank importance of each project based on user's contributions                                                                                                                                   | Timmi       | Done            |
+| 2.5.2  | Project Summarizing Functionality                     | Summarize top-ranked projects                                                                                                                                                                   | Timmi       | Done            |
+| 2.5.3  | Chronological List Functionality                      | Produce chronological list of projects and skills exercised                                                                                                                                     | Timmi, Ivona | Done            |
+| 2.6    | Past Data Modification Module                         |                                                                                                                                                                                                 |             | Done            |
+| 2.6.1  | Retrieve Previous Portfolio information Functionality | Retrieve previous data for adding new data in the same project                                                                                                                                  | Adara       | Done            |
+| 2.6.2  | Retrieve Previous Resume Item Functionality           | Retrieve previous data for adding new data in the same project                                                                                                                                  | Adara       | Done            |
+| 2.6.3  | Delete Past Insights Functionality                    | Deleting past insights which is shared in multiple projects without affecting other projects                                                                                                    | Adara       | Done            |
 | **3**  | **Testing and Verification**                          |                                                                                                                                                                                                 |             |                 |
-| 3.1    | Unit Testing                                          | Perform unit test for all modules                                                                                                                                                               |             |                 |
-| 3.2    | Integration Testing                                   | Perform integration testing between modules                                                                                                                                                     |             |                 |
+| 3.1    | Unit Testing                                          | Perform unit test for all modules                                                                                                                                                               | All Members | Done            |
+| 3.2    | Integration Testing                                   | Perform integration testing between modules                                                                                                                                                     | All Members | Done            |
 | **4**  | **Documentation & Report**                            |                                                                                                                                                                                                 |             |                 |
-| 4.1    | Milestone 1 Documentation                             | Prepare milestone 1 documentation                                                                                                                                                               |             |                 |
+| 4.1    | Milestone 1 Documentation                             | Prepare milestone 1 documentation                                                                                                                                                               | All Members | Done            |
 | **5**  | **Review and Evaluation**                             |                                                                                                                                                                                                 |             |                 |
-| 5.1    | Milestone #1 Review                                   | Review and Evaluate Milestone #1 for future use in milestone 2                                                                                                                                  |             |                 |
+| 5.1    | Milestone #1 Review                                   | Review and Evaluate Milestone #1 for future use in milestone 2                                                                                                                                  | All Members | Done            |
 | 5.2    | API Framework Decision                                | Decide API Framework to be used in milestone 2                                                                                                                                                  |             |                 |
 | **6**  | **API Implementation**                                |                                                                                                                                                                                                 |             |                 |
-| 6.1    | Implement endpoints for some functions                | Implement endpoints for functions such as uploading additional zipped folder, modification of data                                                                                              |             |                 |
+| 6.1    | Implement endpoints for some functions                | Implement endpoints for functions such as uploading additional zipped folder, modification of data                                                                                              | All Members | Done            |
 | 6.2    | Define acceptable JSON formats                        | Standardized JSON response formats                                                                                                                                                              |             |                 |
 | **7**  | **Backend Update**                                    |                                                                                                                                                                                                 |             |                 |
 | 7.1    | Incremental Data Addition Module                      |                                                                                                                                                                                                 |             |                 |
-| 7.1.1  | Retrieve Previous Data                                | Retrieve previous data to be added (milestone 1)                                                                                                                                                |             |                 |
-| 7.1.2  | Handle Metadata                                       | Handle metadata for version tracking                                                                                                                                                            |             |                 |
-| 7.1.3  | Merge new data functionality                          | Merge new data with previously retrieved data                                                                                                                                                   |             |                 |
+| 7.1.1  | Retrieve Previous Data                                | Retrieve previous data to be added (milestone 1)                                                                                                                                                |             | Done            |
+| 7.1.2  | Handle Metadata                                       | Handle metadata for version tracking                                                                                                                                                            |             | Done            |
+| 7.1.3  | Merge new data functionality                          | Merge new data with previously retrieved data                                                                                                                                                   |             | Done            |
 | 7.2    | Duplicate File Handling Modules                       |                                                                                                                                                                                                 |             |                 |
-| 7.2.1  | Identify Duplicate Functionality                      | Recognized duplicate files                                                                                                                                                                      |             |                 |
-| 7.2.2  | Maintain Unique Files                                 | maintain using only one file of duplicates to avoid redundancy                                                                                                                                  |             |                 |
-| 7.2.3  | Return response to users                              | Return response to user for feedback functionality                                                                                                                                              |             |                 |
+| 7.2.1  | Identify Duplicate Functionality                      | Recognized duplicate files                                                                                                                                                                      |             | Patial          |
+| 7.2.2  | Maintain Unique Files                                 | maintain using only one file of duplicates to avoid redundancy                                                                                                                                  |             | Done            |
+| 7.2.3  | Return response to users                              | Return response to user for feedback functionality                                                                                                                                              |             | Done            |
 | 7.3    | Database Update                                       |                                                                                                                                                                                                 |             |                 |
-| 7.3.1  | Implement New Tables                                  | New tables for storing thumbnails image, etc.                                                                                                                                                   |             |                 |
-| 7.3.2  | Resume Text Update                                    | Update resume based on added file                                                                                                                                                               |             |                 |
-| 7.3.3  | Metrics and data updates                              | Update metrics based on added file                                                                                                                                                              |             |                 |
+| 7.3.1  | Implement New Tables                                  | New tables for storing thumbnails image, etc.                                                                                                                                                   |             | Done            |
+| 7.3.2  | Resume Text Update                                    | Update resume based on added file                                                                                                                                                               |             | Done            |
+| 7.3.3  | Metrics and data updates                              | Update metrics based on added file                                                                                                                                                              |             | Done            |
 | **8**  | **Human-in-the-Loop Module**                          |                                                                                                                                                                                                 |             |                 |
 | 8.1    | User Customization Interface                          | Allow user to be involved in selection, customization and corrections                                                                                                                           |             |                 |
 | 8.1.1  | Re-rank project functionality                         | Allow user to re-rank the project after the analyzation done                                                                                                                                    |             |                 |
 | 8.1.2  | Corrections to chronology functionality               | Allow user to correct the chronology                                                                                                                                                            |             |                 |
 | 8.1.3  | Modify attributes for project comparison              | Allow user to choose and modify attributes for project comparison                                                                                                                               |             |                 |
-| 8.1.4  | Highlight specific skills                             | Allow user to choose specific skills to be represented                                                                                                                                          |             |                 |
+| 8.1.4  | Highlight specific skills                             | Allow user to choose specific skills to be represented                                                                                                                                          |             | Done            |
 | 8.2    | Role and Evidence Functionality                       |                                                                                                                                                                                                 |             |                 |
 | 8.2.1  | Assign user's key role                                | Allow user to input their key role in a project and incorporate it into the data                                                                                                                |             |                 |
 | 8.2.2  | Attach success evidence                               | Allow user to attach success evidence of their project                                                                                                                                          |             |                 |
@@ -218,13 +324,13 @@ Work breakdown structure will be updated based on [this google sheets](https://d
 | 8.4.2  | Customize Project Wording                             | Allow users to customize and save the wording of a project used for a resume item                                                                                                               |             |                 |
 | **9**  | **Data Display and Output**                           |                                                                                                                                                                                                 |             |                 |
 | 9.1    | Portfolio Display Module                              |                                                                                                                                                                                                 |             |                 |
-| 9.1.1  | Textual Information Display                           | Display textual information about a project as a portfolio showcase                                                                                                                             |             |                 |
+| 9.1.1  | Textual Information Display                           | Display textual information about a project as a portfolio showcase                                                                                                                             |             | Done            |
 | 9.2    | Resume Display Module                                 |                                                                                                                                                                                                 |             |                 |
-| 9.2.1  | Textual Information Display                           | Display textual information about a project as a résumé item                                                                                                                                    |             |                 |
+| 9.2.1  | Textual Information Display                           | Display textual information about a project as a résumé item                                                                                                                                    |             | Done            |
 | 9.2.2  | Export Functionality                                  | Allow users to download/export the resume generated                                                                                                                                             |             |                 |
 | **10** | **Testing**                                           |                                                                                                                                                                                                 |             |                 |
-| 10.1   | Unit Test                                             | Perform unit test for all modules                                                                                                                                                               |             |                 |
-| 10.2   | Integration Testing                                   | Perform integration testing between modules                                                                                                                                                     |             |                 |
+| 10.1   | Unit Test                                             | Perform unit test for all modules                                                                                                                                                               |             | Done            |
+| 10.2   | Integration Testing                                   | Perform integration testing between modules                                                                                                                                                     |             | Done            |
 | **11** | **Documentation**                                     |                                                                                                                                                                                                 |             |                 |
 | 11.1   | Milestone 2 Documentation                             | Prepare for documentation                                                                                                                                                                       |             |                 |
 | **12** | **Frontend**                                          |                                                                                                                                                                                                 |             |                 |
