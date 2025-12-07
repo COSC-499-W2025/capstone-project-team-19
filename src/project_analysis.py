@@ -33,8 +33,7 @@ from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
 from src.db import store_code_activity_metrics
-from src.db import get_metrics_id, insert_code_collaborative_summary
-
+from src.db import get_metrics_id, insert_code_collaborative_summary, get_user_contributed_files
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
@@ -464,14 +463,58 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
         summary.contributions["github_contribution_metrics_generated"] = bool(metrics)
         summary.contributions["activity_type"] = activity_summary.per_activity
 
+    # Decide which files to feed into the LLM (top 5 user files only)
+    focus_file_paths = None
+
+    # 1) Prefer Git-based top_files if we have metrics
+    if metrics:
+        focus = metrics.get("focus") or {}
+        top_files = (focus.get("top_files") or [])[:5]
+        if top_files:
+            focus_file_paths = top_files
+
+    # 2) If no git metrics (or no top_files), fall back to user_code_contributions
+    if not focus_file_paths:
+        try:
+            contributed = get_user_contributed_files(
+                conn,
+                user_id=user_id,
+                project_name=project_name,
+                limit=5,   # ensures we stick to top 5
+            )
+
+            file_paths: list[str] = []
+            for row in contributed:
+                if isinstance(row, dict):
+                    path = row.get("file_path") or row.get("path")
+                else:
+                    # assume first column is file_path if it's a tuple/row
+                    path = row[0] if row else None
+                if path:
+                    file_paths.append(path)
+
+            focus_file_paths = file_paths or None
+        except Exception as e:
+            print(
+                "[COLLABORATIVE-CODE] Could not load user contributed files; "
+                f"falling back to all code files. Reason: {e}"
+            )
+            focus_file_paths = None
+
     # Extract skills for collaborative code projects
     extract_skills(conn, user_id, project_name)
+
 
     if current_ext_consent == 'accepted':
         parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
         if parsed_files:
             print(f"\n[COLLABORATIVE-CODE] Running LLM-based summary for '{project_name}'...")
-            llm_results = run_code_llm_analysis(parsed_files, zip_path, project_name)
+            llm_results = run_code_llm_analysis(
+                parsed_files,
+                zip_path,
+                project_name,
+                focus_file_paths=focus_file_paths,
+            )
 
             if llm_results:
                 # update ProjectSummary object as before

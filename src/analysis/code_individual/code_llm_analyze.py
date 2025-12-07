@@ -2,7 +2,7 @@ import os
 import textwrap
 import re
 from typing import Any, Dict, Optional
-from src.utils.helpers import extract_code_file, extract_readme_file
+from src.utils.helpers import extract_code_file, extract_readme_file, read_file_content
 from dotenv import load_dotenv
 from groq import Groq
 
@@ -12,54 +12,82 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 def run_code_llm_analysis(
     parsed_files,
     zip_path,
-    project_name=None
+    project_name=None,
+    focus_file_paths=None,  # NEW: optional list of file paths to focus on
 ) -> Optional[Dict[str, Any]]:
 
     if not isinstance(parsed_files, list):
         return None
-        
-    code_files = [f for f in parsed_files if f.get("file_type") == "code"]
-    if not code_files:
+
+    # 1. Select code files
+    all_code_files = [f for f in parsed_files if f.get("file_type") == "code"]
+    if not all_code_files:
         print("No code files found to analyze.")
         return None
-        
+
+    code_files = all_code_files
+
+    # If we know which files the user actually touched, restrict to those
+    if focus_file_paths:
+        focus_set = set(focus_file_paths)
+        filtered = [f for f in all_code_files if f.get("file_path") in focus_set]
+        if filtered:
+            code_files = filtered
+
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     base_path = os.path.join(ZIP_DATA_DIR, zip_name)
-        
+
     print(f"\n{'='*80}")
-    print(f"Analyzing {len(code_files)} file(s) using LLM-based analysis...")
+    if focus_file_paths:
+        print(
+            f"Analyzing {len(code_files)} of {len(all_code_files)} code file(s) "
+            f"selected from contribution data using LLM-based analysis..."
+        )
+    else:
+        print(f"Analyzing {len(code_files)} file(s) using LLM-based analysis...")
     print(f"{'='*80}\n")
-    
+
+    # README (still global)
     readme_text = extract_readme_file(base_path)
-    
-    # trim super long readme files
     if readme_text and len(readme_text) > 8000:
         readme_text = readme_text[:8000]
-    
+
     project_context_parts = []
 
     if readme_text:
         project_context_parts.append(f"README:\n{readme_text}")
 
+    # 2. Build context from code files
     for file_info in code_files:
         file_path = os.path.join(base_path, file_info["file_path"])
-        code_context = extract_code_file(file_path)
+
+        # For focused collaborative analysis, use full file contents.
+        # For other cases, keep the lighter "headers + comments" mode.
+        if focus_file_paths:
+            code_context = read_file_content(file_path)
+        else:
+            code_context = extract_code_file(file_path)
+
         if code_context:
-            project_context_parts.append(f"### {file_info['file_name']} ###\n{code_context}")
+            project_context_parts.append(
+                f"### {file_info['file_name']} ###\n{code_context}"
+            )
 
     project_context = "\n\n".join(project_context_parts)
     if not project_context:
         print("No readable code context found. Skipping LLM analysis.\n")
         return None
-    
-    # get the top-level folder name where the code files live
-    project_folders = sorted(set(os.path.dirname(f["file_path"]).split(os.sep)[0] for f in code_files))
+
+    # 3. Infer a project name if not provided
+    project_folders = sorted(
+        set(os.path.dirname(f["file_path"]).split(os.sep)[0] for f in code_files)
+    )
     if not project_name:
         project_name = project_folders[0] if project_folders else zip_name
-    
-    # split summary into project + contribution sections
+
+    # 4. Call the existing LLM helpers (unchanged)
     project_summary = generate_code_llm_project_summary(readme_text, project_context)
     contribution_summary = generate_code_llm_contribution_summary(project_context)
 
@@ -67,7 +95,7 @@ def run_code_llm_analysis(
         project_name,
         project_summary,
         contribution_summary,
-        mode="COLLABORATIVE" if "collab" in project_name.lower() else "INDIVIDUAL",
+        mode="COLLABORATIVE" if "collab" in (project_name or "").lower() else "INDIVIDUAL",
     )
 
     print(f"\n{'='*80}")
@@ -75,10 +103,10 @@ def run_code_llm_analysis(
     print(f"{'='*80}\n")
     print(f"All insights successfully generated for: {zip_name}.")
     print(f"\n{'='*80}\n")
-    
+
     return {
         "project_summary": project_summary,
-        "contribution_summary": contribution_summary
+        "contribution_summary": contribution_summary,
     }
 
 
