@@ -5,6 +5,10 @@ from typing import Any, Dict, Optional
 from src.utils.helpers import extract_code_file, extract_readme_file, read_file_content
 from dotenv import load_dotenv
 from groq import Groq
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
@@ -45,12 +49,21 @@ def run_code_llm_analysis(
     ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     base_path = os.path.join(ZIP_DATA_DIR, zip_name)
+<<<<<<< HEAD
 
     print(f"\n{'='*80}")
     print(f"Analyzing {len(code_files)} file(s) using LLM-based analysis...")
     print(f"{'='*80}\n")
 
     # README (still global, but ONLY for project summary)
+=======
+        
+    if constants.VERBOSE:
+        print(f"\n{'='*80}")
+        print(f"Analyzing {len(code_files)} file(s) using LLM-based analysis...")
+        print(f"{'='*80}\n")
+    
+>>>>>>> origin/main
     readme_text = extract_readme_file(base_path)
     if readme_text and len(readme_text) > 8000:
         readme_text = readme_text[:8000]
@@ -112,12 +125,22 @@ def run_code_llm_analysis(
         mode="COLLABORATIVE" if "collab" in (project_name or "").lower() else "INDIVIDUAL",
     )
 
+<<<<<<< HEAD
     print(f"\n{'='*80}")
     print("PROJECT SUMMARY - (LLM-based results: summaries)")
     print(f"{'='*80}\n")
     print(f"All insights successfully generated for: {zip_name}.")
     print(f"\n{'='*80}\n")
 
+=======
+    if constants.VERBOSE:
+        print(f"\n{'='*80}")
+        print("PROJECT SUMMARY - (LLM-based results: summaries)")
+        print(f"{'='*80}\n")
+        print(f"All insights successfully generated for: {zip_name}.")
+        print(f"\n{'='*80}\n")
+    
+>>>>>>> origin/main
     return {
         "project_summary": project_summary,
         "contribution_summary": contribution_summary,

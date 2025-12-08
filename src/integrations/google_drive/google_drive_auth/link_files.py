@@ -18,7 +18,10 @@ from .file_matcher import (
 )
 from .file_selector import select_from_matches, handle_no_matches
 from src.db import store_file_link
-
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def find_and_link_files(service: Resource,project_name: str,zip_files: List[str],conn,user_id: int) -> Dict[str, List[str]]:
     """
@@ -42,14 +45,16 @@ def find_and_link_files(service: Resource,project_name: str,zip_files: List[str]
         return full_drive_cache["files"]
 
     # Fetch only candidates that roughly match local file names (avoids scanning entire Drive)
-    print(f"\nLoading candidate files from Google Drive...")
+    if constants.VERBOSE:
+        print(f"\nLoading candidate files from Google Drive...")
     base_names = {os.path.splitext(name)[0].lower() for name in zip_files}
     all_drive_files = _search_supported_files_by_names(service, list(base_names))
     all_drive_files_list = [(f['id'], f['name'], f['mimeType']) for f in all_drive_files]
     expanded_drive_loaded = False
     
-    print(f"Matching files from '{project_name}' with Google Drive...")
-    print("=" * 60)
+    if constants.VERBOSE:
+        print(f"Matching files from '{project_name}' with Google Drive...")
+        print("=" * 60)
     
     # Process each file one by one
     for idx, local_file_name in enumerate(zip_files, 1):

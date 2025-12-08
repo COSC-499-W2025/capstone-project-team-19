@@ -50,6 +50,34 @@ def fake_github_metrics():
             datetime(2024, 1, 2, 10, 0),
         ],
 
+        # GraphQL PR data
+        "graphql_prs": {
+            "prs_opened": 2,
+            "prs_reviewed": 1,
+            "review_comments": ["Looks good to me", "Consider renaming variable"],
+            "review_timestamps": ["2024-01-02T10:00:00Z"],
+            "pr_timestamps": ["2024-01-02T10:00:00Z", "2024-01-03T12:00:00Z"],
+            "user_pr_discussion_comments": 0,
+            "team_pr_discussion_comments": 0,
+            "team_total_prs": 4,
+            "team_total_reviews": 1,
+            "user_prs": [
+                {"created_at": "2024-01-02T10:00:00"},
+                {"created_at": "2024-01-03T12:00:00"},
+            ],
+            "reviews": {
+                1: {
+                    "reviews": [
+                        {"submitted_at": "2024-01-02T10:00:00"}
+                    ],
+                    "review_comments": [
+                        {"body": "Looks good to me"},
+                        {"body": "Consider renaming variable"},
+                    ],
+                },
+            }
+        },
+
         # Review structure: mapping PR number to review data
         "reviews": {
             1: {
@@ -61,10 +89,6 @@ def fake_github_metrics():
                     {"body": "Consider renaming variable"},
                 ],
             },
-            2: {
-                "reviews": [],
-                "review_comments": [],
-            }
         },
     }
 
@@ -80,11 +104,11 @@ def test_build_collaboration_metrics_basic(mock_fetch):
     assert isinstance(user, RawUserCollabMetrics)
     # commits = 3 + 2
     assert user.commits == 5
-    # PRs opened = 4
-    assert user.prs_opened == 4
+    # PRs opened = 2 (from user_prs list)
+    assert user.prs_opened == 2
     # reviewers = number of review events
     assert user.prs_reviewed == 1  # one submitted review
-    assert user.issues_opened == 5
+    assert user.issues_opened == 0  # empty user_issues list
     assert user.issue_comments == 2
     # timestamps
     assert len(user.commit_timestamps) == 2
@@ -102,6 +126,9 @@ def test_build_collaboration_metrics_basic(mock_fetch):
     assert team.total_prs == 4
     assert team.total_reviews == 1
     assert team.total_issues == 5
+    assert team.total_issue_comments == 0
+    assert team.total_pr_discussion_comments == 0
+    assert team.total_review_comments == 2
     assert team.total_additions == 500
     assert team.total_deletions == 200
 

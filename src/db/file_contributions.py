@@ -4,6 +4,10 @@ Database operations for tracking user file contributions in collaborative projec
 
 import sqlite3
 from typing import List, Dict
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 
 def store_file_contributions(
@@ -45,7 +49,9 @@ def store_file_contributions(
         """, (user_id, project_name, file_path, lines_changed, commits_count))
 
     conn.commit()
-    print(f"[DB] Stored contributions for {len(file_contributions)} files in '{project_name}'")
+
+    if constants.VERBOSE:
+        print(f"[DB] Stored contributions for {len(file_contributions)} files in '{project_name}'")
 
 
 def get_user_contributed_files(

@@ -16,6 +16,10 @@ from radon.metrics import mi_visit, mi_rank
 from radon.raw import analyze as raw_analyze
 import lizard
 from src.utils.extension_catalog import get_languages_for_extension
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 # Directories to exclude from analysis (third-party dependencies, build artifacts, etc.)
 EXCLUDE_DIRECTORIES = {
@@ -202,9 +206,10 @@ def analyze_code_complexity(conn, user_id: int, project_name: str, zip_path: str
     radon_results = []
     lizard_results = []
 
-    print(f"\n{'='*80}")
-    print(f"Analyzing Code Complexity and Structure for: {project_name}")
-    print(f"{'='*80}\n")
+    if constants.VERBOSE:
+        print(f"\n{'='*80}")
+        print(f"Analyzing Code Complexity and Structure for: {project_name}")
+        print(f"{'='*80}\n")
 
     for file_name, file_path in files:
         full_path = os.path.join(base_path, file_path)
@@ -215,7 +220,8 @@ def analyze_code_complexity(conn, user_id: int, project_name: str, zip_path: str
         # Check if file should be excluded (dependencies, minified files, etc.)
         exclude, reason = should_exclude_file(file_path, file_name)
         if exclude:
-            print(f"Skipping {file_name}: {reason}")
+            if constants.VERBOSE:
+                print(f"Skipping {file_name}: {reason}")
             continue
 
         # Get file extension and detect languages
@@ -225,7 +231,8 @@ def analyze_code_complexity(conn, user_id: int, project_name: str, zip_path: str
         try:
             file_size = os.path.getsize(full_path)
             if file_size > 5 * 1024 * 1024:  # 5MB
-                print(f"Skipping large file ({file_size / (1024*1024):.1f}MB): {file_name}")
+                if constants.VERBOSE:
+                    print(f"Skipping large file ({file_size / (1024*1024):.1f}MB): {file_name}")
                 continue
         except OSError:
             continue
@@ -591,4 +598,5 @@ def display_complexity_results(complexity_data: Dict) -> None:
         print(f"  [INFO] No functions detected in code files")
     print()
 
-    print(f"{'='*80}\n")
+    if constants.VERBOSE:
+        print(f"{'='*80}\n")
