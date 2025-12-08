@@ -1,24 +1,28 @@
-from .models import RawUserTextCollabMetrics
+from .models import RawUserTextCollabMetrics, RawTeamTextCollabMetrics
 
 
-def compute_participation(user: RawUserTextCollabMetrics):
+def compute_participation(user: RawUserTextCollabMetrics, team: RawTeamTextCollabMetrics):
     """
-    Compute how broadly and actively the user participates across project surfaces.
-    Measures participation quantity and breadth, independent of communication quality.
+    Compute participation as the ratio of user's total comments (comments + replies + questions)
+    to the team's total comments (comments + replies + questions).
     """
     channels_used = sum([
         user.comments_posted > 0,
         user.replies_posted > 0,
         user.questions_asked > 0,
     ])
+
+    # Sum all user comments (comments + replies + questions)
+    user_total = user.comments_posted + user.replies_posted + user.questions_asked
     
-    # Weighted activity score: Questions (1.3) weighted higher as they drive discussion.
-    # Comments (1.2) weighted higher than replies (1.0) as they initiate conversation.
-    activity_score = (
-        user.comments_posted * 1.2 +
-        user.replies_posted * 1.0 +
-        user.questions_asked * 1.3
-    )
+    # Sum all team comments (comments + replies + questions)
+    team_total = team.total_comments + team.total_replies + team.total_questions
+    
+    # Calculate participation ratio
+    if team_total > 0:
+        activity_score = user_total / team_total
+    else:
+        activity_score = 0.0
 
     return {
         "channels_used": channels_used,

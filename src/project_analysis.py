@@ -411,7 +411,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
 
             # Participation: ratio (0-1) + level
             part_score = skills.get('participation', {}).get('activity_score', 0)
-            part_ratio = part_score / 20.0  # Max is 20
+            part_ratio = part_score  # Already a ratio 0-1
             part_level = levels.get('participation', 'N/A')
             print(f"  Participation: {part_ratio:.2%} ({part_level})")
 

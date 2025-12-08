@@ -17,7 +17,7 @@ def compute_text_collaboration_profile(
     normalized = {}  # Placeholder for now
 
     written_communication = compute_written_communication(user.comment_texts)
-    participation = compute_participation(user)
+    participation = compute_participation(user, team)
     communication_leadership = compute_communication_leadership(user)
 
     return {
@@ -38,6 +38,6 @@ def compute_skill_levels(profile: dict) -> dict:
 
     return {
         "written_communication": classify_level(written_comm, 5),
-        "participation": classify_level(participation, 20),
+        "participation": classify_level(participation, 1.0),  # Ratio is 0-1
         "communication_leadership": classify_level(leadership, 20),
     }

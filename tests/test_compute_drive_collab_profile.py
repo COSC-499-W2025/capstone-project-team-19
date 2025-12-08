@@ -51,7 +51,7 @@ def fake_team():
 
 def test_compute_text_collaboration_profile_calls_all_metrics(fake_user, fake_team):
     def mock_written_comm(c): return {"score": 3}
-    def mock_part(u): return {"activity_score": 10}
+    def mock_part(u, t): return {"activity_score": 10}
     def mock_lead(u): return {"leadership_score": 8}
 
     patches = patch_all_metrics(mock_written_comm, mock_part, mock_lead)
@@ -102,7 +102,7 @@ def test_compute_text_collaboration_profile_integration(fake_user, fake_team, mo
     )
     monkeypatch.setattr(
         "src.analysis.text_collaborative.drive_collaboration.compute_drive_collab_profile.compute_participation",
-        lambda u: {"part": 3},
+        lambda u, t: {"part": 3},
     )
     monkeypatch.setattr(
         "src.analysis.text_collaborative.drive_collaboration.compute_drive_collab_profile.compute_communication_leadership",
