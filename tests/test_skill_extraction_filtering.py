@@ -11,7 +11,7 @@ from unittest.mock import patch, Mock
 from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.db import init_schema
 from src.db.file_contributions import store_file_contributions
-
+from src import constants
 
 @pytest.fixture
 def test_conn():
@@ -123,7 +123,7 @@ def test_collaborative_project_no_contribution_data(test_conn):
         assert len(args[4]) == 2
 
 
-def test_collaborative_project_path_matching(test_conn, capsys):
+def test_collaborative_project_path_matching_verbose_on(test_conn, capsys):
     """Test that file path matching works correctly with different path formats."""
     # Setup project classification as collaborative
     test_conn.execute("""
@@ -144,6 +144,9 @@ def test_collaborative_project_path_matching(test_conn, capsys):
         {"file_name": "utils.py", "file_path": "test-proj/src/utils.py"},
     ]
 
+    # turn on verbose for this test only
+    constants.VERBOSE = True
+
     with patch("src.analysis.skills.flows.skill_extraction._fetch_files", return_value=mock_files), \
          patch("src.analysis.skills.flows.skill_extraction.extract_code_skills") as mock_extract:
 
@@ -157,10 +160,45 @@ def test_collaborative_project_path_matching(test_conn, capsys):
         assert len(filtered_files) == 1
         assert filtered_files[0]["file_name"] == "main.py"
 
-    # Check console output
+    # Check console output (only in VERBOSE mode)
     captured = capsys.readouterr()
     assert "Filtered to 1/2 files" in captured.out
 
+def test_collaborative_project_path_matching_non_verbose(test_conn, capsys):
+    """Same scenario as path matching, but VERBOSE = False → no debug output."""
+    test_conn.execute("""
+        INSERT INTO project_classifications (user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at)
+        VALUES (1, '/tmp/test.zip', 'test', 'proj2', 'collaborative', 'code', datetime('now'))
+    """)
+    test_conn.commit()
+
+    contributions = {
+        "src/main.py": {"lines_changed": 100, "commits_count": 3},
+    }
+    store_file_contributions(test_conn, 1, "proj2", contributions)
+
+    mock_files = [
+        {"file_name": "main.py", "file_path": "test-proj/src/main.py"},
+        {"file_name": "utils.py", "file_path": "test-proj/src/utils.py"},
+    ]
+
+    # ensure verbose OFF
+    constants.VERBOSE = False
+
+    with patch("src.analysis.skills.flows.skill_extraction._fetch_files", return_value=mock_files), \
+         patch("src.analysis.skills.flows.skill_extraction.extract_code_skills") as mock_extract:
+
+        extract_skills(test_conn, 1, "proj2")
+
+        mock_extract.assert_called_once()
+        args, kwargs = mock_extract.call_args
+        files_used = args[4]
+        assert len(files_used) == 1       # filtering still works
+        assert files_used[0]["file_name"] == "main.py"
+
+    # ❗ expected: NO debug print
+    captured = capsys.readouterr()
+    assert "Filtered to" not in captured.out
 
 def test_missing_project_type_skips_extraction(test_conn, capsys):
     """Test that extraction is skipped when project_type is missing."""

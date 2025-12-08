@@ -1,7 +1,6 @@
 import os
 import textwrap
 from typing import List, Dict
-
 from src.utils.helpers import extract_text_file
 from .csv_analyze import analyze_all_csv
 from .llm_summary import generate_text_llm_summary
@@ -9,6 +8,11 @@ from .alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.analysis.activity_type.text.activity_type import print_activity, get_activity_contribution_data
 from src.db import get_files_with_timestamps, store_text_activity_contribution, get_classification_id
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
+
 def run_text_pipeline(
     parsed_files: List[dict],
     zip_path: str,
@@ -38,34 +42,44 @@ def run_text_pipeline(
         if "file_path" in f and isinstance(f["file_path"], str):
             f["file_path"] = os.path.normpath(f["file_path"])
 
-    # Extract NON-CSV text files
-    text_files = [
+        # Extract NON-CSV text files
+    raw_text_files = [
         f for f in parsed_files
         if f.get("file_type") == "text"
         and not f.get("file_name", "").lower().endswith(".csv")
     ]
+
+    # Decide mode: individual (normal) vs collaborative (suppress_print=True)
+    is_collab_mode = bool(suppress_print)
+
+    text_files: List[dict] = []
+    for f in raw_text_files:
+        norm_path = f.get("file_path", "")
+        norm_path = norm_path.replace("\\", "/")
+
+        has_individual = "/individual/" in norm_path or norm_path.startswith("individual/")
+        has_collab = "/collaborative/" in norm_path or norm_path.startswith("collaborative/")
+
+        # INDIVIDUAL phase: prefer files under individual/, otherwise use neutral ones
+        if not is_collab_mode:
+            if has_individual:
+                text_files.append(f)
+            elif not has_individual and not has_collab:
+                text_files.append(f)
+
+        # COLLABORATIVE phase: prefer files under collaborative/, otherwise use neutral ones
+        else:
+            if has_collab:
+                text_files.append(f)
+            elif not has_individual and not has_collab:
+                text_files.append(f)
 
     if not text_files and not suppress_print:
         print("No non-CSV text files found to analyze.")
         return []
 
     # Compute CSV metadata ONCE for the entire project
-    csv_metadata = analyze_all_csv(parsed_files, zip_path)
-    
-    # ================================
-    # DEBUG: PRINT CSV METADATA
-    # ================================
-    import pprint
-    pp = pprint.PrettyPrinter(indent=2, width=120)
-
-    #print("\n[DEBUG] FULL CSV METADATA (raw analyze_all_csv output):")
-    #if not csv_metadata:
-    #    print("  → None (no CSVs detected).")
-    #else:
-    #    pp.pprint(csv_metadata)
-    #print("[END DEBUG]")
-
-    # ================================
+    csv_metadata = analyze_all_csv(parsed_files, zip_path) or {}
 
     # Base path to extracted zip
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -73,26 +87,51 @@ def run_text_pipeline(
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     base_path = os.path.join(ZIP_DATA_DIR, zip_name)
 
+    # Debug block
     if not suppress_print:
-        print(f"\n{'=' * 80}")
-        print(f"Analyzing {len(text_files)} text file(s)...")
-        print(f"{'=' * 80}\n")
+        if constants.VERBOSE:
+            print("\n" + "=" * 80)
+            print(f"[debug] text project={project_name}")
+            print(f"[debug] zip_path arg={zip_path}")
+            print(f"[debug] ZIP_DATA_DIR={ZIP_DATA_DIR}")
+            print(f"[debug] zip_name={zip_name}")
+            print(f"[debug] base_path={base_path}")
+            print(f"[debug] base_path exists? {os.path.exists(base_path)}")
+            print("=" * 80)
 
-    # Group text files by project folder
+    if not suppress_print:
+        if constants.VERBOSE:
+            print(f"\nAnalyzing {len(text_files)} text file(s)...\n")
+
+    # Group text files by project folder (collapse individual/collaborative)
     projects: Dict[str, List[dict]] = {}
     for f in text_files:
-        path_parts = f["file_path"].replace("\\", "/").split("/")
-        if len(path_parts) >= 3:
-            folder = path_parts[2]
-        elif len(path_parts) >= 1:
-            folder = path_parts[0]
+        path_norm = f["file_path"].replace("\\", "/")
+        parts = path_norm.split("/")
+
+        # e.g. "paper_name/individual/paper/file.pdf" → "paper"
+        #      "paper_name/collaborative/paper/file.pdf" → "paper"
+        #      "paper/file.pdf" → "paper"
+        if len(parts) >= 3 and parts[1] in {"individual", "collaborative"}:
+            folder = parts[2]
+        elif len(parts) >= 1:
+            folder = parts[0]
         else:
             continue
+
+        if not suppress_print:
+            if constants.VERBOSE:
+                print(f"[debug] text file → project: {path_norm}  → {folder}")
+
         projects.setdefault(folder, []).append(f)
 
-    for project_name, files in projects.items():
+    # Use the passed project_name parameter if available, otherwise use folder names
+    # When called from analyze_files, project_name is already set correctly
+    for folder_name, files in projects.items():
+        # Use the passed project_name parameter to ensure database consistency
+        current_project_name = project_name if project_name else folder_name
         if not suppress_print:
-            print(f"\n→ {project_name}")
+            print(f"\n→ {current_project_name}")
         files_sorted = sorted(files, key=lambda x: x["file_name"])
 
         # --- Select main file ---
@@ -100,14 +139,14 @@ def run_text_pipeline(
 
         # --- Activity type analysis (only for individual mode) ---
         if not suppress_print:
-            all_project_files=get_files_with_timestamps(conn,user_id, project_name)
+            all_project_files=get_files_with_timestamps(conn,user_id, current_project_name)
         # Store activity type data to database (only if conn is available)
             if conn is not None:
-                classification_id=get_classification_id(conn, user_id, project_name)
+                classification_id=get_classification_id(conn, user_id, current_project_name)
                 activity_data=get_activity_contribution_data(all_project_files, main_file_name=main_file['file_name'])
                 if classification_id and activity_data:
                     store_text_activity_contribution(conn, classification_id, activity_data)
-            print_activity(all_project_files,project_name,main_file_name=main_file['file_name'])
+            print_activity(all_project_files,current_project_name,main_file_name=main_file['file_name'])
 
         # --- Load main file content ---
         main_path = os.path.join(base_path, main_file["file_path"])
@@ -132,7 +171,9 @@ def run_text_pipeline(
                     print(f"  • {s['filename']}")
 
         # --- Supporting CSV files (based on folder) ---
-        csv_supporting = _csv_files_for_project(project_name, csv_metadata["files"])
+        csv_files_list = csv_metadata.get("files", []) if isinstance(csv_metadata, dict) else []
+        csv_supporting = _csv_files_for_project(folder_name, csv_files_list)
+
         if csv_supporting and not suppress_print:
             print("Detected CSV supporting files:")
             for c in csv_supporting:
@@ -158,7 +199,7 @@ def run_text_pipeline(
             main_text=main_text,
             supporting_texts=supporting_texts,
             csv_metadata=csv_metadata,
-            project_name=project_name,
+            project_name=current_project_name,
             user_id=user_id,
             conn=conn,
         )
@@ -183,7 +224,7 @@ def run_text_pipeline(
         # ----------------------------------------------------------
         return {
             "project_summary": summary,
-            "skills": skill_result.get("skills", []),
+            "skills": list(skill_result.get("buckets", {}).keys()),
             "buckets": skill_result.get("buckets", {}),
             "overall_score": skill_result.get("overall_score"),
             "main_file": main_file["file_name"],

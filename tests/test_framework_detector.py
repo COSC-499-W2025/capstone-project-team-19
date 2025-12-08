@@ -33,7 +33,7 @@ def conn():
 def _repo_zip_base(zip_name):
     """Return the expected base path used by framework_detector for a given zip_name."""
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(fd.__file__)))
-    base = os.path.join(repo_root, "zip_data", zip_name)
+    base = os.path.join(repo_root, "analysis", "zip_data", zip_name)
     return repo_root, base
 
 

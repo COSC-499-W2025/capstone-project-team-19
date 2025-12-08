@@ -2,6 +2,10 @@ import sqlite3
 from typing import Any, Dict
 import src.db as db
 from .api_calls import analyze_google_doc
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 from src.analysis.text_collaborative.drive_collaboration.build_drive_collab_metrics import run_drive_collaboration_analysis
 
@@ -19,6 +23,9 @@ def process_project_files(conn: sqlite3.Connection, creds, drive_service, docs_s
         if mime_type == "application/vnd.google-apps.document":
             doc_file_ids.append(file_id)
         print(f"Analyzing file: {f['drive_file_name']} ({file_id})")
+
+        if constants.VERBOSE:
+            print(f"Analyzing file: {f['drive_file_name']} ({file_id})")
 
         result = analyze_drive_file(
             creds=creds,
@@ -59,7 +66,9 @@ def process_project_files(conn: sqlite3.Connection, creds, drive_service, docs_s
             "total_revision_count": result.get("total_revision_count", 0),
         }
         db.store_text_contribution_summary(conn, summary_entry)
-        print(f"Stored text contributation metrics for {file_id}")
+
+        if constants.VERBOSE:
+            print(f"Stored text contributation metrics for {file_id}")
 
       
     #Run collaboration analysis after processing all files (only Google Docs support comments)

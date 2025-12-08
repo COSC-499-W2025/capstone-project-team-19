@@ -7,7 +7,10 @@ from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.utils.helpers import normalize_pdf_paragraphs
 from src.db import get_files_with_timestamps, get_classification_id, store_text_activity_contribution
 from src.analysis.activity_type.text.activity_type import print_activity, get_activity_contribution_data
-
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def analyze_collaborative_text_project(
     conn,
@@ -28,7 +31,8 @@ def analyze_collaborative_text_project(
     6. Save structured output to summary.contributions["text_collab"].
     """
 
-    print("\n[TEXT-COLLAB] Starting collaborative text analysis…")
+    if constants.VERBOSE:
+        print("\n[TEXT-COLLAB] Starting collaborative text analysis…")
 
     # ---------------------------------------------------------
     # STEP 1 — Run main pipeline to get the full summary + skills
@@ -65,8 +69,9 @@ def analyze_collaborative_text_project(
     # Recombine normalized paragraphs into a clean text block
     full_main_text = "\n\n".join(normalized)
 
-    # store main summary in project_summary
+    # store main summary and skills in project_summary
     summary_obj.summary_text = pipeline_result["project_summary"]
+    summary_obj.skills = pipeline_result.get("skills", [])
 
     print("\n" + "="*80)
     print("MAIN DOCUMENT SUMMARY:")
@@ -282,10 +287,12 @@ def analyze_collaborative_text_project(
     else:
         contribution_summary = _manual_contribution_summary_prompt()
 
-    print("\n" + "="*80)
+    if constants.VERBOSE:
+        print("\n" + "="*80)
     print("YOUR CONTRIBUTION SUMMARY:")
     print(textwrap.fill(contribution_summary, width=80, subsequent_indent="  "))
-    print("="*80 + "\n")
+    if constants.VERBOSE:
+        print("="*80 + "\n")
 
     # ---------------------------------------------------------
     # STEP 5 — Run skill detectors on ONLY the contributed text
@@ -302,12 +309,19 @@ def analyze_collaborative_text_project(
     # ---------------------------------------------------------
     # STEP 6 — Store in project summary
     # ---------------------------------------------------------
+    # Store buckets without evidence to reduce size (evidence contains verbose CSV metadata)
+    buckets_clean = {}
+    for bucket_name, bucket_data in skill_output.get("buckets", {}).items():
+        buckets_clean[bucket_name] = {
+            "description": bucket_data.get("description"),
+            "score": bucket_data.get("score")
+        }
+    
     summary_obj.contributions["text_collab"] = {
-        "contributed_text": contributed_text,
         "percent_of_document": pct,
         "contribution_summary": contribution_summary,
         "skills": skill_output.get("skills", []),
-        "buckets": skill_output.get("buckets", {}),
+        "buckets": buckets_clean,
         "overall_score": skill_output.get("overall_score")
     }
     

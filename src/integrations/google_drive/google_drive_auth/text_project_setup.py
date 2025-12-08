@@ -12,7 +12,10 @@ from typing import Dict, Any, Optional
 from src.utils.helpers import _fetch_files
 from .google_drive_oauth import get_user_email, get_user_info, google_drive_oauth
 from .link_files import find_and_link_files
-
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def setup_text_project_drive_connection(
     conn,
@@ -22,7 +25,8 @@ def setup_text_project_drive_connection(
     """
     High-level function to set up Google Drive connection for a text project.
     """
-    print(f"\n[COLLABORATIVE TEXT] Setting up Google Drive connection for '{project_name}'")
+    if constants.VERBOSE:
+        print(f"\n[COLLABORATIVE TEXT] Setting up Google Drive connection for '{project_name}'")
     
     # Step 1: Fetch text files from ZIP for this project
     zip_text_files = _fetch_files(conn, user_id, project_name, only_text=True)
@@ -44,9 +48,10 @@ def setup_text_project_drive_connection(
         print(f"  • {file_info['file_name']}")
     
     # Step 2: Prompt user to connect Google Drive
-    print(f"\nFound collaborative Text project '{project_name}'.")
-    print("Google Drive connection is required for contribution analysis on collaborative text projects.")
-    response = input("Connect Google Drive now? (y/n): ").strip().lower()
+    if constants.VERBOSE:
+        print(f"\nFound collaborative Text project '{project_name}'.")
+        print("Google Drive connection is required for contribution analysis on collaborative text projects.")
+    response = input("\nConnect Google Drive now? (y/n): ").strip().lower()
     
     if response not in {'y', 'yes'}:
         print("Skipping Google Drive connection. Contribution analysis will not be available for this project.")
@@ -85,7 +90,8 @@ def setup_text_project_drive_connection(
     user_display_name = user_info["displayName"]
     
     # Step 4: Link files
-    print(f"\nLinking files from '{project_name}' with Google Drive...")
+    if constants.VERBOSE:
+        print(f"\nLinking files from '{project_name}' with Google Drive...")
     
     try:
         results = find_and_link_files(drive_service, project_name, zip_file_names, conn, user_id)
@@ -96,10 +102,12 @@ def setup_text_project_drive_connection(
         
         # Step 5: Display summary
         if total_found > 0:
-            print(f"\n✓ Successfully linked {total_found} file(s) to Google Drive.")
+            if constants.VERBOSE:
+                print(f"\n✓ Successfully linked {total_found} file(s) to Google Drive.")
         
         if total_not_found > 0:
-            print(f"✗ Could not link {total_not_found} file(s). These files will not be included in contribution analysis.")
+            if constants.VERBOSE:
+                print(f"✗ Could not link {total_not_found} file(s). These files will not be included in contribution analysis.")
         
         print(f"\nGoogle Drive setup complete for '{project_name}'. File mappings have been saved.")
         

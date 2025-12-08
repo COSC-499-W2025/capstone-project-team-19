@@ -1,8 +1,18 @@
 from __future__ import annotations
 import sqlite3
-from typing import Optional, Dict
+from typing import Optional, Dict, Mapping, Any
+import json
+from datetime import datetime
+import traceback
 
-from src.db import store_github_account, store_collaboration_profile, store_file_contributions
+from src.db import (
+    store_github_account,
+    store_collaboration_profile,
+    store_file_contributions,
+    insert_code_collaborative_metrics,
+    get_metrics_id,
+    insert_code_collaborative_summary
+)
 from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
 from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo, get_gh_repo_name_and_owner
@@ -14,6 +24,9 @@ from src.integrations.github.github_analysis import fetch_github_metrics
 from src.integrations.github.db_repo_metrics import store_github_repo_metrics, get_github_repo_metrics, print_github_metrics_summary, store_github_detailed_metrics
 from src.analysis.code_collaborative.github_collaboration.build_collab_metrics import run_collaboration_analysis
 from src.analysis.code_collaborative.github_collaboration.print_collaboration_summary import print_collaboration_summary
+from src.analysis.code_collaborative.no_git_contributions import (
+    store_contributions_without_git,
+)
 
 from .code_collaborative_analysis_helper import (
     DEBUG,
@@ -29,8 +42,10 @@ from .code_collaborative_analysis_helper import (
     print_portfolio_summary,
     prompt_collab_descriptions
 )
-
-
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 _CODE_RUN_METRICS: list[dict] = []
 _manual_descs_store: dict[str, str] = {}  # filled once per run for collab projects
@@ -60,29 +75,60 @@ def print_code_portfolio_summary() -> None:
 def analyze_code_project(conn: sqlite3.Connection,
                          user_id: int,
                          project_name: str,
-                         zip_path: str) -> Optional[dict]:
+                         zip_path: str,
+                         summary=None) -> Optional[dict]:
     # 1) get base dirs from the uploaded zip
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
+    # Capture any pre-collected manual description (non-LLM path)
+    desc = get_manual_desc(project_name)
+
+    # Debug: show basic context for this project run
+    if constants.VERBOSE:
+        print("\n" + "=" * 80)
+        print(f"[debug] project={project_name}")
+        print(f"[debug] zip_path arg={zip_path}")
+        print(f"[debug] zip_data_dir={zip_data_dir}")
+        print(f"[debug] zip_name={zip_name}")
 
     # 2) find repo (collaborative/ → DB classifications → files.file_path)
     repo_dir = resolve_repo_for_project(conn, zip_data_dir, zip_name, project_name, user_id)
+    if constants.VERBOSE:
+        print(f"[debug] resolve_repo_for_project → {repo_dir}")
+
     if not repo_dir:
         print(
-            f"\nNo local Git repo found under allowed paths. "
-            f"Zip a local clone (not GitHub 'Download ZIP') so .git is included."
+            "\nNo local Git repo found under allowed paths. "
+            "Zip a local clone (not GitHub 'Download ZIP') so .git is included."
         )
 
+        # Handle 'no local .git' case (offer GitHub linking etc.)
         _handle_no_git_repo(conn, user_id, project_name)
-        _enhance_with_github(conn, user_id, project_name, repo_dir)
 
+        # Still allow GitHub-only enhancement even without local repo_dir
+        _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
+
+        # Populate whatever we can so the project summary isn't empty
+        _apply_basic_summary_without_git(
+            conn=conn,
+            user_id=user_id,
+            project_name=project_name,
+            zip_path=zip_path,
+            summary=summary,
+            desc=desc,
+        )
+        store_contributions_without_git(conn, user_id, project_name, desc, debug=DEBUG)
+        print("=" * 80)
         return None
 
-    print(f"Found local Git repo for {project_name}")
+    if constants.VERBOSE:
+        print(f"Found local Git repo for {project_name} at: {repo_dir}")
 
-    _enhance_with_github(conn, user_id, project_name, repo_dir)
+        # Optional: show again when DEBUG is enabled
+        if DEBUG:
+            print(f"[debug] using repo_dir={repo_dir}")
 
-    if DEBUG:
-        print(f"[debug] repo resolved → {repo_dir}")
+    # Enhance with GitHub metrics (if user says yes)
+    repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
 
     # 3) identity table + load user aliases
     ensure_user_github_table(conn)
@@ -111,8 +157,6 @@ def analyze_code_project(conn: sqlite3.Connection,
     metrics["project_name"] = project_name
 
     # 5.1) attach manual description if it was collected up-front
-    desc = get_manual_desc(project_name)
-
     if not desc:
         # Try to read external_consent; ignore errors if table/row doesn't exist.
         try:
@@ -146,6 +190,23 @@ def analyze_code_project(conn: sqlite3.Connection,
     if frameworks:
         metrics.setdefault("focus", {})["frameworks"] = sorted(frameworks)
 
+    # 7.25) store languages and frameworks in summary
+    if summary:
+        focus = metrics.get("focus", {})
+        languages = focus.get("languages", [])
+        # Clean language names (remove "(from DB)" suffix if present)
+        summary.languages = [lang.split(" (from DB)")[0] if " (from DB)" in lang else lang for lang in languages]
+        summary.frameworks = focus.get("frameworks", [])
+        # Store only the last commit date for skills timeline (minimal data)
+        history = metrics.get("history", {})
+        if history.get("last"):
+            summary.metrics["collaborative_git"] = {
+                "last_commit_date": history["last"]
+            }
+        # store non llm contribution summary    
+        if desc and "llm_contribution_summary" not in summary.contributions:
+            summary.contributions["non_llm_contribution_summary"] = desc.strip()
+
     # 7.5) save file contributions to database for skill extraction filtering
     file_contributions_data = metrics.get("file_contributions", {})
     if file_contributions_data:
@@ -163,48 +224,52 @@ def analyze_code_project(conn: sqlite3.Connection,
         if contributions_dict:
             store_file_contributions(conn, user_id, project_name, contributions_dict)
 
-    # 8) print
+    # 8) save aggregated git metrics into DB
+    db_payload = _build_db_payload_from_metrics(metrics, repo_dir)
+    insert_code_collaborative_metrics(conn, user_id, project_name, db_payload)
+    metrics_id = get_metrics_id(conn, user_id, project_name)
+
+    # 8.1) if we have a manual description, persist it as a non-LLM summary
+    if metrics_id and desc:
+        insert_code_collaborative_summary(
+            conn,
+            metrics_id=metrics_id,
+            user_id=user_id,
+            project_name=project_name,
+            summary_type="non-llm",
+            content=desc,
+        )
+
+    # 9) print
     print_project_card(metrics)
     # accumulate for portfolio summary
     _CODE_RUN_METRICS.append(metrics)
 
+    print("=" * 80)
+    print()
     return metrics
 
 
 def _handle_no_git_repo(conn, user_id, project_name):
+    """
+    Called when no local .git is found for a collaborative project.
+    """
     token = get_github_token(conn, user_id)
 
     if token:
         print(f"\nNo local .git found for {project_name}, but a GitHub login already exists.")
         if ensure_repo_link(conn, user_id, project_name, token):
             print(f"[info] GitHub repo already linked for {project_name}")
-            return None
-
-        ans = input("Link this project to GitHub? (y/n): ").strip().lower()
-        if ans in {"y", "yes"}:
-            select_and_store_repo(conn, user_id, project_name, token)
+        # No further questions here; _enhance_with_github() will handle prompts.
         return None
 
-    ans = input(
-        f"No .git detected for {project_name}.\n"
-        "Connect GitHub to analyze this project? (y/n): "
-    ).strip().lower()
+    print(f"\nNo .git detected for {project_name}.")
+    print("[info] Skipping local Git history analysis for this project.")
 
-    if ans in {"y", "yes"}:
-        token = github_oauth(conn, user_id)
-
-        # get user's GitHub account info
-        github_user = get_authenticated_user(token)
-        store_github_account(conn, user_id, github_user)
-
-        select_and_store_repo(conn, user_id, project_name, token)
-        return None
-
-    print(f"[skip] Skipping collaborative analysis for {project_name}")
     return None
 
 
-def _enhance_with_github(conn, user_id, project_name, repo_dir):
+def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None):
     ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
     if ans not in {"y", "yes"}:
         return
@@ -235,7 +300,8 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir):
 
         gh_username = github_user["login"]
 
-        print("Collecting GitHub repository metrics...")
+        if constants.VERBOSE:
+            print("Collecting GitHub repository metrics...")
 
         # fetch metrics via github REST API then stoe metrics in db
         metrics = fetch_github_metrics(token, owner, repo, gh_username)
@@ -257,9 +323,16 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir):
         else:
             print_collaboration_summary(collab_profile)
 
+        if summary:
+            summary.metrics["github"] = repo_metrics
+
+        return repo_metrics
+
     except Exception as e:
-        print(f"[GitHub] Error occurred ({e}). Skipping GitHub and continuing.")
-        return
+        print("[GitHub] Error occurred. Full traceback:")
+        traceback.print_exc()
+        print("[GitHub] Skipping GitHub and continuing.")
+        return None
 
 # Determine if all metric categories show zero activity
 def _metrics_empty(m: dict) -> bool:
@@ -277,3 +350,84 @@ def _metrics_empty(m: dict) -> bool:
                 return False
 
     return True
+
+
+def _apply_basic_summary_without_git(
+    conn: sqlite3.Connection,
+    user_id: int,
+    project_name: str,
+    zip_path: str,
+    summary,
+    desc: str | None,
+) -> None:
+    """
+    Populate summary fields when no local Git repository is available.
+    """
+    if summary is None:
+        return
+
+    clean_desc = (desc or "").strip()
+    if clean_desc:
+        summary.contributions["non_llm_contribution_summary"] = clean_desc
+        # Only fill summary_text if nothing else is set
+        if not getattr(summary, "summary_text", None):
+            summary.summary_text = clean_desc
+
+    # Basic language/framework detection still works from parsed files/configs
+    summary.languages = detect_languages(conn, project_name) or []
+    frameworks = detect_frameworks(conn, project_name, user_id, zip_path) or set()
+    summary.frameworks = sorted(frameworks) if frameworks else []
+
+def _build_db_payload_from_metrics(metrics: Mapping[str, Any], repo_path: str) -> dict[str, Any]:
+    """
+    Flatten the compute_metrics() output into a dict that matches the
+    code_collaborative_metrics table columns. This keeps db/ as pure CRUD.
+    """
+    totals = metrics.get("totals", {}) or {}
+    loc = metrics.get("loc", {}) or {}
+    history = metrics.get("history", {}) or {}
+    focus = metrics.get("focus", {}) or {}
+
+    def _to_iso(v):
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return v
+
+    first_commit = _to_iso(history.get("first"))
+    last_commit = _to_iso(history.get("last"))
+
+    languages = focus.get("languages") or []
+    folders = focus.get("folders") or []
+    top_files = focus.get("top_files") or []
+    frameworks = focus.get("frameworks") or []
+
+    return {
+        "repo_path": repo_path,
+        # totals
+        "commits_all": totals.get("commits_all"),
+        "commits_yours": totals.get("commits_yours"),
+        "commits_coauth": totals.get("commits_coauth"),
+        "merges": totals.get("merges"),
+        # loc
+        "loc_added": loc.get("added"),
+        "loc_deleted": loc.get("deleted"),
+        "loc_net": loc.get("net"),
+        "files_touched": loc.get("files_touched"),
+        "new_files": loc.get("new_files"),
+        "renames": loc.get("renames"),
+        # history
+        "first_commit_at": first_commit,
+        "last_commit_at": last_commit,
+        "commits_L30": history.get("L30"),
+        "commits_L90": history.get("L90"),
+        "commits_L365": history.get("L365"),
+        "longest_streak": history.get("longest_streak"),
+        "current_streak": history.get("current_streak"),
+        "top_days": history.get("top_days"),
+        "top_hours": history.get("top_hours"),
+        # focus (already JSON here)
+        "languages_json": json.dumps(languages),
+        "folders_json": json.dumps(folders),
+        "top_files_json": json.dumps(top_files),
+        "frameworks_json": json.dumps(frameworks),
+    }

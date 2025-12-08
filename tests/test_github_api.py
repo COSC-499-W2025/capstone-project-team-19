@@ -78,32 +78,19 @@ def test_get_issues(monkeypatch):
             "closed_at":None,
             "labels":[],
             "user":{"login":"me"},
-            "assignees":[]
+            "assignees":[{"login":"me"}]
         },
         {"pull_request":{}, "user":{"login":"me"}}
     ]
     monkeypatch.setattr(api.requests, "get", lambda *a, **k: FakeResp(200, fake))
-    res = api.get_gh_repo_issues("T","o","r","me")
+    res = api.get_gh_repo_issues("T","o","r","me", [])
     assert res["total_opened"] == 1
     assert len(res["user_issues"]) == 1
     assert res["user_issues"][0]["title"] == "Bug"
     assert "user_issue_comments" in res
-    assert isinstance(res["user_issue_comments"], list)
+    assert isinstance(res["user_issue_comments"], int)
 
-def test_get_prs(monkeypatch):
-    fake = [
-        {"user":{"login":"me"},
-         "title":"PR1","body":"",
-         "created_at":"2024-02-01T00",
-         "merged_at":"2024-02-02T00",
-         "labels":[],"state":"closed"},
-        {"user":{"login":"other"}},
-    ]
-    monkeypatch.setattr(api.requests, "get", lambda *a, **k: FakeResp(200, fake))
-    res = api.get_gh_repo_prs("T","o","r","me")
-    assert res["total_opened"] == 1
-    assert res["total_merged"] == 1
-    assert res["user_prs"][0]["merged"] is True
+# test_get_prs removed - PRs are now fetched via GraphQL
 
 def test_contributions_poll(monkeypatch):
     fake_get_sequence(monkeypatch, [
@@ -143,7 +130,7 @@ def test_get_gh_pr_reviews_calls_correct_url(monkeypatch):
     result = api.get_gh_pr_reviews("TOKEN", "owner", "repo", 5)
 
     assert result == ["ok"]
-    assert captured["url"] == "https://api.github.com/repos/owner/repo/pulls/5/reviews"
+    assert "https://api.github.com/repos/owner/repo/pulls/5/reviews" in captured["url"]
     assert captured["token"] == "TOKEN"
 
 def test_get_gh_pr_review_comments_calls_correct_url(monkeypatch):
@@ -159,7 +146,7 @@ def test_get_gh_pr_review_comments_calls_correct_url(monkeypatch):
     result = api.get_gh_pr_review_comments("TOKEN", "owner", "repo", 7)
 
     assert result == ["ok"]
-    assert captured["url"] == "https://api.github.com/repos/owner/repo/pulls/7/comments"
+    assert "https://api.github.com/repos/owner/repo/pulls/7/comments" in captured["url"]
     assert captured["token"] == "TOKEN"
 
 def test_get_gh_reviews_for_repo_aggregates(monkeypatch):

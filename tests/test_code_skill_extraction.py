@@ -61,7 +61,7 @@ def test_run_all_code_detectors_basic():
         "d2": lambda text, fname: (False, []),
     }
 
-    files = [fake_file("hello")]
+    files = [fake_file("line1\nline2\nline3")]
     
     with patch("src.analysis.skills.flows.code_skill_extraction.CODE_DETECTOR_FUNCTIONS", detectors):
         res = run_all_code_detectors(files)
@@ -77,7 +77,7 @@ def test_run_all_code_detectors_multiple_files_and_hits():
         "d": lambda text, fname: (True, [{"file": fname, "line": 1}]),
     }
 
-    files = [fake_file("a"), fake_file("b")]
+    files = [fake_file("a\nb\nc"), fake_file("x\ny\nz")]
 
     with patch("src.analysis.skills.flows.code_skill_extraction.CODE_DETECTOR_FUNCTIONS", detectors):
         res = run_all_code_detectors(files)
@@ -147,7 +147,7 @@ def test_extract_code_skills_happy_path():
     insert_mock = Mock()
 
     with with_patched_env(detectors=detectors, buckets=fake_buckets, score_map=lambda s: "L5", insert_mock=insert_mock):
-        extract_code_skills(conn, 1, "proj", "indiv", [fake_file("abc")])
+        extract_code_skills(conn, 1, "proj", "indiv", [fake_file("line1\nline2\nline3")])
 
     # DB write was called exactly once
     insert_mock.assert_called_once()

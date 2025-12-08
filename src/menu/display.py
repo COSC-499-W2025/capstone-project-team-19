@@ -1,0 +1,28 @@
+"""
+src/menu/display.py
+
+Main menu display functionality.
+"""
+
+
+def show_start_menu(username: str) -> int:
+    """
+    Display the main menu and return user's choice.
+    """
+    print(f"\nWelcome, {username}!")
+    print("1. Analyze new project")
+    print("2. View old project summaries")
+    print("3. View resume items")
+    print("4. View portfolio items")
+    print("5. Delete old insights")
+    print("6. View all projects ranked")
+    print("7. View chronological skills")
+    print("8. View all projects")
+    print("9. Exit")
+
+    while True:
+        choice = input("\nPlease select an option (1-9): ").strip()
+        if choice in {"1", "2", "3", "4", "5", "6", "7", "8", "9"}:
+            return int(choice)
+        print("Invalid choice. Please enter a number between 1 and 9.")
+

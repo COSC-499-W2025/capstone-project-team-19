@@ -1,5 +1,31 @@
 from typing import Optional
 
+
+def _count_words(text: Optional[str]) -> int:
+    if not text:
+        return 0
+    return len([tok for tok in text.split() if tok.strip()])
+
+
+def _fetch_current_doc_text(docs_service, drive_file_id: str) -> str:
+    """
+    Best-effort fallback to fetch the current document content when a specific
+    revision export is unavailable. Returns an empty string on failure.
+    """
+    try:
+        doc_content = docs_service.documents().get(documentId=drive_file_id).execute().get("body", {}).get("content", [])
+    except Exception:
+        return ""
+
+    text_chunks = []
+    for element in doc_content:
+        if "paragraph" in element:
+            for e in element["paragraph"]["elements"]:
+                if "textRun" in e:
+                    text_chunks.append(e["textRun"].get("content", ""))
+    return "".join(text_chunks)
+
+
 def analyze_google_doc(drive_service, docs_service, drive_file_id, user_email, creds: Optional[object] = None):
     """
     Analyze a Google Doc file for all revisions by a single user.
@@ -35,6 +61,7 @@ def analyze_google_doc(drive_service, docs_service, drive_file_id, user_email, c
 
             if rev_user_email == target_email:
                 revision_text = None
+                text_source = "no_export_session"
 
                 if session:
                     try:
@@ -48,20 +75,17 @@ def analyze_google_doc(drive_service, docs_service, drive_file_id, user_email, c
                             response = session.get(export_url)
                             response.raise_for_status()
                             revision_text = response.text
+                            text_source = "export_links"
                     except Exception:
                         revision_text = None
 
                 if revision_text is None:
-                    # Fallback to current document content
-                    doc_content = docs_service.documents().get(documentId=drive_file_id).execute().get("body", {}).get("content", [])
-                    revision_text = ""
-                    for element in doc_content:
-                        if "paragraph" in element:
-                            for e in element["paragraph"]["elements"]:
-                                if "textRun" in e:
-                                    revision_text += e["textRun"].get("content", "")
+                    revision_text = _fetch_current_doc_text(docs_service, drive_file_id)
+                    text_source = "current_doc_fallback"
 
-                revision_size = len(revision_text)
+                revision_text = revision_text or ""
+                char_count = len(revision_text)
+                revision_size = _count_words(revision_text)
 
                 user_revisions.append({
                     "revision_id": rev_id,

@@ -12,172 +12,114 @@ from src.utils.helpers import ensure_table
 # zip_paths stays in the main file because only the entrypoint needs it
 
 import re
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 DEBUG = False
 
 
 # ------------------------------------------------------------
-# 1. Repo resolution (3 tiers)
+# 1. Repo resolution 
 # ------------------------------------------------------------
-def resolve_repo_for_project(conn: sqlite3.Connection,
-                             zip_data_dir: str,
-                             zip_name: str,
-                             project_name: str,
-                             user_id: int | str) -> Optional[str]:
-    # now use ./src/analysis/zip_data
+def resolve_repo_for_project(
+    conn: sqlite3.Connection,
+    zip_data_dir: str,
+    zip_name: str,
+    project_name: str,
+    user_id: int | str,
+) -> Optional[str]:
+    """
+    Resolve the *local* Git repo for a collaborative code project.
+
+    Rules:
+    - Only consider projects marked as (classification='collaborative', project_type='code')
+      in project_classifications for this user + zip_name.
+    - Only look under:  ./src/analysis/zip_data/<zip_name>/<zip_name>/
+      and require the directory name to match `project_name`.
+    """
+
+    # 0) Check classification first: only collaborative + code projects
+    try:
+        row = conn.execute(
+            """
+            SELECT 1
+            FROM project_classifications
+            WHERE user_id      = ?
+              AND zip_name     = ?
+              AND project_name = ?
+              AND project_type = 'code'
+              AND classification = 'collaborative'
+            LIMIT 1
+            """,
+            (user_id, zip_name, project_name),
+        ).fetchone()
+    except Exception:
+        row = None
+
+    if not row:
+        if DEBUG:
+            print(
+                f"[debug] {project_name}: not marked collaborative/code in "
+                "project_classifications; skipping repo resolution"
+            )
+        return None
+
+    # 1) Compute analysis/zip_data root
     analysis_zip_data_dir = os.path.join(
         os.path.dirname(zip_data_dir), "analysis", "zip_data"
     )
 
-    # 1) ./src/analysis/zip_data/.../collaborative/<project>
-    repo = _resolve_from_collaborative_folder(analysis_zip_data_dir, zip_name, project_name)
-    if repo:
-        return repo
+    # Expected layout: analysis/zip_data/<zip_name>/<zip_name>/...
+    base_root = os.path.join(analysis_zip_data_dir, zip_name)
+    nested_root = os.path.join(base_root, zip_name)
 
-    # 2) project_classifications (collaborative+code)
-    repo = _resolve_from_db_classification(conn, analysis_zip_data_dir, zip_name, project_name, user_id)
-    if repo:
-        return repo
+    candidate_roots: list[str] = []
 
-    # 3) files.file_path guessing
-    repo = _resolve_from_files_table(conn, analysis_zip_data_dir, project_name)
-    return repo
+    # Prefer the nested <zip_name>/<zip_name>/ layout
+    if os.path.isdir(nested_root):
+        candidate_roots.extend(
+            [
+                os.path.join(nested_root, "collaborative", project_name),
+                os.path.join(nested_root, project_name),
+            ]
+        )
 
-def _resolve_from_collaborative_folder(zip_data_dir: str,
-                                       zip_name: str,
-                                       project_name: str) -> Optional[str]:
-    candidates = [
-        os.path.join(zip_data_dir, zip_name, "collaborative", project_name),
-        os.path.join(zip_data_dir, "collaborative", project_name),
-    ]
-
-    base_root = os.path.join(zip_data_dir, zip_name)
-    # Walk deeper under zip_data/<zip_name> to find nested repos
+    # Fallback: allow layouts like analysis/zip_data/.../.../project_name
     if os.path.isdir(base_root):
-        for root, dirs, files in os.walk(base_root):
-            depth = os.path.relpath(root, base_root).count(os.sep)
-            if depth > 10:   # was 5; bump to handle deeper layouts
-                continue
-            # If we land exactly on a matching folder name, prefer it
-            if os.path.basename(root) == project_name and os.path.isdir(root):
-                candidates.append(root)
-            # If we land on 'collaborative', consider its child
-            if os.path.basename(root) == "collaborative":
-                cand = os.path.join(root, project_name)
-                if os.path.isdir(cand):
-                    candidates.append(cand)
+        candidate_roots.extend(
+            [
+                os.path.join(base_root, "collaborative", project_name),
+                os.path.join(base_root, project_name),
+            ]
+        )
 
-    for base in candidates:
-        if not os.path.isdir(base):
+    # Filter out any __MACOSX junk
+    def _is_macos_junk(p: str) -> bool:
+        return "__MACOSX" in p.split(os.sep)
+
+    candidate_roots = [c for c in candidate_roots if not _is_macos_junk(c)]
+
+    if DEBUG:
+        print("[debug] resolve_repo_for_project candidates:")
+        for c in candidate_roots:
+            print(f"  - {c} (exists? {os.path.isdir(c)})")
+
+    # 2) Only accept a repo if the directory exists AND has .git
+    for cand in candidate_roots:
+        if not os.path.isdir(cand):
             continue
-        if is_git_repo(base):
-            return base
-        nested = bfs_find_repo(base, max_depth=10)  # was 5
-        if nested:
-            return nested
-        
+        if is_git_repo(cand):
+            if DEBUG:
+                print(f"[debug] resolve_repo_for_project → picked {cand}")
+            return cand
+
+    if DEBUG:
+        print(f"[debug] resolve_repo_for_project → no git repo found for {project_name}")
+
     return None
 
-def _resolve_from_db_classification(conn: sqlite3.Connection,
-                                    zip_data_dir: str,
-                                    zip_name: str,
-                                    wanted: str,
-                                    user_id: int | str) -> Optional[str]:
-    try:
-        rows = conn.execute(
-            """
-            SELECT DISTINCT project_name
-            FROM project_classifications
-            WHERE classification = 'collaborative'
-              AND project_type   = 'code'
-              AND user_id        = ?
-              AND zip_name       = ?
-            """,
-            (user_id, zip_name)
-        ).fetchall()
-    except Exception:
-        rows = []
-
-    names = [r[0] for r in rows if r and r[0]]
-    # Prefer the explicitly requested/wanted project first.
-    ordered = [wanted] + [n for n in names if n != wanted]
-
-    base_root = os.path.join(zip_data_dir, zip_name)
-
-    for name in ordered:
-        # quick exact-path candidates
-        simple_candidates = [
-            os.path.join(zip_data_dir, zip_name, name),
-            os.path.join(zip_data_dir, name),
-        ]
-        for cand in simple_candidates:
-            if os.path.isdir(cand):
-                if is_git_repo(cand):
-                    return cand
-                nested = bfs_find_repo(cand, max_depth=3)
-                if nested:
-                    return nested
-
-        # walk deeper under zip_data/<zip_name>
-        if os.path.isdir(base_root):
-            for root, dirs, files in os.walk(base_root):
-                depth = os.path.relpath(root, base_root).count(os.sep)
-                if depth > 5:
-                    continue
-                if os.path.basename(root) == name:
-                    if is_git_repo(root):
-                        return root
-                    nested = bfs_find_repo(root, max_depth=3)
-                    if nested:
-                        return nested
-    return None
-
-
-def _resolve_from_files_table(conn: sqlite3.Connection,
-                              zip_data_dir: str,
-                              project_name: str) -> Optional[str]:
-    try:
-        rows = conn.execute(
-            """
-            SELECT DISTINCT file_path
-            FROM files
-            WHERE project_name = ?
-            ORDER BY modified DESC
-            LIMIT 200
-            """,
-            (project_name,),
-        ).fetchall()
-    except Exception:
-        return None
-
-    seen: set[str] = set()
-
-    for (fp,) in rows:
-        if not fp:
-            continue
-        parts = fp.replace("\\", "/").strip("/").split("/")
-        if not parts:
-            continue
-
-        first3 = parts[:3]
-        if any(p.lower() == "collaborative" for p in first3):
-            use = parts[:3]
-        else:
-            use = parts[:2]
-
-        cand = os.path.join(zip_data_dir, *use)
-        if cand in seen:
-            continue
-        seen.add(cand)
-
-        if os.path.isdir(cand):
-            if is_git_repo(cand):
-                return cand
-            nested = bfs_find_repo(cand, max_depth=3)
-            if nested:
-                return nested
-
-    return None
 
 
 # ------------------------------------------------------------
@@ -223,6 +165,7 @@ def save_user_github(conn: sqlite3.Connection, user_id: int, emails: List[str], 
             (user_id, nm),
         )
     conn.commit()
+    
     print("\nSaved your identity for future runs")
 
 
@@ -402,33 +345,6 @@ def is_git_repo(path: str) -> bool:
         except Exception:
             return False
     return False
-
-def bfs_find_repo(root: str, max_depth: int = 2) -> Optional[str]:
-    """
-    Breadth-first search to find a nested repo under root, up to max_depth.
-    Returns the first directory containing .git.
-    """
-    if not os.path.isdir(root):
-        return None
-    if is_git_repo(root):
-        return root
-    queue: List[Tuple[str, int]] = [(root, 0)]
-    while queue:
-        path, depth = queue.pop(0)
-        if depth > max_depth:
-            continue
-        try:
-            entries = [os.path.join(path, ent) for ent in os.listdir(path)]
-        except Exception:
-            continue
-        for p in entries:
-            if os.path.isdir(p):
-                if is_git_repo(p):
-                    return p
-                if depth < max_depth:
-                    queue.append((p, depth + 1))
-    return None
-
 
 # ------------------------------------------------------------
 # 4. metrics
@@ -698,38 +614,25 @@ Top files: {top_files}
 """.rstrip())
     
 def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) -> dict[str, str]:
-    """
-    Ask once for project descriptions if LLM consent is not accepted.
-    Returns {project_name: description}.
-    """
     if consent == "accepted" or not projects:
         return {}
 
-    print(
-        "\nSince you’ve opted out of LLM analysis, we’ll use your manual descriptions "
-        "to summarize your focus and contributions. Evidence (e.g., commits, code structure, "
-        "languages, and algorithms) will still be extracted automatically to support your summary.\n\n"
-        "Include:\n"
-        " - What the project does\n"
-        " - Languages/frameworks used\n"
-        " - Technical focus (e.g., architecture, data structures, optimization)\n"
-        " - Your main contributions\n\n"
-        "Example: "
-        '"Movie recommendation system built with Python and Flask. '
-        "Focused on implementing collaborative filtering using hash maps for faster lookups "
-        "and optimizing SQL queries with indexing. "
-        "Developed the recommendation module and integrated it into the web interface.\""
-    )
+    if constants.VERBOSE:
+        print("\n[NON-LLM] CONTRIBUTION SUMMARIES")
+    print("Describe only your personal contributions to the collaborative project.")
+    print("Write 1-3 sentences. Be specific about features/files you primarily worked on.")
+    print("Example: “Implemented login API in FastAPI and wrote tests for user_routes.py”.\n")
 
     descs = {}
     for project_name, _ in projects:
-        print()
         try:
-            user_input = input(f"> {project_name}:\n> ").strip()
+            user_input = input(f"Your contribution to '{project_name}': ").strip()
         except EOFError:
             user_input = ""
-        descs[project_name] = user_input
+        descs[project_name] = user_input or "[No manual contribution summary provided]"
+
     return descs
+
 
 
 # ------------------------------------------------------------

@@ -10,12 +10,25 @@ from src.db import (
     get_latest_external_consent,
     record_project_classifications,
 )
+from src.menu import (
+    show_start_menu,
+    view_old_project_summaries,
+    view_resume_items,
+    view_portfolio_items,
+    delete_old_insights,
+    project_list,
+    view_chronological_skills,
+    view_ranked_projects,
+)
 from src.consent.consent import CONSENT_TEXT, get_user_consent, record_consent
 from src.consent.external_consent import get_external_consent, record_external_consent
 from src.project_analysis import detect_project_type, send_to_analysis
 from src.utils.upload_checks import handle_existing_zip
 from src.utils.helpers import cleanup_extracted_zip
-
+try:
+    from src import constants
+except ModuleNotFoundError:
+    import constants
 
 def main():
     print("Welcome aboard! Let's turn your work into cool insights.")
@@ -45,6 +58,31 @@ def prompt_and_store():
     else:
         user_id = existing_user[0]
         is_new_user = False
+
+    while True:
+        # Show main menu after username
+        menu_choice = show_start_menu(username)
+
+        # Handle menu choices
+        if menu_choice == 2:
+            view_old_project_summaries(conn, user_id, username)
+        elif menu_choice == 3:
+            view_resume_items(conn, user_id, username)
+        elif menu_choice == 4:
+            view_portfolio_items(conn, user_id, username)
+        elif menu_choice == 5:
+            delete_old_insights(conn, user_id, username)
+        elif menu_choice == 6:
+            view_ranked_projects(conn, user_id, username)
+        elif menu_choice == 7:
+            view_chronological_skills(conn, user_id, username)
+        elif menu_choice == 8:
+            project_list(conn, user_id, username)
+        elif menu_choice == 9:
+            print("\nThank you for using the system. Goodbye!")
+            return None
+        elif menu_choice == 1:
+            break
 
     stored_user_consent = get_latest_consent(conn, user_id)
     stored_external_consent = get_latest_external_consent(conn, user_id)
@@ -77,6 +115,22 @@ def prompt_and_store():
         return None
 
     print("\nConsent recorded. Proceeding to file selection…\n")
+
+    # Ask whether analysis output should be verbose
+    while True:
+        choice = input(
+            "Verbose mode prints extra debug information and execution traces.\n"
+            "If you prefer a cleaner view, normal mode shows only what you need.\n"
+            "Enable verbose mode? (y/n): "
+        ).strip().lower()
+
+        if choice in ("y", "n"):
+            print()
+            constants.VERBOSE = (choice == "y")
+            break
+
+        print("Invalid choice – please enter y or n.")
+        print()
 
     # Continue to file selection
     processed_zip_path = run_zip_ingestion_flow(conn, user_id, external_consent_status)
@@ -172,8 +226,9 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
         if not zip_path:
             print("No path entered. Exiting file selection.")
             break
-
-        print(f"\nReceived path: {zip_path}")
+        
+        if constants.VERBOSE:
+            print(f"\nReceived path: {zip_path}")
 
         # --- Restored duplicate zip check ---
         zip_path = handle_existing_zip(conn, user_id, zip_path)
@@ -225,8 +280,10 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
         print("No project folders detected to classify.")
         return {}
 
+    
     if root_name:
-        print(f"\nUsing '{root_name}' as the root folder for this upload.")
+        if constants.VERBOSE:
+           print(f"\nUsing '{root_name}' as the root folder for this upload.")
 
     if auto_assignments:
         print("\nAutomatically classified projects based on folder placement:")

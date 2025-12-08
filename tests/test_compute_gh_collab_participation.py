@@ -10,6 +10,7 @@ def make_user(prs, reviews, issues, comments, review_comments):
         prs_reviewed=reviews,
         issues_opened=issues,
         issue_comments=comments,
+        pr_discussion_comments=0,
         review_comments=review_comments,
         additions=0,
         deletions=0,

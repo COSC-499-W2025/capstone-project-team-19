@@ -14,6 +14,7 @@ class RawUserCollabMetrics:
     prs_reviewed: int
     issues_opened: int
     issue_comments: int
+    pr_discussion_comments: int
     review_comments: List[str]
 
     additions: int
@@ -34,6 +35,9 @@ class RawTeamCollabMetrics:
     total_prs: int
     total_reviews: int
     total_issues: int
+    total_issue_comments: int
+    total_pr_discussion_comments: int
+    total_review_comments: int
     total_additions: int
     total_deletions: int
 
