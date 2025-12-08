@@ -68,3 +68,12 @@ Week recap: I stored necessary code metrics that was not merged last week, and a
 I also reviewed Ammaar's PR, Adara's PR, and some other teammates.
 
 Next week plan: I plan to help with the video demo and presentation slides.
+
+# (Week 14) Monday 1st December - Sunday 7th December
+![Screenshot of week 14 peer eval](./screenshots/Johanes-Dec1-7.PNG)
+Week recap: I updated the System Architecture Diagram based on what we have currently in milestone 1. Added Skill Bucket Analysis box, Activity Type box, and updated the description. I also reorganized the flow of the diagram.
+Me and my teammate also worked on the presentation.
+
+I reviewed some of my teammate's PR.
+
+Next week plan: No sprint next week. Preparing for final exam. 
