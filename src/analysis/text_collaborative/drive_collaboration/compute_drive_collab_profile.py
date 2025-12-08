@@ -39,5 +39,5 @@ def compute_skill_levels(profile: dict) -> dict:
     return {
         "written_communication": classify_level(written_comm, 5),
         "participation": classify_level(participation, 1.0),  # Ratio is 0-1
-        "communication_leadership": classify_level(leadership, 20),
+        "communication_leadership": classify_level(leadership, 50),  # Max score with new weights
     }

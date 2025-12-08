@@ -417,7 +417,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
 
             # Communication Leadership: ratio (0-1) + level
             lead_score = skills.get('communication_leadership', {}).get('leadership_score', 0)
-            lead_ratio = lead_score / 20.0  # Max is 20
+            lead_ratio = lead_score / 50.0  # Max is 50 with new weighted calculation
             lead_level = levels.get('communication_leadership', 'N/A')
             print(f"  Communication Leadership: {lead_ratio:.2%} ({lead_level})")
 
