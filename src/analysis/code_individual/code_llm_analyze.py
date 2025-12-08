@@ -2,7 +2,7 @@ import os
 import textwrap
 import re
 from typing import Any, Dict, Optional
-from src.utils.helpers import extract_code_file, extract_readme_file
+from src.utils.helpers import extract_code_file, extract_readme_file, read_file_content
 from dotenv import load_dotenv
 from groq import Groq
 try:
@@ -16,17 +16,35 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 def run_code_llm_analysis(
     parsed_files,
     zip_path,
-    project_name=None
+    project_name=None,
+    focus_file_paths=None,  # NEW: optional list of file paths to focus on
 ) -> Optional[Dict[str, Any]]:
 
     if not isinstance(parsed_files, list):
         return None
-        
-    code_files = [f for f in parsed_files if f.get("file_type") == "code"]
-    if not code_files:
+
+    # 1. Select code files
+    all_code_files = [f for f in parsed_files if f.get("file_type") == "code"]
+    if not all_code_files:
         print("No code files found to analyze.")
         return None
-        
+
+    code_files = all_code_files
+
+    # If we know which files the user actually touched, restrict to those
+    if focus_file_paths:
+        normalized_focus = [p.replace("\\", "/") for p in focus_file_paths]
+        filtered = []
+
+        for f in all_code_files:
+            fp = (f.get("file_path") or "").replace("\\", "/")
+            # Match if the parsed path *ends with* one of the focus paths
+            if any(fp.endswith(target) for target in normalized_focus):
+                filtered.append(f)
+
+        if filtered:
+            code_files = filtered
+            
     REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
@@ -38,41 +56,64 @@ def run_code_llm_analysis(
         print(f"{'='*80}\n")
     
     readme_text = extract_readme_file(base_path)
-    
-    # trim super long readme files
     if readme_text and len(readme_text) > 8000:
         readme_text = readme_text[:8000]
-    
-    project_context_parts = []
+
+    # We now build TWO contexts:
+    #  - project_context_parts: README + code snippets (for project summary)
+    #  - contrib_context_parts: code snippets ONLY (for contribution summary)
+    project_context_parts: list[str] = []
+    contrib_context_parts: list[str] = []
 
     if readme_text:
         project_context_parts.append(f"README:\n{readme_text}")
 
+    # 2. Build context from code files
     for file_info in code_files:
         file_path = os.path.join(base_path, file_info["file_path"])
-        code_context = extract_code_file(file_path)
+
+        # For focused collaborative analysis, use full file contents.
+        # For other cases, keep the lighter "headers + comments" mode.
+        if focus_file_paths:
+            code_context = read_file_content(file_path)
+        else:
+            code_context = extract_code_file(file_path)
+
         if code_context:
-            project_context_parts.append(f"### {file_info['file_name']} ###\n{code_context}")
+            snippet = f"### {file_info['file_name']} ###\n{code_context}"
+            project_context_parts.append(snippet)
+            contrib_context_parts.append(snippet)
 
     project_context = "\n\n".join(project_context_parts)
+    contribution_context = "\n\n".join(contrib_context_parts)
+
     if not project_context:
         print("No readable code context found. Skipping LLM analysis.\n")
         return None
-    
-    # get the top-level folder name where the code files live
-    project_folders = sorted(set(os.path.dirname(f["file_path"]).split(os.sep)[0] for f in code_files))
+
+    # If somehow no code made it into contrib_context, fall back to project_context
+    # (rare; but keeps behaviour from totally breaking).
+    if not contribution_context:
+        contribution_context = project_context
+
+    # 3. Infer a project name if not provided
+    project_folders = sorted(
+        set(os.path.dirname(f["file_path"]).split(os.sep)[0] for f in code_files)
+    )
     if not project_name:
         project_name = project_folders[0] if project_folders else zip_name
-    
-    # split summary into project + contribution sections
-    project_summary = generate_code_llm_project_summary(readme_text, project_context)
-    contribution_summary = generate_code_llm_contribution_summary(project_context)
+
+    # 4. Call the existing LLM helpers
+    #    - Project summary: README + light code context
+    #    - Contribution summary: CODE-ONLY context (no README content)
+    project_summary = generate_code_llm_project_summary(readme_text)
+    contribution_summary = generate_code_llm_contribution_summary(contribution_context)
 
     display_code_llm_results(
         project_name,
         project_summary,
         contribution_summary,
-        mode="COLLABORATIVE" if "collab" in project_name.lower() else "INDIVIDUAL",
+        mode="COLLABORATIVE" if "collab" in (project_name or "").lower() else "INDIVIDUAL",
     )
 
     if constants.VERBOSE:
@@ -84,7 +125,7 @@ def run_code_llm_analysis(
     
     return {
         "project_summary": project_summary,
-        "contribution_summary": contribution_summary
+        "contribution_summary": contribution_summary,
     }
 
 
@@ -100,7 +141,7 @@ def display_code_llm_results(project_name, project_summary, contribution_summary
     print("\n" + "-" * 80 + "\n")
     
 
-def generate_code_llm_project_summary(readme_text, project_context):
+def generate_code_llm_project_summary(readme_text):
     """
     Produce a high-level project description (not tied to a single contributor).
     Emphasizes purpose, functionality, and scope — uses README primarily.
@@ -121,13 +162,10 @@ Do NOT:
 - mention individual contributors, commits, or versions
 - use phrases like "is being developed", "is under development", or "aims to"
 
-Use the README as the main source; refer to the code context only for support.
+Use the README as the main source.
 
 README:
 {readme_text[:5000]}
-
-Supplemental code context (for background only):
-{project_context[:2000]}
 
 Output one concise paragraph (80–100 words) written in PRESENT TENSE starting with "A project that..." or "An application that...".
 """
@@ -169,6 +207,7 @@ Context (from source code & comments):
 {project_context[:8000]}
 
 Output one strong paragraph starting with a past-tense action verb (e.g., Implemented, Designed, Developed).
+DO NOT begin with "Here's a paragraph" or any sort of preamble and go into the paragrpah directly.
 """
     try:
         completion = client.chat.completions.create(
@@ -196,13 +235,6 @@ Output one strong paragraph starting with a past-tense action verb (e.g., Implem
 def _sanitize_resume_paragraph(text: str) -> str:
     # Remove leading role preambles like "As a software developer," / "As an engineer,"
     text = re.sub(r"^\s*As\s+an?\s+[^,]+,\s*", "", text, flags=re.IGNORECASE)
-
-    # Remove explicit file names (main.cpp, data_utils.py, index.html, style.css, sensor.h, etc.)
-    text = re.sub(r"\b[\w\-]+\.(?:py|js|cpp|c|h|html|css|java)\b", "the codebase", text)
-
-    # Replace identifier-y tokens with generic phrasing (softly)
-    text = re.sub(r"\b[a-z]+(?:_[a-z0-9]+)+\b", "a utility function", text)      # snake_case
-    text = re.sub(r"\b[a-z]+[A-Z][a-zA-Z0-9]*\b", "a utility function", text)    # camelCase
 
     # Collapse to one clean paragraph
     text = re.sub(r"\s*\n+\s*", " ", text)
