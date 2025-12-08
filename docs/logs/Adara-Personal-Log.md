@@ -122,3 +122,22 @@ Lastly, I redesigned the entire text-extraction pipeline to correctly detect rea
 Along with these, I reviewed 5 PRs of my teammates.
 
 Next week: I will focus on finalizing our milestone 1 presentation, and working with the team to prepare for the demo.
+
+
+## (Week 14) Monday 1st - Sunday 7th December
+
+![Screenshot of tasks done from this sprint](./screenshots/Adara-Dec1-7.png)
+
+Week recap:
+
+This week I prepared for the Milestone 1 presentation with my teammates, working on the text skill analysis slides. I then broke down the different flows we needed to record for the demo video (e.g. code vs text, llm vs. non llm, github, .git no .git, etc), and helped Ammaar by recording the text demo part. 
+
+After that, I worked on a combined refactor and bug-fix related to the inaccuracy of LLM-generated summaries for collaborative code projects (PR 313). Previously, the system passed all function headers and comments from the entire codebase into the LLM, which produced summaries that were both noisy and not specific to the user’s actual contribution. I updated the analysis pipeline so that it now identifies the user’s top-contributed files (via .git data), loads their full contents, and passes only those to the LLM. This significantly improves the precision and relevance of contribution summaries. In the process, I also fixed an issue where the README extraction logic could not reliably locate project-root README files.
+
+I then updated our data flow diagram (PR 315) to match the finalized system by adding the full menu layer, separating consent and analysis flows, showing all four project paths, and including new processes like skill bucket analysis, activity type detection, and LLM summarization. I also added GitHub and Google Drive integrations and updated the data stores so the DFD now accurately reflects how data moves through the system.
+
+I reviewed Ammaar's PR and Ivona's PR, giving suggestions on how to fix some errors in the Google Drive integration.
+
+Next week: No capstone work until January! 🎉 Looking forward to work with the team again for Milestone 2 😊
+
+
