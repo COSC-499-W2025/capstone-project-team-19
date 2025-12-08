@@ -107,3 +107,19 @@ I have started working on cleaning up the terminal and only outputting necessary
 Working with the team on the presentation slide and demo video.
 
 Finishing the contributation skills from text projects by getting the metrics from the comments API and stroing them in the database.
+
+
+## (Week 14) Monday Dec 1st - Sunday November 7th 
+![Screenshot of this week's peer eval](./screenshots/Ivona-Dec.1-7.PNG)
+This Week:
+I worked on making the presentation and preparing for it, creating PR#321, PR#299, reviewing PRs,and atttending team meetings.
+
+The PRs:
+I worked on PR 299:
+This PR was to finish the implementation of the text collab contributation skills, I retrieved the user's comments and teams comments from the API and their username information and integrated it into the flow of previosuly made functions. I also asjusted some logic for how the skills are inferred to be more accurate. Disabled the revision that we inteded Google Drive to earlier and overall integrated into the flow of our project.
+
+I worked on PR 321:
+This PR conserned with writting the instructions to the TAs in the read me on how to set up a google drive api and credentials file.
+
+Next Week:
+Next week is winter break so I don't have any plans for the project yet.
