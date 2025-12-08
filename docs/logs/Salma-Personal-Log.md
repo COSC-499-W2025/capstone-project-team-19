@@ -146,3 +146,20 @@ I also reviewed and provided feedback on several PRs, including:
 - Johanes’ and Adara’s PR, where I helped verify that code metrics and text offline metrics were stored correctly in the database.
 
 Next week: I plan to help with the presentation or demo, and update the README to prevent zip path issues. I will also re-run main to identify and fix remaining issues and edge cases if available.
+
+# (Week 14) Monday 1st December - Sunday 7th December
+
+![Screenshot of week 14 peer eval](./screenshots/Salma-Dec1-7.PNG)
+
+Week Recap:
+
+- I worked on PR #307, where I added a verbose logging option allowing users to switch between detailed debug output and a clean minimal view. I implemented a global VERBOSE flag, added runtime prompts, and reviewed all major execution paths (code/text, individual/collaborative, with/without GitHub/GDrive) to ensure the logs behave correctly. I also added and updated tests to cover both verbose and non-verbose cases.
+- I collaborated with the team on the project presentation (I mainly worked on the local .git detection logic and code activity type slides) and practicing speaking delivery. I reviewed teammates’ content to ensure I could contribute confidently during the presentation and Q&A. I also completed peer evaluations for the other teams.
+
+I also reviewed and provided feedback on several PRs, including:
+
+- Ammaar’s PR on keyword search and Populate Code Contribution when local .git is unavailable. I suggested moving DB related queries to src/db to maintain consistency with our repository structure.
+- Ivona’s PR on implementation of text collaborative contribution skills. I found three test failures caused by a mismatch between the function logic and the test expectations. The code uses different weights (1.6 instead of 1.4 for questions) and calculates balance using ratios rather than absolute difference, so the tests may need to be updated to align with the logic.
+- Johanes’ PR on the system architecture diagram update. I suggested updating the diagram so that all four analysis modes (text and code in both individual and collaborative formats) connect to activity type detection. I also recommended reflecting that collaborative code analysis checks for a .git folder before prompting GitHub integration, and that individual code analysis also runs activity type detection and may request GitHub integration.
+
+Next week: No sprint next week. I’m looking forward to coming back recharged next term and ready for Milestone #2.
