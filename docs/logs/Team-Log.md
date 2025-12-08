@@ -399,3 +399,42 @@ we'll do optimization needed to improve the performance, and any changes needed 
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Nov24-Nov30.png) |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Nov24-Nov30.png)     |
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Nov24-Nov30.png)     |
+
+## (Week 14) Monday December 1 - Sunday December 7
+
+### Week recap
+This week, the team focused on fixing bugs and issues, finished the milestone 1 requirement, and working on presentation and deliverables. We also continue the collaborative skill analysis from google drive integration. Our project now have "Verbose" logging mode where user can choose to view debug output or just clean view of analysis. We also refactored the llm code contribution summary so that now LLM only summarize based on the files that user contributed to. We also consider another edge cases for analysis without .git files and no github integration by taking the user's contributed files based on the contribution summary they provided.
+
+We updated the readme files, wbs, DFD, and System Architecture Diagram based on what we have so far in milestone 1. We also recorded the video demo to show how the system works. Github integration issues were also addressed this week. We fixed the github issues counting, and user's review storage. GraphQL API is used in fetching PR's data which improve the performance.
+
+Overall, this week concentrated on fixing issues, working on Milestone 1 Deliverables, and updating readme file.
+
+### Plan for the next cycle
+
+No sprint for next week. Milestone 2 will be reassessed at the beginign of next year.
+
+### Burnup chart
+
+![Burnup chart for Nov 24 - Nov 30](screenshots/week14-burnupchart.png)
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshot                                                                    |
+| --------------- | ----------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Dec1-Dec7.png)     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Dec1-Dec7.png)   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Dec1-Dec7.png)     |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Dec1-Dec7.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Dec1-Dec7.png)     |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Dec1-Dec7.png)     |
