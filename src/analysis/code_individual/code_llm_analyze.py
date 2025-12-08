@@ -49,21 +49,12 @@ def run_code_llm_analysis(
     ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     base_path = os.path.join(ZIP_DATA_DIR, zip_name)
-<<<<<<< HEAD
-
-    print(f"\n{'='*80}")
-    print(f"Analyzing {len(code_files)} file(s) using LLM-based analysis...")
-    print(f"{'='*80}\n")
-
-    # README (still global, but ONLY for project summary)
-=======
         
     if constants.VERBOSE:
         print(f"\n{'='*80}")
         print(f"Analyzing {len(code_files)} file(s) using LLM-based analysis...")
         print(f"{'='*80}\n")
     
->>>>>>> origin/main
     readme_text = extract_readme_file(base_path)
     if readme_text and len(readme_text) > 8000:
         readme_text = readme_text[:8000]
@@ -115,7 +106,7 @@ def run_code_llm_analysis(
     # 4. Call the existing LLM helpers
     #    - Project summary: README + light code context
     #    - Contribution summary: CODE-ONLY context (no README content)
-    project_summary = generate_code_llm_project_summary(readme_text, project_context)
+    project_summary = generate_code_llm_project_summary(readme_text)
     contribution_summary = generate_code_llm_contribution_summary(contribution_context)
 
     display_code_llm_results(
@@ -125,14 +116,6 @@ def run_code_llm_analysis(
         mode="COLLABORATIVE" if "collab" in (project_name or "").lower() else "INDIVIDUAL",
     )
 
-<<<<<<< HEAD
-    print(f"\n{'='*80}")
-    print("PROJECT SUMMARY - (LLM-based results: summaries)")
-    print(f"{'='*80}\n")
-    print(f"All insights successfully generated for: {zip_name}.")
-    print(f"\n{'='*80}\n")
-
-=======
     if constants.VERBOSE:
         print(f"\n{'='*80}")
         print("PROJECT SUMMARY - (LLM-based results: summaries)")
@@ -140,7 +123,6 @@ def run_code_llm_analysis(
         print(f"All insights successfully generated for: {zip_name}.")
         print(f"\n{'='*80}\n")
     
->>>>>>> origin/main
     return {
         "project_summary": project_summary,
         "contribution_summary": contribution_summary,
@@ -159,7 +141,7 @@ def display_code_llm_results(project_name, project_summary, contribution_summary
     print("\n" + "-" * 80 + "\n")
     
 
-def generate_code_llm_project_summary(readme_text, project_context):
+def generate_code_llm_project_summary(readme_text):
     """
     Produce a high-level project description (not tied to a single contributor).
     Emphasizes purpose, functionality, and scope — uses README primarily.
@@ -180,13 +162,10 @@ Do NOT:
 - mention individual contributors, commits, or versions
 - use phrases like "is being developed", "is under development", or "aims to"
 
-Use the README as the main source; refer to the code context only for support.
+Use the README as the main source.
 
 README:
 {readme_text[:5000]}
-
-Supplemental code context (for background only):
-{project_context[:2000]}
 
 Output one concise paragraph (80–100 words) written in PRESENT TENSE starting with "A project that..." or "An application that...".
 """
