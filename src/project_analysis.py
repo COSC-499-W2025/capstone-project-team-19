@@ -437,9 +437,11 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     # ------------------------------
 
     user_email = result.get("user_email")
+    user_display_name = result.get("user_display_name")
+    print("\n[TEXT-COLLAB] Starting Google Drive analysis...")
 
     if constants.VERBOSE:
-        print("\n[TEXT-COLLAB] Starting Google Drive revision analysis...")
+        print("\n[TEXT-COLLAB] Starting Google Drive analysis...")
 
     drive_result = process_project_files(
         conn=conn,
@@ -448,15 +450,52 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
         docs_service=docs_service,
         user_id=user_id,
         project_name=project_name,
-        user_email=user_email
+        user_email=user_email,
+        user_display_name=user_display_name
     )
 
     if summary and drive_result:
         summary.contributions["google_drive"] = drive_result
 
+        #Added for now, should be stored in db later
+        if drive_result.get("collaboration_profile"):
+            summary.contributions["drive_collaboration"] = drive_result["collaboration_profile"]
+            print("\n[DRIVE-COLLAB] Collaboration skills computed:")
+            collab_profile = drive_result['collaboration_profile']
+            skills = collab_profile.get('skills', {})
+            levels = collab_profile.get('skill_levels', {})
+
+            # Written Communication: ratio (0-1) + level
+            wc_score = skills.get('written_communication', {}).get('score', 0)
+            wc_ratio = wc_score / 5.0  # Max is 5
+            wc_level = levels.get('written_communication', 'N/A')
+            print(f"  Written Communication: {wc_ratio:.2%} ({wc_level})")
+
+            # Participation: ratio (0-1) + level
+            part_score = skills.get('participation', {}).get('activity_score', 0)
+            part_ratio = part_score  # Already a ratio 0-1
+            part_level = levels.get('participation', 'N/A')
+            print(f"  Participation: {part_ratio:.2%} ({part_level})")
+
+            # Communication Leadership: ratio (0-1) + level
+            lead_score = skills.get('communication_leadership', {}).get('leadership_score', 0)
+            lead_ratio = lead_score / 50.0  # Max is 50 with new weighted calculation
+            lead_level = levels.get('communication_leadership', 'N/A')
+            print(f"  Communication Leadership: {lead_ratio:.2%} ({lead_level})")
+
     print("[TEXT-COLLAB] Google Drive contribution analysis complete.")
     
-   
+    # After Drive analysis completes, also run manual analysis
+    print("\n[TEXT-COLLAB] Running manual contribution analysis...")
+    analyze_collaborative_text_project(
+        conn=conn,
+        user_id=user_id,
+        project_name=project_name,
+        parsed_files=parsed_files,
+        zip_path=zip_path,
+        external_consent=current_ext_consent,
+        summary_obj=summary
+    )
 
 
 def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary):

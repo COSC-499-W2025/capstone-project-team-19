@@ -10,7 +10,7 @@ Orchestrates the complete flow of:
 """
 from typing import Dict, Any, Optional
 from src.utils.helpers import _fetch_files
-from .google_drive_oauth import get_user_email, google_drive_oauth
+from .google_drive_oauth import get_user_email, get_user_info, google_drive_oauth
 from .link_files import find_and_link_files
 try:
     from src import constants
@@ -85,7 +85,9 @@ def setup_text_project_drive_connection(
             'zip_file_names': zip_file_names,
             'error': str(e)
         }
-    user_email = get_user_email(creds)
+    user_info = get_user_info(creds)
+    user_email = user_info["email"]
+    user_display_name = user_info["displayName"]
     
     # Step 4: Link files
     if constants.VERBOSE:
@@ -118,6 +120,7 @@ def setup_text_project_drive_connection(
             'drive_service': drive_service,
             'docs_service': docs_service,
             'user_email': user_email,
+            'user_display_name': user_display_name,
             'error': None
         }
         

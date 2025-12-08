@@ -1,8 +1,8 @@
-from src.analysis.text_collaborative.drive_collaboration.comment_quality import compute_comment_quality
+from src.analysis.text_collaborative.drive_collaboration.written_communication import compute_written_communication
 
 
-def test_comment_quality_empty():
-    result = compute_comment_quality([])
+def test_written_communication_empty():
+    result = compute_written_communication([])
     
     assert result["score"] == 0
     assert result["avg_length"] == 0
@@ -11,9 +11,9 @@ def test_comment_quality_empty():
     assert result["total_comments"] == 0
 
 
-def test_comment_quality_short_comments():
+def test_written_communication_short_comments():
     comments = ["ok", "nice", "thanks", "looks good"]
-    result = compute_comment_quality(comments)
+    result = compute_written_communication(comments)
     
     lengths = [len(c.strip()) for c in comments]
     avg = sum(lengths) / len(lengths)
@@ -24,14 +24,14 @@ def test_comment_quality_short_comments():
     assert 0 <= result["score"] <= 5
 
 
-def test_comment_quality_meaningful_comments():
+def test_written_communication_meaningful_comments():
     comments = [
         "This section could be improved by adding more examples.",
         "Consider restructuring this paragraph for better flow.",
         "Maybe add a conclusion here to tie everything together.",
     ]
     
-    result = compute_comment_quality(comments)
+    result = compute_written_communication(comments)
     
     lengths = [len(c) for c in comments]
     avg = sum(lengths) / len(lengths)
@@ -42,14 +42,14 @@ def test_comment_quality_meaningful_comments():
     assert result["score"] > 2  # meaningful comments boost score
 
 
-def test_comment_quality_constructive_feedback():
+def test_written_communication_constructive_feedback():
     comments = [
         "I suggest adding more context here to help readers understand the background better.",
         "Consider improving this section by restructuring the paragraphs for better flow and clarity.",
         "Maybe we could restructure this entire section to make it more coherent and easier to follow.",
     ]
     
-    result = compute_comment_quality(comments)
+    result = compute_written_communication(comments)
     
     # All comments have constructive keywords
     assert result["constructive_ratio"] == 1.0
@@ -58,7 +58,7 @@ def test_comment_quality_constructive_feedback():
     assert result["score"] > 2
 
 
-def test_comment_quality_mixed():
+def test_written_communication_mixed():
     comments = [
         "ok",
         "This paragraph needs better organization and clearer examples.",
@@ -66,9 +66,10 @@ def test_comment_quality_mixed():
         "Consider adding a transition sentence here to improve flow.",
     ]
     
-    result = compute_comment_quality(comments)
+    result = compute_written_communication(comments)
     
     meaningful_count = sum(1 for c in comments if len(c.strip()) > 40)
     assert result["meaningful_ratio"] == meaningful_count / len(comments)
     assert result["total_comments"] == 4
     assert 0 <= result["score"] <= 5
+

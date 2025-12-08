@@ -16,6 +16,7 @@ SCOPES = [
     'https://www.googleapis.com/auth/drive.readonly',
     'https://www.googleapis.com/auth/drive.metadata.readonly',
     'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',  # Added for displayName
     'openid',
 ]
 
@@ -58,6 +59,25 @@ def get_user_email(creds):
     service = build("oauth2", "v2", credentials=creds)
     user_info = service.userinfo().get().execute()
     return user_info["email"]
+
+
+def get_user_info(creds):
+    """Get both email and displayName from OAuth."""
+    service = build("oauth2", "v2", credentials=creds)
+    user_info = service.userinfo().get().execute()
+    
+    # Try multiple fields for displayName
+    display_name = (
+        user_info.get("name") or  # Full name
+        user_info.get("given_name") or  # First name
+        (f"{user_info.get('given_name', '')} {user_info.get('family_name', '')}".strip()) or  # Combined
+        ""  # Fallback
+    )
+
+    return {
+        "email": user_info.get("email", ""),
+        "displayName": display_name,
+    }
 
 
 if __name__ == "__main__":

@@ -40,7 +40,7 @@ class TextCollaborationProfile:
     A structured return type for text collaboration profile.
     """
     normalized: Dict[str, float]
-    skills: Dict[str, Any]  # comment_quality, participation, communication_leadership
+    skills: Dict[str, Any]  # written_communication, participation, communication_leadership
 
     def to_json(self) -> Dict[str, Any]:
         """

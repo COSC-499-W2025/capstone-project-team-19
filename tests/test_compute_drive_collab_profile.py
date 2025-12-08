@@ -12,13 +12,13 @@ from src.analysis.text_collaborative.drive_collaboration.models import (
 
 
 def patch_all_metrics(
-    mock_comment_quality,
+    mock_written_communication,
     mock_participation,
     mock_leadership,
 ):
     patch_base = "src.analysis.text_collaborative.drive_collaboration.compute_drive_collab_profile"
     return (
-        patch(f"{patch_base}.compute_comment_quality", mock_comment_quality),
+        patch(f"{patch_base}.compute_written_communication", mock_written_communication),
         patch(f"{patch_base}.compute_participation", mock_participation),
         patch(f"{patch_base}.compute_communication_leadership", mock_leadership),
     )
@@ -50,17 +50,17 @@ def fake_team():
 
 
 def test_compute_text_collaboration_profile_calls_all_metrics(fake_user, fake_team):
-    def mock_quality(c): return {"score": 3}
-    def mock_part(u): return {"activity_score": 10}
+    def mock_written_comm(c): return {"score": 3}
+    def mock_part(u, t): return {"activity_score": 10}
     def mock_lead(u): return {"leadership_score": 8}
 
-    patches = patch_all_metrics(mock_quality, mock_part, mock_lead)
+    patches = patch_all_metrics(mock_written_comm, mock_part, mock_lead)
 
     with patches[0], patches[1], patches[2]:
         result = compute_text_collaboration_profile(fake_user, fake_team)
 
         assert "normalized" in result
-        assert result["skills"]["comment_quality"] == {"score": 3}
+        assert result["skills"]["written_communication"] == {"score": 3}
         assert result["skills"]["participation"] == {"activity_score": 10}
         assert result["skills"]["communication_leadership"] == {"leadership_score": 8}
 
@@ -88,7 +88,7 @@ def test_compute_text_collaboration_profile_empty():
     
     assert "normalized" in result
     assert "skills" in result
-    assert "comment_quality" in result["skills"]
+    assert "written_communication" in result["skills"]
     assert "participation" in result["skills"]
     assert "communication_leadership" in result["skills"]
     # Should NOT have responsiveness
@@ -97,12 +97,12 @@ def test_compute_text_collaboration_profile_empty():
 
 def test_compute_text_collaboration_profile_integration(fake_user, fake_team, monkeypatch):
     monkeypatch.setattr(
-        "src.analysis.text_collaborative.drive_collaboration.compute_drive_collab_profile.compute_comment_quality",
+        "src.analysis.text_collaborative.drive_collaboration.compute_drive_collab_profile.compute_written_communication",
         lambda c: {"quality": 1},
     )
     monkeypatch.setattr(
         "src.analysis.text_collaborative.drive_collaboration.compute_drive_collab_profile.compute_participation",
-        lambda u: {"part": 3},
+        lambda u, t: {"part": 3},
     )
     monkeypatch.setattr(
         "src.analysis.text_collaborative.drive_collaboration.compute_drive_collab_profile.compute_communication_leadership",
@@ -111,6 +111,6 @@ def test_compute_text_collaboration_profile_integration(fake_user, fake_team, mo
 
     result = compute_text_collaboration_profile(fake_user, fake_team)
 
-    assert result["skills"]["comment_quality"] == {"quality": 1}
+    assert result["skills"]["written_communication"] == {"quality": 1}
     assert result["skills"]["participation"] == {"part": 3}
     assert result["skills"]["communication_leadership"] == {"lead": 4}
