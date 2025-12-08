@@ -112,20 +112,53 @@ All access is strictly consent-based and is not required for a project to be ana
 
 Google Drive integration **can be tested by course evaluators**.
 
-To support this, course evaluators have been added as **authorized test users**
-in the Google Drive API project. Due to OAuth security restrictions,
-credentials cannot be included in the repository and must be shared privately.
 
-To enable Google Drive integration during evaluation:
+To enable Google Drive integration during evaluation, follow these steps:
 
-1. Obtain `credentials.json` via private communication from the team.
-2. Place the file at: `src/integrations/google_drive/google_drive_auth/credentials.json`
-3. Verify the path is correct before running the application.
+Create a Google Cloud Project
+1. Go to: https://console.cloud.google.com 
+2. Click Select a project -> New Project
+3. Name it anything ( ex. Drive-API-Grading), Location can be left as "No organization"
+4. Click Create
+
+Enable the Google Drive API
+1. Check you are in the project just created ( will say "you are working in [project_name] " )
+   if project is a different one click and select apporpriate project
+2. Go to navigation menu - > APIs & Services -> Enable APIs & services
+3. Click " + Enable APIs and services"
+4. Search for Google Drive API 
+3. Click it -> Enable
+
+Configure OAuth Consent Screen
+1. Go to APIs & Services -> OAuth consent screen 
+2. Click "Get Started"
+3. Fill out:
+      App name: (ex:"TestingTeam19")   
+      User support email
+4. Click "Next"
+5. Select External, Click "Next"
+6. Fill out email address for contact information, Click "Next"
+7. Select "I agree to the Google API Services: User Data Policy. ", Click "Continue"
+8. Click save
+
+Create OAuth Credentials
+1. Go to APIs & Services -> Credentials
+2. Click "+ Create Credentials" -> OAuth client ID
+3. Choose Desktop app
+4. Name it anything
+5. Click "Create"
+6. Click "Download JSON"
+7. Rename it to "credentials.json"
+
+Placing the Credentials file within the project
+1. Place the file so its path is: `src/integrations/google_drive/google_drive_auth/credentials.json`
+2. Verify the path is correct before running the application.
 
 If credentials are not provided, the system will fall back to local-only analysis,
 and all core functionality will remain available.
 
 > Note: Google Drive OAuth requires the evaluator’s email to be a Google account (e.g., Gmail).
+
 
 ### For Team Development Use
 Each team member has been added as a test user in the Google Drive API project
