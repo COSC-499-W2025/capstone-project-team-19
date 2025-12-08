@@ -236,13 +236,6 @@ def _sanitize_resume_paragraph(text: str) -> str:
     # Remove leading role preambles like "As a software developer," / "As an engineer,"
     text = re.sub(r"^\s*As\s+an?\s+[^,]+,\s*", "", text, flags=re.IGNORECASE)
 
-    # Remove explicit file names (main.cpp, data_utils.py, index.html, style.css, sensor.h, etc.)
-    text = re.sub(r"\b[\w\-]+\.(?:py|js|cpp|c|h|html|css|java)\b", "the codebase", text)
-
-    # Replace identifier-y tokens with generic phrasing (softly)
-    text = re.sub(r"\b[a-z]+(?:_[a-z0-9]+)+\b", "a utility function", text)      # snake_case
-    text = re.sub(r"\b[a-z]+[A-Z][a-zA-Z0-9]*\b", "a utility function", text)    # camelCase
-
     # Collapse to one clean paragraph
     text = re.sub(r"\s*\n+\s*", " ", text)
     text = re.sub(r"\s{2,}", " ", text).strip()
