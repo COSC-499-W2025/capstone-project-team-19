@@ -9,6 +9,9 @@ except ModuleNotFoundError:
 
 from src.analysis.text_collaborative.drive_collaboration.build_drive_collab_metrics import run_drive_collaboration_analysis
 
+# Set to False to skip revision history analysis (code is preserved but won't run)
+ENABLE_REVISION_HISTORY = False
+
 def process_project_files(conn: sqlite3.Connection, creds, drive_service, docs_service, user_id: int, project_name: str, user_email: str, user_display_name: str = None):
     """ Process all linked Google Drive files for a given text project."""
     files = db.get_project_drive_files(conn, user_id, project_name)
@@ -22,6 +25,13 @@ def process_project_files(conn: sqlite3.Connection, creds, drive_service, docs_s
         # Only track Google Docs for collaboration (only they support comments)
         if mime_type == "application/vnd.google-apps.document":
             doc_file_ids.append(file_id)
+        
+        # Skip revision history analysis if disabled
+        if not ENABLE_REVISION_HISTORY:
+            print(f"Collecting file: {f['drive_file_name']} ({file_id})")
+            continue
+        
+        # REVISION HISTORY ANALYSIS (disabled by default)
         print(f"Analyzing file: {f['drive_file_name']} ({file_id})")
 
         if constants.VERBOSE:

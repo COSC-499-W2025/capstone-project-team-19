@@ -438,10 +438,10 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
 
     user_email = result.get("user_email")
     user_display_name = result.get("user_display_name")
-    print("\n[TEXT-COLLAB] Starting Google Drive revision analysis...")
+    print("\n[TEXT-COLLAB] Starting Google Drive analysis...")
 
     if constants.VERBOSE:
-        print("\n[TEXT-COLLAB] Starting Google Drive revision analysis...")
+        print("\n[TEXT-COLLAB] Starting Google Drive analysis...")
 
     drive_result = process_project_files(
         conn=conn,
@@ -483,11 +483,19 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
             lead_level = levels.get('communication_leadership', 'N/A')
             print(f"  Communication Leadership: {lead_ratio:.2%} ({lead_level})")
 
-
-
     print("[TEXT-COLLAB] Google Drive contribution analysis complete.")
     
-   
+    # After Drive analysis completes, also run manual analysis
+    print("\n[TEXT-COLLAB] Running manual contribution analysis...")
+    analyze_collaborative_text_project(
+        conn=conn,
+        user_id=user_id,
+        project_name=project_name,
+        parsed_files=parsed_files,
+        zip_path=zip_path,
+        external_consent=current_ext_consent,
+        summary_obj=summary
+    )
 
 
 def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary):
