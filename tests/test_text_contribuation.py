@@ -58,6 +58,7 @@ def sqlite_conn():
 import src.integrations.google_drive.process_project_files as module
 module.analyze_google_doc = fake_analyze_google_doc
 module.db.get_project_drive_files = fake_get_project_drive_files
+module.ENABLE_REVISION_HISTORY = True  # ensure we test revisions even when disiabled
 
 # Tests
 def test_process_project_files_stores_revisions(sqlite_conn):
