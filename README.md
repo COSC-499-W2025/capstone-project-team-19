@@ -191,13 +191,17 @@ The flow starts when the user login, and choose one of the 8 menu:
 
 ## Level 1 Data Flow Diagram
 
-![DFD Level 1](docs/plan/Updated-DFD-Level-1-Diagram.png)
+![DFD Level 1](docs/plan/DFD_L1_Milestone1.png)
 
-The Level 1 DFD captures the full loop from a user opting-in to analysis through the portfolio views they receive. A run begins when the user adjusts their configuration (data consent, LLM usage) and shares a zipped project folder. Those inputs are stored alongside account metadata so future runs can respect the same choices without re-prompting.
+The Level 1 DFD illustrates the complete lifecycle of a project analysis request, beginning with the user selecting an action in the menu and ending with the generation of summaries, skills, and portfolio outputs. When the user initiates a new analysis, the system first manages consent by collecting permissions for local analysis, GitHub integration, Google Drive access, and optional LLM summarization. These selections are stored in the consent and configuration data store so that future analyses remain consistent with the user's preferences.
 
-Uploaded files go through the categorization service, which tags each artifact (text, code, image, video, audio, CSV). The tagged batches feed into the media-specific processors where extractors pull metrics such as word counts, sentiment, frame features, commit history, or tabular summaries. Each processor returns a scoped metrics bundle to the metrics producer, which normalizes the data and stores the blended dataset.
+After the user uploads a zipped project folder, the system validates the archive, extracts its contents, and records file metadata. The classification stage determines project boundaries, identifies file types, and separates individual from collaborative projects. Once classified, projects are sent to the non LLM analysis pipeline, which performs linguistic metrics, CSV inspection, readability analysis, language and framework detection, Git commit inspection, and contribution inference depending on the project type and available integrations. All extracted metrics and contribution data are written to the analysis results store.
 
-Once metrics are available, the dashboard layer surfaces them in several destinations: the interactive historical view, resume builder, public web portfolio, and export pipeline (PDF/DOCX/CSV). These downstream tools all read from the shared metrics store, letting us plug in new visualizations without re-running analysis. The DFD makes it clear which components depend on local storage, which ones exchange user-facing data, and where new processors should integrate if we add artifact types later.
+The skill bucket analysis process then evaluates the available evidence, including text and code metrics, contributions, structural features, and activity traces, to produce skill scores and levels. Activity type detection supplements these results by categorizing user behavior over time, such as coding, testing, documentation, or textual revision patterns.
+
+If LLM access is granted, a summarization process enhances the project record with natural language summaries. Otherwise, the system prompts the user to provide a manual description. These finalized summaries, along with all metrics and skill outputs, are stored as complete project records.
+
+Because all menu operations draw from the same analysis results store, the user can view ranked projects, retrieve chronological skill timelines, build resumes, or revisit past analyses without re running computation. The DFD clearly indicates which components interact with external services, which rely on stored data, and where new analysis paths, such as additional detectors or classifiers, can be integrated into the pipeline.
 
 ## Work Breakdown Structure
 
