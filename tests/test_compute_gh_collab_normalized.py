@@ -10,6 +10,7 @@ def make_user(commits, prs, reviews, issues, adds, dels):
         prs_reviewed=reviews,
         issues_opened=issues,
         issue_comments=0,
+        pr_discussion_comments=0,
         review_comments=[],
         additions=adds,
         deletions=dels,
@@ -25,6 +26,9 @@ def make_team(commits, prs, reviews, issues, adds, dels):
         total_prs=prs,
         total_reviews=reviews,
         total_issues=issues,
+        total_issue_comments=0,
+        total_pr_discussion_comments=0,
+        total_review_comments=0,
         total_additions=adds,
         total_deletions=dels,
     )

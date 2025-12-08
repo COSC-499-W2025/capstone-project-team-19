@@ -199,6 +199,10 @@ def store_github_detailed_metrics(conn, user_id, project_name, owner, repo, metr
     
     # Store user issue comments
     user_issue_comments = issues.get("user_issue_comments", [])
+    
+    if isinstance(user_issue_comments, int):
+        user_issue_comments = []
+
     for comment in user_issue_comments:
         conn.execute("""
             INSERT INTO github_issue_comments (
