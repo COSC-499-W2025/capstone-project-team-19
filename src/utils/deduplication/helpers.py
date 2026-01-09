@@ -12,3 +12,14 @@ def should_ignore_path(path: Path) -> bool:
         return True
     
     return False
+
+def jaccard_similarity(hashes_a: set[str], hashes_b: set[str]) -> float:
+    if not hashes_a and not hashes_b:
+        return 1.0
+    
+    union = len(hashes_a | hashes_b)
+    if union == 0:
+        return 0.0
+    
+    inter = len(hashes_a & hashes_b)
+    return inter / union
