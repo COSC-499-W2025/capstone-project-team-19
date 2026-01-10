@@ -181,7 +181,7 @@ def test_send_to_analysis_calls_correct_flows_verbose(monkeypatch, capsys):
         lambda *a, **kw: called.__setitem__("collab", True),
     )
 
-    answers = iter(["y", "y"])
+    answers = iter(["y", "y", "Worked on backend endpoints."])
     monkeypatch.setattr("builtins.input", lambda _="": next(answers))
 
     from src.project_analysis import send_to_analysis
@@ -223,7 +223,7 @@ def test_send_to_analysis_calls_correct_flows_non_verbose(monkeypatch, capsys):
         lambda *a, **kw: called.__setitem__("collab", True),
     )
 
-    answers = iter(["y", "y"])
+    answers = iter(["y", "y", "Handled API integrations."])
     monkeypatch.setattr("builtins.input", lambda _="": next(answers))
 
     from src.project_analysis import send_to_analysis
