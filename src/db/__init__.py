@@ -96,6 +96,7 @@ from .file_contributions import (
     get_user_contributed_files,
     get_file_contribution_stats,
     has_contribution_data,
+    delete_file_contributions_for_project,
 )
 
 # files
@@ -203,6 +204,7 @@ __all__ = [
     "get_user_contributed_files",
     "get_file_contribution_stats",
     "has_contribution_data",
+    "delete_file_contributions_for_project",
     "delete_code_activity_metrics_for_project",
     "insert_code_activity_metric",
     "store_code_activity_metrics",
