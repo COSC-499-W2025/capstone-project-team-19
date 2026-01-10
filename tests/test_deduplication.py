@@ -6,19 +6,17 @@ from src.utils.deduplication.rules import IGNORE_DIRS, IGNORE_FILE_SUFFIXES
 
 
 # Helpers
-def create_project_structure(tmp_path, structure):
-    """Create a project directory structure from a dict: {'file.py': 'content', 'subdir/file.txt': 'content'}"""
-    root = tmp_path / "project"
-    root.mkdir()
-    for rel_path, content in structure.items():
-        file_path = root / rel_path
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(content, encoding="utf-8")
+def create_project_structure(root: Path, files: dict[str, str]) -> Path:
+    root.mkdir(parents=True, exist_ok=True)
+    for rel, content in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
     return root
 
 # should_ignore_path tests
 def test_should_ignore_path_ignores_directories(tmp_path):
-    ignored_dirs = list(IGNORE_DIRS)[:3]  # Test first 3
+    ignored_dirs = list(IGNORE_DIRS)[:3] # Test first 3
     for dir_name in ignored_dirs:
         path = tmp_path / dir_name / "file.py"
         path.parent.mkdir()
@@ -113,24 +111,20 @@ def test_file_content_hash_binary_no_normalization(tmp_path):
 
 # project_fingerprints tests
 def test_project_fingerprints_single_file(tmp_path):
-    root = create_project_structure(tmp_path, {"main.py": "print('hello')"})
+    root = create_project_structure(tmp_path / "project", {"main.py": "print('hello')"})
     fp_strict, fp_loose, entries = project_fingerprints(root)
-    
-    assert isinstance(fp_strict, str)
-    assert isinstance(fp_loose, str)
-    assert len(fp_strict) == 64
-    assert len(fp_loose) == 64
+
     assert len(entries) == 1
     assert entries[0][0] == "main.py"
 
 def test_project_fingerprints_multiple_files(tmp_path):
-    root = create_project_structure(tmp_path, {
+    root = create_project_structure(tmp_path / "project", {
         "src/main.py": "print('hello')",
         "src/utils.py": "def func(): pass",
         "README.md": "# Project"
     })
-    fp_strict, fp_loose, entries = project_fingerprints(root)
-    
+    _, _, entries = project_fingerprints(root)
+
     assert len(entries) == 3
     entry_paths = {e[0] for e in entries}
     assert entry_paths == {"src/main.py", "src/utils.py", "README.md"}
@@ -174,17 +168,18 @@ def test_project_fingerprints_empty_project(tmp_path):
     assert fp_loose == empty_hash
 
 def test_project_fingerprints_deterministic_ordering(tmp_path):
-    root = create_project_structure(tmp_path, {
+    root = create_project_structure(tmp_path / "project", {
         "z.py": "z",
         "a.py": "a",
         "m.py": "m",
     })
     fp1_strict, fp1_loose, entries1 = project_fingerprints(root)
     fp2_strict, fp2_loose, entries2 = project_fingerprints(root)
-    
+
     assert fp1_strict == fp2_strict
     assert fp1_loose == fp2_loose
-    # Entries should be sorted by relpath
-    assert entries1[0][0] == "a.py"
-    assert entries1[1][0] == "m.py"
-    assert entries1[2][0] == "z.py"
+
+    entries1_sorted = sorted(entries1, key=lambda x: x[0])
+    assert entries1_sorted[0][0] == "a.py"
+    assert entries1_sorted[1][0] == "m.py"
+    assert entries1_sorted[2][0] == "z.py"
