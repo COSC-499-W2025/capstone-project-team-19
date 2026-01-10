@@ -614,11 +614,11 @@ Top files: {top_files}
 """.rstrip())
     
 def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) -> dict[str, str]:
-    if consent == "accepted" or not projects:
+    if not projects:
         return {}
 
     if constants.VERBOSE:
-        print("\n[NON-LLM] CONTRIBUTION SUMMARIES")
+        print("\nCONTRIBUTION SUMMARIES")
     print("Describe only your personal contributions to the collaborative project.")
     print("Write 1-3 sentences. Be specific about features/files you primarily worked on.")
     print("Example: “Implemented login API in FastAPI and wrote tests for user_routes.py”.\n")
