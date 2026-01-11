@@ -5,7 +5,7 @@ Menu option for creating and viewing resume snapshots.
 Delegates heavy lifting to flow.py.
 """
 
-from .flow import _handle_create_resume, _handle_view_existing_resume
+from .flow import _handle_create_resume, _handle_view_existing_resume, _handle_export_resume_docx
 
 
 def view_resume_items(conn, user_id: int, username: str):
@@ -18,7 +18,8 @@ def view_resume_items(conn, user_id: int, username: str):
         print("1. Create a new resume from current projects")
         print("2. View an existing resume snapshot")
         print("3. Back to main menu")
-        choice = input("Select an option (1-3): ").strip()
+        print("4. Export a resume snapshot to Word (.docx)")
+        choice = input("Select an option (1-4): ").strip()
 
         if choice == "1":
             _handle_create_resume(conn, user_id, username)
@@ -33,5 +34,10 @@ def view_resume_items(conn, user_id: int, username: str):
         elif choice == "3":
             print("")
             return
+        elif choice == "4":
+            handled = _handle_export_resume_docx(conn, user_id, username)
+            if handled:
+                print("")
+                continue
         else:
             print("Invalid choice, please enter 1, 2, or 3.")
