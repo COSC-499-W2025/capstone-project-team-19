@@ -164,8 +164,8 @@ def interactive_reorder(conn, user_id):
         print(f"  {rank}. {project_name} (score: {score:.3f})")
 
     print(f"\n{'='*80}")
-    print("Enter new order as comma-separated project names (or 'cancel'):")
-    print("Example: project3, project1, project2")
+    print("Enter new order as comma-separated numbers (or 'cancel'):")
+    print("Example: 3, 1, 2")
     print("Note: Projects not listed will use automatic ranking.")
     print(f"{'='*80}")
 
@@ -175,14 +175,25 @@ def interactive_reorder(conn, user_id):
         print("Cancelled.")
         return
 
-    # Parse input
-    new_order = [name.strip() for name in user_input.split(',')]
-    project_names = {name for name, _ in projects}
-
-    # Validate
-    if not all(name in project_names for name in new_order):
-        print("\nError: Some project names are invalid. Please try again.")
+    # Parse input - convert to numbers
+    try:
+        new_order_indices = [int(num.strip()) - 1 for num in user_input.split(',')]
+    except ValueError:
+        print("\nError: Please enter valid numbers separated by commas.")
         return
+
+    # Validate indices
+    if not all(0 <= idx < len(projects) for idx in new_order_indices):
+        print(f"\nError: All numbers must be between 1 and {len(projects)}.")
+        return
+
+    # Check for duplicates
+    if len(new_order_indices) != len(set(new_order_indices)):
+        print("\nError: Duplicate numbers detected. Each project should appear only once.")
+        return
+
+    # Convert indices to project names
+    new_order = [projects[idx][0] for idx in new_order_indices]
 
     # Clear all existing rankings first
     clear_all_rankings(conn, user_id)
