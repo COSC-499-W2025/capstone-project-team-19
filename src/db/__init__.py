@@ -166,6 +166,16 @@ from .portfolio import (
     get_code_individual_duration,
 )
 
+# deduplication
+from .deduplication import (
+    find_existing_version_by_strict_fp,
+    get_latest_versions,
+    get_hash_set_for_version,
+    insert_project,
+    insert_project_version,
+    insert_version_files
+)
+
 __all__ = [
     "connect",
     "init_schema",
@@ -230,5 +240,11 @@ __all__ = [
     "insert_git_individual_metrics",
     "update_git_individual_metrics",
     "get_git_individual_metrics",
-    "extract_git_metrics"
+    "extract_git_metrics",
+    "find_existing_version_by_strict_fp",
+    "get_latest_versions",
+    "get_hash_set_for_version",
+    "insert_project",
+    "insert_project_version",
+    "insert_version_files"
 ]
