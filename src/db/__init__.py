@@ -166,6 +166,16 @@ from .portfolio import (
     get_code_individual_duration,
 )
 
+# project rankings
+from .project_rankings import (
+    set_project_rank,
+    get_project_rank,
+    get_all_project_ranks,
+    clear_project_rank,
+    clear_all_rankings,
+    bulk_set_rankings,
+)
+
 __all__ = [
     "connect",
     "init_schema",
@@ -230,5 +240,11 @@ __all__ = [
     "insert_git_individual_metrics",
     "update_git_individual_metrics",
     "get_git_individual_metrics",
-    "extract_git_metrics"
+    "extract_git_metrics",
+    "set_project_rank",
+    "get_project_rank",
+    "get_all_project_ranks",
+    "clear_project_rank",
+    "clear_all_rankings",
+    "bulk_set_rankings",
 ]
