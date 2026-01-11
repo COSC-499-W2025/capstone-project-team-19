@@ -17,8 +17,8 @@ def view_resume_items(conn, user_id: int, username: str):
         print("")
         print("1. Create a new resume from current projects")
         print("2. View an existing resume snapshot")
-        print("3. Back to main menu")
-        print("4. Export a resume snapshot to Word (.docx)")
+        print("3. Export a resume snapshot to Word (.docx)")
+        print("4. Back to main menu")
         choice = input("Select an option (1-4): ").strip()
 
         if choice == "1":
@@ -32,12 +32,12 @@ def view_resume_items(conn, user_id: int, username: str):
                 continue
             # otherwise loop back to resume menu
         elif choice == "3":
-            print("")
-            return
-        elif choice == "4":
             handled = _handle_export_resume_docx(conn, user_id, username)
             if handled:
                 print("")
                 continue
+        elif choice == "4":
+            print("")
+            return
         else:
             print("Invalid choice, please enter 1, 2, or 3.")
