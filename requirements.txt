@@ -35,6 +35,9 @@ google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
 
+# EXport to docx
+python-docx
+
 # Add later, when the processing functions are built:
 
 # scenedetect
