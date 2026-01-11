@@ -100,11 +100,11 @@ def test_view_ranked_projects_menu_option_1(setup_user):
     summary = _summary_dict(project_name="TestProj", metrics={"skills_detailed": [{"score": 0.8}], "activity_type": {"writing": 1}})
     save_project_summary(conn, user_id, "TestProj", json.dumps(summary))
     
-    # First input selects option 1, second input selects option 3 to exit
-    with patch("builtins.input", side_effect=["1", "3"]):
+    # First input selects option 1, second input selects option 6 to exit
+    with patch("builtins.input", side_effect=["1", "6"]):
         with patch("builtins.print") as mock_print:
             result = view_ranked_projects(conn, user_id, "testuser")
-            assert result is None  # Should exit with option 3
+            assert result is None  # Should exit with option 6
             output = " ".join(str(call) for call in mock_print.call_args_list)
             # Should show menu options
             assert "View all ranked projects" in output
@@ -122,12 +122,12 @@ def test_view_ranked_projects_menu_option_2(setup_user):
         summary_text="This is a test summary"
     )
     save_project_summary(conn, user_id, "TestProj", json.dumps(summary))
-    
-    # First input selects option 2, second input selects option 3 to exit
-    with patch("builtins.input", side_effect=["2", "3"]):
+
+    # First input selects option 2, second input selects option 6 to exit
+    with patch("builtins.input", side_effect=["2", "6"]):
         with patch("builtins.print") as mock_print:
             result = view_ranked_projects(conn, user_id, "testuser")
-            assert result is None  # Should exit with option 3
+            assert result is None  # Should exit with option 6
             output = " ".join(str(call) for call in mock_print.call_args_list)
             # Should show menu options
             assert "View summaries of top projects" in output
@@ -136,11 +136,11 @@ def test_view_ranked_projects_menu_option_2(setup_user):
             assert "TestProj" in output
 
 
-def test_view_ranked_projects_menu_option_3(setup_user):
-    """Test that option 3 returns to main menu."""
+def test_view_ranked_projects_menu_option_6(setup_user):
+    """Test that option 6 returns to main menu."""
     conn, user_id = setup_user
-    
-    with patch("builtins.input", side_effect=["3"]):
+
+    with patch("builtins.input", side_effect=["6"]):
         with patch("builtins.print") as mock_print:
             result = view_ranked_projects(conn, user_id, "testuser")
             # Should return None (exit menu)
@@ -155,7 +155,7 @@ def test_view_ranked_projects_invalid_choice(setup_user):
     conn, user_id = setup_user
     
     # First invalid, then valid choice to exit
-    with patch("builtins.input", side_effect=["invalid", "3"]):
+    with patch("builtins.input", side_effect=["invalid", "6"]):
         with patch("builtins.print") as mock_print:
             result = view_ranked_projects(conn, user_id, "testuser")
             assert result is None
