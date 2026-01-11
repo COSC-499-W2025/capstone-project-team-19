@@ -139,6 +139,7 @@ def export_portfolio_to_docx(
         # B) ["Summary: ..."]
         if summary_lines:
             if summary_lines[0].strip() == "Summary:":
+                doc.add_paragraph("")
                 doc.add_paragraph("Summary")
                 for line in summary_lines[1:]:
                     bullet_text = line.strip()
