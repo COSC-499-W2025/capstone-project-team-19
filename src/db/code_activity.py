@@ -133,11 +133,10 @@ def get_code_activity_percents(
     conn: sqlite3.Connection,
     user_id: int,
     project_name: str,
-    scope: str,
     source: str = "combined",
 ) -> Dict[str, float]:
     """
-    Return {activity_type: percent} for a user+project+scope.
+    Return {activity_type: percent} for a user+project.
     Uses code_activity_metrics table.
     """
     rows = conn.execute(
@@ -146,11 +145,10 @@ def get_code_activity_percents(
         FROM code_activity_metrics
         WHERE user_id = ?
           AND project_name = ?
-          AND scope = ?
           AND source = ?
         ORDER BY percent DESC
         """,
-        (user_id, project_name, scope, source),
+        (user_id, project_name, source),
     ).fetchall()
 
     out: Dict[str, float] = {}

@@ -32,7 +32,7 @@ def _handle_create_resume(conn, user_id: int, username: str):
         print(f"[Resume] Using top {len(summaries)} ranked projects: {', '.join(top_names)}")
 
     snapshot = build_resume_snapshot(summaries)
-    rendered = render_snapshot(snapshot)
+    rendered = render_snapshot(conn, user_id, snapshot)
 
     default_name = f"Resume {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     name = input(f"Enter a name for this resume [{default_name}]: ").strip() or default_name
@@ -74,7 +74,7 @@ def _handle_view_existing_resume(conn, user_id: int) -> bool:
     else:
         try:
             snapshot = json.loads(record["resume_json"])
-            render_snapshot(snapshot, print_output=True)
+            render_snapshot(conn, user_id, snapshot, print_output=True)
         except Exception:
             print("Stored resume is corrupted or unreadable.")
             return False

@@ -109,7 +109,7 @@ def refresh_saved_resumes_after_project_delete(
             "writing_skills": sorted(writing_skills),
         }
 
-        rendered = render_snapshot(snapshot, print_output=False)
+        rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
         updated_json = json.dumps(snapshot, default=str)
         update_resume_snapshot(conn, user_id, record["id"], updated_json, rendered)
         updated += 1
