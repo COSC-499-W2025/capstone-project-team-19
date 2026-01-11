@@ -170,3 +170,85 @@ def get_all_projects_with_dates(conn, user_id):
         }
         for row in rows
     ]
+
+# Manual date override functions
+
+def set_project_dates(conn, user_id, project_name, start_date=None, end_date=None):
+    # Build dynamic update query
+    updates = []
+    params = []
+
+    if start_date is not None:
+        updates.append("manual_start_date = ?")
+        params.append(start_date)
+
+    if end_date is not None:
+        updates.append("manual_end_date = ?")
+        params.append(end_date)
+
+    if not updates:
+        return  # Nothing to update
+
+    params.extend([user_id, project_name])
+
+    conn.execute(
+        f"""
+        UPDATE project_summaries
+        SET {', '.join(updates)}
+        WHERE user_id = ? AND project_name = ?
+        """,
+        params
+    )
+    conn.commit()
+
+
+def get_project_dates(conn, user_id, project_name):
+    row = conn.execute(
+        """
+        SELECT manual_start_date, manual_end_date
+        FROM project_summaries
+        WHERE user_id = ? AND project_name = ?
+        """,
+        (user_id, project_name)
+    ).fetchone()
+
+    return row if row else None
+
+
+def clear_project_dates(conn, user_id, project_name):
+    conn.execute(
+        """
+        UPDATE project_summaries
+        SET manual_start_date = NULL, manual_end_date = NULL
+        WHERE user_id = ? AND project_name = ?
+        """,
+        (user_id, project_name)
+    )
+    conn.commit()
+
+
+def clear_all_project_dates(conn, user_id):
+    conn.execute(
+        """
+        UPDATE project_summaries
+        SET manual_start_date = NULL, manual_end_date = NULL
+        WHERE user_id = ?
+        """,
+        (user_id,)
+    )
+    conn.commit()
+
+
+def get_all_manual_dates(conn, user_id):
+    rows = conn.execute(
+        """
+        SELECT project_name, manual_start_date, manual_end_date
+        FROM project_summaries
+        WHERE user_id = ?
+          AND (manual_start_date IS NOT NULL OR manual_end_date IS NOT NULL)
+        ORDER BY project_name ASC
+        """,
+        (user_id,)
+    ).fetchall()
+
+    return rows
