@@ -556,3 +556,28 @@ CREATE TABLE IF NOT EXISTS resume_snapshots (
 
 CREATE INDEX IF NOT EXISTS idx_resume_snapshots_user
     ON resume_snapshots (user_id, created_at);
+
+-- PROJECT FEEDBACK (unmet criteria)
+CREATE TABLE IF NOT EXISTS project_feedback (
+    feedback_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    project_name    TEXT NOT NULL,
+    project_type    TEXT CHECK (project_type IN ('code','text')),
+    skill_name      TEXT NOT NULL,           -- e.g., clarity, structure, OOP, testing_and_ci
+    file_name       TEXT NOT NULL DEFAULT '', -- optional: store per-file misses; '' = project-level
+    criterion_key   TEXT NOT NULL,           -- stable id, e.g. "clarity.fragments_runons"
+    criterion_label TEXT NOT NULL,           -- human-readable title
+    expected        TEXT,                    -- what you look for
+    observed_json   TEXT,                    -- JSON blob (counts, thresholds, etc.)
+    suggestion      TEXT,                    -- how to improve
+    generated_at    TEXT NOT NULL DEFAULT (datetime('now')),
+
+    UNIQUE(user_id, project_name, skill_name, file_name, criterion_key),
+    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_feedback_lookup
+    ON project_feedback(user_id, project_name);
+
+CREATE INDEX IF NOT EXISTS idx_project_feedback_skill
+    ON project_feedback(user_id, project_name, skill_name);
