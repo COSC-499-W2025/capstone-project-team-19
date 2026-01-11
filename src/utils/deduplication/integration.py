@@ -19,9 +19,17 @@ def handle_dedup_result(conn, user_id, result, display_name):
     elif kind == "ask":
         pk = result["best_match_project_key"]
         sim = result["similarity"]
+        file_count = result.get("file_count", "unknown")
         row = conn.execute("SELECT display_name FROM projects WHERE project_key = ?", (pk,)).fetchone()
         existing = row[0] if row else "unknown"
-        print(f"\nSimilarity {sim:.1%} with '{existing}'. Treating as new project.")
+        print(f"\nThis upload looks related to '{existing}' (similarity: {sim:.1%}" + 
+              (f", files: {file_count}" if file_count != "unknown" else "") + ").")
+        print("Is this:")
+        print("  [N]  New project")
+        print("  [V]  New version of the existing project")
+        choice = input("Choice: ").strip().lower()
+        if choice.startswith("v"):
+            return existing
         return display_name
     
     elif kind == "new_version":
