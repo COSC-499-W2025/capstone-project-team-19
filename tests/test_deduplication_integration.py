@@ -31,10 +31,13 @@ def test_handle_dedup_result_new_project(conn):
     result = {"kind": "new_project", "project_key": 1, "version_key": 1}
     assert handle_dedup_result(conn, 1, result, "New") == "New"
 
-def test_handle_dedup_result_ask(conn):
+def test_handle_dedup_result_ask(conn, monkeypatch):
     pk = insert_project(conn, 1, "Existing")
-    result = {"kind": "ask", "best_match_project_key": pk, "similarity": 0.5}
+    result = {"kind": "ask", "best_match_project_key": pk, "similarity": 0.5, "file_count": 5}
+    monkeypatch.setattr("builtins.input", lambda _: "n")
     assert handle_dedup_result(conn, 1, result, "New") == "New"
+    monkeypatch.setattr("builtins.input", lambda _: "v")
+    assert handle_dedup_result(conn, 1, result, "New") == "Existing"
 
 def test_run_deduplication_for_projects_empty_layout(tmp_path):
     conn = sqlite3.connect(":memory:")
