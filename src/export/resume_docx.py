@@ -11,7 +11,7 @@ Saves to ./out/ (created if missing).
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 import json
 import re
@@ -45,13 +45,16 @@ def export_resume_record_to_docx(
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
-    today = date.today().isoformat()  # YYYY-MM-DD
-    filename = f"resume_{_safe_slug(username)}_{today}.docx"
+    now = datetime.now()
+    stamp_filename = now.strftime("%Y-%m-%d_%H-%M-%S")   
+    stamp_display = now.strftime("%Y-%m-%d at %H:%M:%S") 
+    
+    filename = f"resume_{_safe_slug(username)}_{stamp_filename}.docx"
     filepath = out_path / filename
 
     doc = Document()
     doc.add_heading(f"Resume — {username}", level=0)
-    doc.add_paragraph(f"Generated on: {today}")
+    doc.add_paragraph(f"Generated on {stamp_display}")
 
     resume_json = record.get("resume_json")
     rendered_text = record.get("rendered_text")

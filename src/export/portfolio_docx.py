@@ -12,7 +12,7 @@ CLI output and exported files.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 import re
 import sqlite3
@@ -64,8 +64,11 @@ def export_portfolio_to_docx(
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
-    today = date.today().isoformat()  # YYYY-MM-DD
-    filename = f"portfolio_{_safe_slug(username)}_{today}.docx"
+    now = datetime.now()
+    stamp_filename = now.strftime("%Y-%m-%d_%H-%M-%S")   
+    stamp_display = now.strftime("%Y-%m-%d at %H:%M:%S") 
+    
+    filename = f"portfolio_{_safe_slug(username)}_{stamp_filename}.docx"
     filepath = out_path / filename
 
     project_scores: List[Tuple[str, float]] = collect_project_data(conn, user_id)
@@ -74,7 +77,7 @@ def export_portfolio_to_docx(
 
     # Title
     doc.add_heading(f"Portfolio — {username}", level=0)
-    doc.add_paragraph(f"Generated on: {today}")
+    doc.add_paragraph(f"Generated on {stamp_display}")
 
     if not project_scores:
         doc.add_paragraph("No projects found. Please analyze some projects first.")
