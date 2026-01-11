@@ -5,11 +5,12 @@ Helper functions for building and rendering resume snapshots.
 """
 import json
 from typing import List, Dict, Any
-
 from src.models.project_summary import ProjectSummary
 from typing import Any, Dict, List
-
 from src.db.code_activity import get_code_activity_percents, get_normalized_code_metrics
+from src.db import get_classification_id
+from src.db.text_activity import get_text_activity_contribution
+
 
 
 def load_project_summaries(conn, user_id: int, get_all_user_project_summaries) -> List[ProjectSummary]:
@@ -204,8 +205,63 @@ def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
 
     elif p.get("project_type") == "text":
         pct = p.get("contribution_percent")
+        project_name = p.get("project_name") or ""
+
+        lines.append("  Contributions:")
+
+        # Bullet 1: overall contribution %
         if isinstance(pct, (int, float)):
-            lines.append(f"  Contribution: {pct:.1f}% of document")
+            lines.append(f"    • Contributed to {pct:.1f}% of the project deliverables.")
+
+        # Pull activity breakdown from DB (if available)
+        if conn and user_id is not None and project_name:
+            classification_id = p.get("classification_id") or get_classification_id(conn, user_id, project_name)
+            activity_row = get_text_activity_contribution(conn, classification_id) if classification_id else None
+
+            if activity_row:
+                summary = activity_row.get("summary", {}) or {}
+                counts = summary.get("activity_counts", {}) or {}
+
+                duration_days = (activity_row.get("timestamp_analysis", {}) or {}).get("duration_days")
+                total_files = summary.get("total_files")
+                classified_files = summary.get("classified_files")
+
+                total_events = sum(int(v or 0) for v in counts.values())
+
+                # Optional bullet: timeline span
+                if isinstance(duration_days, int) and duration_days > 0:
+                    lines.append(f"    • Worked across a {duration_days}-day timeline")
+
+                # Bullet(s): activity distribution (uses counts as a proxy for effort)
+                if total_events > 0:
+                    ranked = sorted(counts.items(), key=lambda kv: int(kv[1] or 0), reverse=True)
+                    top = [(k, int(v or 0)) for k, v in ranked if int(v or 0) > 0][:3]
+
+                    # bullet style: balance across multiple stages
+                    if len(top) >= 2:
+                        a1, c1 = top[0]
+                        a2, c2 = top[1]
+                        a3, c3 = (top[2] if len(top) >=3 else (None, 0))
+                        p1 = c1 / total_events * 100.0
+                        p2 = c2 / total_events * 100.0
+                        p3 = c3 / total_events * 100.0
+                        lines.append(
+                            f"    • Balanced {a1.lower()} ({p1:.1f}%) with {a2.lower()} ({p2:.1f}%), and {a3.lower()} ({p3:.1f}%) "
+                            f"supporting both content development and iterative improvement."
+                        )
+
+                    # Optional: mention presence of later-stage work if it exists
+                    for stage in ("Revision", "Final"):
+                        if int(counts.get(stage, 0) or 0) > 0:
+                            lines.append(f"    • Contributed to {stage.lower()}-stage work, strengthening clarity, structure, and polish.")
+                            break
+                else:
+                    lines.append("    • (no activity breakdown found in text_activity_contribution)")
+            else:
+                lines.append("    • (no activity breakdown found in text_activity_contribution)")
+        else:
+            lines.append("    • (missing conn/user_id/project_name; cannot load text activity breakdown)")
+
 
     # Skills
     skills = p.get("skills") or []
