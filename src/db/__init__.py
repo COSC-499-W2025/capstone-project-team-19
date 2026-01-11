@@ -123,7 +123,12 @@ from .project_summaries import (
     get_project_summaries_list,
     get_project_summary_by_name,
     get_all_projects_with_dates,
-    get_all_user_project_summaries
+    get_all_user_project_summaries,
+    set_project_dates,
+    get_project_dates,
+    clear_project_dates,
+    clear_all_project_dates,
+    get_all_manual_dates,
 )
 
 # local git metrics for code collaborative projects
@@ -138,7 +143,7 @@ from .resumes import (
     insert_resume_snapshot,
     list_resumes,
     get_resume_snapshot,
-    update_resume_snapshot,      
+    update_resume_snapshot,
     delete_resume_snapshot
 )
 
@@ -230,5 +235,10 @@ __all__ = [
     "insert_git_individual_metrics",
     "update_git_individual_metrics",
     "get_git_individual_metrics",
-    "extract_git_metrics"
+    "extract_git_metrics",
+    "set_project_dates",
+    "get_project_dates",
+    "clear_project_dates",
+    "clear_all_project_dates",
+    "get_all_manual_dates",
 ]
