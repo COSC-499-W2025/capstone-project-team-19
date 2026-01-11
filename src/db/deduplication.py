@@ -6,7 +6,7 @@ def find_existing_version_by_strict_fp(conn, user_id: int, fp_strict: str):
         SELECT pv.project_key, pv.version_key
         FROM project_versions pv
         JOIN projects p ON p.project_key = pv.project_key
-        WHERE p-user_id = ? AND pv.fingerprint_strict = ?
+        WHERE p.user_id = ? AND pv.fingerprint_strict = ?
         LIMIT 1
         """,
         (user_id, fp_strict),

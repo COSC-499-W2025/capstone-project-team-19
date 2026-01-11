@@ -1,7 +1,7 @@
 from .fingerprints import project_fingerprints
 from .helpers import jaccard_similarity
 
-from db import find_existing_version_by_strict_fp, get_latest_versions, get_hash_set_for_version, insert_project, insert_project_version, insert_version_files
+from src.db import find_existing_version_by_strict_fp, get_latest_versions, get_hash_set_for_version, insert_project, insert_project_version, insert_version_files
 
 def register_project(conn, user_id: int, display_name: str, project_root: str, upload_id=None, high=0.85, low=0.35, noisy_file_count=10):
     fp_strict, fp_loose, entries = project_fingerprints(project_root)
