@@ -1,10 +1,10 @@
 import json
 
-from src.db import get_all_user_project_summaries
+from src.db import get_all_user_project_summaries, get_project_rank
 from src.models.project_summary import ProjectSummary
 from src.insights.rank_projects.extract_scores import _extract_base_scores, _extract_code_scores, _extract_text_scores
 
-def collect_project_data(conn, user_id):
+def collect_project_data(conn, user_id, respect_manual_ranking=True):
     project_scores = []
     rows = get_all_user_project_summaries(conn, user_id)
 
@@ -23,13 +23,25 @@ def collect_project_data(conn, user_id):
 
         else: # project will be code
             results += _extract_code_scores(project_summary, is_collaborative)
-        
-        final_score = combine_scores(results)
-        project_scores.append((project_name, final_score))
 
-    # sort by score descending
-    project_scores.sort(key=lambda x: x[1], reverse=True)
-    return project_scores
+        auto_score = combine_scores(results)
+
+        # Get manual rank if exists
+        manual_rank = None
+        if respect_manual_ranking:
+            manual_rank = get_project_rank(conn, user_id, project_name)
+
+        project_scores.append((project_name, auto_score, manual_rank))
+
+    # Sort: manual rankings first (ascending), then auto-score (descending)
+    project_scores.sort(key=lambda x: (
+        0 if x[2] is not None else 1,  # Manual ranks come first
+        x[2] if x[2] is not None else 0,  # Lower rank number = higher priority
+        -x[1]  # Higher score = higher priority
+    ))
+
+    # Return just (name, score) for backward compatibility
+    return [(name, score) for name, score, _ in project_scores]
 
 def combine_scores(results: list):
     """
