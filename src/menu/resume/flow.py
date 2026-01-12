@@ -81,9 +81,18 @@ def _handle_create_resume(conn, user_id: int, username: str):
                 reverse=True
             )
         else:
+            # Limit to 5 projects maximum
+            MAX_PROJECTS = 5
+            if len(selected_indices) > MAX_PROJECTS:
+                print(f"\n[Warning] You selected {len(selected_indices)} projects. Maximum is {MAX_PROJECTS}.")
+                print(f"Using the first {MAX_PROJECTS} projects by ranking order.")
+                # Sort indices by their ranking order (lower index = higher rank)
+                sorted_indices = sorted(selected_indices)
+                selected_indices = set(sorted_indices[:MAX_PROJECTS])
+            
             selected_names = [ranked[i-1][0] for i in sorted(selected_indices)]
             selected_summaries = [s for s in summaries if s.project_name in selected_names]
-            # sort by the ranked order of the selected projects
+            # Sort by ranking order (highest score first)
             selected_summaries.sort(
                 key=lambda s: ranked_dict.get(s.project_name, 0.0),
                 reverse=True
