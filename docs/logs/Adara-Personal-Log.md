@@ -141,3 +141,16 @@ I reviewed Ammaar's PR and Ivona's PR, giving suggestions on how to fix some err
 Next week: No capstone work until January! 🎉 Looking forward to work with the team again for Milestone 2 😊
 
 
+## (T2 Week 1) Monday 5th - Sunday 11th January
+
+![Screenshot of tasks done from this sprint](./screenshots/Adara-Jan5-11.png)
+
+Week recap:
+
+This week I worked on PR 339 to upgrade resume/snapshot rendering for both code and text projects by refactoring the “Contributions” section from generic activity-type labels into standardized, metric-backed bullets computed from existing analytics tables (previously, the "Contribution" bullet points generated in our resume was not something detailed enough to be included). For code projects, the renderer now pulls contribution signals from `code_collaborative_metrics` and/or `git_individual_metrics` (depending on whether Git metadata exists and project mode), derives percentages/LOC-based scope from those stored metrics, and maps them into deterministic resume templates (e.g., “contributed ~X% of the repository,” “authored ~Y LOC,” plus an impact-style line that references the highest-scoring detected bucket skills) with safe fallbacks when specific metrics are missing. For text projects, I fixed a collaboration percentage bug where contribution could exceed 100% by aligning the numerator/denominator to the same word-count scope (main + selected supporting files), and then applied the same contribution-bullet standardization using stored activity distributions from `text_activity_contribution` (turning activity counts into ratios to describe where time was spent, e.g., drafting vs data vs finalization). On top of that, I added a new “View project feedback” CLI option backed by a new `project_feedback` table + DB helpers (`src/db/project_feedback.py`), where unmet bucket criteria are persisted during detector execution (via updates to `text_detectors.py`) and later rendered as criteria-level improvement suggestions (text-only for now, code feedback planned next week). I also cleaned up redundant resume rendering paths and updated menu tests (`test_menu_display.py`) to reflect the new menu option and numbering changes.
+
+These features and refactors closes issue 323. 
+
+In PR reviews, I reviewed Timmi’s PR. I flagged an edge case where strict fingerprinting still appears path-sensitive when all filenames/paths are renamed despite identical content hashes, and suggested an optional content-only/path-insensitive exact-duplicate fingerprint if we want to support that scenario. I also reviewed and approved Salma’s DOCX export feature for Portfolio/Resume after confirming correct output.
+
+Next week: I’ll extend feedback generation to code-based projects and add more targeted test coverage around the feedback + rendering changes.
