@@ -176,3 +176,14 @@ My PRs:
 - #310 (updated README) - updated the README with the team contract and updated the .env file section to provide steps.
 
 Next week, there is no sprint. I will be studying for exams and waiting excitedly for winter break. In January, my team will reassess Milestone 2 and begin assigning tasks as needed.
+
+## (T2 Week 1) Monday January 5 - Sunday January 11
+
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Jan5-Jan11.PNG)
+
+This week I worked on completing the milestone 2 task of project duplication. I worked on this a little bit last term before realizing it was a milestone 2 requirement, and thus I left it alone to work on more time-sensitive tasks. Last term, I had already done research on the best way to detect duplication, which was through hashing, and so I already had a plan headed into my task this week. I decided on three main scenarios that needed to be considered: exact duplicate project, brand new project, and a similar project (could be an updated version of a project or just a similar project that is not the same). I used Jaccard similarity to determine if a project is a duplication. Further implementation details can be found in PR #329. My team caught a few edge cases that I missed, but due to the size of my PR I will be addressing those next week on top of my assigned task. This allows me to keep my PR's smaller and more manageable. 
+
+My PR's:
+- #329 (Duplicate projects)
+
+Next week I will continue to complete the duplicate project task, as well as anything else assigned to me. I would like to also eventually research the security of our database, as I don't believe it to be very secure.
