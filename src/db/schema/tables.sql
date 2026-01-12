@@ -305,6 +305,8 @@ CREATE TABLE IF NOT EXISTS project_summaries (
     project_mode        TEXT,
     summary_json        TEXT NOT NULL,
     created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    manual_start_date   TEXT,  -- Manual override for start date (ISO format YYYY-MM-DD)
+    manual_end_date     TEXT,  -- Manual override for end date (ISO format YYYY-MM-DD)
     UNIQUE(user_id, project_name),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );

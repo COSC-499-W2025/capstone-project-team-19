@@ -115,14 +115,23 @@ def get_code_collaborative_duration(
     """
     Fetch first_commit_at and last_commit_at for a collaborative code project.
 
+    Priority:
+      1. Manual dates from project_summaries table (if set)
+      2. Automatic dates from code_collaborative_metrics
+
     Returns:
       (first_commit_at, last_commit_at) as strings, or None if no row found.
     """
     cur = conn.execute(
         """
-        SELECT first_commit_at, last_commit_at
-        FROM code_collaborative_metrics
-        WHERE user_id = ? AND project_name = ?
+        SELECT
+            COALESCE(ps.manual_start_date, ccm.first_commit_at) AS first_commit,
+            COALESCE(ps.manual_end_date, ccm.last_commit_at) AS last_commit
+        FROM code_collaborative_metrics ccm
+        LEFT JOIN project_summaries ps
+          ON ccm.user_id = ps.user_id
+          AND ccm.project_name = ps.project_name
+        WHERE ccm.user_id = ? AND ccm.project_name = ?
         LIMIT 1
         """,
         (user_id, project_name),
@@ -167,19 +176,24 @@ def get_text_duration(
     """
     Fetch start_date and end_date for a text project.
 
-    Assumes:
-      - text_activity_contribution.classification_id references project_classifications.classification_id
-      - project_classifications has user_id and project_name columns.
+    Priority:
+      1. Manual dates from project_summaries table (if set)
+      2. Automatic dates from text_activity_contribution
 
     Returns:
-      (start_date, end_date) as strings, or None if no row found.
+      (start_date, end_date) as strings, or None if no dates found.
     """
     cur = conn.execute(
         """
-        SELECT tac.start_date, tac.end_date
+        SELECT
+            COALESCE(ps.manual_start_date, tac.start_date) AS start_date,
+            COALESCE(ps.manual_end_date, tac.end_date) AS end_date
         FROM text_activity_contribution AS tac
         JOIN project_classifications AS pc
           ON tac.classification_id = pc.classification_id
+        LEFT JOIN project_summaries ps
+          ON pc.user_id = ps.user_id
+          AND pc.project_name = ps.project_name
         WHERE pc.user_id = ?
           AND pc.project_name = ?
         ORDER BY tac.generated_at DESC
@@ -200,14 +214,22 @@ def get_code_individual_duration(
     """
     Return (first_commit_date, last_commit_date) for an individual code project.
 
-    Dates are taken from git_individual_metrics.first_commit_date / last_commit_date.
+    Priority:
+      1. Manual dates from project_summaries table (if set)
+      2. Automatic dates from git_individual_metrics
+
     Returns None if there is no row or both dates are missing.
     """
     cur = conn.execute(
         """
-        SELECT first_commit_date, last_commit_date
-        FROM git_individual_metrics
-        WHERE user_id = ? AND project_name = ?
+        SELECT
+            COALESCE(ps.manual_start_date, gim.first_commit_date) AS first_commit,
+            COALESCE(ps.manual_end_date, gim.last_commit_date) AS last_commit
+        FROM git_individual_metrics gim
+        LEFT JOIN project_summaries ps
+          ON gim.user_id = ps.user_id
+          AND gim.project_name = ps.project_name
+        WHERE gim.user_id = ? AND gim.project_name = ?
         """,
         (user_id, project_name),
     )
