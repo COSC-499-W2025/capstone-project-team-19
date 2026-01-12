@@ -438,3 +438,40 @@ No sprint for next week. Milestone 2 will be reassessed at the beginign of next 
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Dec1-Dec7.png) |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Dec1-Dec7.png)     |
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Dec1-Dec7.png)     |
+
+## (Term 2 Week 1) Monday January 5 - Sunday January 11
+
+### Week recap
+This week, after winter break, we continued to implement milestone 2 requirements. Duplicate files detection now reimplemented, by detecting the content of the file, not the filename. The system now can distinguish between completely new projects, exact duplicates, and related projects. We also started implementing the incorporating key role, however, this feature will be discussed further for clarification of what the system should do and produce. We also implemented the feature outputting a text file of resume and portfolio. The system can now export the resume and portfolio into docx file with the layout following the output in terminal. We also implemented a new feature that allows user to receive feedback based on the unmet criteria from skill bucket. For now, the feedback only for the text project. Feedback for code project will be implemented in the next week/next PR. The contribution section in both code and text project now are more detailed, giving information about how much contributions the user has given in a project. We also implemented the rerank project feature, allowing user to rerank project manually not following the order of project score, which will be used to decide which project to be showcased first. We also implemented the new feature where user is given flexibility to choose which projects to be shown in the resume
+
+Overall, this week focused on implementing necessary features needed to fulfill milestone 2 requirements
+
+### Plan for the next cycle
+
+We will continue implementing the milestone 2 requirements, and fix bugs that was found during the implementation this week.
+
+### Burnup chart
+
+![Burnup chart for Jan 5 - Jan 11](screenshots/week1_T2-burnupchart.png)
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshot                                                                    |
+| --------------- | ----------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Jan5-Jan11.png)     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Jan5-Jan11.png)   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Jan5-Jan11.png)     |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Jan5-Jan11.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Jan5-Jan11.png)     |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Jan5-Jan11.png)     |
