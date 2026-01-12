@@ -135,3 +135,15 @@ I reviewed Timmi's skill detector optimization PR (#302) that reduced runtime by
 This week I also spent significant time working on our presentation slides and demo video. I presented during our scheduled time and peer-reviewed five other team presentations. I did some planning for the deliverables due Sunday, discussed the approach with the team, and worked with Adara on producing the demo video.
 
 Next week's focus: Relax and get back to it in January :)
+
+## (T2 Week 1) Monday January 5 - Sunday January 11
+
+![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Jan5-Jan11.png)
+
+Week recap: This week I worked on one feature PR and reviewed two PRs from teammates.
+
+For my feature PR (#332), I implemented the key role incorporation system for collaborative code projects. The system now requires manual contribution summaries for all collaborative code projects (even when LLM is enabled), ranks the top-8 key files within Git-contributed files, and scopes skill/activity detection to only those key files while keeping LLM project summaries unchanged. I refactored the key-file ranking helpers into the collaborative helper module for reusability across Git and non-Git flows, updated the portfolio display to prefer manual contribution summaries over LLM summaries, and added a cleanup function to delete file contributions for a project to prevent stale data. Tests cover Git-file ranking edge cases, contribution cleanup, and the full collaborative project analysis flow.
+
+For PR reviews, I reviewed Johannes's project reranking feature (#337) which added three intuitive menu options (reorder multiple projects, set specific rank, reset to automatic ranking) under menu 6. I suggested switching the manual reorder input from typing full project names to number selection like he did for "set specific project rank" to make it faster and less error-prone, and recommended adding test coverage for the interactive_reorder input validation and set_specific_rank flows to close the gap. I reviewed Salma's Word export feature (#336) which added DOCX exporters for portfolio and resume views with standardized layouts matching the CLI views. I caught two issues: export filenames are date-only so multiple exports on the same day silently overwrite earlier docs (suggested adding timestamps or prompting before overwriting), and the invalid-choice message says "Please enter 1–3" even though option 4 exists.
+
+Next week's focus: I'll address any follow-up items from the key role PR and continue working on remaining milestone deliverables.
