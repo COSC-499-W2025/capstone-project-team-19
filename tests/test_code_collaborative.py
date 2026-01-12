@@ -344,3 +344,60 @@ def test_portfolio_summary_keywords(tmp_sqlite_conn, temp_zip_layout, monkeypatc
     assert "grocery" in out.lower()
     # and the second description
     assert "contributions" in out.lower() or "git" in out.lower()
+
+
+def test_prompt_collab_descriptions_always_prompts(monkeypatch):
+    projects = [("ProjA", "")]
+    answers = iter(["Built the API layer."])
+    monkeypatch.setattr("builtins.input", lambda _="": next(answers))
+
+    descs = cc.prompt_collab_descriptions(projects, consent="accepted")
+    assert descs["ProjA"] == "Built the API layer."
+
+
+def test_rank_key_files_for_git_falls_back_to_git_loc():
+    from src.analysis.code_collaborative import code_collaborative_analysis_helper as helper
+
+    git_file_loc = {
+        "src/app.py": 10,
+        "src/utils.py": 5,
+    }
+    db_files = [
+        {"file_name": "app.py", "file_path": "root/project/src/app.py", "file_type": "code"},
+        {"file_name": "utils.py", "file_path": "root/project/src/utils.py", "file_type": "code"},
+        {"file_name": "other.py", "file_path": "root/project/src/other.py", "file_type": "code"},
+    ]
+
+    ranked = helper._rank_key_files_for_git("", git_file_loc, db_files, base_dir=None, limit=8)
+
+    assert len(ranked) == 2
+    assert any("app.py" in p for p in ranked)
+    assert any("utils.py" in p for p in ranked)
+    assert all("other.py" not in p for p in ranked)
+
+
+def test_rank_key_files_for_git_ignores_non_git_matches():
+    from src.analysis.code_collaborative import code_collaborative_analysis_helper as helper
+
+    git_file_loc = {
+        "src/app.py": 10,
+    }
+    db_files = [
+        {"file_name": "app.py", "file_path": "root/project/src/app.py", "file_type": "code"},
+        {"file_name": "other.py", "file_path": "root/project/src/other.py", "file_type": "code"},
+    ]
+
+    ranked = helper._rank_key_files_for_git("other", git_file_loc, db_files, base_dir=None, limit=8)
+
+    assert any("app.py" in p for p in ranked)
+    assert all("other.py" not in p for p in ranked)
+
+
+def test_match_git_path_prefers_longest_suffix():
+    from src.analysis.code_collaborative import code_collaborative_analysis_helper as helper
+
+    git_paths = {"utils.py", "src/utils.py"}
+    db_path = "root/project/src/utils.py"
+
+    match = helper._match_git_path(db_path, git_paths)
+    assert match == "src/utils.py"

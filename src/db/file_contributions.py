@@ -133,3 +133,23 @@ def has_contribution_data(
 
     count = cursor.fetchone()[0]
     return count > 0
+
+
+def delete_file_contributions_for_project(
+    conn: sqlite3.Connection,
+    user_id: int,
+    project_name: str
+) -> None:
+    """
+    Remove all stored file contributions for a user + project.
+    Useful when re-scoping collaborative analysis to a smaller file subset.
+    """
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        DELETE FROM user_code_contributions
+        WHERE user_id = ? AND project_name = ?
+        """,
+        (user_id, project_name),
+    )
+    conn.commit()
