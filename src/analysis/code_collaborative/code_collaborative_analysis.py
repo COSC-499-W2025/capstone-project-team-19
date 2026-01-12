@@ -9,9 +9,11 @@ from src.db import (
     store_github_account,
     store_collaboration_profile,
     store_file_contributions,
+    delete_file_contributions_for_project,
     insert_code_collaborative_metrics,
     get_metrics_id,
-    insert_code_collaborative_summary
+    insert_code_collaborative_summary,
+    get_files_for_project,
 )
 from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
@@ -30,6 +32,9 @@ from src.analysis.code_collaborative.no_git_contributions import (
 
 from .code_collaborative_analysis_helper import (
     DEBUG,
+    _analysis_zip_base,
+    _match_git_path,
+    _rank_key_files_for_git,
     resolve_repo_for_project,
     ensure_user_github_table,
     load_user_github,
@@ -170,14 +175,15 @@ def analyze_code_project(conn: sqlite3.Connection,
         if external_consent != "accepted":
             try:
                 user_desc = input(
-                    f"Description for {project_name} (what the code does + your contribution): "
+                    f"Describe your contribution to '{project_name}': "
                 )
             except EOFError:
                 user_desc = ""
             desc = (user_desc or "").strip()
             
-    if desc:
-        metrics["desc"] = desc.strip()
+    desc_clean = (desc or "").strip()
+    if desc_clean:
+        metrics["desc"] = desc_clean
 
     # 6) fill langs from DB if empty
     if not metrics.get("focus", {}).get("languages"):
@@ -203,26 +209,37 @@ def analyze_code_project(conn: sqlite3.Connection,
             summary.metrics["collaborative_git"] = {
                 "last_commit_date": history["last"]
             }
-        # store non llm contribution summary    
-        if desc and "llm_contribution_summary" not in summary.contributions:
-            summary.contributions["non_llm_contribution_summary"] = desc.strip()
+        if desc_clean:
+            summary.contributions["manual_contribution_summary"] = desc_clean
+            # store non llm contribution summary for non-LLM views
+            if "llm_contribution_summary" not in summary.contributions:
+                summary.contributions["non_llm_contribution_summary"] = desc_clean
 
     # 7.5) save file contributions to database for skill extraction filtering
     file_contributions_data = metrics.get("file_contributions", {})
     if file_contributions_data:
-        file_loc = file_contributions_data.get("file_loc", {})
-        file_commits = file_contributions_data.get("file_commits", {})
+        file_loc = file_contributions_data.get("file_loc", {}) or {}
+        file_commits = file_contributions_data.get("file_commits", {}) or {}
 
-        # Build the format expected by store_file_contributions
-        contributions_dict = {}
-        for file_path in file_loc.keys():
-            contributions_dict[file_path] = {
-                "lines_changed": file_loc.get(file_path, 0),
-                "commits_count": file_commits.get(file_path, 0)
-            }
+        if file_loc:
+            db_files = get_files_for_project(conn, user_id, project_name, only_text=False)
+            base_dir = _analysis_zip_base(zip_data_dir, zip_name)
+            key_files = _rank_key_files_for_git(desc_clean, file_loc, db_files, base_dir, limit=8)
 
-        if contributions_dict:
-            store_file_contributions(conn, user_id, project_name, contributions_dict)
+            git_paths = {p.replace("\\", "/") for p in file_loc.keys() if p}
+            contributions_dict = {}
+            for file_path in key_files:
+                git_match = _match_git_path(file_path, git_paths)
+                contributions_dict[file_path] = {
+                    "lines_changed": file_loc.get(git_match, 0) if git_match else 0,
+                    "commits_count": file_commits.get(git_match, 0) if git_match else 0
+                }
+
+            if contributions_dict:
+                delete_file_contributions_for_project(conn, user_id, project_name)
+                store_file_contributions(conn, user_id, project_name, contributions_dict)
+                if summary:
+                    summary.contributions["key_files"] = list(contributions_dict.keys())
 
     # 8) save aggregated git metrics into DB
     db_payload = _build_db_payload_from_metrics(metrics, repo_dir)
@@ -230,14 +247,14 @@ def analyze_code_project(conn: sqlite3.Connection,
     metrics_id = get_metrics_id(conn, user_id, project_name)
 
     # 8.1) if we have a manual description, persist it as a non-LLM summary
-    if metrics_id and desc:
+    if metrics_id and desc_clean:
         insert_code_collaborative_summary(
             conn,
             metrics_id=metrics_id,
             user_id=user_id,
             project_name=project_name,
             summary_type="non-llm",
-            content=desc,
+            content=desc_clean,
         )
 
     # 9) print
@@ -368,6 +385,7 @@ def _apply_basic_summary_without_git(
 
     clean_desc = (desc or "").strip()
     if clean_desc:
+        summary.contributions["manual_contribution_summary"] = clean_desc
         summary.contributions["non_llm_contribution_summary"] = clean_desc
         # Only fill summary_text if nothing else is set
         if not getattr(summary, "summary_text", None):

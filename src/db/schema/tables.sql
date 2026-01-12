@@ -590,3 +590,17 @@ CREATE TABLE IF NOT EXISTS resume_snapshots (
 
 CREATE INDEX IF NOT EXISTS idx_resume_snapshots_user
     ON resume_snapshots (user_id, created_at);
+
+CREATE TABLE IF NOT EXISTS project_rankings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    project_name TEXT NOT NULL,
+    manual_rank INTEGER, 
+    updated_at TEXT DEFAULT (datetime('now')),
+
+    UNIQUE(user_id, project_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_rankings_user
+    ON project_rankings(user_id, manual_rank);

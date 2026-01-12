@@ -96,6 +96,7 @@ from .file_contributions import (
     get_user_contributed_files,
     get_file_contribution_stats,
     has_contribution_data,
+    delete_file_contributions_for_project,
 )
 
 # files
@@ -174,6 +175,14 @@ from .deduplication import (
     insert_project,
     insert_project_version,
     insert_version_files
+# project rankings
+from .project_rankings import (
+    set_project_rank,
+    get_project_rank,
+    get_all_project_ranks,
+    clear_project_rank,
+    clear_all_rankings,
+    bulk_set_rankings,
 )
 
 __all__ = [
@@ -213,6 +222,7 @@ __all__ = [
     "get_user_contributed_files",
     "get_file_contribution_stats",
     "has_contribution_data",
+    "delete_file_contributions_for_project",
     "delete_code_activity_metrics_for_project",
     "insert_code_activity_metric",
     "store_code_activity_metrics",
@@ -247,4 +257,10 @@ __all__ = [
     "insert_project",
     "insert_project_version",
     "insert_version_files"
+    "set_project_rank",
+    "get_project_rank",
+    "get_all_project_ranks",
+    "clear_project_rank",
+    "clear_all_rankings",
+    "bulk_set_rankings",
 ]
