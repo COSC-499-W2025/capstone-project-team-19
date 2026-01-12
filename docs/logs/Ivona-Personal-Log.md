@@ -123,3 +123,14 @@ This PR conserned with writting the instructions to the TAs in the read me on ho
 
 Next Week:
 Next week is winter break so I don't have any plans for the project yet.
+
+
+
+## (Week 14) Monday Dec 1st - Sunday November 7th 
+![Screenshot of this week's peer eval](./screenshots/Ivona-Jan.5-11.PNG)
+This Week:
+I worked on PR #350:
+This PR was working on milestone requiremnt 21. It gave user the option to select the projects they want to show in their resume. I adjusted the code to allow users to pick and not let them pick more than 5 projects and then it be listed in the order of the score. I also wrote tests for this as well.
+
+Next Week:
+I will be taking on a new task probably to start implementing the APIs as we havent started that yet and don't have a lot of user customizarion tasks left to do.
