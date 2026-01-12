@@ -163,3 +163,13 @@ I also reviewed and provided feedback on several PRs, including:
 - Johanes’ PR on the system architecture diagram update. I suggested updating the diagram so that all four analysis modes (text and code in both individual and collaborative formats) connect to activity type detection. I also recommended reflecting that collaborative code analysis checks for a .git folder before prompting GitHub integration, and that individual code analysis also runs activity type detection and may request GitHub integration.
 
 Next week: No sprint next week. I’m looking forward to coming back recharged next term and ready for Milestone #2.
+
+## (T2 Week 1) Monday January 5 - Sunday January 11
+
+![Screenshot of this week's peer evaluation](./screenshots/Salma-Jan5-Jan11.PNG)
+
+I worked on PR #336, adding Word (.docx) export for the Portfolio and Resume views so users can generate documents from their analyzed project data. This included building DOCX exporters, adding menu prompts, standardizing layouts (skills, projects, contributions, summaries) to match the CLI, updating .gitignore to exclude ./out/, and updating python-docx dependencies.
+
+I also reviewed PRs from Ammaar (incorporating key roles) to suggest reusing existing summaries, Johanes (project re-ranking) to ensure it works correctly, and Timmi (duplicate detection) to suggest minor UI improvements.
+
+Next week: I plan to add support for project images as thumbnails and include them in DOCX exports for resume and portfolio. I’ll also check with the TA and the team on whether we should support multiple portfolios or keep a single one.
