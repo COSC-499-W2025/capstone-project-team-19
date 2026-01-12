@@ -136,7 +136,7 @@ This week I also spent significant time working on our presentation slides and d
 
 Next week's focus: Relax and get back to it in January :)
 
-## (Week 15) Monday January 5 - Saturday January 11
+## (T2 Week 1) Monday January 5 - Sunday January 11
 
 ![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Jan5-Jan11.png)
 
