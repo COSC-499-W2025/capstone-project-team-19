@@ -36,18 +36,48 @@ def extract_text_skills(
     # Each detector returns:
     #     { "score": float, "evidence": [...] }
     # ------------------------------
+    # Context passed into detectors so they can write missed-criteria feedback
+    feedback_ctx = {
+        "conn": conn,
+        "user_id": user_id,
+        "project_name": project_name,
+        "project_type": "text",
+        # Optional: include anything your feedback table expects / you want to filter on later
+        # "scope": "project",
+        # "source": "detectors",
+    }
+
     detector_results = {}
     for name, fn in TEXT_DETECTOR_FUNCTIONS.items():
 
         # Pass extra parameters only to relevant detectors
         if name == "detect_iterative_process":
-            out = fn(main_text, "MAIN", supporting_files=supporting_texts)
+            out = fn(
+                main_text,
+                "MAIN",
+                supporting_files=supporting_texts,
+                feedback_ctx=feedback_ctx,
+            )
         elif name == "detect_planning_behavior":
-            out = fn(main_text, "MAIN", supporting_files=supporting_texts)
+            out = fn(
+                main_text,
+                "MAIN",
+                supporting_files=supporting_texts,
+                feedback_ctx=feedback_ctx,
+            )
         elif name == "detect_data_collection":
-            out = fn(main_text, "MAIN", csv_metadata=csv_metadata)
+            out = fn(
+                main_text,
+                "MAIN",
+                csv_metadata=csv_metadata,
+                feedback_ctx=feedback_ctx,
+            )
         else:
-            out = fn(main_text, "MAIN")
+            out = fn(
+                main_text,
+                "MAIN",
+                feedback_ctx=feedback_ctx,
+            )
 
         detector_results[name] = out
 
@@ -94,7 +124,7 @@ def extract_text_skills(
     # 4. OVERALL PROJECT SCORE
     # ------------------------------
     overall_score = sum(b["score"] for b in bucket_output.values()) / len(bucket_output)
-    
+
     classification_id = get_classification_id(conn, user_id, project_name)
 
     if classification_id:
@@ -105,14 +135,20 @@ def extract_text_skills(
                 "total_documents": 1,
                 "total_words": ling["word_count"],
                 "reading_level_average": ling["flesch_kincaid_grade"],
-                "reading_level_label": ling["reading_level"]
+                "reading_level_label": ling["reading_level"],
             },
             "keywords": [],  # TF-IDF can be added later
         }
 
-        store_text_offline_metrics(conn, classification_id, project_metrics, csv_metadata=csv_metadata)
+        store_text_offline_metrics(
+            conn,
+            classification_id,
+            project_metrics,
+            csv_metadata=csv_metadata,
+        )
 
     return {
         "overall_score": overall_score,
-        "buckets": bucket_output
+        "buckets": bucket_output,
     }
+

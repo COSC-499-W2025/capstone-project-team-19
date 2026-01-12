@@ -68,6 +68,24 @@ def analyze_collaborative_text_project(
 
     # Recombine normalized paragraphs into a clean text block
     full_main_text = "\n\n".join(normalized)
+    
+    # Combine with supporting text files for total word count
+    full_project_text_parts = [full_main_text]
+
+    all_supporting_text_files = [
+        f for f in parsed_files
+        if f["file_type"] == "text"
+        and not f["file_name"].lower().endswith(".csv")
+        and f["file_name"] != main_file_name
+    ]
+
+    for f in all_supporting_text_files:
+        support_text = _load_main_text(parsed_files, f["file_name"], zip_path, conn, user_id)
+        normalized_sup = normalize_pdf_paragraphs(support_text)
+        clean_text = "\n\n".join(normalized_sup)
+        full_project_text_parts.append(clean_text)
+
+    full_project_text = "\n\n".join(full_project_text_parts)
 
     # store main summary and skills in project_summary
     summary_obj.summary_text = pipeline_result["project_summary"]
@@ -274,7 +292,7 @@ def analyze_collaborative_text_project(
     # STEP 3 — Compute % of contribution
     # ---------------------------------------------------------
     user_wc = len(contributed_text.split())
-    total_wc = len(full_main_text.split())
+    total_wc = len(full_project_text.split())
     pct = round((user_wc / total_wc) * 100, 2) if total_wc > 0 else 0
 
     # ---------------------------------------------------------

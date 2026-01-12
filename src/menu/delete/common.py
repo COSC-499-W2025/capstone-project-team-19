@@ -1,5 +1,5 @@
 from src.menu.portfolio import view_portfolio_items
-from src.menu.resume.resume import create_resume_from_current_projects
+from src.menu.resume.flow import _handle_create_resume
 
 
 def post_delete_next_steps(conn, user_id: int, username: str) -> None:
@@ -14,7 +14,7 @@ def post_delete_next_steps(conn, user_id: int, username: str) -> None:
             view_portfolio_items(conn, user_id, username)
             return
         elif choice == "2":
-            create_resume_from_current_projects(conn, user_id, username)
+            _handle_create_resume(conn, user_id, username)
             return
         elif choice == "3" or choice.lower() in {"q", "quit"}:
             return
