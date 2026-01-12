@@ -1,5 +1,4 @@
 import json
-import os
 import sqlite3
 from pathlib import Path
 
@@ -34,25 +33,28 @@ def _doc_text(path: Path) -> str:
 
 def test_portfolio_export_happy_creates_out_and_contains_fields(monkeypatch, tmp_path, mem_conn):
     """
-    Covers: P1 + P5 + P6 + X1 (deterministic path via frozen date)
+    Covers: P1 + P5 + P6 + X1 (deterministic filename via frozen datetime)
     """
-    # --- freeze date inside exporter module ---
     import src.export.portfolio_docx as exp
 
-    class _FakeDate:
+    # Freeze datetime.now() used by exporter
+    class _FakeDatetime:
         @staticmethod
-        def today():
-            class _D:
-                def isoformat(self):
-                    return "2026-01-10"
-            return _D()
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    # match your exporter formats
+                    if fmt == "%Y-%m-%d_%H-%M-%S":
+                        return "2026-01-10_15-36-58"
+                    if fmt == "%Y-%m-%d at %H:%M:%S":
+                        return "2026-01-10 at 15:36:58"
+                    return "2026-01-10_15-36-58"
+            return _DT()
 
-    monkeypatch.setattr(exp, "date", _FakeDate)
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
 
-    # --- patch ranking to avoid pipeline ---
+    # Patch ranking + formatters to avoid extra DB deps
     monkeypatch.setattr(exp, "collect_project_data", lambda conn, user_id: [("paper", 0.708), ("codeproj", 0.641)])
-
-    # --- patch formatters to avoid extra DB tables ---
     monkeypatch.setattr(exp, "format_duration", lambda *a, **k: "Duration: 2025-07-09 – 2025-10-31")
     monkeypatch.setattr(exp, "format_activity_line", lambda *a, **k: "Activity: Data 50%, Final 50%")
     monkeypatch.setattr(exp, "format_skills_block", lambda summary: ["Skills:", "  - data_analysis", "  - planning"])
@@ -61,16 +63,20 @@ def test_portfolio_export_happy_creates_out_and_contains_fields(monkeypatch, tmp
         "format_summary_block",
         lambda *a, **k: ["Summary:", "  - Project: test project", "  - My contribution: did stuff"],
     )
-    # keep languages/frameworks real (uses summary)
-    # exp.format_languages / exp.format_frameworks already imported in module
 
-    # --- insert two project summaries (one text, one code) ---
+    # Insert two project summaries (one text, one code)
     mem_conn.execute(
-        "INSERT INTO project_summaries(user_id, project_name, project_type, project_mode, summary_json, created_at) VALUES(?,?,?,?,?,?)",
+        """
+        INSERT INTO project_summaries(user_id, project_name, project_type, project_mode, summary_json, created_at)
+        VALUES(?,?,?,?,?,?)
+        """,
         (1, "paper", "text", "collaborative", json.dumps({"summary_text": "x"}), "2026-01-01"),
     )
     mem_conn.execute(
-        "INSERT INTO project_summaries(user_id, project_name, project_type, project_mode, summary_json, created_at) VALUES(?,?,?,?,?,?)",
+        """
+        INSERT INTO project_summaries(user_id, project_name, project_type, project_mode, summary_json, created_at)
+        VALUES(?,?,?,?,?,?)
+        """,
         (
             1,
             "codeproj",
@@ -82,15 +88,17 @@ def test_portfolio_export_happy_creates_out_and_contains_fields(monkeypatch, tmp
     )
     mem_conn.commit()
 
-    out_dir = tmp_path / "out"  # does not exist
+    out_dir = tmp_path / "out"
     path = exp.export_portfolio_to_docx(mem_conn, 1, "salma", out_dir=str(out_dir))
 
     assert out_dir.exists()
-    assert path.name == "portfolio_salma_2026-01-10.docx"
     assert path.exists()
+    assert path.name == "portfolio_salma_2026-01-10_15-36-58.docx"
 
     txt = _doc_text(path)
     assert "Portfolio — salma" in txt
+    assert "Generated on 2026-01-10 at 15:36:58" in txt
+
     assert "paper" in txt and "Score: 0.708" in txt
     assert "Type: text (collaborative)" in txt
     assert "codeproj" in txt
@@ -107,20 +115,24 @@ def test_portfolio_view_decline_export(monkeypatch, mem_conn, capsys):
     """
     import src.menu.portfolio as menu
 
-    # make portfolio view think there is a project
     monkeypatch.setattr(menu, "collect_project_data", lambda conn, user_id: [("paper", 0.1)])
-    monkeypatch.setattr(menu, "get_project_summary_row", lambda conn, user_id, name: {
-        "summary": {"summary_text": "x"},
-        "project_type": "text",
-        "project_mode": "individual",
-        "created_at": "2026-01-01",
-    })
+    monkeypatch.setattr(
+        menu,
+        "get_project_summary_row",
+        lambda conn, user_id, name: {
+            "summary": {"summary_text": "x"},
+            "project_type": "text",
+            "project_mode": "individual",
+            "created_at": "2026-01-01",
+        },
+    )
     monkeypatch.setattr(menu, "format_duration", lambda *a, **k: "Duration: N/A")
     monkeypatch.setattr(menu, "format_activity_line", lambda *a, **k: "Activity: N/A")
     monkeypatch.setattr(menu, "format_skills_block", lambda s: ["Skills: N/A"])
     monkeypatch.setattr(menu, "format_summary_block", lambda *a, **k: ["Summary: x"])
 
     called = {"export": False}
+
     def _fake_export(*a, **k):
         called["export"] = True
 
@@ -139,20 +151,25 @@ def test_portfolio_export_no_projects_creates_doc_with_message(monkeypatch, tmp_
     """
     import src.export.portfolio_docx as exp
 
-    class _FakeDate:
+    class _FakeDatetime:
         @staticmethod
-        def today():
-            class _D:
-                def isoformat(self):
-                    return "2026-01-10"
-            return _D()
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    if fmt == "%Y-%m-%d_%H-%M-%S":
+                        return "2026-01-10_15-36-58"
+                    if fmt == "%Y-%m-%d at %H:%M:%S":
+                        return "2026-01-10 at 15:36:58"
+                    return "2026-01-10_15-36-58"
+            return _DT()
 
-    monkeypatch.setattr(exp, "date", _FakeDate)
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
     monkeypatch.setattr(exp, "collect_project_data", lambda conn, user_id: [])
 
     out_dir = tmp_path / "out"
     path = exp.export_portfolio_to_docx(mem_conn, 1, "salma", out_dir=str(out_dir))
     assert path.exists()
+    assert path.name == "portfolio_salma_2026-01-10_15-36-58.docx"
 
     txt = _doc_text(path)
     assert "Portfolio — salma" in txt
@@ -165,21 +182,25 @@ def test_portfolio_export_skips_missing_summary_row(monkeypatch, tmp_path, mem_c
     """
     import src.export.portfolio_docx as exp
 
-    class _FakeDate:
+    class _FakeDatetime:
         @staticmethod
-        def today():
-            class _D:
-                def isoformat(self):
-                    return "2026-01-10"
-            return _D()
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    if fmt == "%Y-%m-%d_%H-%M-%S":
+                        return "2026-01-10_15-36-58"
+                    if fmt == "%Y-%m-%d at %H:%M:%S":
+                        return "2026-01-10 at 15:36:58"
+                    return "2026-01-10_15-36-58"
+            return _DT()
 
-    monkeypatch.setattr(exp, "date", _FakeDate)
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
     monkeypatch.setattr(exp, "collect_project_data", lambda conn, user_id: [("missing_proj", 0.5)])
 
-    # no DB row inserted => get_project_summary_row returns None naturally
     out_dir = tmp_path / "out"
     path = exp.export_portfolio_to_docx(mem_conn, 1, "salma", out_dir=str(out_dir))
     assert path.exists()
+    assert path.name == "portfolio_salma_2026-01-10_15-36-58.docx"
 
     txt = _doc_text(path)
     assert "Portfolio — salma" in txt

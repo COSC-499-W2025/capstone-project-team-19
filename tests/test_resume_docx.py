@@ -12,20 +12,25 @@ def _doc_text(path: Path) -> str:
 
 def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     """
-    Covers: R1 + X1 (deterministic path) + structure/order:
+    Covers: R1 + X1 (deterministic filename via frozen datetime) + structure/order:
     Skills Summary first, then grouped sections, with project blocks.
     """
     import src.export.resume_docx as exp
 
-    class _FakeDate:
+    # Freeze datetime.now() used by exporter
+    class _FakeDatetime:
         @staticmethod
-        def today():
-            class _D:
-                def isoformat(self):
-                    return "2026-01-10"
-            return _D()
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    if fmt == "%Y-%m-%d_%H-%M-%S":
+                        return "2026-01-10_15-36-58"
+                    if fmt == "%Y-%m-%d at %H:%M:%S":
+                        return "2026-01-10 at 15:36:58"
+                    return "2026-01-10_15-36-58"
+            return _DT()
 
-    monkeypatch.setattr(exp, "date", _FakeDate)
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
 
     snapshot = {
         "aggregated_skills": {
@@ -62,13 +67,15 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     path = exp.export_resume_record_to_docx(username="salma", record=record, out_dir=str(out_dir))
 
     assert out_dir.exists()
-    assert path.name == "resume_salma_2026-01-10.docx"
     assert path.exists()
+    assert path.name == "resume_salma_2026-01-10_15-36-58.docx"
 
     txt = _doc_text(path)
 
-    # Title + skills first
     assert "Resume — salma" in txt
+    assert "Generated on 2026-01-10 at 15:36:58" in txt
+
+    # Title + skills first
     assert "Skills Summary" in txt
     assert "Languages: Python, SQL" in txt or "Languages: SQL, Python" in txt
 
@@ -112,7 +119,11 @@ def test_resume_export_nonhappy_cancel_invalid_selection(monkeypatch, capsys):
 
     resumes = [{"id": 11, "name": "Resume A", "created_at": "2026-01-01"}]
     monkeypatch.setattr(flow, "list_resumes", lambda conn, user_id: resumes)
-    monkeypatch.setattr(flow, "get_resume_snapshot", lambda conn, user_id, rid: {"resume_json": "{}", "rendered_text": ""})
+    monkeypatch.setattr(
+        flow,
+        "get_resume_snapshot",
+        lambda conn, user_id, rid: {"resume_json": "{}", "rendered_text": ""},
+    )
     monkeypatch.setattr(flow, "export_resume_record_to_docx", lambda **k: Path("./out/fake.docx"))
 
     # cancel (Enter)
@@ -153,15 +164,19 @@ def test_resume_export_fallback_to_rendered_text(monkeypatch, tmp_path):
     """
     import src.export.resume_docx as exp
 
-    class _FakeDate:
+    class _FakeDatetime:
         @staticmethod
-        def today():
-            class _D:
-                def isoformat(self):
-                    return "2026-01-10"
-            return _D()
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    if fmt == "%Y-%m-%d_%H-%M-%S":
+                        return "2026-01-10_15-36-58"
+                    if fmt == "%Y-%m-%d at %H:%M:%S":
+                        return "2026-01-10 at 15:36:58"
+                    return "2026-01-10_15-36-58"
+            return _DT()
 
-    monkeypatch.setattr(exp, "date", _FakeDate)
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
 
     out_dir = tmp_path / "out"
 
