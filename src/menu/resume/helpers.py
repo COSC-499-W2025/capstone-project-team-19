@@ -5,8 +5,12 @@ Helper functions for building and rendering resume snapshots.
 """
 import json
 from typing import List, Dict, Any
-
 from src.models.project_summary import ProjectSummary
+from typing import Any, Dict, List
+from src.db.code_activity import get_code_activity_percents, get_normalized_code_metrics
+from src.db import get_classification_id
+from src.db.text_activity import get_text_activity_contribution
+
 
 
 def load_project_summaries(conn, user_id: int, get_all_user_project_summaries) -> List[ProjectSummary]:
@@ -59,7 +63,12 @@ def build_resume_snapshot(summaries: List[ProjectSummary]) -> Dict[str, Any]:
     return {"projects": projects, "aggregated_skills": agg}
 
 
-def render_snapshot(snapshot: Dict[str, Any], print_output: bool = True) -> str:
+def render_snapshot(
+    conn,
+    user_id: int,
+    snapshot: Dict[str, Any],
+    print_output: bool = True,
+) -> str:
     """Render a snapshot to text; optionally print to console."""
     lines: List[str] = []
 
@@ -79,7 +88,7 @@ def render_snapshot(snapshot: Dict[str, Any], print_output: bool = True) -> str:
         lines.append("")
         lines.append(header)
         for p in group_entries:
-            lines.extend(_render_project_block(p))
+            lines.extend(_render_project_block(conn, user_id, p))
 
     agg = snapshot.get("aggregated_skills", {})
     skills_lines = []
@@ -103,7 +112,8 @@ def render_snapshot(snapshot: Dict[str, Any], print_output: bool = True) -> str:
     return rendered
 
 
-def _render_project_block(p: Dict[str, Any]) -> List[str]:
+
+def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
     lines = [f"\n- {p.get('project_name', 'Unnamed project')}"]
 
     langs = p.get("languages") or []
@@ -118,27 +128,150 @@ def _render_project_block(p: Dict[str, Any]) -> List[str]:
     if p.get("summary_text"):
         lines.append(f"  Summary: {p['summary_text']}")
 
+    # Contributions
     if p.get("project_type") == "code":
-        activities = p.get("activities") or []
-        if activities:
-            lines.append("  Contributions:")
-            for act in activities:
-                top = act.get("top_file")
-                top_info = f" (top: {top})" if top else ""
-                lines.append(f"    • {act.get('name', 'activity')}{top_info}")
+        project_name = p.get("project_name") or ""
+        is_collab = bool(p.get("is_collaborative") or p.get("project_mode") == "collaborative")
+
+        activity_label = {
+            "feature_coding": "feature implementation",
+            "refactoring": "refactoring",
+            "debugging": "debugging",
+            "testing": "testing",
+            "documentation": "documentation",
+        }
+
+        lines.append("  Contributions:")
+
+        if conn and user_id is not None and project_name:
+            metrics = get_normalized_code_metrics(conn, user_id, project_name, is_collab)
+            activities = get_code_activity_percents(conn, user_id, project_name, source="combined")
+
+            if metrics:
+                total_commits = int(metrics["total_commits"])
+                your_commits = int(metrics["your_commits"])
+                loc_added = int(metrics["loc_added"])
+                loc_deleted = int(metrics["loc_deleted"])
+                loc_net = int(metrics["loc_net"])
+
+                share = (your_commits / total_commits * 100.0) if total_commits > 0 else 0.0
+
+                # Top 3 activities for the “across workflows” phrase
+                top_acts = [(k, v) for k, v in sorted(activities.items(), key=lambda kv: kv[1], reverse=True) if v > 0.0][:3]
+                workflows = ", ".join(activity_label.get(k, k.replace("_", " ")) for k, _ in top_acts) if top_acts else "core development"
+
+                # Template-style bullets
+                if is_collab:
+                    lines.append(
+                        f"    • Contributed {share:.1f}% of total repository commits ({your_commits} commits) "
+                        f"across {workflows} workflows."
+                    )
+                else:
+                    lines.append(
+                        f"    • Delivered {your_commits} commits across {workflows} workflows in an individual codebase."
+                    )
+
+                lines.append(
+                    f"    • Delivered a net code contribution of {loc_net:+d} lines, adding {loc_added} and deleting {loc_deleted}, "
+                    f"demonstrating an emphasis on maintainability and code quality."
+                )
+
+                feat = float(activities.get("feature_coding") or 0.0)
+                refac = float(activities.get("refactoring") or 0.0)
+                debug = float(activities.get("debugging") or 0.0)
+                test = float(activities.get("testing") or 0.0)
+                doc = float(activities.get("documentation") or 0.0)
+
+                if feat > 0.0:
+                    lines.append(
+                        f"    • Focused {feat:.1f}% of development effort on feature implementation, translating requirements into production-ready code."
+                    )
+                if refac > 0.0:
+                    lines.append(
+                        f"    • Allocated {refac:.1f}% of contributions to refactoring, improving readability, modularity, and long-term maintainability."
+                    )
+                if debug > 0.0:
+                    lines.append(
+                        f"    • Dedicated {debug:.1f}% of activity to debugging, identifying root causes and resolving runtime and logic issues."
+                    )
+                if (test + doc) > 0.0:
+                    lines.append(
+                        f"    • Contributed to testing and documentation ({(test + doc):.1f}% combined), supporting code reliability and team onboarding."
+                    )
+            else:
+                lines.append("    • (no metrics found in code_collaborative_metrics / git_individual_metrics)")
         else:
-            lines.append("  Contributions: (no activity data)")
+            lines.append("    • (missing conn/user_id/project_name; cannot load metrics)")
+
     elif p.get("project_type") == "text":
         pct = p.get("contribution_percent")
-        if isinstance(pct, (int, float)):
-            lines.append(f"  Contribution: {pct:.1f}% of document")
+        project_name = p.get("project_name") or ""
 
+        lines.append("  Contributions:")
+
+        # Bullet 1: overall contribution %
+        if isinstance(pct, (int, float)):
+            lines.append(f"    • Contributed to {pct:.1f}% of the project deliverables.")
+
+        # Pull activity breakdown from DB (if available)
+        if conn and user_id is not None and project_name:
+            classification_id = p.get("classification_id") or get_classification_id(conn, user_id, project_name)
+            activity_row = get_text_activity_contribution(conn, classification_id) if classification_id else None
+
+            if activity_row:
+                summary = activity_row.get("summary", {}) or {}
+                counts = summary.get("activity_counts", {}) or {}
+
+                duration_days = (activity_row.get("timestamp_analysis", {}) or {}).get("duration_days")
+                total_files = summary.get("total_files")
+                classified_files = summary.get("classified_files")
+
+                total_events = sum(int(v or 0) for v in counts.values())
+
+                # Optional bullet: timeline span
+                if isinstance(duration_days, int) and duration_days > 0:
+                    lines.append(f"    • Worked across a {duration_days}-day timeline")
+
+                # Bullet(s): activity distribution (uses counts as a proxy for effort)
+                if total_events > 0:
+                    ranked = sorted(counts.items(), key=lambda kv: int(kv[1] or 0), reverse=True)
+                    top = [(k, int(v or 0)) for k, v in ranked if int(v or 0) > 0][:3]
+
+                    # bullet style: balance across multiple stages
+                    if len(top) >= 2:
+                        a1, c1 = top[0]
+                        a2, c2 = top[1]
+                        a3, c3 = (top[2] if len(top) >=3 else (None, 0))
+                        p1 = c1 / total_events * 100.0
+                        p2 = c2 / total_events * 100.0
+                        p3 = c3 / total_events * 100.0
+                        lines.append(
+                            f"    • Balanced {a1.lower()} ({p1:.1f}%) with {a2.lower()} ({p2:.1f}%), and {a3.lower()} ({p3:.1f}%) "
+                            f"supporting both content development and iterative improvement."
+                        )
+
+                    # Optional: mention presence of later-stage work if it exists
+                    for stage in ("Revision", "Final"):
+                        if int(counts.get(stage, 0) or 0) > 0:
+                            lines.append(f"    • Contributed to {stage.lower()}-stage work, strengthening clarity, structure, and polish.")
+                            break
+                else:
+                    lines.append("    • (no activity breakdown found in text_activity_contribution)")
+            else:
+                lines.append("    • (no activity breakdown found in text_activity_contribution)")
+        else:
+            lines.append("    • (missing conn/user_id/project_name; cannot load text activity breakdown)")
+
+
+    # Skills
     skills = p.get("skills") or []
     if skills:
         lines.append("  Skills:")
         lines.append("    • " + ", ".join(skills))
 
+
     return lines
+
 
 
 def _extract_activity(ps: ProjectSummary) -> List[Dict[str, Any]]:

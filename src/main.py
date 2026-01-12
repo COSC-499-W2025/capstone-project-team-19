@@ -15,6 +15,7 @@ from src.menu import (
     view_old_project_summaries,
     view_resume_items,
     view_portfolio_items,
+    view_project_feedback,
     delete_old_insights,
     project_list,
     view_chronological_skills,
@@ -70,14 +71,16 @@ def prompt_and_store():
         elif menu_choice == 4:
             view_portfolio_items(conn, user_id, username)
         elif menu_choice == 5:
-            delete_old_insights(conn, user_id, username)
+            view_project_feedback(conn, user_id, username)
         elif menu_choice == 6:
-            view_ranked_projects(conn, user_id, username)
+            delete_old_insights(conn, user_id, username)
         elif menu_choice == 7:
-            view_chronological_skills(conn, user_id, username)
+            view_ranked_projects(conn, user_id, username)
         elif menu_choice == 8:
-            project_list(conn, user_id, username)
+            view_chronological_skills(conn, user_id, username)
         elif menu_choice == 9:
+            project_list(conn, user_id, username)
+        elif menu_choice == 10:
             print("\nThank you for using the system. Goodbye!")
             return None
         elif menu_choice == 1:

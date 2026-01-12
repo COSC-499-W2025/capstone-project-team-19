@@ -6,9 +6,9 @@ from src.menu.display import show_start_menu
 class TestShowStartMenu:
     """Tests for the main menu display functionality."""
 
-    @pytest.mark.parametrize("choice", ["1", "2", "3", "4", "5", "6", "7", "8", "9"])
+    @pytest.mark.parametrize("choice", [str(i) for i in range(1, 11)])
     def test_valid_menu_choices(self, choice):
-        """Test that valid menu choices (1-9) are accepted and returned as integers."""
+        """Test that valid menu choices (1-10) are accepted and returned as integers."""
         username = "testuser"
 
         with patch("builtins.input", return_value=choice):
@@ -16,10 +16,10 @@ class TestShowStartMenu:
             assert result == int(choice)
 
     @pytest.mark.parametrize("invalid_input,valid_input", [
-        ("0", "1"),  # Number out of range (too low)
-        ("10", "2"),  # Number out of range (too high)
-        ("99", "3"),  # Number out of range (way too high)
-        ("-1", "4"),  # Negative number
+        ("0", "1"),    # Number out of range (too low)
+        ("11", "2"),   # Number out of range (too high)
+        ("99", "3"),   # Number out of range (way too high)
+        ("-1", "4"),   # Negative number
     ])
     def test_invalid_number_choices(self, invalid_input, valid_input):
         """Test that invalid number choices are rejected and prompt again."""
@@ -33,17 +33,19 @@ class TestShowStartMenu:
                 assert result == int(valid_input)
 
                 # Should print error message for invalid input
-                error_calls = [call for call in mock_print.call_args_list
-                             if "Invalid choice" in str(call)]
+                error_calls = [
+                    call for call in mock_print.call_args_list
+                    if "Invalid choice" in str(call)
+                ]
                 assert len(error_calls) >= 1
 
     @pytest.mark.parametrize("invalid_input,valid_input", [
-        ("a", "1"),  # Letter
-        ("abc", "2"),  # Multiple letters
-        ("", "3"),  # Empty string
-        (" ", "4"),  # Whitespace only
-        ("1.5", "5"),  # Decimal number
-        ("one", "9"),  # Word
+        ("a", "1"),       # Letter
+        ("abc", "2"),     # Multiple letters
+        ("", "3"),        # Empty string
+        (" ", "4"),       # Whitespace only
+        ("1.5", "5"),     # Decimal number
+        ("one", "10"),    # Word
     ])
     def test_invalid_non_numeric_choices(self, invalid_input, valid_input):
         """Test that non-numeric choices are rejected and prompt again."""
@@ -57,8 +59,10 @@ class TestShowStartMenu:
                 assert result == int(valid_input)
 
                 # Should print error message for invalid input
-                error_calls = [call for call in mock_print.call_args_list
-                             if "Invalid choice" in str(call)]
+                error_calls = [
+                    call for call in mock_print.call_args_list
+                    if "Invalid choice" in str(call)
+                ]
                 assert len(error_calls) >= 1
 
     def test_menu_displays_username(self):
@@ -69,9 +73,10 @@ class TestShowStartMenu:
             with patch("builtins.print") as mock_print:
                 show_start_menu(username)
 
-                # Check that welcome message with username was printed
-                welcome_calls = [call for call in mock_print.call_args_list
-                               if "alice" in str(call)]
+                welcome_calls = [
+                    call for call in mock_print.call_args_list
+                    if "alice" in str(call)
+                ]
                 assert len(welcome_calls) >= 1
 
     def test_menu_displays_all_options(self):
@@ -82,22 +87,21 @@ class TestShowStartMenu:
             "2. View old project summaries",
             "3. View resume items",
             "4. View portfolio items",
-            "5. Delete old insights",
-            "6. View all projects ranked",
-            "7. View chronological skills",
-            "8. View all projects",
-            "9. Exit"
+            "5. View project feedback",
+            "6. Delete old insights",
+            "7. View all projects ranked",
+            "8. View chronological skills",
+            "9. View all projects",
+            "10. Exit",
         ]
 
         with patch("builtins.input", return_value="1"):
             with patch("builtins.print") as mock_print:
                 show_start_menu(username)
 
-                # Get all print calls as strings
                 all_prints = [str(call) for call in mock_print.call_args_list]
                 combined_output = " ".join(all_prints)
 
-                # Check that all options are mentioned
                 for option in expected_options:
                     assert option in combined_output
 
@@ -105,7 +109,6 @@ class TestShowStartMenu:
         """Test that whitespace around input is properly stripped."""
         username = "testuser"
 
-        # Input with leading/trailing whitespace
         with patch("builtins.input", return_value="  3  "):
             result = show_start_menu(username)
             assert result == 3
@@ -119,3 +122,4 @@ class TestShowStartMenu:
             assert isinstance(result, int)
             assert result == 5
             assert not isinstance(result, str)
+

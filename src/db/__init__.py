@@ -174,7 +174,8 @@ from .deduplication import (
     get_hash_set_for_version,
     insert_project,
     insert_project_version,
-    insert_version_files
+    insert_version_files)
+
 # project rankings
 from .project_rankings import (
     set_project_rank,

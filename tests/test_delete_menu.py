@@ -159,7 +159,7 @@ def test_post_delete_next_steps_routes_to_portfolio_and_resume(monkeypatch):
         "src.menu.delete.common.view_portfolio_items", fake_portfolio
     )
     monkeypatch.setattr(
-        "src.menu.delete.common.create_resume_from_current_projects",
+        "src.menu.delete.common._handle_create_resume",
         fake_create_resume,
     )
 
