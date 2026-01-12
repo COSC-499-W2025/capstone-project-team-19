@@ -77,3 +77,18 @@ Me and my teammate also worked on the presentation.
 I reviewed some of my teammate's PR.
 
 Next week plan: No sprint next week. Preparing for final exam. 
+
+# (T2 Week 1) Monday 5th January - Sunday 11th January
+![Screenshot of week 1_T2 peer eval](./screenshots/Johanes-Jan5-11.PNG)
+Week recap: 
+
+I added new feature that allows user to edit the project rank. Previously, the projects were ranked based on the score obtained from the analysis. This feature allows user to manually edit the rank, so that user can choose which projects to be showcased at the top.
+
+I also started to implement the editing chronology feature which allows user to edit the start and end date of a project. However, i chose to continue it in the next week.
+
+I received feedback from ammaar to change the behavior of the bulk rank editing to use number instead of typing project name.
+
+I also gave feedback to Timmi's PR, finding the small error about the path issues.
+
+
+Next week plan: Continue the unfinished feature, and continue implementing milestone requirement 3.
