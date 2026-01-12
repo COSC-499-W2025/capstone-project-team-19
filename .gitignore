@@ -32,3 +32,6 @@ zip_data/
 # Google Drive Auth
 token.json
 credentials.json
+
+# DOCX Output
+out/
