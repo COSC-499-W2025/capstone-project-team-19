@@ -78,6 +78,40 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE INDEX IF NOT EXISTS idx_files_user 
     ON files(user_id, file_name);
 
+CREATE TABLE IF NOT EXISTS projects (
+    project_key INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    display_name TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS project_versions (
+    version_key INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_key INTEGER NOT NULL,
+    upload_id INTEGER,
+    fingerprint_strict TEXT NOT NULL,
+    fingerprint_loose TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_versions_unique_strict 
+    ON project_versions(project_key, fingerprint_strict);
+
+CREATE TABLE IF NOT EXISTS version_files (
+    version_key INTEGER NOT NULL,
+    relpath TEXT NOT NULL,
+    file_hash TEXT NOT NULL,
+    PRIMARY KEY (version_key, relpath),
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_version_files_hash 
+    ON version_files(file_hash);
+
+CREATE INDEX IF NOT EXISTS idx_version_files_version 
+    ON version_files(version_key);
+
 CREATE TABLE IF NOT EXISTS project_classifications (
     classification_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id           INTEGER NOT NULL,
