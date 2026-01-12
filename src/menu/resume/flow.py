@@ -31,6 +31,9 @@ def _handle_create_resume(conn, user_id: int, username: str):
         print("No projects available to rank.")
         return
     
+    # Create a dict for quick lookup: project_name -> score
+    ranked_dict = {name: score for name, score in ranked}
+    
     # Show ranked projects with scores
     print("\nAvailable projects (ranked by importance):")
     print("-" * 60)
@@ -43,7 +46,7 @@ def _handle_create_resume(conn, user_id: int, username: str):
         else:
             print(f"{idx:2d}. {project_name:<30} {'':<25} Score: {score:.3f}")
     
-    print("\nSelect projects to include:")
+    print("\nSelect  projects to include (maximum 5 projects):")
     print("  • Enter numbers separated by commas (e.g., 1,3,5)")
     print("  • Or press Enter to use top 5 ranked projects")
     
@@ -53,6 +56,11 @@ def _handle_create_resume(conn, user_id: int, username: str):
         # Default: top 5
         top_names = [name for name, _score in ranked[:5]]
         selected_summaries = [s for s in summaries if s.project_name in top_names]
+        # Sort by ranking order (highest score first)
+        selected_summaries.sort(
+            key=lambda s: ranked_dict.get(s.project_name, 0.0),
+            reverse=True
+        )
         print(f"\n[Resume] Using top {len(selected_summaries)} ranked projects: {', '.join(top_names)}")
     else:
         # Parse user selection (handle comma-separated numbers)
@@ -67,9 +75,19 @@ def _handle_create_resume(conn, user_id: int, username: str):
             print("No valid selections. Using top 5 ranked projects.")
             top_names = [name for name, _score in ranked[:5]]
             selected_summaries = [s for s in summaries if s.project_name in top_names]
+            # Sort by ranking order
+            selected_summaries.sort(
+                key=lambda s: ranked_dict.get(s.project_name, 0.0),
+                reverse=True
+            )
         else:
             selected_names = [ranked[i-1][0] for i in sorted(selected_indices)]
             selected_summaries = [s for s in summaries if s.project_name in selected_names]
+            # sort by the ranked order of the selected projects
+            selected_summaries.sort(
+                key=lambda s: ranked_dict.get(s.project_name, 0.0),
+                reverse=True
+            )
             print(f"\n[Resume] Using {len(selected_summaries)} selected projects: {', '.join(selected_names)}")
     
     snapshot = build_resume_snapshot(selected_summaries)
