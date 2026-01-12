@@ -16,7 +16,7 @@ from src.db import (
 )
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from .helpers import load_project_summaries, build_resume_snapshot, render_snapshot
-
+from src.export.resume_docx import export_resume_record_to_docx
 
 def _handle_create_resume(conn, user_id: int, username: str):
     summaries = load_project_summaries(conn, user_id, get_all_user_project_summaries)
@@ -79,4 +79,35 @@ def _handle_view_existing_resume(conn, user_id: int) -> bool:
             print("Stored resume is corrupted or unreadable.")
             return False
 
+    return True
+
+def _handle_export_resume_docx(conn, user_id: int, username: str) -> bool:
+    resumes = list_resumes(conn, user_id)
+    if not resumes:
+        print("No saved resumes yet. Create one first.")
+        return False
+
+    print("\nSaved resumes:")
+    for idx, r in enumerate(resumes, 1):
+        print(f"{idx}. {r['name']} (created {r['created_at']})")
+
+    choice = input("Select a resume to export (number) or press Enter to cancel: ").strip()
+    if not choice.isdigit():
+        print("Cancelled.")
+        return False
+
+    idx = int(choice)
+    if idx < 1 or idx > len(resumes):
+        print("Invalid selection.")
+        return False
+
+    resume_id = resumes[idx - 1]["id"]
+    record = get_resume_snapshot(conn, user_id, resume_id)
+    if not record:
+        print("Unable to load the selected resume.")
+        return False
+
+    out_file = export_resume_record_to_docx(username=username, record=record, out_dir="./out")
+    print(f"\nSaving resume to {out_file} ...")
+    print("✓ Export complete.\n")
     return True

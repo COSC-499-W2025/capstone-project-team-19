@@ -3,7 +3,7 @@ import os
 import datetime as dt
 import subprocess
 from collections import Counter, defaultdict
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Tuple
 import sqlite3
 import json
 
@@ -118,6 +118,36 @@ def resolve_repo_for_project(
     if DEBUG:
         print(f"[debug] resolve_repo_for_project → no git repo found for {project_name}")
 
+    return None
+
+
+def _analysis_zip_base(zip_data_dir: str, zip_name: str) -> str:
+    """
+    Resolve analysis/zip_data/<zip_name> based on a zip_data_dir input.
+    """
+    return os.path.join(os.path.dirname(zip_data_dir), "analysis", "zip_data", zip_name)
+
+
+def _match_git_path(db_path: str, git_paths: set[str]) -> str | None:
+    """
+    Find the best matching git path for a DB file path using suffix or basename.
+    """
+    if not db_path:
+        return None
+    normalized = db_path.replace("\\", "/")
+
+    best = None
+    for gp in git_paths:
+        if normalized == gp or normalized.endswith(f"/{gp}"):
+            if best is None or len(gp) > len(best):
+                best = gp
+    if best:
+        return best
+
+    base = os.path.basename(normalized)
+    for gp in git_paths:
+        if os.path.basename(gp) == base:
+            return gp
     return None
 
 
@@ -614,11 +644,11 @@ Top files: {top_files}
 """.rstrip())
     
 def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) -> dict[str, str]:
-    if consent == "accepted" or not projects:
+    if not projects:
         return {}
 
     if constants.VERBOSE:
-        print("\n[NON-LLM] CONTRIBUTION SUMMARIES")
+        print("\nCONTRIBUTION SUMMARIES")
     print("Describe only your personal contributions to the collaborative project.")
     print("Write 1-3 sentences. Be specific about features/files you primarily worked on.")
     print("Example: “Implemented login API in FastAPI and wrote tests for user_routes.py”.\n")
@@ -715,6 +745,130 @@ def _top_keywords_from_descriptions(descs: list[str], k: int = 5) -> list[str]:
         return kw
     cnt = Counter(_tokens(text))
     return [w for w,_ in cnt.most_common(k)]
+
+
+def _read_content_slice(path: str, limit: int = 10000) -> str | None:
+    """
+    Read only the first `limit` bytes (~first 10KB of text) to keep I/O cheap.
+    Enough to catch key identifiers and comments without loading entire files.
+    """
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read(limit)
+    except Exception:
+        return None
+
+
+def rank_files_by_description(
+    desc: str,
+    files: Iterable[dict],
+    base_dir: str | None = None,
+    top_n: int = 8,
+) -> list[str]:
+    """
+    Heuristic scorer:
+      - Extract keywords from the user's contribution description.
+      - For each code file, score:
+          * +2 per keyword found in basename (strong signal)
+          * +1 per keyword found in path
+          * +1 per keyword found in the first ~10KB of content (if base_dir provided)
+      - Return the top-N file_paths with highest scores.
+    """
+    files = list(files)
+    if not files:
+        return []
+
+    desc = (desc or "").strip()
+    keywords = _top_keywords_from_descriptions([desc], k=top_n) if desc else []
+    keyword_set = [k.lower() for k in keywords if k]
+
+    scores: list[tuple[int, str]] = []
+    for row in files:
+        rel_path = row.get("file_path") or ""
+        fp = rel_path.lower()
+        bn = (row.get("file_name") or "").lower()
+        if not fp:
+            continue
+
+        content_hits = 0
+        if base_dir:
+            abs_path = os.path.join(base_dir, rel_path)
+            content = _read_content_slice(abs_path)
+            if content:
+                content_lower = content.lower()
+                for kw in keyword_set:
+                    if kw and kw in content_lower:
+                        content_hits += 1
+
+        score = 0
+        for kw in keyword_set:
+            if kw in bn:
+                score += 2  # basename hit is stronger
+            if kw in fp:
+                score += 1
+        score += content_hits
+
+        if score > 0:
+            scores.append((score, rel_path))
+
+    scores.sort(key=lambda t: (-t[0], t[1]))
+    return [fp for _score, fp in scores[:top_n] if fp]
+
+
+def _rank_key_files_for_git(
+    desc: str,
+    git_file_loc: Mapping[str, int],
+    db_files: list[dict],
+    base_dir: str | None,
+    limit: int = 8,
+) -> list[str]:
+    """
+    Rank key files by description but only within Git-contributed files.
+    Returns up to `limit` file paths (DB paths where possible).
+    """
+    git_paths = {p.replace("\\", "/") for p in git_file_loc.keys() if p}
+    if not git_paths:
+        return []
+
+    code_files = [
+        f for f in db_files
+        if f.get("file_type") == "code" and f.get("file_path")
+    ]
+
+    candidates = [
+        f for f in code_files
+        if _match_git_path(f.get("file_path", ""), git_paths)
+    ]
+
+    if not candidates:
+        git_basenames = {os.path.basename(p) for p in git_paths}
+        candidates = [
+            f for f in code_files
+            if os.path.basename(f.get("file_path", "")) in git_basenames
+        ]
+
+    if not candidates:
+        candidates = [
+            {"file_name": os.path.basename(p), "file_path": p, "file_type": "code"}
+            for p in sorted(git_paths)
+        ]
+
+    ranked = rank_files_by_description(desc, candidates, base_dir=base_dir, top_n=limit)
+    if ranked:
+        return ranked
+
+    ranked_git = sorted(
+        git_file_loc.items(), key=lambda item: item[1], reverse=True
+    )[:limit]
+
+    db_by_git: dict[str, str] = {}
+    for f in candidates:
+        fp = f.get("file_path") or ""
+        match = _match_git_path(fp, git_paths)
+        if match and match not in db_by_git:
+            db_by_git[match] = fp
+
+    return [db_by_git.get(p, p) for p, _loc in ranked_git]
 
 def print_portfolio_summary(all_metrics: list[dict]) -> None:
     if not all_metrics:

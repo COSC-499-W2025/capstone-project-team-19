@@ -266,6 +266,15 @@ def format_summary_block(
 
     # Code projects
     if project_type == "code":
+        manual_contrib = contributions.get("manual_contribution_summary") or contributions.get(
+            "non_llm_contribution_summary"
+        )
+        if isinstance(manual_contrib, str) and manual_contrib.strip():
+            lines.append("Summary:")
+            lines.append(f"  - Project: {project_summary}")
+            lines.append(f"  - My contribution: {manual_contrib}")
+            return lines
+
         llm_contrib = contributions.get("llm_contribution_summary")
         if isinstance(llm_contrib, str) and llm_contrib.strip():
             lines.append("Summary:")

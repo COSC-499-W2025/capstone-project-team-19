@@ -152,3 +152,35 @@ def test_portfolio_missing_fields(conn, capsys, monkeypatch):
     assert "Duration:" in out
     assert "Activity:" in out
     assert "Summary:" in out        
+
+
+def test_portfolio_prefers_manual_contribution_for_collab_code(conn, capsys, monkeypatch):
+    user_id = 1
+    summary = {
+        "project_name": "proj1",
+        "project_type": "code",
+        "project_mode": "collaborative",
+        "languages": [],
+        "frameworks": [],
+        "summary_text": "LLM project summary",
+        "skills": [],
+        "metrics": {},
+        "contributions": {
+            "manual_contribution_summary": "Manual contribution summary",
+            "llm_contribution_summary": "LLM contribution summary"
+        },
+    }
+    save_project_summary(conn, user_id, "proj1", json.dumps(summary))
+
+    monkeypatch.setattr(
+        "src.menu.portfolio.collect_project_data",
+        lambda c, uid: [("proj1", 0.8)],
+        raising=False,
+    )
+
+    view_portfolio_items(conn, user_id, "Kevin")
+    out = capsys.readouterr().out
+
+    assert "Project: LLM project summary" in out
+    assert "My contribution: Manual contribution summary" in out
+    assert "LLM contribution summary" not in out

@@ -1,6 +1,6 @@
 import os
-
-from src.utils.parsing import parse_zip_file, analyze_project_layout
+from src.utils.parsing import parse_zip_file, analyze_project_layout, ZIP_DATA_DIR
+from src.utils.deduplication.integration import run_deduplication_for_projects
 from src.db import (
     connect,
     init_schema,
@@ -24,7 +24,6 @@ from src.menu import (
 from src.consent.consent import CONSENT_TEXT, get_user_consent, record_consent
 from src.consent.external_consent import get_external_consent, record_external_consent
 from src.project_analysis import detect_project_type, send_to_analysis
-from src.utils.upload_checks import handle_existing_zip
 from src.utils.helpers import cleanup_extracted_zip
 try:
     from src import constants
@@ -233,17 +232,20 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
         if constants.VERBOSE:
             print(f"\nReceived path: {zip_path}")
 
-        # --- Restored duplicate zip check ---
-        zip_path = handle_existing_zip(conn, user_id, zip_path)
-        if not zip_path:
-            print("Skipping parsing and analysis (reuse selected).")
-            return None # user chose to reuse
-
         result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
         if not result:
             print("\nNo valid files were processed. Check logs for unsupported or corrupted files.")
             continue
         processed_zip_path = zip_path
+
+        # Run deduplication check
+        zip_name = os.path.splitext(os.path.basename(zip_path))[0]
+        target_dir = os.path.join(ZIP_DATA_DIR, zip_name)
+        layout = analyze_project_layout(result)
+        skipped_projects = run_deduplication_for_projects(conn, user_id, target_dir, layout)
+        # Filter out skipped projects from result
+        if skipped_projects:
+            result = [f for f in result if f.get("project_name") not in skipped_projects]
 
         assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
         try:

@@ -18,7 +18,7 @@ from src.insights.portfolio import (
     format_skills_block,
     format_summary_block,
 )
-
+from src.export.portfolio_docx import export_portfolio_to_docx
 
 def view_portfolio_items(conn, user_id: int, username: str) -> None:
     """
@@ -76,6 +76,19 @@ def view_portfolio_items(conn, user_id: int, username: str) -> None:
             print()  # blank line between projects
 
         print(f"{'=' * 80}\n")
+
+        # --- Export prompt ---
+        answer = input(
+            "Do you want to export this portfolio to a Word document (.docx)? (y/n) "
+        ).strip().lower()
+
+        if answer == "y":
+            out_file = export_portfolio_to_docx(conn, user_id, username, out_dir="./out")
+            print(f"\nSaving portfolio to {out_file} ...")
+            print("✓ Export complete.\n")
+        else:
+            print("\nReturning to main menu...\n")
+            return
 
     except Exception as e:
         print(f"Error displaying portfolio items: {e}")
