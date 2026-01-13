@@ -35,8 +35,13 @@ google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
 
-# EXport to docx
+# Export to docx
 python-docx
+
+# FastAPI and web server (for API endpoints)
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
 
 # Add later, when the processing functions are built:
 
