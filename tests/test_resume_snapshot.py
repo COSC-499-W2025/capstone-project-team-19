@@ -289,3 +289,156 @@ def test_render_snapshot_text_activity_two_stages():
     lowered = rendered.lower()
     assert "balanced draft" in lowered
     assert "revision" in lowered
+
+
+def test_render_snapshot_uses_manual_overrides():
+    from src.menu.resume.helpers import render_snapshot
+
+    snapshot = {
+        "projects": [
+            {
+                "project_name": "proj1",
+                "project_type": "code",
+                "project_mode": "individual",
+                "summary_text": "Default summary",
+                "resume_display_name_override": "Custom Name",
+                "resume_summary_override": "Custom summary",
+                "resume_contributions_override": [
+                    "Built the core workflow",
+                    "Added tests and docs",
+                ],
+                "languages": [],
+                "frameworks": [],
+                "skills": [],
+            }
+        ],
+        "aggregated_skills": {},
+    }
+
+    rendered = render_snapshot(None, None, snapshot, print_output=False)
+    assert "- Custom Name" in rendered
+    assert "Summary: Custom summary" in rendered
+    assert "Built the core workflow" in rendered
+    assert "Added tests and docs" in rendered
+
+
+def test_manual_overrides_skip_resume_only():
+    from src.menu.resume.flow import _apply_manual_overrides_to_resumes
+
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    snap_a = {
+        "projects": [
+            {
+                "project_name": "ProjX",
+                "project_type": "code",
+                "project_mode": "individual",
+                "summary_text": "Original A",
+                "resume_summary_override": "Resume-only A",
+            }
+        ],
+        "aggregated_skills": {},
+    }
+    snap_b = {
+        "projects": [
+            {
+                "project_name": "ProjX",
+                "project_type": "code",
+                "project_mode": "individual",
+                "summary_text": "Original B",
+            }
+        ],
+        "aggregated_skills": {},
+    }
+
+    insert_resume_snapshot(conn, user_id, "Resume A", json.dumps(snap_a), "rendered")
+    insert_resume_snapshot(conn, user_id, "Resume B", json.dumps(snap_b), "rendered")
+
+    overrides = {"summary_text": "Manual summary", "display_name": "Manual Name"}
+    _apply_manual_overrides_to_resumes(
+        conn,
+        user_id,
+        "ProjX",
+        overrides,
+        {"summary_text", "display_name"},
+    )
+
+    resumes = list_resumes(conn, user_id)
+    records = {r["name"]: get_resume_snapshot(conn, user_id, r["id"]) for r in resumes}
+
+    snap_a_out = json.loads(records["Resume A"]["resume_json"])
+    snap_b_out = json.loads(records["Resume B"]["resume_json"])
+
+    proj_a = snap_a_out["projects"][0]
+    proj_b = snap_b_out["projects"][0]
+
+    assert "manual_summary_text" not in proj_a
+    assert proj_a["manual_display_name"] == "Manual Name"
+    assert proj_b["manual_summary_text"] == "Manual summary"
+    assert proj_b["manual_display_name"] == "Manual Name"
+
+
+def test_manual_overrides_force_resume_updates_resume_only():
+    from src.menu.resume.flow import _apply_manual_overrides_to_resumes
+
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    snap_a = {
+        "projects": [
+            {
+                "project_name": "ProjX",
+                "project_type": "code",
+                "project_mode": "individual",
+                "summary_text": "Original A",
+                "resume_summary_override": "Resume-only A",
+                "resume_display_name_override": "Resume Name A",
+            }
+        ],
+        "aggregated_skills": {},
+    }
+    snap_b = {
+        "projects": [
+            {
+                "project_name": "ProjX",
+                "project_type": "code",
+                "project_mode": "individual",
+                "summary_text": "Original B",
+            }
+        ],
+        "aggregated_skills": {},
+    }
+
+    insert_resume_snapshot(conn, user_id, "Resume A", json.dumps(snap_a), "rendered")
+    insert_resume_snapshot(conn, user_id, "Resume B", json.dumps(snap_b), "rendered")
+
+    resumes = list_resumes(conn, user_id)
+    resume_ids = {r["name"]: r["id"] for r in resumes}
+
+    overrides = {"summary_text": "Manual summary", "display_name": "Manual Name"}
+    _apply_manual_overrides_to_resumes(
+        conn,
+        user_id,
+        "ProjX",
+        overrides,
+        {"summary_text", "display_name"},
+        force_resume_id=resume_ids["Resume A"],
+    )
+
+    records = {r["name"]: get_resume_snapshot(conn, user_id, r["id"]) for r in resumes}
+
+    snap_a_out = json.loads(records["Resume A"]["resume_json"])
+    snap_b_out = json.loads(records["Resume B"]["resume_json"])
+
+    proj_a = snap_a_out["projects"][0]
+    proj_b = snap_b_out["projects"][0]
+
+    assert "resume_summary_override" not in proj_a
+    assert "resume_display_name_override" not in proj_a
+    assert proj_a["manual_summary_text"] == "Manual summary"
+    assert proj_a["manual_display_name"] == "Manual Name"
+    assert proj_b["manual_summary_text"] == "Manual summary"
+    assert proj_b["manual_display_name"] == "Manual Name"
