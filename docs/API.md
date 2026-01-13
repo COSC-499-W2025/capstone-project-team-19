@@ -45,7 +45,30 @@ Handles project ingestion, analysis, classification, and metadata updates.
 
 ### **Endpoints**
 
-
+- **List Projects**
+    - **Endpoint**: `GET /projects`
+    - **Description**: Returns a list of all projects belonging to the current user.
+    - **Headers**: 
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "projects": [
+                    {
+                        "project_summary_id": 9,
+                        "project_name": "Project Name herere",
+                        "project_type": "text",
+                        "project_mode": "individual",
+                        "created_at": "2026-01-12 01:51:24"
+                    }
+                ]
+            },
+            "error": null
+        }
+        ```
 
 ---
 
@@ -100,20 +123,28 @@ Manages portfolio showcase configuration.
 ## **Path Variables**
 
 - `{id}` (integer, required): Generic resource identifier  
-- `{userId}` (integer, required): The ID of the user
 - `{projectId}` (integer, required): The ID of a project  
 - `{resumeId}` (integer, required): The ID of a résumé  
+- `{portfolioId}` (integer, required): The ID of a portfolio  
 
 ---
 
 ## **DTO References**
 
-DTOs (Data Transfer Objects) are defined using Pydantic models.
+DTOs (Data Transfer Objects) are defined using Pydantic models in `src/api/schemas/`.
 
-- **ExampleDTO**
-    - `field` (type, required/optional): Description
+Every endpoint must:
+- Accept a DTO for its request body (when applicable)
+- Return a DTO in its response body
+- Reference the DTO it uses in this document
 
-All endpoints should reference a DTO for both request and response bodies.
+Example:
+- **ProjectListItemDTO**
+    - `project_summary_id` (int, required)
+    - `project_name` (string, required)
+    - `project_type` (string, optional)
+    - `project_mode` (string, optional)
+    - `created_at` (string, optional)
 
 ---
 
