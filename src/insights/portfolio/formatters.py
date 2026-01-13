@@ -10,6 +10,41 @@ from src.db import (
     get_code_individual_duration,
 )
 
+
+def _clean_str(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    return text or None
+
+
+def _clean_bullets(values: Any) -> List[str]:
+    if not isinstance(values, list):
+        return []
+    cleaned: List[str] = []
+    for item in values:
+        text = str(item).strip()
+        if not text:
+            continue
+        if text.startswith(("-", "•")):
+            text = text.lstrip("-•").strip()
+        if text:
+            cleaned.append(text)
+    return cleaned
+
+
+def _manual_overrides(summary: Dict[str, Any]) -> Dict[str, Any]:
+    overrides = summary.get("manual_overrides") or {}
+    if not isinstance(overrides, dict):
+        return {}
+    return overrides
+
+
+def resolve_portfolio_display_name(summary: Dict[str, Any], project_name: str) -> str:
+    overrides = _manual_overrides(summary)
+    manual_name = _clean_str(overrides.get("display_name"))
+    return manual_name or project_name
+
 def format_duration(
     project_type: str,
     project_mode: str,
@@ -261,8 +296,20 @@ def format_summary_block(
       Summary: <summary_text>
     """
     lines: List[str] = []
-    project_summary = summary.get("summary_text") or ""
+    manual = _manual_overrides(summary)
+    project_summary = _clean_str(manual.get("summary_text")) or summary.get("summary_text") or ""
     contributions = summary.get("contributions") or {}
+    manual_bullets = _clean_bullets(manual.get("contribution_bullets"))
+
+    if manual_bullets:
+        lines.append("Summary:")
+        lines.append(f"  - Project: {project_summary}")
+        if len(manual_bullets) == 1:
+            lines.append(f"  - My contribution: {manual_bullets[0]}")
+        else:
+            for bullet in manual_bullets:
+                lines.append(f"  - Contribution: {bullet}")
+        return lines
 
     # Code projects
     if project_type == "code":
