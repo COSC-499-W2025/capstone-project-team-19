@@ -230,3 +230,62 @@ def test_create_resume_sorts_by_score(monkeypatch):
     project_names = [p["project_name"] for p in data.get("projects", [])]
 
     assert project_names == ["projB", "projD", "projA", "projC"]
+
+
+def test_render_snapshot_text_activity_two_stages():
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    cur = conn.execute(
+        """
+        INSERT INTO project_classifications (
+            user_id,
+            zip_path,
+            zip_name,
+            project_name,
+            classification,
+            project_type,
+            recorded_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (user_id, "fake.zip", "fake", "TextProj", "collaborative", "text", "2025-01-01"),
+    )
+    classification_id = cur.lastrowid
+
+    from src.db.text_activity import store_text_activity_contribution
+    activity_data = {
+        "timestamp_analysis": {"duration_days": 12},
+        "summary": {
+            "total_files": 2,
+            "classified_files": 2,
+            "activity_counts": {"Draft": 3, "Revision": 1},
+        },
+        "activity_classification": {},
+        "timeline": [],
+    }
+    store_text_activity_contribution(conn, classification_id, activity_data)
+
+    from src.menu.resume.helpers import render_snapshot
+    snapshot = {
+        "projects": [
+            {
+                "project_name": "TextProj",
+                "project_type": "text",
+                "project_mode": "collaborative",
+                "text_type": "Academic writing",
+                "summary_text": "Example summary",
+                "contribution_percent": 50.0,
+                "classification_id": classification_id,
+                "languages": [],
+                "frameworks": [],
+                "skills": [],
+            }
+        ],
+        "aggregated_skills": {},
+    }
+
+    rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
+    lowered = rendered.lower()
+    assert "balanced draft" in lowered
+    assert "revision" in lowered

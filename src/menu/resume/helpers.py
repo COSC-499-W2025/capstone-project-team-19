@@ -241,14 +241,21 @@ def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
                     if len(top) >= 2:
                         a1, c1 = top[0]
                         a2, c2 = top[1]
-                        a3, c3 = (top[2] if len(top) >=3 else (None, 0))
                         p1 = c1 / total_events * 100.0
                         p2 = c2 / total_events * 100.0
-                        p3 = c3 / total_events * 100.0
-                        lines.append(
-                            f"    • Balanced {a1.lower()} ({p1:.1f}%) with {a2.lower()} ({p2:.1f}%), and {a3.lower()} ({p3:.1f}%) "
-                            f"supporting both content development and iterative improvement."
-                        )
+
+                        if len(top) >= 3:
+                            a3, c3 = top[2]
+                            p3 = c3 / total_events * 100.0
+                            lines.append(
+                                f"    • Balanced {str(a1).lower()} ({p1:.1f}%) with {str(a2).lower()} ({p2:.1f}%), and {str(a3).lower()} ({p3:.1f}%) "
+                                f"supporting both content development and iterative improvement."
+                            )
+                        else:
+                            lines.append(
+                                f"    • Balanced {str(a1).lower()} ({p1:.1f}%) with {str(a2).lower()} ({p2:.1f}%) "
+                                f"supporting both content development and iterative improvement."
+                            )
 
                     # Optional: mention presence of later-stage work if it exists
                     for stage in ("Revision", "Final"):
