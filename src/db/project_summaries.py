@@ -105,6 +105,23 @@ def get_project_summary_by_name(conn, user_id, project_name):
     }
 
 
+def update_project_summary_json(conn, user_id, project_name, summary_json) -> bool:
+    """
+    Update the summary_json for a specific project without changing created_at.
+    Returns True if a row was updated.
+    """
+    cur = conn.execute(
+        """
+        UPDATE project_summaries
+        SET summary_json = ?
+        WHERE user_id = ? AND project_name = ?
+        """,
+        (summary_json, user_id, project_name),
+    )
+    conn.commit()
+    return cur.rowcount > 0
+
+
 def get_all_projects_with_dates(conn, user_id):
     """
     Returns all projects for a user ordered by actual project completion date (newest first).
