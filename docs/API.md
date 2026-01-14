@@ -24,16 +24,17 @@ http://localhost:8000
 
 ## Table of Contents
 
-1. [Projects](#projects)
-2. [PrivacyConsent](#privacyconsent)
-3. [Skills](#skills)
-4. [Resume](#resume)
-5. [Portfolio](#portfolio)
-6. [Path Variables](#path-variables)  
-7. [DTO References](#dto-references)  
-8. [Best Practices](#best-practices)  
-9. [Error Codes](#error-codes)  
-10. [Example Error Response](#example-error-response)  
+1. [Health](#health)
+2. [Projects](#projects)
+3. [PrivacyConsent](#privacyconsent)
+4. [Skills](#skills)
+5. [Resume](#resume)
+6. [Portfolio](#portfolio)
+7. [Path Variables](#path-variables)  
+8. [DTO References](#dto-references)  
+9. [Best Practices](#best-practices)  
+10. [Error Codes](#error-codes)  
+11. [Example Error Response](#example-error-response)  
 
 ---
 
