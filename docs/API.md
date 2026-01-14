@@ -37,7 +37,7 @@ http://localhost:8000
 
 ---
 
-## **Projects**
+## **Health**
 
 **Base URL:** `/`
 
@@ -54,6 +54,8 @@ Basic health checkpoint to verify the service is up and responding.
         ```
 
 ---
+
+## **Projects**
 
 **Base URL:** `/projects`
 
