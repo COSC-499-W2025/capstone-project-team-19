@@ -12,6 +12,7 @@ from src.db.file_contributions import (
     get_user_contributed_files,
     get_file_contribution_stats,
     has_contribution_data,
+    delete_file_contributions_for_project,
 )
 from src.db import init_schema
 
@@ -158,6 +159,23 @@ def test_has_contribution_data_true(test_conn):
 def test_has_contribution_data_false(test_conn):
     """Test checking if contribution data exists - negative case."""
     assert has_contribution_data(test_conn, user_id=999, project_name="nonexistent") is False
+
+
+def test_delete_file_contributions_for_project(test_conn):
+    """Test removing all contributions for a user + project."""
+    contributions = {
+        "src/main.py": {"lines_changed": 150, "commits_count": 5},
+        "src/utils.py": {"lines_changed": 80, "commits_count": 2},
+    }
+
+    store_file_contributions(test_conn, 1, "proj1", contributions)
+    delete_file_contributions_for_project(test_conn, 1, "proj1")
+
+    cursor = test_conn.cursor()
+    cursor.execute(
+        "SELECT COUNT(*) FROM user_code_contributions WHERE user_id = 1 AND project_name = 'proj1'"
+    )
+    assert cursor.fetchone()[0] == 0
 
 
 def test_multiple_users_same_project(test_conn):

@@ -6,13 +6,19 @@ Display ranked projects with their scores.
 
 import json
 from src.insights.rank_projects.rank_project_importance import collect_project_data
-from src.db import get_project_summary_by_name
+from src.db import (
+    get_project_summary_by_name,
+    get_all_project_ranks,
+    clear_project_rank,
+    clear_all_rankings,
+    bulk_set_rankings
+)
 
 
 def view_ranked_projects(conn, user_id: int, username: str) -> None:
     """
     Display all projects ranked by their importance scores.
-    
+
     Args:
         conn: Database connection
         user_id: User ID
@@ -23,24 +29,34 @@ def view_ranked_projects(conn, user_id: int, username: str) -> None:
         print()
         print("1. View all ranked projects")
         print("2. View summaries of top projects")
-        print("3. Return to main menu")
+        print("3. Manually reorder projects")
+        print("4. Set specific project rank")
+        print("5. Reset to automatic ranking")
+        print("6. Return to main menu")
 
-        choice = input("\nPlease select an option (1-3): ").strip()
-        
+        choice = input("\nPlease select an option (1-6): ").strip()
+
         if choice == "1":
             view_all_ranked_projects(conn, user_id, username)
         elif choice == "2":
             view_top_projects_summaries(conn, user_id, username)
         elif choice == "3":
+            interactive_reorder(conn, user_id)
+        elif choice == "4":
+            set_specific_rank(conn, user_id)
+        elif choice == "5":
+            reset_to_auto_ranking(conn, user_id)
+        elif choice == "6":
             return None
         else:
-            print("Invalid choice. Please enter a number between 1 and 3.")
+            print("Invalid choice. Please enter a number between 1 and 6.")
 
 
 def view_all_ranked_projects(conn, user_id, username) -> None:
     try:
         project_scores = collect_project_data(conn, user_id)
-        
+        # Get manual rankings to show indicators
+        manual_ranks = dict(get_all_project_ranks(conn, user_id))
         if not project_scores:
             print(f"\n{'='*80}")
             print("No projects found. Please analyze some projects first.")
@@ -51,13 +67,17 @@ def view_all_ranked_projects(conn, user_id, username) -> None:
         print(f"Ranked Projects for {username}")
         print(f"\n{'='*80}\n")
         print(f"Found {len(project_scores)} project(s):\n")
-        print(f"{'Rank':<6} {'Project Name':<50} {'Score':<10}")
+        print(f"{'Rank':<6} {'Project Name':<50} {'Score':<10} {'Type':<8}")
         print("-" * 80)
-        
+
         for rank, (project_name, score) in enumerate(project_scores, start=1):
             # Truncate long project names
             display_name = project_name[:47] + "..." if len(project_name) > 50 else project_name
-            print(f"{rank:<6} {display_name:<50} {score:.3f}")
+
+            # Check if manually ranked
+            rank_type = "MANUAL" if project_name in manual_ranks and manual_ranks[project_name] is not None else "AUTO"
+
+            print(f"{rank:<6} {display_name:<50} {score:.3f}    {rank_type:<8}")
         
         print(f"\n{'='*80}\n")
         
@@ -68,8 +88,11 @@ def view_all_ranked_projects(conn, user_id, username) -> None:
 
 def view_top_projects_summaries(conn, user_id, username) -> None:
     try:
+        # collect_project_data already returns projects sorted with manual rankings respected
         project_scores = collect_project_data(conn, user_id)
-        project_scores.sort(key=lambda x: x[1], reverse=True)
+
+        # Get manual rankings to show indicators
+        manual_ranks = dict(get_all_project_ranks(conn, user_id))
 
         top_n = 3
         top_projects = project_scores[:top_n]
@@ -83,10 +106,13 @@ def view_top_projects_summaries(conn, user_id, username) -> None:
         print(f"\n{'='*80}\n")
         print(f"Top {len(top_projects)} Projects for {username}")
         print(f"\n{'='*80}\n")
-        
+
         for rank, (project_name, score) in enumerate(top_projects, start=1):
+            # Check if manually ranked
+            rank_type = " [MANUAL]" if project_name in manual_ranks and manual_ranks[project_name] is not None else ""
+
             print(f"\n{'='*80}")
-            print(f"Rank #{rank}: {project_name} (Score: {score:.3f})")
+            print(f"Rank #{rank}: {project_name} (Score: {score:.3f}){rank_type}")
             print(f"{'='*80}")
             
             # Get project summary
@@ -121,3 +147,135 @@ def view_top_projects_summaries(conn, user_id, username) -> None:
     except Exception as e:
         print(f"Error printing top projects summaries: {e}")
         print(f"{'='*80}\n")
+
+def interactive_reorder(conn, user_id):
+    projects = collect_project_data(conn, user_id, respect_manual_ranking=False)
+
+    if not projects:
+        print("\nNo projects found.")
+        return
+
+    print(f"\n{'='*80}")
+    print("Interactive Project Reordering")
+    print(f"{'='*80}")
+    print("Current order (by auto-score):")
+
+    for rank, (project_name, score) in enumerate(projects, start=1):
+        print(f"  {rank}. {project_name} (score: {score:.3f})")
+
+    print(f"\n{'='*80}")
+    print("Enter new order as comma-separated numbers (or 'cancel'):")
+    print("Example: 3, 1, 2")
+    print("Note: Projects not listed will use automatic ranking.")
+    print(f"{'='*80}")
+
+    user_input = input("\nNew order: ").strip()
+
+    if user_input.lower() == 'cancel':
+        print("Cancelled.")
+        return
+
+    # Parse input - convert to numbers
+    try:
+        new_order_indices = [int(num.strip()) - 1 for num in user_input.split(',')]
+    except ValueError:
+        print("\nError: Please enter valid numbers separated by commas.")
+        return
+
+    # Validate indices
+    if not all(0 <= idx < len(projects) for idx in new_order_indices):
+        print(f"\nError: All numbers must be between 1 and {len(projects)}.")
+        return
+
+    # Check for duplicates
+    if len(new_order_indices) != len(set(new_order_indices)):
+        print("\nError: Duplicate numbers detected. Each project should appear only once.")
+        return
+
+    # Convert indices to project names
+    new_order = [projects[idx][0] for idx in new_order_indices]
+
+    # Clear all existing rankings first
+    clear_all_rankings(conn, user_id)
+
+    # Apply new rankings
+    rankings = [(name, rank) for rank, name in enumerate(new_order, start=1)]
+    bulk_set_rankings(conn, user_id, rankings)
+
+    print(f"\nSuccessfully reordered {len(rankings)} projects!")
+    if len(rankings) < len(projects):
+        print(f"Note: {len(projects) - len(rankings)} project(s) not listed will use automatic ranking.")
+
+
+def set_specific_rank(conn, user_id):
+    """Set rank for a specific project."""
+    # Show projects in CURRENT ranking order so numbering matches what user sees
+    projects = collect_project_data(conn, user_id, respect_manual_ranking=True)
+    manual_ranks = dict(get_all_project_ranks(conn, user_id))
+
+    if not projects:
+        print("\nNo projects found.")
+        return
+
+    print(f"\n{'='*80}")
+    print("Available Projects (current ranking order):")
+    print(f"{'='*80}")
+
+    for idx, (project_name, score) in enumerate(projects, start=1):
+        # Show current rank status
+        rank_status = f"[Rank {manual_ranks[project_name]}]" if project_name in manual_ranks and manual_ranks[project_name] is not None else "[Auto]"
+        print(f"  {idx}. {project_name} {rank_status} (score: {score:.3f})")
+
+    print(f"{'='*80}")
+
+    try:
+        project_idx = int(input("\nEnter project number: ").strip()) - 1
+
+        if project_idx < 0 or project_idx >= len(projects):
+            print("Invalid project number.")
+            return
+
+        project_name = projects[project_idx][0]
+
+        rank_input = input(f"Enter rank for '{project_name}' (or 'auto' for automatic): ").strip()
+
+        if rank_input.lower() == 'auto':
+            clear_project_rank(conn, user_id, project_name)
+            print(f"\n'{project_name}' now uses automatic ranking.")
+        else:
+            desired_position = int(rank_input)
+            if desired_position < 1 or desired_position > len(projects):
+                print(f"Rank must be between 1 and {len(projects)}.")
+                return
+
+            # Reorder: treat rank as position in list, not absolute rank value
+            # Create new order by moving selected project to desired position
+            project_list = [name for name, score in projects]
+
+            # Remove project from current position
+            project_list.pop(project_idx)
+
+            # Insert at desired position (convert to 0-indexed)
+            project_list.insert(desired_position - 1, project_name)
+
+            # Assign sequential ranks to all projects in new order
+            rankings = [(name, rank) for rank, name in enumerate(project_list, start=1)]
+            bulk_set_rankings(conn, user_id, rankings)
+
+            print(f"\n'{project_name}' moved to position #{desired_position}.")
+
+    except ValueError:
+        print("Invalid input. Please enter a number.")
+
+
+def reset_to_auto_ranking(conn, user_id):
+    """Clear all manual rankings."""
+    confirm = input("\nAre you sure you want to reset all rankings to automatic? (y/n): ").strip().lower()
+
+    if confirm == 'yes' or confirm == 'y':
+        clear_all_rankings(conn, user_id)
+        print("\n All manual rankings cleared. Using automatic ranking.")
+    elif confirm == 'no' or confirm == 'n':
+        print("Cancelled.")
+    else:
+        print("Invalid input. Please enter 'yes' or 'no'.")

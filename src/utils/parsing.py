@@ -3,6 +3,7 @@ import zipfile
 import time
 import mimetypes
 import shutil
+from pathlib import Path
 from src.constants import CONFIG_FILES
 from src.utils.extension_catalog import code_extensions as pygments_code_extensions
 try:

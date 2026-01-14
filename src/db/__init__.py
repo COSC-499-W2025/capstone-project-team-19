@@ -96,6 +96,7 @@ from .file_contributions import (
     get_user_contributed_files,
     get_file_contribution_stats,
     has_contribution_data,
+    delete_file_contributions_for_project,
 )
 
 # files
@@ -171,6 +172,25 @@ from .portfolio import (
     get_code_individual_duration,
 )
 
+# deduplication
+from .deduplication import (
+    find_existing_version_by_strict_fp,
+    get_latest_versions,
+    get_hash_set_for_version,
+    insert_project,
+    insert_project_version,
+    insert_version_files)
+
+# project rankings
+from .project_rankings import (
+    set_project_rank,
+    get_project_rank,
+    get_all_project_ranks,
+    clear_project_rank,
+    clear_all_rankings,
+    bulk_set_rankings,
+)
+
 __all__ = [
     "connect",
     "init_schema",
@@ -208,6 +228,7 @@ __all__ = [
     "get_user_contributed_files",
     "get_file_contribution_stats",
     "has_contribution_data",
+    "delete_file_contributions_for_project",
     "delete_code_activity_metrics_for_project",
     "insert_code_activity_metric",
     "store_code_activity_metrics",
@@ -241,4 +262,16 @@ __all__ = [
     "clear_project_dates",
     "clear_all_project_dates",
     "get_all_manual_dates",
+    "find_existing_version_by_strict_fp",
+    "get_latest_versions",
+    "get_hash_set_for_version",
+    "insert_project",
+    "insert_project_version",
+    "insert_version_files"
+    "set_project_rank",
+    "get_project_rank",
+    "get_all_project_ranks",
+    "clear_project_rank",
+    "clear_all_rankings",
+    "bulk_set_rankings",
 ]

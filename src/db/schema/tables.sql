@@ -78,6 +78,40 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE INDEX IF NOT EXISTS idx_files_user 
     ON files(user_id, file_name);
 
+CREATE TABLE IF NOT EXISTS projects (
+    project_key INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    display_name TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS project_versions (
+    version_key INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_key INTEGER NOT NULL,
+    upload_id INTEGER,
+    fingerprint_strict TEXT NOT NULL,
+    fingerprint_loose TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_versions_unique_strict 
+    ON project_versions(project_key, fingerprint_strict);
+
+CREATE TABLE IF NOT EXISTS version_files (
+    version_key INTEGER NOT NULL,
+    relpath TEXT NOT NULL,
+    file_hash TEXT NOT NULL,
+    PRIMARY KEY (version_key, relpath),
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_version_files_hash 
+    ON version_files(file_hash);
+
+CREATE INDEX IF NOT EXISTS idx_version_files_version 
+    ON version_files(version_key);
+
 CREATE TABLE IF NOT EXISTS project_classifications (
     classification_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id           INTEGER NOT NULL,
@@ -558,3 +592,41 @@ CREATE TABLE IF NOT EXISTS resume_snapshots (
 
 CREATE INDEX IF NOT EXISTS idx_resume_snapshots_user
     ON resume_snapshots (user_id, created_at);
+
+-- PROJECT FEEDBACK (unmet criteria)
+CREATE TABLE IF NOT EXISTS project_feedback (
+    feedback_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    project_name    TEXT NOT NULL,
+    project_type    TEXT CHECK (project_type IN ('code','text')),
+    skill_name      TEXT NOT NULL,           -- e.g., clarity, structure, OOP, testing_and_ci
+    file_name       TEXT NOT NULL DEFAULT '', -- optional: store per-file misses; '' = project-level
+    criterion_key   TEXT NOT NULL,           -- stable id, e.g. "clarity.fragments_runons"
+    criterion_label TEXT NOT NULL,           -- human-readable title
+    expected        TEXT,                    -- what you look for
+    observed_json   TEXT,                    -- JSON blob (counts, thresholds, etc.)
+    suggestion      TEXT,                    -- how to improve
+    generated_at    TEXT NOT NULL DEFAULT (datetime('now')),
+
+    UNIQUE(user_id, project_name, skill_name, file_name, criterion_key),
+    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_feedback_lookup
+    ON project_feedback(user_id, project_name);
+
+CREATE INDEX IF NOT EXISTS idx_project_feedback_skill
+    ON project_feedback(user_id, project_name, skill_name);
+CREATE TABLE IF NOT EXISTS project_rankings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    project_name TEXT NOT NULL,
+    manual_rank INTEGER, 
+    updated_at TEXT DEFAULT (datetime('now')),
+
+    UNIQUE(user_id, project_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_rankings_user
+    ON project_rankings(user_id, manual_rank);

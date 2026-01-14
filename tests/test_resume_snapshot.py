@@ -136,3 +136,97 @@ def test_create_resume_with_fewer_than_five_projects(monkeypatch):
     data = json.loads(snaps[0]["name"] or "{}") if False else json.loads(get_resume_snapshot(conn, user_id, snaps[0]["id"])["resume_json"])
     projects = {p["project_name"] for p in data.get("projects", [])}
     assert projects == {"p1", "p2", "p3"}
+
+def test_create_resume_with_manual_selection(monkeypatch):
+    """Test selecting specific projects manually."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    names = [f"proj{i}" for i in range(6)]
+    for name in names:
+        save_project_summary(conn, user_id, name, _make_summary(name))
+
+    ranked = [(name, 1.0 - i*0.1) for i, name in enumerate(names)]
+
+    def fake_collect_project_data(conn_arg, user_id_arg):
+        return ranked
+
+    inputs = iter(["2,4,6", ""])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+    monkeypatch.setattr(resume_flow, "collect_project_data", fake_collect_project_data)
+
+    resume_flow._handle_create_resume(conn, user_id, "TestUser")
+
+    snapshots = list_resumes(conn, user_id)
+    assert len(snapshots) == 1
+
+    snap = get_resume_snapshot(conn, user_id, snapshots[0]["id"])
+    data = json.loads(snap["resume_json"])
+    project_names = [p["project_name"] for p in data.get("projects", [])]
+
+    assert project_names == ["proj1", "proj3", "proj5"]
+
+
+def test_create_resume_limits_to_five_projects(monkeypatch, capsys):
+    """Test that selecting more than 5 projects limits to 5."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    names = [f"proj{i}" for i in range(10)]
+    for name in names:
+        save_project_summary(conn, user_id, name, _make_summary(name))
+
+    ranked = [(name, 1.0 - i*0.1) for i, name in enumerate(names)]
+
+    def fake_collect_project_data(conn_arg, user_id_arg):
+        return ranked
+
+    inputs = iter(["1,2,3,4,5,6,7", ""])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+    monkeypatch.setattr(resume_flow, "collect_project_data", fake_collect_project_data)
+
+    resume_flow._handle_create_resume(conn, user_id, "TestUser")
+
+    captured = capsys.readouterr().out
+    assert "maximum is 5" in captured.lower() or "first 5" in captured.lower()
+
+    snapshots = list_resumes(conn, user_id)
+    assert len(snapshots) == 1
+
+    snap = get_resume_snapshot(conn, user_id, snapshots[0]["id"])
+    data = json.loads(snap["resume_json"])
+    project_names = [p["project_name"] for p in data.get("projects", [])]
+
+    assert len(project_names) == 5
+    assert project_names == ["proj0", "proj1", "proj2", "proj3", "proj4"]
+
+
+def test_create_resume_sorts_by_score(monkeypatch):
+    """Test that projects are saved in score order (highest first)."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    names = ["projA", "projB", "projC", "projD"]
+    for name in names:
+        save_project_summary(conn, user_id, name, _make_summary(name))
+
+    ranked = [("projB", 0.9), ("projD", 0.7), ("projA", 0.5), ("projC", 0.3)]
+
+    def fake_collect_project_data(conn_arg, user_id_arg):
+        return ranked
+
+    inputs = iter(["4,1,2,3", ""])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+    monkeypatch.setattr(resume_flow, "collect_project_data", fake_collect_project_data)
+
+    resume_flow._handle_create_resume(conn, user_id, "TestUser")
+
+    snapshots = list_resumes(conn, user_id)
+    snap = get_resume_snapshot(conn, user_id, snapshots[0]["id"])
+    data = json.loads(snap["resume_json"])
+    project_names = [p["project_name"] for p in data.get("projects", [])]
+
+    assert project_names == ["projB", "projD", "projA", "projC"]
