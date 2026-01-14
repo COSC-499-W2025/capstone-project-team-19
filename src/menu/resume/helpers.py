@@ -85,6 +85,7 @@ def has_resume_only_overrides(entry: Dict[str, Any], fields: set[str] | None = N
 
 
 def apply_resume_only_updates(entry: dict, updates: dict[str, Any]) -> None:
+    # Apply resume-only overrides to a single snapshot entry.
     if "display_name" in updates:
         if updates["display_name"]:
             entry["resume_display_name_override"] = updates["display_name"]

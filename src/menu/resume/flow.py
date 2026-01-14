@@ -162,6 +162,7 @@ def _handle_view_existing_resume(conn, user_id: int) -> bool:
 
 
 def _handle_edit_resume_wording(conn, user_id: int, username: str) -> bool:
+    # Entry point for resume wording edits (resume-only vs global).
     resumes = list_resumes(conn, user_id)
     if not resumes:
         print("No saved resumes yet. Create one first.")
@@ -240,6 +241,7 @@ def _handle_edit_resume_wording(conn, user_id: int, username: str) -> bool:
         print("No updates provided.")
         return False
 
+    # Resume-only updates: only touch the selected resume snapshot.
     if scope_choice == "1":
         apply_resume_only_updates(project_entry, updates)
         rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
@@ -248,6 +250,7 @@ def _handle_edit_resume_wording(conn, user_id: int, username: str) -> bool:
         print("[Resume] Updated wording for this resume.")
         return True
 
+    # Global updates: persist to project_summaries, then fan out to all saved resumes.
     manual_overrides = _update_project_manual_overrides(conn, user_id, project_name, updates)
     if manual_overrides is None:
         print("Unable to update project summary for global overrides.")
@@ -345,6 +348,7 @@ def _update_project_manual_overrides(conn, user_id: int, project_name: str, upda
     except Exception:
         return None
 
+    # Keep manual overrides on the project summary (shared by resume + portfolio).
     overrides = summary_dict.get("manual_overrides") or {}
     if not isinstance(overrides, dict):
         overrides = {}
@@ -374,6 +378,7 @@ def _apply_manual_overrides_to_resumes(
     fields: set[str],
     force_resume_id: int | None = None,
 ) -> None:
+    # Walk all saved resumes and apply the global overrides per matching project.
     resumes = list_resumes(conn, user_id)
     updated = 0
     skipped_fields = 0
@@ -394,6 +399,7 @@ def _apply_manual_overrides_to_resumes(
                 continue
             resume_only_fields = resume_only_override_fields(entry)
             force_update = force_resume_id == r["id"]
+            # If this is the selected resume, clear resume-only overrides so global applies.
             if force_update and resume_only_fields:
                 clear_updates = {field: None for field in fields}
                 apply_resume_only_updates(entry, clear_updates)
@@ -401,6 +407,7 @@ def _apply_manual_overrides_to_resumes(
 
             if "display_name" in fields:
                 if "display_name" in resume_only_fields and not force_update:
+                    # Respect resume-only overrides on other resumes (skip this field).
                     skipped_fields += 1
                 else:
                     if overrides.get("display_name"):
@@ -410,6 +417,7 @@ def _apply_manual_overrides_to_resumes(
                     changed = True
             if "summary_text" in fields:
                 if "summary_text" in resume_only_fields and not force_update:
+                    # Respect resume-only overrides on other resumes (skip this field).
                     skipped_fields += 1
                 else:
                     if overrides.get("summary_text"):
@@ -419,6 +427,7 @@ def _apply_manual_overrides_to_resumes(
                     changed = True
             if "contribution_bullets" in fields:
                 if "contribution_bullets" in resume_only_fields and not force_update:
+                    # Respect resume-only overrides on other resumes (skip this field).
                     skipped_fields += 1
                 else:
                     if overrides.get("contribution_bullets"):
@@ -428,6 +437,7 @@ def _apply_manual_overrides_to_resumes(
                     changed = True
 
         if changed:
+            # Re-render and persist the updated snapshot.
             rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
             updated_json = json.dumps(snapshot, default=str)
             update_resume_snapshot(conn, user_id, r["id"], updated_json, rendered)
