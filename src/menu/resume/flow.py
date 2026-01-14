@@ -100,7 +100,7 @@ def _handle_create_resume(conn, user_id: int, username: str):
             print(f"\n[Resume] Using {len(selected_summaries)} selected projects: {', '.join(selected_names)}")
     
     snapshot = build_resume_snapshot(selected_summaries)
-    rendered = render_snapshot(snapshot)
+    rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
 
     default_name = f"Resume {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     name = input(f"\nEnter a name for this resume [{default_name}]: ").strip() or default_name
