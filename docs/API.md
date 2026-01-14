@@ -39,6 +39,22 @@ http://localhost:8000
 
 ## **Projects**
 
+**Base URL:** `/`
+
+Basic health checkpoint to verify the service is up and responding.
+
+### **Endpoints**
+- **Health**
+    - **Endpoint**: `GET /health`
+    - **Description**: Returns the status of the service.
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {"status":"ok"}
+        ```
+
+---
+
 **Base URL:** `/projects`
 
 Handles project ingestion, analysis, classification, and metadata updates.
