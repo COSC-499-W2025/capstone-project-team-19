@@ -24,6 +24,7 @@ from .connection import connect, init_schema
 from .users import (
     get_user_by_username,
     get_or_create_user,
+    get_user_by_id
 )
 
 # Project operations
@@ -264,4 +265,5 @@ __all__ = [
     "clear_project_rank",
     "clear_all_rankings",
     "bulk_set_rankings",
+    "get_user_by_id"
 ]
