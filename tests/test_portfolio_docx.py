@@ -205,3 +205,46 @@ def test_portfolio_export_skips_missing_summary_row(monkeypatch, tmp_path, mem_c
     txt = _doc_text(path)
     assert "Portfolio — salma" in txt
     assert "missing_proj" not in txt  # skipped
+
+
+def test_portfolio_export_uses_manual_overrides(monkeypatch, tmp_path, mem_conn):
+    import src.export.portfolio_docx as exp
+
+    monkeypatch.setattr(exp, "collect_project_data", lambda conn, user_id: [("proj1", 0.8)])
+    monkeypatch.setattr(exp, "format_duration", lambda *a, **k: "Duration: N/A")
+    monkeypatch.setattr(exp, "format_activity_line", lambda *a, **k: "Activity: N/A")
+    monkeypatch.setattr(exp, "format_skills_block", lambda summary: ["Skills: N/A"])
+
+    summary = {
+        "project_name": "proj1",
+        "project_type": "code",
+        "project_mode": "individual",
+        "languages": [],
+        "frameworks": [],
+        "summary_text": "Original summary",
+        "metrics": {},
+        "contributions": {},
+        "manual_overrides": {
+            "display_name": "Manual Name",
+            "summary_text": "Manual summary",
+            "contribution_bullets": ["Did X", "Did Y"],
+        },
+    }
+
+    mem_conn.execute(
+        """
+        INSERT INTO project_summaries(user_id, project_name, project_type, project_mode, summary_json, created_at)
+        VALUES(?,?,?,?,?,?)
+        """,
+        (1, "proj1", "code", "individual", json.dumps(summary), "2026-01-01"),
+    )
+    mem_conn.commit()
+
+    out_dir = tmp_path / "out"
+    path = exp.export_portfolio_to_docx(mem_conn, 1, "salma", out_dir=str(out_dir))
+
+    txt = _doc_text(path)
+    assert "Manual Name" in txt
+    assert "Project: Manual summary" in txt
+    assert "Contribution: Did X" in txt
+    assert "Contribution: Did Y" in txt

@@ -125,7 +125,8 @@ from .project_summaries import (
     get_project_summaries_list,
     get_project_summary_by_name,
     get_all_projects_with_dates,
-    get_all_user_project_summaries
+    get_all_user_project_summaries,
+    update_project_summary_json,
 )
 
 # local git metrics for code collaborative projects
@@ -238,6 +239,7 @@ __all__ = [
     "get_project_summary_by_name",
     "get_all_projects_with_dates", 
     "get_skill_events",
+    "update_project_summary_json",
     "insert_code_collaborative_metrics",
     "get_metrics_id",
     "insert_code_collaborative_summary",
