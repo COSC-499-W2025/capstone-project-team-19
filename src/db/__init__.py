@@ -171,6 +171,7 @@ from .portfolio import (
 # deduplication
 from .deduplication import (
     find_existing_version_by_strict_fp,
+    find_existing_version_by_loose_fp,
     get_latest_versions,
     get_hash_set_for_version,
     insert_project,
@@ -254,6 +255,7 @@ __all__ = [
     "get_git_individual_metrics",
     "extract_git_metrics",
     "find_existing_version_by_strict_fp",
+    "find_existing_version_by_loose_fp",
     "get_latest_versions",
     "get_hash_set_for_version",
     "insert_project",

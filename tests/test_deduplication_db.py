@@ -2,7 +2,7 @@ import sqlite3
 import pytest
 from src.db.deduplication import (
     insert_project, insert_project_version, insert_version_files,
-    find_existing_version_by_strict_fp, get_latest_versions, get_hash_set_for_version
+    find_existing_version_by_strict_fp, find_existing_version_by_loose_fp, get_latest_versions, get_hash_set_for_version
 )
 
 @pytest.fixture
@@ -41,6 +41,13 @@ def test_find_existing_version_by_strict_fp(conn):
     result = find_existing_version_by_strict_fp(conn, 1, "fp123")
     assert result == (pk, vk)
     assert find_existing_version_by_strict_fp(conn, 1, "nonexistent") is None
+
+def test_find_existing_version_by_loose_fp(conn):
+    pk = insert_project(conn, 1, "Test")
+    vk = insert_project_version(conn, pk, None, "fp_strict", "fp_loose123")
+    result = find_existing_version_by_loose_fp(conn, 1, "fp_loose123")
+    assert result == (pk, vk)
+    assert find_existing_version_by_loose_fp(conn, 1, "nonexistent") is None
 
 def test_get_latest_versions(conn):
     pk1 = insert_project(conn, 1, "Proj1")
