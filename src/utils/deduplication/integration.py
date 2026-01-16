@@ -11,7 +11,7 @@ def handle_dedup_result(conn, user_id, result, display_name):
         pk = result["project_key"]
         row = conn.execute("SELECT display_name FROM projects WHERE project_key = ?", (pk,)).fetchone()
         existing = row[0] if row else "unknown"
-        print(f"\nExact duplicate of '{existing}' detected.")
+        print(f"\nProject '{display_name}' is an exact duplicate of '{existing}'.")
         if input("Skip this upload? (y/n): ").strip().lower() in {"y", "yes"}:
             return None
         return display_name
@@ -22,7 +22,7 @@ def handle_dedup_result(conn, user_id, result, display_name):
         file_count = result.get("file_count", "unknown")
         row = conn.execute("SELECT display_name FROM projects WHERE project_key = ?", (pk,)).fetchone()
         existing = row[0] if row else "unknown"
-        print(f"\nThis upload looks related to '{existing}' (similarity: {sim:.1%}" + 
+        print(f"\nProject '{display_name}' looks related to '{existing}' (similarity: {sim:.1%}" + 
               (f", files: {file_count}" if file_count != "unknown" else "") + ").")
         print("Is this:")
         print("  [N]  New project")
@@ -36,7 +36,7 @@ def handle_dedup_result(conn, user_id, result, display_name):
         pk = result["project_key"]
         row = conn.execute("SELECT display_name FROM projects WHERE project_key = ?", (pk,)).fetchone()
         existing = row[0] if row else display_name
-        print(f"Detected as new version of '{existing}'.")
+        print(f"Project '{display_name}' detected as new version of '{existing}'.")
         return existing
     
     return display_name
