@@ -9,6 +9,21 @@ TEXT_EXTS = {
     ".json",".yml",".yaml",".toml",".md",".txt",".xml",
 }
 
+def _normalize_path_for_fingerprint(rel_path: str) -> str:
+    """
+    Normalize a relative path by stripping 'individual/' or 'collaborative/' prefix.
+    This ensures the same project generates the same fingerprint regardless of classification folder.
+    
+    Examples:
+        "individual/MyApp/src/main.py" -> "MyApp/src/main.py"
+        "collaborative/MyApp/src/main.py" -> "MyApp/src/main.py"
+        "MyApp/src/main.py" -> "MyApp/src/main.py" (unchanged)
+    """
+    parts = rel_path.split("/")
+    if len(parts) > 1 and parts[0].lower() in {"individual", "collaborative"}:
+        return "/".join(parts[1:])
+    return rel_path
+
 def file_content_hash(path, normalize_text = True) -> str:
     """
     Returns hex SHA-256 of file contents. If normalize_text = True end ext looks like text, normalize CRLF -> LF.
@@ -33,6 +48,9 @@ def project_fingerprints(project_root):
         fp_strict: hash of sorted "relpath:file_hash" (used for exact duplicate detection)
         fp_loose: hash of sorted file_hash values only (optional, check for same project btu different name / different location)
         entries: list of (relpath, file_hash) (stored so we can perform jaccard similarity as needed)
+    
+    Paths are normalized to strip 'individual/' or 'collaborative/' prefixes, ensuring that
+    the same project uploaded in either folder structure generates the same fingerprint.
     """
 
     root = Path(project_root)
@@ -47,6 +65,10 @@ def project_fingerprints(project_root):
             continue
 
         rel_str = rel.as_posix() # using POSIX style paths so that linux and windows behave the same
+        
+        # Normalize path: strip 'individual/' or 'collaborative/' prefix if present
+        # This ensures same project detected as duplicate regardless of classification folder
+        rel_str = _normalize_path_for_fingerprint(rel_str)
 
         # hash the file contents
         h = file_content_hash(p, normalize_text=True)
