@@ -184,3 +184,42 @@ def test_portfolio_prefers_manual_contribution_for_collab_code(conn, capsys, mon
     assert "Project: LLM project summary" in out
     assert "My contribution: Manual contribution summary" in out
     assert "LLM contribution summary" not in out
+
+
+def test_portfolio_uses_manual_overrides(conn, capsys, monkeypatch):
+    user_id = 1
+    summary = {
+        "project_name": "proj1",
+        "project_type": "code",
+        "project_mode": "individual",
+        "languages": [],
+        "frameworks": [],
+        "summary_text": "Original summary",
+        "skills": [],
+        "metrics": {},
+        "contributions": {
+            "manual_contribution_summary": "Should be ignored",
+        },
+        "manual_overrides": {
+            "display_name": "Manual Name",
+            "summary_text": "Manual summary",
+            "contribution_bullets": ["Did X", "Did Y"],
+        },
+    }
+    save_project_summary(conn, user_id, "proj1", json.dumps(summary))
+
+    monkeypatch.setattr(
+        "src.menu.portfolio.collect_project_data",
+        lambda c, uid: [("proj1", 0.8)],
+        raising=False,
+    )
+    monkeypatch.setattr("builtins.input", lambda _: "n")
+
+    view_portfolio_items(conn, user_id, "Kevin")
+    out = capsys.readouterr().out
+
+    assert "[1] Manual Name" in out
+    assert "Project: Manual summary" in out
+    assert "Contribution: Did X" in out
+    assert "Contribution: Did Y" in out
+    assert "Original summary" not in out

@@ -20,6 +20,58 @@ from typing import Any, Dict, List, Optional
 from docx import Document
 
 
+def _clean_str(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    return text or None
+
+
+def _clean_bullets(values: Any) -> List[str]:
+    if not isinstance(values, list):
+        return []
+    cleaned: List[str] = []
+    for item in values:
+        text = str(item).strip()
+        if not text:
+            continue
+        if text.startswith(("-", "•")):
+            text = text.lstrip("-•").strip()
+        if text:
+            cleaned.append(text)
+    return cleaned
+
+
+def _resume_display_name(p: Dict[str, Any]) -> str:
+    resume_name = _clean_str(p.get("resume_display_name_override"))
+    if resume_name:
+        return resume_name
+    manual_name = _clean_str(p.get("manual_display_name"))
+    if manual_name:
+        return manual_name
+    return p.get("project_name") or "Unnamed project"
+
+
+def _resume_summary_text(p: Dict[str, Any]) -> str | None:
+    summary_override = _clean_str(p.get("resume_summary_override"))
+    if summary_override:
+        return summary_override
+    manual_summary = _clean_str(p.get("manual_summary_text"))
+    if manual_summary:
+        return manual_summary
+    return _clean_str(p.get("summary_text"))
+
+
+def _resume_contribution_bullets(p: Dict[str, Any]) -> List[str]:
+    resume_bullets = _clean_bullets(p.get("resume_contributions_override"))
+    if resume_bullets:
+        return resume_bullets
+    manual_bullets = _clean_bullets(p.get("manual_contribution_bullets"))
+    if manual_bullets:
+        return manual_bullets
+    return []
+
+
 def _safe_slug(s: str) -> str:
     s = (s or "").strip().lower()
     s = re.sub(r"[^a-z0-9]+", "_", s)
@@ -120,7 +172,7 @@ def export_resume_record_to_docx(
         doc.add_heading(header, level=1)
 
         for p in group_entries:
-            project_name = p.get("project_name") or "Unnamed project"
+            project_name = _resume_display_name(p)
             doc.add_heading(project_name, level=2)
 
             # Languages / Frameworks
@@ -136,9 +188,9 @@ def export_resume_record_to_docx(
                 doc.add_paragraph(f"Type: {p.get('text_type', 'Text')}")
 
             # Summary
-            summary_text = p.get("summary_text")
-            if isinstance(summary_text, str) and summary_text.strip():
-                doc.add_paragraph(f"Summary: {summary_text.strip()}")
+            summary_text = _resume_summary_text(p)
+            if summary_text:
+                doc.add_paragraph(f"Summary: {summary_text}")
 
             # Contributions
             contrib_bullets = p.get("contribution_bullets") or []
@@ -146,6 +198,22 @@ def export_resume_record_to_docx(
                 doc.add_paragraph("Contributions:")
                 for b in contrib_bullets:
                     _add_bullet(doc, str(b))
+            custom_bullets = _resume_contribution_bullets(p)
+            if custom_bullets:
+                doc.add_paragraph("Contributions:")
+                for bullet in custom_bullets:
+                    _add_bullet(doc, bullet)
+            elif ptype == "code":
+                activities = p.get("activities") or []
+                if activities:
+                    doc.add_paragraph("Contributions:")
+                    for act in activities:
+                        name = act.get("name") or "activity"
+                        top = act.get("top_file")
+                        top_info = f" (top: {top})" if top else ""
+                        _add_bullet(doc, f"{name}{top_info}")
+                else:
+                    doc.add_paragraph("Contributions: (no activity data)")
             else:
                 # Fallback for older snapshots (no contribution_bullets saved)
                 if ptype == "code":

@@ -12,6 +12,112 @@ from src.db import get_classification_id
 from src.db.text_activity import get_text_activity_contribution
 
 
+def _clean_str(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    return text or None
+
+
+def _clean_bullets(values: Any) -> List[str]:
+    if not isinstance(values, list):
+        return []
+    cleaned: List[str] = []
+    for item in values:
+        text = str(item).strip()
+        if not text:
+            continue
+        if text.startswith(("-", "•")):
+            text = text.lstrip("-•").strip()
+        if text:
+            cleaned.append(text)
+    return cleaned
+
+
+def resolve_resume_display_name(entry: Dict[str, Any]) -> str:
+    resume_name = _clean_str(entry.get("resume_display_name_override"))
+    if resume_name:
+        return resume_name
+    manual_name = _clean_str(entry.get("manual_display_name"))
+    if manual_name:
+        return manual_name
+    return entry.get("project_name") or "Unnamed project"
+
+
+def resolve_resume_summary_text(entry: Dict[str, Any]) -> str | None:
+    summary_override = _clean_str(entry.get("resume_summary_override"))
+    if summary_override:
+        return summary_override
+    manual_summary = _clean_str(entry.get("manual_summary_text"))
+    if manual_summary:
+        return manual_summary
+    return _clean_str(entry.get("summary_text"))
+
+
+def resolve_resume_contribution_bullets(entry: Dict[str, Any]) -> List[str]:
+    resume_bullets = _clean_bullets(entry.get("resume_contributions_override"))
+    if resume_bullets:
+        return resume_bullets
+    manual_bullets = _clean_bullets(entry.get("manual_contribution_bullets"))
+    if manual_bullets:
+        return manual_bullets
+    return []
+
+
+def resume_only_override_fields(entry: Dict[str, Any]) -> set[str]:
+    fields: set[str] = set()
+    if _clean_str(entry.get("resume_display_name_override")):
+        fields.add("display_name")
+    if _clean_str(entry.get("resume_summary_override")):
+        fields.add("summary_text")
+    if _clean_bullets(entry.get("resume_contributions_override")):
+        fields.add("contribution_bullets")
+    return fields
+
+
+def has_resume_only_overrides(entry: Dict[str, Any], fields: set[str] | None = None) -> bool:
+    overrides = resume_only_override_fields(entry)
+    if not overrides:
+        return False
+    if fields is None:
+        return True
+    return bool(overrides & fields)
+
+
+def apply_resume_only_updates(entry: dict, updates: dict[str, Any]) -> None:
+    # Apply resume-only overrides to a single snapshot entry.
+    if "display_name" in updates:
+        if updates["display_name"]:
+            entry["resume_display_name_override"] = updates["display_name"]
+        else:
+            entry.pop("resume_display_name_override", None)
+    if "summary_text" in updates:
+        if updates["summary_text"]:
+            entry["resume_summary_override"] = updates["summary_text"]
+        else:
+            entry.pop("resume_summary_override", None)
+    if "contribution_bullets" in updates:
+        if updates["contribution_bullets"]:
+            entry["resume_contributions_override"] = updates["contribution_bullets"]
+        else:
+            entry.pop("resume_contributions_override", None)
+
+
+def apply_manual_overrides(entry: Dict[str, Any], overrides: Dict[str, Any]) -> None:
+    if not isinstance(overrides, dict):
+        return
+    display_name = _clean_str(overrides.get("display_name"))
+    if display_name:
+        entry["manual_display_name"] = display_name
+    summary_text = _clean_str(overrides.get("summary_text"))
+    if summary_text:
+        entry["manual_summary_text"] = summary_text
+    bullets = _clean_bullets(overrides.get("contribution_bullets"))
+    if bullets:
+        entry["manual_contribution_bullets"] = bullets
+
+
+
 def load_project_summaries(conn, user_id: int, get_all_user_project_summaries) -> List[ProjectSummary]:
     """Fetch and deserialize all saved project summaries for the user."""
     rows = get_all_user_project_summaries(conn, user_id)
@@ -41,6 +147,8 @@ def build_resume_snapshot(summaries: List[ProjectSummary]) -> Dict[str, Any]:
             "summary_text": ps.summary_text,
             "skills": _extract_skills(ps, map_labels=True),
         }
+        if ps.manual_overrides:
+            apply_manual_overrides(entry, ps.manual_overrides)
 
         if ps.project_type == "text":
             entry["text_type"] = "Academic writing"
@@ -112,7 +220,7 @@ def render_snapshot(
 
 
 def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
-    lines = [f"\n- {p.get('project_name', 'Unnamed project')}"]
+    lines = [f"\n- {resolve_resume_display_name(p)}"]
 
     langs = p.get("languages") or []
     fws = p.get("frameworks") or []
@@ -123,11 +231,21 @@ def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
 
     if p.get("project_type") == "text":
         lines.append(f"  Type: {p.get('text_type', 'Text')}")
-    if p.get("summary_text"):
-        lines.append(f"  Summary: {p['summary_text']}")
+    summary_text = resolve_resume_summary_text(p)
+    if summary_text:
+        lines.append(f"  Summary: {summary_text}")
 
     # Contributions (single source of truth = stored bullets, else compute)
     lines.append("  Contributions:")
+    # Contributions
+    custom_bullets = resolve_resume_contribution_bullets(p)
+    if custom_bullets:
+        lines.append("  Contributions:")
+        for bullet in custom_bullets:
+            lines.append(f"    • {bullet}")
+    elif p.get("project_type") == "code":
+        project_name = p.get("project_name") or ""
+        is_collab = bool(p.get("is_collaborative") or p.get("project_mode") == "collaborative")
 
     bullets = p.get("contribution_bullets")
     if not isinstance(bullets, list) or not bullets:

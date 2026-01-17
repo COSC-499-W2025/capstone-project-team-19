@@ -29,6 +29,7 @@ from src.insights.portfolio import (
     format_activity_line,
     format_skills_block,
     format_summary_block,
+    resolve_portfolio_display_name,
 )
 
 
@@ -96,7 +97,8 @@ def export_portfolio_to_docx(
         created_at = row.get("created_at") or ""
 
         # Heading for project
-        doc.add_heading(f"{project_name}", level=1)
+        display_name = resolve_portfolio_display_name(summary, project_name)
+        doc.add_heading(f"{display_name}", level=1)
 
         # Metadata lines
         doc.add_paragraph(f"Score: {score:.3f}")
