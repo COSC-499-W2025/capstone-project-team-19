@@ -38,6 +38,7 @@ google-auth-oauthlib
 # Export to docx and pdf
 python-docx
 reportlab
+pypdf>=4.0   # for testing
 
 # FastAPI and web server (for API endpoints)
 fastapi>=0.104.0
