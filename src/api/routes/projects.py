@@ -17,3 +17,7 @@ def get_projects(
     dto = ProjectListDTO(projects=[ProjectListItemDTO(**row) for row in rows])
     
     return ApiResponse(success=True, data=dto, error=None)
+
+@router.post("/upload")
+def post_projects():
+    return {"status": "ok"}

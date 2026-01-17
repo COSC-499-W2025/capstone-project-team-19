@@ -188,6 +188,19 @@ from .project_rankings import (
     bulk_set_rankings,
 )
 
+# uploads
+from .uploads import (
+    create_upload,
+    get_upload_by_id,
+    list_uploads_for_user,
+    update_upload_status,
+    update_upload_zip_metadata,
+    set_upload_state,
+    patch_upload_state,
+    mark_upload_failed,
+    delete_upload,
+)
+
 __all__ = [
     "connect",
     "init_schema",
@@ -267,5 +280,23 @@ __all__ = [
     "clear_project_rank",
     "clear_all_rankings",
     "bulk_set_rankings",
-    "get_user_by_id"
+    "get_user_by_id",
+    "get_zip_name_for_project",
+    "insert_resume_snapshot",
+    "list_resumes",
+    "get_resume_snapshot",
+    "update_resume_snapshot",
+    "delete_resume_snapshot",
+    "delete_project_everywhere",
+    "insert_version_files",
+    "set_project_rank",
+    "create_upload",
+    "get_upload_by_id",
+    "list_uploads_for_user",
+    "update_upload_status",
+    "update_upload_zip_metadata",
+    "set_upload_state",
+    "patch_upload_state",
+    "mark_upload_failed",
+    "delete_upload",
 ]
