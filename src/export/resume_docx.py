@@ -141,21 +141,28 @@ def export_resume_record_to_docx(
                 doc.add_paragraph(f"Summary: {summary_text.strip()}")
 
             # Contributions
-            if ptype == "code":
-                activities = p.get("activities") or []
-                if activities:
-                    doc.add_paragraph("Contributions:")
-                    for act in activities:
-                        name = act.get("name") or "activity"
-                        top = act.get("top_file")
-                        top_info = f" (top: {top})" if top else ""
-                        _add_bullet(doc, f"{name}{top_info}")
-                else:
-                    doc.add_paragraph("Contributions: (no activity data)")
+            contrib_bullets = p.get("contribution_bullets") or []
+            if contrib_bullets:
+                doc.add_paragraph("Contributions:")
+                for b in contrib_bullets:
+                    _add_bullet(doc, str(b))
             else:
-                pct = p.get("contribution_percent")
-                if isinstance(pct, (int, float)):
-                    doc.add_paragraph(f"Contribution: {pct:.1f}% of document")
+                # Fallback for older snapshots (no contribution_bullets saved)
+                if ptype == "code":
+                    activities = p.get("activities") or []
+                    if activities:
+                        doc.add_paragraph("Contributions:")
+                        for act in activities:
+                            name = act.get("name") or "activity"
+                            top = act.get("top_file")
+                            top_info = f" (top: {top})" if top else ""
+                            _add_bullet(doc, f"{name}{top_info}")
+                    else:
+                        doc.add_paragraph("Contributions: (no activity data)")
+                else:
+                    pct = p.get("contribution_percent")
+                    if isinstance(pct, (int, float)):
+                        doc.add_paragraph(f"Contribution: {pct:.1f}% of document")
 
             # Skills
             skills = p.get("skills") or []

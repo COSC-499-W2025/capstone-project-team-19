@@ -15,7 +15,7 @@ from src.db import (
     get_resume_snapshot,
 )
 from src.insights.rank_projects.rank_project_importance import collect_project_data
-from .helpers import load_project_summaries, build_resume_snapshot, render_snapshot
+from .helpers import load_project_summaries, build_resume_snapshot, render_snapshot, enrich_snapshot_with_contributions
 from src.export.resume_docx import export_resume_record_to_docx
 
 def _handle_create_resume(conn, user_id: int, username: str):
@@ -100,6 +100,10 @@ def _handle_create_resume(conn, user_id: int, username: str):
             print(f"\n[Resume] Using {len(selected_summaries)} selected projects: {', '.join(selected_names)}")
     
     snapshot = build_resume_snapshot(selected_summaries)
+
+    # NEW: freeze the "Contributed..." bullets into the snapshot JSON
+    snapshot = enrich_snapshot_with_contributions(conn, user_id, snapshot)
+
     rendered = render_snapshot(conn, user_id, snapshot)
 
     default_name = f"Resume {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"

@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 from src.db.code_activity import get_code_activity_percents, get_normalized_code_metrics
 from src.db import get_classification_id
 from src.db.text_activity import get_text_activity_contribution
-
+from src.db.resumes import build_contribution_bullets
 
 
 def load_project_summaries(conn, user_id: int, get_all_user_project_summaries) -> List[ProjectSummary]:
@@ -387,3 +387,12 @@ def _aggregate_skills(summaries: List[ProjectSummary]) -> Dict[str, List[str]]:
         "technical_skills": sorted(tech_skills),
         "writing_skills": sorted(writing_skills),
     }
+
+def enrich_snapshot_with_contributions(conn, user_id: int, snapshot: Dict[str, Any]) -> Dict[str, Any]:
+    projects = snapshot.get("projects") or []
+    for p in projects:
+        if conn and user_id is not None:
+            p["contribution_bullets"] = build_contribution_bullets(conn, user_id, p)
+        else:
+            p["contribution_bullets"] = []
+    return snapshot
