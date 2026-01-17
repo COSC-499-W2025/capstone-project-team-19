@@ -99,7 +99,57 @@ Handles user consent for internal processing and external integrations.
 
 ### **Endpoints**
 
+- **Record Internal Processing Consent**
+    - **Endpoint**: `POST /privacy-consent/internal`
+    - **Description**: Records the user's consent for internal data processing
+    - **Headers**:
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Request Body**:
+        ```json
+        {
+            "status": "accepted"
+        }
+        ```
+    - **Response Status**: `201 Created`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "consent_id": 1,
+                "user_id": 1,
+                "status": "accepted",
+                "timestamp": "2026-01-17T12:34:56.789012"
+            },
+            "error": null
+        }
+        ```
 
+- **Record External Integration Consent**
+    - **Endpoint**: `POST /privacy-consent/external`
+    - **Description**: Records the user's consent for external service integrations
+    - **Headers**:
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Request Body**:
+        ```json
+        {
+            "status": "rejected"
+        }
+        ```
+    - **Response Status**: `201 Created`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "consent_id": 2,
+                "user_id": 1,
+                "status": "rejected",
+                "timestamp": "2026-01-17T12:35:00.123456"
+            },
+            "error": null
+        }
+        ```
 
 ---
 
@@ -164,6 +214,15 @@ Example:
     - `project_type` (string, optional)
     - `project_mode` (string, optional)
     - `created_at` (string, optional)
+
+- **ConsentRequestDTO**
+    - `status` (string, required): Must be either "accepted" or "rejected"
+
+- **ConsentResponseDTO**
+    - `consent_id` (int, required): Unique identifier for the consent record
+    - `user_id` (int, required): User who gave the consent
+    - `status` (string, required): "accepted" or "rejected"
+    - `timestamp` (string, required): ISO 8601 timestamp of when consent was recorded
 
 ---
 
