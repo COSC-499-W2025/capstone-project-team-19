@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 from src.db.code_activity import get_code_activity_percents, get_normalized_code_metrics
 from src.db import get_classification_id
 from src.db.text_activity import get_text_activity_contribution
-
+from .date_helpers import enrich_snapshot_with_dates
 
 def _clean_str(value: Any) -> str | None:
     if not isinstance(value, str):
@@ -533,6 +533,8 @@ def _aggregate_skills(summaries: List[ProjectSummary]) -> Dict[str, List[str]]:
     }
 
 def enrich_snapshot_with_contributions(conn, user_id: int, snapshot: Dict[str, Any]) -> Dict[str, Any]:
+    snapshot = enrich_snapshot_with_dates(conn, user_id, snapshot)
+
     projects = snapshot.get("projects") or []
     for p in projects:
         if conn and user_id is not None:
