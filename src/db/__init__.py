@@ -142,7 +142,6 @@ from .resumes import (
     get_resume_snapshot,
     update_resume_snapshot,      
     delete_resume_snapshot,
-    build_contribution_bullets
 )
 
 from .delete_project import delete_project_everywhere
