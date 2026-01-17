@@ -35,8 +35,9 @@ google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
 
-# Export to docx
+# Export to docx and pdf
 python-docx
+reportlab
 
 # FastAPI and web server (for API endpoints)
 fastapi>=0.104.0
