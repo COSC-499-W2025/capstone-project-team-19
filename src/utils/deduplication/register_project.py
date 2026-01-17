@@ -58,9 +58,13 @@ def register_project(conn, user_id: int, display_name: str, project_root: str, u
             insert_version_files(conn, vk, entries)
         return {"kind": "new_version", "project_key": best_pk, "version_key": vk, "similarity": best_sim}
 
-    # Small projects are noisy => ask user even if similarity is low
+    # Small projects are noisy so default to new project unless clearly a version
     if len(entries) < noisy_file_count:
-        return {"kind": "ask", "best_match_project_key": best_pk, "similarity": best_sim, "file_count": len(entries)}
+        with conn:
+            pk = insert_project(conn, user_id, display_name)
+            vk = insert_project_version(conn, pk, upload_id, fp_strict, fp_loose)
+            insert_version_files(conn, vk, entries)
+        return {"kind": "new_project", "project_key": pk, "version_key": vk, "similarity": best_sim, "file_count": len(entries)}
 
     # Scenario 3: new project
     if best_sim <= low:
