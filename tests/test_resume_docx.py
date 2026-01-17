@@ -48,6 +48,9 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
                 "frameworks": ["LightGBM"],
                 "summary_text": "code summary",
                 "activities": [{"name": "feature_coding", "top_file": "a.py"}],
+                "contribution_bullets": [
+                    "Contributed 12.3% of total repository commits (4 commits) across testing workflows."
+                ],
                 "skills": ["Algorithms"],
             },
             {
@@ -57,6 +60,9 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
                 "text_type": "Academic writing",
                 "summary_text": "text summary",
                 "contribution_percent": 91.0,
+                "contribution_bullets": [
+                    "Contributed to 91.0% of the project deliverables."
+                ],
                 "skills": ["Clear communication"],
             },
         ],
@@ -89,13 +95,13 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     assert "code_ind" in txt
     assert "Summary: code summary" in txt
     assert "Contributions:" in txt
-    assert "feature_coding (top: a.py)" in txt
+    assert "Contributed 12.3% of total repository commits" in txt
     assert "Skills:" in txt
 
     assert "Text — Collaborative" in txt
     assert "text_collab" in txt
     assert "Type: Academic writing" in txt
-    assert "Contribution: 91.0% of document" in txt
+    assert "Contributed to 91.0% of the project deliverables." in txt
 
 
 def test_resume_export_nonhappy_no_saved_resumes(monkeypatch, capsys):

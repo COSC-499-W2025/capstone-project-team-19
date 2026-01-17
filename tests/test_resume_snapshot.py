@@ -289,3 +289,33 @@ def test_render_snapshot_text_activity_two_stages():
     lowered = rendered.lower()
     assert "balanced draft" in lowered
     assert "revision" in lowered
+
+def test_create_resume_stores_contribution_bullets(monkeypatch):
+    import src.menu.resume.flow as flow
+    import src.menu.resume.helpers as helpers
+
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    save_project_summary(
+        conn,
+        user_id,
+        "projA",
+        _make_summary("projA", project_type="code", project_mode="individual"),
+    )
+
+    monkeypatch.setattr(flow, "collect_project_data", lambda c, u: [("projA", 1.0)])
+    monkeypatch.setattr(
+        helpers,
+        "build_contribution_bullets",
+        lambda c, u, p: ["Contributed X."],
+    )
+    monkeypatch.setattr("builtins.input", lambda _: "")
+
+    flow._handle_create_resume(conn, user_id, "TestUser")
+
+    snap = get_resume_snapshot(conn, user_id, list_resumes(conn, user_id)[0]["id"])
+    data = json.loads(snap["resume_json"])
+
+    assert data["projects"][0]["contribution_bullets"] == ["Contributed X."]
