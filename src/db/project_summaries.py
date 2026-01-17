@@ -108,7 +108,7 @@ def get_project_summary_by_name(conn, user_id, project_name):
 def get_all_projects_with_dates(conn, user_id):
     """
     Returns all projects for a user ordered by actual project completion date (newest first).
-    
+    Prioritizes manual_end_date if set, otherwise uses automatic dates.
     Returns list of dicts with keys: project_name, actual_project_date
     """
     query = """
@@ -130,16 +130,19 @@ def get_all_projects_with_dates(conn, user_id):
         project_dates AS (
             SELECT 
                 ps.project_name,
-                CASE
-                    WHEN lc.project_type = 'text' THEN tac.end_date
-                    WHEN lc.project_type = 'code' THEN 
-                        COALESCE(
-                            grm.last_commit_date,
-                            json_extract(ps.summary_json, '$.metrics.git.commit_stats.last_commit_date'),
-                            json_extract(ps.summary_json, '$.metrics.collaborative_git.last_commit_date')
-                        )
-                    ELSE NULL
-                END AS actual_project_date
+                COALESCE(
+                    ps.manual_end_date,
+                    CASE
+                        WHEN lc.project_type = 'text' THEN tac.end_date
+                        WHEN lc.project_type = 'code' THEN
+                            COALESCE(
+                                grm.last_commit_date,
+                                json_extract(ps.summary_json, '$.metrics.git.commit_stats.last_commit_date'),
+                                json_extract(ps.summary_json, '$.metrics.collaborative_git.last_commit_date')
+                            )
+                        ELSE NULL
+                    END
+                ) AS actual_project_date
             FROM project_summaries ps
             LEFT JOIN latest_classification lc
                 ON ps.user_id = ?  -- Note: need user_id in join for safety
@@ -160,9 +163,9 @@ def get_all_projects_with_dates(conn, user_id):
             actual_project_date DESC NULLS LAST,
             project_name;
     """
-    
+
     rows = conn.execute(query, (user_id, user_id, user_id)).fetchall()
-    
+
     return [
         {
             "project_name": row[0],
@@ -173,31 +176,14 @@ def get_all_projects_with_dates(conn, user_id):
 
 # Manual date override functions
 
-def set_project_dates(conn, user_id, project_name, start_date=None, end_date=None):
-    # Build dynamic update query
-    updates = []
-    params = []
-
-    if start_date is not None:
-        updates.append("manual_start_date = ?")
-        params.append(start_date)
-
-    if end_date is not None:
-        updates.append("manual_end_date = ?")
-        params.append(end_date)
-
-    if not updates:
-        return  # Nothing to update
-
-    params.extend([user_id, project_name])
-
+def set_project_dates(conn, user_id, project_name, start_date, end_date):
     conn.execute(
-        f"""
+        """
         UPDATE project_summaries
-        SET {', '.join(updates)}
+        SET manual_start_date = ?, manual_end_date = ?
         WHERE user_id = ? AND project_name = ?
         """,
-        params
+        (start_date, end_date, user_id, project_name)
     )
     conn.commit()
 

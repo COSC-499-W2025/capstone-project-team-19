@@ -162,10 +162,16 @@ def set_project_date(conn, user_id):
         start_date_input = input("Start date (YYYY-MM-DD or Enter to skip): ").strip()
         end_date_input = input("End date (YYYY-MM-DD or Enter to skip): ").strip()
 
-        # Parse inputs
-        start_date = start_date_input if start_date_input else None
-        end_date = end_date_input if end_date_input else None
+        # Get current manual dates
+        current_dates = get_project_dates(conn, user_id, project_name)
+        current_start = current_dates[0] if current_dates else None
+        current_end = current_dates[1] if current_dates else None
 
+        # Determine which dates to set
+        start_date = start_date_input if start_date_input else current_start
+        end_date = end_date_input if end_date_input else current_end
+
+        # Check if there's anything to update
         if not start_date and not end_date:
             print("\nNo dates provided. No changes made.")
             return
