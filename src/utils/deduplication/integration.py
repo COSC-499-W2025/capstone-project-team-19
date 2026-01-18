@@ -11,10 +11,8 @@ def handle_dedup_result(conn, user_id, result, display_name):
         pk = result["project_key"]
         row = conn.execute("SELECT display_name FROM projects WHERE project_key = ?", (pk,)).fetchone()
         existing = row[0] if row else "unknown"
-        print(f"\nProject '{display_name}' is an exact duplicate of '{existing}'.")
-        if input("Skip this upload? (y/n): ").strip().lower() in {"y", "yes"}:
-            return None
-        return display_name
+        print(f"\nProject '{display_name}' is an exact duplicate of '{existing}'. Skipping upload.")
+        return None
     
     elif kind == "ask":
         pk = result["best_match_project_key"]
