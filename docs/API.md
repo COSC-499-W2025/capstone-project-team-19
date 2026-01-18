@@ -96,6 +96,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **Headers**: 
         - `X-User-Id` (integer, required): Current user identifier
     - **Response Status**: `200 OK` on sucess `404 Not Found` if project doesn't exist or belong to user
+    - **Response DTO**: `ProjectDetailDTO`
     - **Response Body**:
         ```json
                 {
@@ -195,6 +196,19 @@ Example:
     - `project_type` (string, optional)
     - `project_mode` (string, optional)
     - `created_at` (string, optional)
+
+- **ProjectDetailDTO** (used by `GET /projects/{projectId}`)
+    - `project_summary_id` (int, required)
+    - `project_name` (string, required)
+    - `project_type` (string, optional)
+    - `project_mode` (string, optional)
+    - `created_at` (string, optional)
+    - `summary_text` (string, optional)
+    - `languages` (array of strings, optional)
+    - `frameworks` (array of strings, optional)
+    - `skills` (array of strings, optional)
+    - `metrics` (object, optional)
+    - `contributions` (object, optional)
 
 ---
 
