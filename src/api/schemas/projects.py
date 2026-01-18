@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Any, List, Optional
 
 class ProjectListItemDTO(BaseModel):
     project_summary_id: int
@@ -17,5 +17,9 @@ class ProjectDetailDTO(BaseModel):
     project_type: Optional[str] = None
     project_mode: Optional[str] = None
     created_at: Optional[str] = None
-    summary_json: str  #frontend will parse this JSON string
-    
+    summary_text: Optional[str] = None
+    languages: List[str] = []
+    frameworks: List[str] = []
+    skills: List[str] = []
+    metrics: Dict[str, Any] = {}
+    contributions: Dict[str, Any] = {}
