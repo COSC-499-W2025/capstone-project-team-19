@@ -20,6 +20,8 @@ from src.db import (
 
 def is_valid_date(date_str: str) -> bool:
     """Validate date string is in YYYY-MM-DD format with valid month and day."""
+    if len(date_str) != 10:
+        return False
     try:
         datetime.strptime(date_str, "%Y-%m-%d")
         return True

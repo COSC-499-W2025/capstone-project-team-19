@@ -199,8 +199,8 @@ class TestSetProjectDate:
         captured = capsys.readouterr().out
         assert "No dates provided" in captured
 
-    def test_set_project_date_invalid_format(self, monkeypatch, capsys):
-        """Test that invalid date formats are rejected."""
+    def test_set_project_date_invalid_month(self, monkeypatch, capsys):
+        """Test that invalid month (13) is rejected."""
         conn = sqlite3.connect(":memory:")
         init_schema(conn)
         user_id = 1
@@ -215,14 +215,69 @@ class TestSetProjectDate:
             _mock_collect_project_data(conn, user_id, [project_name])
         )
 
-        # Mock inputs: project number (1), invalid start date
-        inputs = iter(["1", "2024-1-1", ""])
+        # Mock inputs: project number, invalid month, then skip, skip end
+        inputs = iter(["1", "2024-13-01", "", ""])
         monkeypatch.setattr("builtins.input", lambda prompt: next(inputs))
 
         set_project_date(conn, user_id)
 
         captured = capsys.readouterr().out
-        assert "Invalid" in captured
+        assert "Invalid date" in captured
+
+    def test_set_project_date_invalid_day(self, monkeypatch, capsys):
+        """Test that invalid day (Feb 30) is rejected."""
+        conn = sqlite3.connect(":memory:")
+        init_schema(conn)
+        user_id = 1
+
+        project_name = "TestProject"
+        save_project_summary(conn, user_id, project_name, _make_summary(project_name))
+
+        from src.menu import project_dates
+        monkeypatch.setattr(
+            project_dates,
+            "collect_project_data",
+            _mock_collect_project_data(conn, user_id, [project_name])
+        )
+
+        # Mock inputs: project number, invalid day (Feb 30), then valid, end date
+        inputs = iter(["1", "2024-02-30", "2024-02-28", "2024-12-31"])
+        monkeypatch.setattr("builtins.input", lambda prompt: next(inputs))
+
+        set_project_date(conn, user_id)
+
+        captured = capsys.readouterr().out
+        assert "Invalid date" in captured
+        assert "Dates updated" in captured
+
+    def test_set_project_date_start_after_end(self, monkeypatch, capsys):
+        """Test that start date after end date is rejected."""
+        conn = sqlite3.connect(":memory:")
+        init_schema(conn)
+        user_id = 1
+
+        project_name = "TestProject"
+        save_project_summary(conn, user_id, project_name, _make_summary(project_name))
+
+        from src.menu import project_dates
+        monkeypatch.setattr(
+            project_dates,
+            "collect_project_data",
+            _mock_collect_project_data(conn, user_id, [project_name])
+        )
+
+        # Mock inputs: project number, start date after end date
+        inputs = iter(["1", "2024-12-31", "2024-01-01"])
+        monkeypatch.setattr("builtins.input", lambda prompt: next(inputs))
+
+        set_project_date(conn, user_id)
+
+        captured = capsys.readouterr().out
+        assert "Start date cannot be after end date" in captured
+
+        # Verify dates were NOT saved
+        dates = get_project_dates(conn, user_id, project_name)
+        assert dates == (None, None)
 
     def test_set_project_date_invalid_project_number(self, monkeypatch, capsys):
         """Test that invalid project numbers are rejected."""
