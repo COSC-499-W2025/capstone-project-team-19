@@ -628,3 +628,14 @@ CREATE TABLE IF NOT EXISTS project_rankings (
 
 CREATE INDEX IF NOT EXISTS idx_project_rankings_user
     ON project_rankings(user_id, manual_rank);
+
+CREATE TABLE IF NOT EXISTS project_thumbnails (
+    thumbnail_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL,
+    project_name TEXT NOT NULL,
+    image_path   TEXT NOT NULL,
+    added_at     TEXT NOT NULL,
+    updated_at   TEXT NOT NULL,
+    UNIQUE(user_id, project_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
