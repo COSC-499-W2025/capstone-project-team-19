@@ -4,6 +4,7 @@ src/menu/project_dates.py
 Menu for editing project dates (affects chronological skills and portfolio items).
 """
 
+from datetime import datetime
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from src.db import (
     get_project_dates,
@@ -16,6 +17,28 @@ from src.db import (
     get_code_individual_duration,
     get_code_collaborative_duration,
 )
+
+def is_valid_date(date_str: str) -> bool:
+    """Validate date string is in YYYY-MM-DD format with valid month and day."""
+    try:
+        datetime.strptime(date_str, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+def prompt_for_date(prompt: str, current_value: str | None) -> str | None:
+    """Prompt user for a valid date, looping until valid input or skip."""
+    while True:
+        date_input = input(prompt).strip()
+
+        if not date_input:
+            return current_value
+
+        if is_valid_date(date_input):
+            return date_input
+
+        print("  Invalid date. Use YYYY-MM-DD with valid month (1-12) and day.")
+        print("  Press Enter to skip or try again.")
 
 
 def edit_project_dates_menu(conn, user_id: int, username: str) -> None:
@@ -159,31 +182,25 @@ def set_project_date(conn, user_id):
         print(f"\nSetting dates for: {project_name}")
         print("Enter dates in YYYY-MM-DD format, or press Enter to skip/keep current.")
 
-        start_date_input = input("Start date (YYYY-MM-DD or Enter to skip): ").strip()
-        end_date_input = input("End date (YYYY-MM-DD or Enter to skip): ").strip()
-
         # Get current manual dates
         current_dates = get_project_dates(conn, user_id, project_name)
         current_start = current_dates[0] if current_dates else None
         current_end = current_dates[1] if current_dates else None
 
-        # Determine which dates to set
-        start_date = start_date_input if start_date_input else current_start
-        end_date = end_date_input if end_date_input else current_end
+        start_date = prompt_for_date("Start date (YYYY-MM-DD or Enter to skip): ", current_start)
+        end_date = prompt_for_date("End date (YYYY-MM-DD or Enter to skip): ", current_end)
 
         # Check if there's anything to update
         if not start_date and not end_date:
             print("\nNo dates provided. No changes made.")
             return
 
-        # Validate date format (basic check)
-        if start_date and len(start_date) != 10:
-            print("\nInvalid start date format. Use YYYY-MM-DD.")
-            return
-
-        if end_date and len(end_date) != 10:
-            print("\nInvalid end date format. Use YYYY-MM-DD.")
-            return
+        if start_date and end_date:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+            if start_dt > end_dt:
+                print("\nError: Start date cannot be after end date.")
+                return
 
         # Save dates
         set_project_dates(conn, user_id, project_name, start_date, end_date)
