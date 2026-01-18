@@ -10,3 +10,12 @@ class ProjectListItemDTO(BaseModel):
 
 class ProjectListDTO(BaseModel):
     projects: List[ProjectListItemDTO]
+
+class ProjectDetailDTO(BaseModel):
+    project_summary_id: int
+    project_name: str
+    project_type: Optional[str] = None
+    project_mode: Optional[str] = None
+    created_at: Optional[str] = None
+    summary_json: str  #frontend will parse this JSON string
+    
