@@ -13,7 +13,6 @@ UPLOAD_STATUSES = {
     "needs_classification",
     "needs_file_roles",
     "needs_summaries",
-    "ready_to_analyze",
     "analyzing",
     "done",
     "failed",
