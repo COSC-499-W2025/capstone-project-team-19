@@ -18,6 +18,7 @@ def show_start_menu(username: str) -> int:
     print("6. Delete old insights")
     print("7. View all projects ranked")
     print("8. View chronological skills")
+    print("9. View all projects")
     print("10. Manage project thumbnails")
     print("11. Exit")
 
