@@ -22,10 +22,10 @@ def get_project_by_id(conn,user_id: int, project_summary_id: int) -> Optional[Di
     except json.JSONDecodeError:
         summary_dict = {}
     
+    row_without_json = {k: v for k, v in row.items() if k != "summary_json"}
+    
     # Flatten it
     return {
-        **row, 
+        **row_without_json, 
         **summary_dict  
     }
-
-    return row  
