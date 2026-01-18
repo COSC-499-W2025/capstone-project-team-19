@@ -151,6 +151,25 @@ Handles user consent for internal processing and external integrations.
         }
         ```
 
+- **Get Consent Status**
+    - **Endpoint**: `GET /privacy-consent/status`
+    - **Description**: Retrieves the current consent status for the authenticated user (returns the most recent consent for each type)
+    - **Headers**:
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "user_id": 1,
+                "internal_consent": "accepted",
+                "external_consent": "rejected"
+            },
+            "error": null
+        }
+        ```
+
 ---
 
 ## **Skills**
@@ -223,6 +242,11 @@ Example:
     - `user_id` (int, required): User who gave the consent
     - `status` (string, required): "accepted" or "rejected"
     - `timestamp` (string, required): ISO 8601 timestamp of when consent was recorded
+
+- **ConsentStatusDTO**
+    - `user_id` (int, required): User identifier
+    - `internal_consent` (string, optional): Latest internal consent status, or null if not set
+    - `external_consent` (string, optional): Latest external consent status, or null if not set
 
 ---
 

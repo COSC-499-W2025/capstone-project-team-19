@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Literal, Optional
 
 
 class ConsentRequestDTO(BaseModel):
@@ -13,3 +13,9 @@ class ConsentResponseDTO(BaseModel):
     user_id: int
     status: str
     timestamp: str
+
+
+class ConsentStatusDTO(BaseModel):
+    user_id: int
+    internal_consent: Optional[str] = None
+    external_consent: Optional[str] = None

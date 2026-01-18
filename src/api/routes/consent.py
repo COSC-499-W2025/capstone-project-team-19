@@ -4,9 +4,10 @@ from datetime import datetime
 
 from src.api.dependencies import get_db, get_current_user_id
 from src.api.schemas.common import ApiResponse
-from src.api.schemas.consent import ConsentRequestDTO, ConsentResponseDTO
+from src.api.schemas.consent import ConsentRequestDTO, ConsentResponseDTO, ConsentStatusDTO
 from src.consent.consent import record_consent
 from src.consent.external_consent import record_external_consent
+from src.db import get_latest_consent, get_latest_external_consent
 
 router = APIRouter(prefix="/privacy-consent", tags=["consent"])
 
@@ -65,3 +66,19 @@ def record_external_consent_endpoint(
     )
 
     return ApiResponse(success=True, data=response_dto, error=None)
+
+@router.get("/status", response_model=ApiResponse[ConsentStatusDTO])
+def get_consent_status(
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    internal_consent = get_latest_consent(conn, user_id)
+    external_consent = get_latest_external_consent(conn, user_id)
+
+    status_dto = ConsentStatusDTO(
+        user_id=user_id,
+        internal_consent=internal_consent,
+        external_consent=external_consent
+    )
+
+    return ApiResponse(success=True, data=status_dto, error=None)
