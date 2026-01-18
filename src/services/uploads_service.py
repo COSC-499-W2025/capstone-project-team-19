@@ -2,7 +2,7 @@ from pathlib import Path
 from fastapi import UploadFile
 import re
 
-from src.db.uploads import create_upload, update_upload_zip_metadata, set_upload_state
+from src.db.uploads import create_upload, update_upload_zip_metadata, set_upload_state, get_upload_by_id
 from src.utils.parsing import ZIP_DATA_DIR
 
 UPLOAD_DIR = Path(ZIP_DATA_DIR) / "_uploads"
@@ -26,7 +26,6 @@ def start_upload(conn, user_id: int, file: UploadFile) -> dict:
 
     update_upload_zip_metadata(conn, upload_id, zip_name=zip_name, zip_path=str(zip_path))
 
-    # placeholder for now
     set_upload_state(conn, upload_id, state={"message": "zip saved"}, status="parsed")
 
     return {
@@ -36,3 +35,14 @@ def start_upload(conn, user_id: int, file: UploadFile) -> dict:
         "state": {"message": "zip saved"},
     }
 
+def get_upload_status(conn, user_id: int, upload_id: int) -> dict | None:
+    row = get_upload_by_id(conn, upload_id)
+    if not row or row["user_id"] != user_id:
+        return None
+
+    return {
+        "upload_id": row["upload_id"],
+        "status": row["status"],
+        "zip_name": row.get("zip_name"),
+        "state": row.get("state") or {},
+    }
