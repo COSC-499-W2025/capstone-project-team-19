@@ -26,15 +26,16 @@ http://localhost:8000
 
 1. [Health](#health)
 2. [Projects](#projects)
-3. [PrivacyConsent](#privacyconsent)
-4. [Skills](#skills)
-5. [Resume](#resume)
-6. [Portfolio](#portfolio)
-7. [Path Variables](#path-variables)  
-8. [DTO References](#dto-references)  
-9. [Best Practices](#best-practices)  
-10. [Error Codes](#error-codes)  
-11. [Example Error Response](#example-error-response)  
+3. [Uploads Wizard](#uploads-wizard)
+4. [Privacy Consent](#privacyconsent)
+5. [Skills](#skills)
+6. [Resume](#resume)
+7. [Portfolio](#portfolio)
+8. [Path Variables](#path-variables)  
+9. [DTO References](#dto-references)  
+10. [Best Practices](#best-practices)  
+11. [Error Codes](#error-codes)  
+12. [Example Error Response](#example-error-response)  
 
 ---
 
@@ -91,7 +92,171 @@ Handles project ingestion, analysis, classification, and metadata updates.
 
 ---
 
-## **PrivacyConsent**
+## **Uploads Wizard**
+
+**Base URL:** `/projects/upload`
+
+Uploads are tracked as a resumable multi-step “wizard” using an `uploads` table. Each upload has:
+- an `upload_id`
+- a `status` indicating the current step
+- a `state` JSON blob storing wizard context (parsed layout, user selections, etc.)
+
+### **Upload Status Values**
+
+`uploads.status` is one of:
+
+- `started` – upload session created
+- `needs_classification` – user must classify projects (individual vs collaborative)
+- `parsed` – classifications submitted (temporary state in current implementation)
+- `needs_file_roles` – user must select file roles (e.g., main text file) and related inputs
+- `needs_summaries` – user must provide manual summaries (when applicable)
+- `analyzing` – analysis running
+- `done` – analysis completed
+- `failed` – upload failed (error stored in `state.error`)
+
+### **Wizard Flow**
+
+A typical flow for the first four endpoints:
+
+1. **Start upload**: `POST /projects/upload`  
+2. **Poll/resume**: `GET /projects/upload/{upload_id}`  
+3. **Submit classifications**: `POST /projects/upload/{upload_id}/classifications`  
+4. **Resolve mixed project types (optional)**: `POST /projects/upload/{upload_id}/project-types`  
+
+---
+
+### **Endpoints**
+
+- **Start Upload**
+    - **Endpoint**: `POST /projects/upload`
+    - **Description**: Upload a ZIP file, save it to disk, parse the ZIP, and compute the project layout to determine the next wizard step. The server creates an `upload_id` and stores wizard state in the database.
+    - **Headers**:
+        - `X-User-Id` (integer, required)
+    - **Request Body**: `multipart/form-data`
+        - `file` (file, required): ZIP file
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "upload_id": 5,
+                "status": "needs_classification",
+                "zip_name": "text_projects.zip",
+                "state": {
+                    "zip_name": "text_projects.zip",
+                    "zip_path": "/.../src/analysis/zip_data/_uploads/5_text_projects.zip",
+                    "layout": {
+                        "root_name": "text_projects",
+                        "auto_assignments": {},
+                        "pending_projects": [
+                            "PlantGrowthStudy"
+                        ],
+                        "stray_locations": []
+                    },
+                    "files_info_count": 8
+                }
+            },
+            "error": null
+        }
+        ```
+
+- **Get Upload Status (Resume / Poll)**
+    - **Endpoint**: `GET /projects/upload/{upload_id}`
+    - **Description**: Returns the current upload wizard state for the given `upload_id`. Use this to resume a wizard flow or refresh the UI.
+    - **Headers**:
+        - `X-User-Id` (integer, required)
+    - **Path Params**:
+        - `upload_id` (integer, required)
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "upload_id": 5,
+                "status": "needs_classification",
+                "zip_name": "text_projects.zip",
+                "state": {
+                    "zip_name": "text_projects.zip",
+                    "zip_path": "/.../src/analysis/zip_data/_uploads/5_text_projects.zip",
+                    "layout": {
+                        "root_name": "text_projects",
+                        "auto_assignments": {},
+                        "pending_projects": [
+                            "PlantGrowthStudy"
+                        ],
+                        "stray_locations": []
+                    },
+                    "files_info_count": 8
+                }
+            },
+            "error": null
+        }
+        ```
+
+- **Submit Project Classifications**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/classifications`
+    - **Description**: Submit the user’s classification choices for projects detected within the uploaded ZIP. This replaces the CLI prompt where users classify each project as `individual` or `collaborative`.
+    - **Headers**:
+        - `X-User-Id` (integer, required)
+    - **Path Params**:
+        - `upload_id` (integer, required)
+    - **Request Body**:
+        ```json
+        {
+            "assignments": {
+                "Project A": "individual",
+                "Project B": "collaborative"
+            }
+        }
+        ```
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "upload_id": 1,
+                "status": "parsed",
+                "zip_name": "text_projects.zip",
+                "state": {
+                    "message": "zip saved",
+                    "classifications": {
+                        "Project A": "individual",
+                        "Project B": "collaborative"
+                    }
+                }
+            },
+            "error": null
+        }
+        ```
+
+- **Submit Project Types (Code vs Text) (Optional)**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/project-types`
+    - **Description**: Submit user selections for project type (`code` vs `text`) when a detected project contains both code and text artifacts and requires a choice. The request must use project names exactly as reported in `state.layout.auto_assignments` and `state.layout.pending_projects`.
+    - **Headers**:
+        - `X-User-Id` (integer, required)
+    - **Path Params**:
+        - `upload_id` (integer, required)
+    - **Request Body**:
+        ```json
+        {
+            "project_types": {
+                "PlantGrowthStudy": "text"
+            }
+        }
+        ```
+    - **Response Status**: `200 OK`
+    - **Notes**:
+        - Returns `422 Unprocessable Entity` if the request includes unknown project names (not present in `layout.auto_assignments` or `layout.pending_projects`).
+        - Returns `422 Unprocessable Entity` if project type values are not `code` or `text`.
+
+
+---
+
+
+## **Privacy Consent**
 
 **Base URL:** `/privacy-consent`
 
