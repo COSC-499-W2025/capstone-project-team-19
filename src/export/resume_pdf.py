@@ -38,7 +38,7 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.flowables import HRFlowable
 
-from src.export.resume_helpers import format_date_range, parse_date
+from src.export.resume_helpers import format_date_range, parse_date, clean_languages_above_threshold
 
 
 def _safe_slug(s: str) -> str:
@@ -229,7 +229,13 @@ def export_resume_record_to_pdf(
             return
         story.append(Paragraph(f"<b>{label}:</b> {', '.join(clean)}", Body))
 
-    add_skill_line("Languages", agg.get("languages") or [])
+    languages = clean_languages_above_threshold(
+        agg.get("languages") or [],
+        min_pct=10,
+    )
+
+    add_skill_line("Languages", languages)
+
     add_skill_line("Frameworks", agg.get("frameworks") or [])
     add_skill_line("Technical skills", agg.get("technical_skills") or [])
     add_skill_line("Writing skills", agg.get("writing_skills") or [])

@@ -31,8 +31,8 @@ from src.export.resume_helpers import (
     add_bullet,
     add_role_date_line,
     _project_sort_key,
+    clean_languages_above_threshold
 )
-
 
 def _clean_str(value: Any) -> str | None:
     if not isinstance(value, str):
@@ -166,7 +166,13 @@ def export_resume_record_to_docx(
             return
         doc.add_paragraph(f"{label}: {', '.join(sorted(set(clean)))}")
 
-    add_skill_line("Languages", agg.get("languages") or [])
+    languages = clean_languages_above_threshold(
+        agg.get("languages") or [],
+        min_pct=10,
+    )
+
+    add_skill_line("Languages", languages)
+
     add_skill_line("Frameworks", agg.get("frameworks") or [])
     add_skill_line("Technical skills", agg.get("technical_skills") or [])
     add_skill_line("Writing skills", agg.get("writing_skills") or [])

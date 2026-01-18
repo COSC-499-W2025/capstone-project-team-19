@@ -44,7 +44,7 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
         "profile_text": "To be updated later.",
         "education_text": "To be updated later.",
         "aggregated_skills": {
-            "languages": ["Python", "SQL"],
+            "languages": ["Python 88%", "SQL 12%"], 
             "frameworks": ["FastAPI"],
             "technical_skills": ["Algorithms"],
             "writing_skills": ["Clear communication"],

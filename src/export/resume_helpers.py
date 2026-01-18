@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, List, Dict
 
 from docx import Document
-
+import re
 
 # -------------------------
 # Date helpers
@@ -113,3 +113,51 @@ def add_placeholder(doc: Document, text: str) -> None:
 def add_bullet(doc: Document, text: str) -> None:
     p = doc.add_paragraph(text, style="List Bullet")
     p.paragraph_format.space_after = 0
+
+
+# Clean language in skills section
+
+_LANG_PCT_RE = re.compile(r"^\s*(?P<name>.+?)\s+(?P<pct>\d+)\s*%\s*$")
+
+def clean_languages_above_threshold(
+    values: Any,
+    *,
+    min_pct: int = 10,
+) -> List[str]:
+    """
+    Input example:
+      ["Python 88%", "JavaScript 54%", "CSS 10%", "JSON 5%", "JSON 6%"]
+    Output (min_pct=10, strict >):
+      ["Python", "JavaScript"]  # (and other >10 items)
+    Rules:
+      - strips percentages entirely
+      - keeps only pct > min_pct
+      - dedupes by taking max pct per language
+      - ignores malformed entries
+    """
+    if not isinstance(values, list):
+        return []
+
+    best: Dict[str, int] = {}
+
+    for raw in values:
+        s = str(raw).strip()
+        if not s:
+            continue
+
+        m = _LANG_PCT_RE.match(s)
+        if not m:
+            continue
+
+        name = m.group("name").strip()
+        pct = int(m.group("pct"))
+
+        if pct < min_pct:  # strict ">"
+            continue
+
+        prev = best.get(name)
+        if prev is None or pct > prev:
+            best[name] = pct
+
+    # sort by pct desc, then name asc for stable output
+    return [name for name, _pct in sorted(best.items(), key=lambda kv: (-kv[1], kv[0].lower()))]
