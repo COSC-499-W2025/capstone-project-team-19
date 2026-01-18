@@ -1,5 +1,26 @@
 # Personal Log - Ammaar
 
+## Table of Contents
+
+### Term 2
+- [Week 2 (Jan 12-18)](#t2-week-2-monday-january-12---sunday-january-18)
+- [Week 1 (Jan 5-11)](#t2-week-1-monday-january-5---sunday-january-11)
+
+### Term 1
+- [Week 14 (Dec 1-7)](#week-14-monday-1st-december---sunday-7th-december)
+- [Week 13 (Nov 24-30)](#week-13-monday-24th-november---sunday-30th-november)
+- [Week 12 (Nov 17-23)](#week-12-monday-17th-november---sunday-23rd-november)
+- [Week 10 (Nov 3-9)](#week-10-monday-3rd-november---sunday-9th-november)
+- [Week 9 (Oct 27-Nov 2)](#week-9-monday-27th-october---sunday-2nd-november)
+- [Week 8 (Oct 20-26)](#week-8-monday-20th-october---sunday-26th-october)
+- [Week 7 (Oct 13-19)](#week-7-monday-13th-october---sunday-19th-october)
+- [Week 6 (Oct 6-12)](#week-6-monday-6th-october---sunday-12th-october)
+- [Week 5 (Sept 29-Oct 5)](#week-5-monday-29th-september---sunday-5th-october)
+- [Week 4 (Sept 22-28)](#week-4-monday-22nd---sunday-28th-september)
+- [Week 3 (Sept 15-21)](#week-3-monday-15th---sunday-21st-september)
+
+---
+
 ## (Week 3) Monday 15th - Sunday 21st September
 
 ![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Sept-15-21.png)
