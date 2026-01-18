@@ -187,3 +187,26 @@ def get_all_projects_with_dates(conn, user_id):
         }
         for row in rows
     ]
+
+def get_project_summary_by_id(conn, user_id: int, project_summary_id: int):
+    """
+    Retrieve a specific project summary by project_summary_id.
+    Returns None if not found or doesn't belong to user.
+    """
+    row = conn.execute("""
+        SELECT project_summary_id, project_name, project_type, project_mode, summary_json, created_at
+        FROM project_summaries
+        WHERE user_id = ? AND project_summary_id = ?
+    """, (user_id, project_summary_id)).fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "project_summary_id": row[0],
+        "project_name": row[1],
+        "project_type": row[2],
+        "project_mode": row[3],
+        "summary_json": row[4],
+        "created_at": row[5]
+    }
