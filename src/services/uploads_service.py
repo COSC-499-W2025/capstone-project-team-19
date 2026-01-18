@@ -9,7 +9,9 @@ from src.db.uploads import (
     set_upload_state,
     get_upload_by_id,
     patch_upload_state,
+    update_upload_status
 )
+
 from src.utils.parsing import ZIP_DATA_DIR, parse_zip_file, analyze_project_layout
 from src.db.projects import record_project_classifications, store_parsed_files
 
@@ -128,4 +130,47 @@ def submit_classifications(conn, user_id: int, upload_id: int, assignments: dict
         "status": "parsed",
         "zip_name": upload.get("zip_name"),
         "state": new_state,
+    }
+
+
+def submit_project_types(conn, user_id: int, upload_id: int, project_types: dict[str, str]) -> dict:
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    state = upload.get("state") or {}
+    layout = state.get("layout") or {}
+
+    # We need to know what projects exist from layout
+    known_projects = set(layout.get("auto_assignments", {}).keys()) | set(layout.get("pending_projects", []))
+
+    if not known_projects:
+        raise HTTPException(status_code=409, detail="Upload has no detected projects to set types for")
+
+    # Validate keys are known projects
+    unknown = {k: v for k, v in project_types.items() if k not in known_projects}
+    if unknown:
+        raise HTTPException(status_code=422, detail={"unknown_projects": list(unknown.keys())})
+
+    # Validate values
+    allowed_types = {"code", "text"}
+    bad_vals = {k: v for k, v in project_types.items() if v not in allowed_types}
+    if bad_vals:
+        raise HTTPException(status_code=422, detail={"invalid_project_types": bad_vals})
+
+    new_state = patch_upload_state(
+        conn,
+        upload_id,
+        patch={"project_types": project_types},
+        status=upload["status"], 
+    )
+
+    update_upload_status(conn, upload_id, "needs_file_roles")
+
+    refreshed = get_upload_by_id(conn, upload_id)
+    return {
+        "upload_id": upload_id,
+        "status": refreshed["status"],
+        "zip_name": refreshed.get("zip_name"),
+        "state": refreshed.get("state") or {},
     }

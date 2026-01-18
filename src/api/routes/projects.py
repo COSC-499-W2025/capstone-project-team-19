@@ -4,9 +4,9 @@ from sqlite3 import Connection
 from src.api.dependencies import get_db, get_current_user_id
 from src.api.schemas.common import ApiResponse
 from src.api.schemas.projects import ProjectListDTO, ProjectListItemDTO
-from src.api.schemas.uploads import UploadDTO, ClassificationsRequest
+from src.api.schemas.uploads import UploadDTO, ClassificationsRequest, ProjectTypesRequest
 from src.services.projects_service import list_projects
-from src.services.uploads_service import start_upload, get_upload_status, submit_classifications
+from src.services.uploads_service import start_upload, get_upload_status, submit_classifications, submit_project_types
 
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -53,4 +53,15 @@ def post_upload_classifications(
     conn: Connection = Depends(get_db),
 ):
     upload = submit_classifications(conn, user_id, upload_id, payload.assignments)
+    return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.post("/upload/{upload_id}/project-types", response_model=ApiResponse[UploadDTO])
+def post_upload_project_types(
+    upload_id: int,
+    payload: ProjectTypesRequest,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = submit_project_types(conn, user_id, upload_id, payload.project_types)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)

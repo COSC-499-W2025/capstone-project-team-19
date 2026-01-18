@@ -21,3 +21,6 @@ class UploadDTO(BaseModel):
 class ClassificationsRequest(BaseModel):
     assignments: Dict[str, str]  # project_name -> individual|collaborative
 
+class ProjectTypesRequest(BaseModel):
+    project_types: Dict[str, Literal["code", "text"]]  # project_name -> code|text
+
