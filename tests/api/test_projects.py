@@ -33,7 +33,7 @@ def test_get_project_by_id_not_found():
     res = client.get("/projects/999", headers={"X-User-Id": "1"})
     assert res.status_code == 404
     body = res.json()
-    assert body["success"] is False or "not found" in body.get("detail", "").lower()
+    assert "not found" in body.get("detail", "").lower()
 
 def test_get_project_by_id_success():
     """Test getting a project with flattened fields"""
