@@ -182,7 +182,8 @@ from .deduplication import (
     get_hash_set_for_version,
     insert_project,
     insert_project_version,
-    insert_version_files)
+    insert_version_files
+)
 
 # project rankings
 from .project_rankings import (
@@ -192,6 +193,13 @@ from .project_rankings import (
     clear_project_rank,
     clear_all_rankings,
     bulk_set_rankings,
+)
+
+from .project_thumbnails import (
+    upsert_project_thumbnail,
+    get_project_thumbnail_path,
+    delete_project_thumbnail,
+    list_thumbnail_projects,
 )
 
 __all__ = [
@@ -272,12 +280,17 @@ __all__ = [
     "get_hash_set_for_version",
     "insert_project",
     "insert_project_version",
-    "insert_version_files"
+    "insert_version_files",
     "set_project_rank",
     "get_project_rank",
     "get_all_project_ranks",
     "clear_project_rank",
     "clear_all_rankings",
     "bulk_set_rankings",
-    "get_user_by_id"
+    "get_user_by_id",
+    "upsert_project_thumbnail",
+    "get_project_thumbnail_path",
+    "delete_project_thumbnail",
+    "list_thumbnail_projects",
+
 ]
