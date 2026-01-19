@@ -17,6 +17,7 @@ from src.insights.portfolio import (
     format_activity_line,
     format_skills_block,
     format_summary_block,
+    resolve_portfolio_display_name,
 )
 from src.export.portfolio_docx import export_portfolio_to_docx
 
@@ -47,7 +48,8 @@ def view_portfolio_items(conn, user_id: int, username: str) -> None:
             project_mode = row.get("project_mode") or summary.get("project_mode") or "individual"
             created_at = row.get("created_at") or ""
 
-            print(f"[{rank}] {project_name} — Score {score:.3f}")
+            display_name = resolve_portfolio_display_name(summary, project_name)
+            print(f"[{rank}] {display_name} — Score {score:.3f}")
             print(f"  Type: {project_type} ({project_mode})")
             print(
                 f"  {format_duration(project_type, project_mode, created_at, user_id, project_name, conn)}"

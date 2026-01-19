@@ -24,6 +24,9 @@ class ProjectSummary:
     # Contributions for collaborative projects
     contributions: Dict[str, Any] = field(default_factory=dict)
 
+    # Optional: manual wording overrides shared by resume + portfolio
+    manual_overrides: Dict[str, Any] = field(default_factory=dict)
+
     # When this summary was generated
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
@@ -42,6 +45,7 @@ class ProjectSummary:
             skills = data.get("skills", []),
             metrics = data.get("metrics", {}),
             contributions = data.get("contributions", {}),
+            manual_overrides = data.get("manual_overrides", {}) or {},
             created_at = datetime.fromisoformat(data["created_at"])
                 if isinstance(data.get("created_at"), str)
                 else data.get("created_at", datetime.now(UTC)),

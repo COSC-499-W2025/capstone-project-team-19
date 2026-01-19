@@ -24,6 +24,7 @@ from .connection import connect, init_schema
 from .users import (
     get_user_by_username,
     get_or_create_user,
+    get_user_by_id
 )
 
 # Project operations
@@ -130,6 +131,7 @@ from .project_summaries import (
     clear_project_dates,
     clear_all_project_dates,
     get_all_manual_dates,
+    update_project_summary_json,
 )
 
 # local git metrics for code collaborative projects
@@ -242,6 +244,7 @@ __all__ = [
     "get_project_summary_by_name",
     "get_all_projects_with_dates", 
     "get_skill_events",
+    "update_project_summary_json",
     "insert_code_collaborative_metrics",
     "get_metrics_id",
     "insert_code_collaborative_summary",
@@ -274,4 +277,5 @@ __all__ = [
     "clear_project_rank",
     "clear_all_rankings",
     "bulk_set_rankings",
+    "get_user_by_id"
 ]

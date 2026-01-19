@@ -25,6 +25,12 @@ def get_user_by_username(conn: sqlite3.Connection, username: str) -> Optional[Tu
     ).fetchone()
     return row if row else None
 
+def get_user_by_id(conn: sqlite3.Connection, user_id: int):
+    row = conn.execute(
+        "SELECT * FROM users WHERE user_id = ?",
+        (user_id,)
+    ).fetchone()
+    return row if row else None
 
 def get_or_create_user(conn: sqlite3.Connection, username: str, email: Optional[str] = None) -> int:
     """Return existing user_id or create new user."""
