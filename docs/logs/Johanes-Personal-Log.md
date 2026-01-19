@@ -4,7 +4,7 @@
 
 ### Term 2
 
-- [Week 2 (Jan 12–18)](#t2-week-2-monday-12th-january-12---sunday-18th-january)
+- [Week 2 (Jan 12–18)](#t2-week-2-monday-12th-january---sunday-18th-january)
 - [Week 1 (Jan 5–11)](#t2-week-1-monday-5th-january---sunday-11th-january)
 
 ### Term 1
@@ -66,7 +66,7 @@ Week recap: Implementing the individual metrics analysis necessary for code proj
 
 Next week i plan to implement saving project metrics that was produced, into database. Might have to discussed further with teammates on incoming team meeting.
 
-## (Week 10) Monday 3rd November - Sundah 9th November
+## (Week 10) Monday 3rd November - Sunday 9th November
 
 ![Screenshot of week 10 peer eval](./screenshots/Johanes-Nov3-9.PNG)
 
