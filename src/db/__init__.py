@@ -195,6 +195,18 @@ from .project_rankings import (
     bulk_set_rankings,
 )
 
+# uploads
+from .uploads import (
+    create_upload,
+    get_upload_by_id,
+    list_uploads_for_user,
+    update_upload_status,
+    update_upload_zip_metadata,
+    set_upload_state,
+    patch_upload_state,
+    mark_upload_failed,
+    delete_upload,
+)
 from .project_thumbnails import (
     upsert_project_thumbnail,
     get_project_thumbnail_path,
@@ -288,9 +300,24 @@ __all__ = [
     "clear_all_rankings",
     "bulk_set_rankings",
     "get_user_by_id",
+    "get_zip_name_for_project",
+    "insert_resume_snapshot",
+    "list_resumes",
+    "get_resume_snapshot",
+    "update_resume_snapshot",
+    "delete_resume_snapshot",
+    "delete_project_everywhere",
+    "create_upload",
+    "get_upload_by_id",
+    "list_uploads_for_user",
+    "update_upload_status",
+    "update_upload_zip_metadata",
+    "set_upload_state",
+    "patch_upload_state",
+    "mark_upload_failed",
+    "delete_upload",
     "upsert_project_thumbnail",
     "get_project_thumbnail_path",
     "delete_project_thumbnail",
     "list_thumbnail_projects",
-
 ]

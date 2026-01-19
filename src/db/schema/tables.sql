@@ -631,6 +631,22 @@ CREATE TABLE IF NOT EXISTS project_rankings (
 CREATE INDEX IF NOT EXISTS idx_project_rankings_user
     ON project_rankings(user_id, manual_rank);
 
+CREATE TABLE IF NOT EXISTS uploads (
+  upload_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL,
+  zip_name    TEXT,
+  zip_path    TEXT,
+  status      TEXT NOT NULL DEFAULT 'started'
+              CHECK(status IN ('started','parsed','needs_classification','needs_project_types','needs_file_roles','needs_summaries','analyzing','done','failed')),
+  state_json  TEXT, 
+  created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_uploads_user_time
+  ON uploads(user_id, created_at);
+
 CREATE TABLE IF NOT EXISTS project_thumbnails (
     thumbnail_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id      INTEGER NOT NULL,
