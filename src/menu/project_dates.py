@@ -36,11 +36,19 @@ def prompt_for_date(prompt: str, current_value: str | None) -> str | None:
         if not date_input:
             return current_value
 
-        if is_valid_date(date_input):
-            return date_input
+        if not is_valid_date(date_input):
+            print("  Invalid date. Use YYYY-MM-DD with valid month (1-12) and day.")
+            print("  Press Enter to skip or try again.")
+            continue
 
-        print("  Invalid date. Use YYYY-MM-DD with valid month (1-12) and day.")
-        print("  Press Enter to skip or try again.")
+        # Check for future date
+        entered_date = datetime.strptime(date_input, "%Y-%m-%d")
+        if entered_date > datetime.now():
+            print("  Date cannot be in the future.")
+            print("  Press Enter to skip or try again.")
+            continue
+
+        return date_input
 
 
 def edit_project_dates_menu(conn, user_id: int, username: str) -> None:
