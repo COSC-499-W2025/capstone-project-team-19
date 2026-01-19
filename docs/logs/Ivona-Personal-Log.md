@@ -1,4 +1,22 @@
 # Personal Log - Ivona
+## Table of Contents
+
+### Term 2
+- [Week 2 (Jan 12-18)](#t2-week-2-monday-january-12---sunday-january-18)
+- [Week 1 (Jan 5-11)](#t2-week-1-monday-january-5---sunday-january-11)
+
+### Term 1
+- [Week 14 (Dec 1-7)](#week-14-monday-dec-1st---sunday-november-7th)
+- [Week 13 (Nov 24-30)](#week-13-monday-nov-24th---sunday-november-30th)
+- [Week 12 (Nov 17-23)](#week-12-monday-nov-17th---sunday-november-23th)
+- [Week 10 (Nov 3-9)](#week-10-monday-nov-3rd---sunday-november-9th)
+- [Week 9 (Oct 27 - Nov 2)](#week-9-monday-october-27th---sunday-november-2nd)
+- [Week 8 (Oct 20-26)](#week-8-monday-20th---sunday-26st-october)
+- [Week 7 (Oct 13-19)](#week-7-monday-13th---sunday-19st-october)
+- [Week 6 (Oct 6-12)](#week-6-monday-6th---sunday-12st-october)
+- [Week 5 (Sept 29 - Oct 5)](#week-5-septembermonday-29th---sunday-october-5th)
+- [Week 4 (Sept 22-28)](#week-4-monday-22th---sunday-28st-september)
+- [Week 3 (Sept 15-21)](#week-3-monday-15th---sunday-21st-september)
 
 ## (Week 3) Monday 15th - Sunday 21st September
 
@@ -109,7 +127,7 @@ Working with the team on the presentation slide and demo video.
 Finishing the contributation skills from text projects by getting the metrics from the comments API and stroing them in the database.
 
 
-## (Week 14) Monday Dec 1st - Sunday November 7th 
+## (Week 14) Monday Dec 1st - Sunday November 7th
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Dec.1-7.PNG)
 This Week:
 I worked on making the presentation and preparing for it, creating PR#321, PR#299, reviewing PRs,and atttending team meetings.
@@ -124,9 +142,9 @@ This PR conserned with writting the instructions to the TAs in the read me on ho
 Next Week:
 Next week is winter break so I don't have any plans for the project yet.
 
+-----------T2 WEEKLY LOGS---------------------------
 
-
-## (Week 14) Monday Dec 1st - Sunday November 7th 
+## (T2 Week 1) Monday January 5 - Sunday January 11
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Jan.5-11.PNG)
 This Week:
 I worked on PR #350:
@@ -134,3 +152,31 @@ This PR was working on milestone requiremnt 21. It gave user the option to selec
 
 Next Week:
 I will be taking on a new task probably to start implementing the APIs as we havent started that yet and don't have a lot of user customizarion tasks left to do.
+
+
+## (T2 Week 2) Monday January 12 - Sunday January 18
+![Screenshot of this week's peer eval](./screenshots/Ivona-Jan.12-18.PNG)
+
+Week recap: This week I worked on 2 feature PRs and reviewed 3 PRs.
+
+Coding PRs:
+1st PR: ([#369](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/369))
+I implemented the api endpoint to retrieve the analysis done for a certain project based on the project's id. I followed the structure of our api implementation, added api documentation, testing and added a db query.
+
+2nd PR: ([#374](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/374))
+I implemented 3 api endpoints (to get all the user's skills, get all the user's resumes, get a specific resume by the id). I followed the structure of our api implementation, added api documentation,and testing for each.
+
+Reviewing PRs:
+1st PR review (Timmi's): ([#357](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/357))
+I reviewed this PR which was the API set up, this was done to lay out the format of the structure and expectations for how the api endpoints should be written in our system.
+
+2nd PR review (Johane's) ([#370](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/370)) This PR implemented 2 api endpoints, I requested changes to make the tests smaller by making a db set up fixture.
+
+3rd PR review (Adara's) ([#376](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/376)) This PR worked on POST / projects/upload api endpoint and required careful consideration and organization for how to implement. I requested a few changes and asked a few questions about this PR as it was a new idea of how to implement that we hadn't discussed yet. This feature is not yet done and will need to continue working on it the next 2 weeks.
+
+Next Week: 
+I plan on working on more api endpoints, this may include helping Adara with the 19 endpoints needed for the POST / projects/upload especially the Google Aouth ones since I worked on implementing that feature in term 1. 
+
+
+
+
