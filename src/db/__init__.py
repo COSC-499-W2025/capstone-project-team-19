@@ -126,6 +126,11 @@ from .project_summaries import (
     get_project_summary_by_name,
     get_all_projects_with_dates,
     get_all_user_project_summaries,
+    set_project_dates,
+    get_project_dates,
+    clear_project_dates,
+    clear_all_project_dates,
+    get_all_manual_dates,
     update_project_summary_json,
 )
 
@@ -141,7 +146,7 @@ from .resumes import (
     insert_resume_snapshot,
     list_resumes,
     get_resume_snapshot,
-    update_resume_snapshot,      
+    update_resume_snapshot,
     delete_resume_snapshot
 )
 
@@ -255,6 +260,11 @@ __all__ = [
     "update_git_individual_metrics",
     "get_git_individual_metrics",
     "extract_git_metrics",
+    "set_project_dates",
+    "get_project_dates",
+    "clear_project_dates",
+    "clear_all_project_dates",
+    "get_all_manual_dates",
     "find_existing_version_by_strict_fp",
     "get_latest_versions",
     "get_hash_set_for_version",

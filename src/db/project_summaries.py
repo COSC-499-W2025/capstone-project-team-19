@@ -125,7 +125,7 @@ def update_project_summary_json(conn, user_id, project_name, summary_json) -> bo
 def get_all_projects_with_dates(conn, user_id):
     """
     Returns all projects for a user ordered by actual project completion date (newest first).
-    
+    Prioritizes manual_end_date if set, otherwise uses automatic dates.
     Returns list of dicts with keys: project_name, actual_project_date
     """
     query = """
@@ -147,16 +147,19 @@ def get_all_projects_with_dates(conn, user_id):
         project_dates AS (
             SELECT 
                 ps.project_name,
-                CASE
-                    WHEN lc.project_type = 'text' THEN tac.end_date
-                    WHEN lc.project_type = 'code' THEN 
-                        COALESCE(
-                            grm.last_commit_date,
-                            json_extract(ps.summary_json, '$.metrics.git.commit_stats.last_commit_date'),
-                            json_extract(ps.summary_json, '$.metrics.collaborative_git.last_commit_date')
-                        )
-                    ELSE NULL
-                END AS actual_project_date
+                COALESCE(
+                    ps.manual_end_date,
+                    CASE
+                        WHEN lc.project_type = 'text' THEN tac.end_date
+                        WHEN lc.project_type = 'code' THEN
+                            COALESCE(
+                                grm.last_commit_date,
+                                json_extract(ps.summary_json, '$.metrics.git.commit_stats.last_commit_date'),
+                                json_extract(ps.summary_json, '$.metrics.collaborative_git.last_commit_date')
+                            )
+                        ELSE NULL
+                    END
+                ) AS actual_project_date
             FROM project_summaries ps
             LEFT JOIN latest_classification lc
                 ON ps.user_id = ?  -- Note: need user_id in join for safety
@@ -177,9 +180,9 @@ def get_all_projects_with_dates(conn, user_id):
             actual_project_date DESC NULLS LAST,
             project_name;
     """
-    
+
     rows = conn.execute(query, (user_id, user_id, user_id)).fetchall()
-    
+
     return [
         {
             "project_name": row[0],
@@ -188,6 +191,70 @@ def get_all_projects_with_dates(conn, user_id):
         for row in rows
     ]
 
+# Manual date override functions
+
+def set_project_dates(conn, user_id, project_name, start_date, end_date):
+    conn.execute(
+        """
+        UPDATE project_summaries
+        SET manual_start_date = ?, manual_end_date = ?
+        WHERE user_id = ? AND project_name = ?
+        """,
+        (start_date, end_date, user_id, project_name)
+    )
+    conn.commit()
+
+
+def get_project_dates(conn, user_id, project_name):
+    row = conn.execute(
+        """
+        SELECT manual_start_date, manual_end_date
+        FROM project_summaries
+        WHERE user_id = ? AND project_name = ?
+        """,
+        (user_id, project_name)
+    ).fetchone()
+
+    return row if row else None
+
+
+def clear_project_dates(conn, user_id, project_name):
+    conn.execute(
+        """
+        UPDATE project_summaries
+        SET manual_start_date = NULL, manual_end_date = NULL
+        WHERE user_id = ? AND project_name = ?
+        """,
+        (user_id, project_name)
+    )
+    conn.commit()
+
+
+def clear_all_project_dates(conn, user_id):
+    conn.execute(
+        """
+        UPDATE project_summaries
+        SET manual_start_date = NULL, manual_end_date = NULL
+        WHERE user_id = ?
+        """,
+        (user_id,)
+    )
+    conn.commit()
+
+
+def get_all_manual_dates(conn, user_id):
+    rows = conn.execute(
+        """
+        SELECT project_name, manual_start_date, manual_end_date
+        FROM project_summaries
+        WHERE user_id = ?
+          AND (manual_start_date IS NOT NULL OR manual_end_date IS NOT NULL)
+        ORDER BY project_name ASC
+        """,
+        (user_id,)
+    ).fetchall()
+
+    return rows
 def get_project_summary_by_id(conn, user_id: int, project_summary_id: int):
     """
     Retrieve a specific project summary by project_summary_id.
