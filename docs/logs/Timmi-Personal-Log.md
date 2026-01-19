@@ -1,5 +1,25 @@
 # Personal Log - Timmi
 
+## Table of Contents
+
+### Term 2
+- [Week 2 (Jan 12-18)](#t2-week-2-monday-january-12---sunday-january-18)
+- [Week 1 (Jan 5-11)](#t2-week-1-monday-january-5---sunday-january-11)
+
+### Term 1
+- [Week 14 (Dec 1-7)](#week-14-monday-december-1---sunday-december-7)
+- [Week 13 (Nov 24-30)](#week-13-monday-november-24---sunday-november-30)
+- [Week 12 (Nov 17-23)](#week-12-monday-november-17---sunday-november-23)
+- [Week 10 (Nov 3-9)](#week-10-monday-november-3---sunday-november-9)
+- [Week 9 (Oct 27-Nov 2)](#week-9-monday-october-27---sunday-november-2)
+- [Week 8 (Oct 20-26)](#week-8-monday-october-20---sunday-october-26)
+- [Week 7 (Oct 13-19)](#week-7-monday-october-13---sunday-october-17)
+- [Week 6 (Oct 6-12)](#week-6-monday-6th-october---sunday-12th-october)
+- [Week 5 (Sept 29-Oct 5)](#week-5-monday-29th-september---sunday-5th-october)
+- [Week 4 (Sept 22-28)](#week-4-monday-22nd---sunday-28th-september)
+- [Week 3 (Sept 15-21)](#week-3-monday-15th---sunday-21st-september)
+
+
 ## (Week 3) Monday 15th - Sunday 21st September
 
 ![Screenshot of this week's peer eval](./screenshots/Timmi%20Sept15-21.PNG)
@@ -187,3 +207,17 @@ My PR's:
 - #329 (Duplicate projects)
 
 Next week I will continue to complete the duplicate project task, as well as anything else assigned to me. I would like to also eventually research the security of our database, as I don't believe it to be very secure.
+
+## (T2 Week 2) Monday January 12 - Sunday January 18
+
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Jan12-Jan18.PNG)
+
+I began working on the API requirements ([#357](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/357)). I implemented the setup required for the API, such as adding the FastAPI requirements in, creating the directory structure (services, routes, etc.) and began the API documentation file. I also implemented one API endpoint (/projects), to ensure all the setup I did is clear for my team members. 
+
+I also worked on catching the edge cases in the duplication checks, ([#363](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/363)). I added path normalization so folders organized with `/collaborative` and `/individual` are caught, ensured projects with different filepaths and filenames were detected as duplicates if the file content is the same, and I changed the code to stop suggesting that smaller projects (very few files) are duplicates.
+
+I reviewed as many PR's as my time allowed, making suggestions and raising questions where I deemed necessary.
+
+The duplication check PR works off the PR I did last week where I implemented the main duplication flow ([#329](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/329)), and thus was a continuation based on the requested changes by the reviewers. 
+
+Next week I would like to continue implementing endpoints, but also take a look at the security of the system. Some parts of the system are not very secure such as the storage of the GitHub encryption key, authentication for the API endpoints (JWT Auth), and encrypting the database file. I hace created issues for these and plan on bringing them up to my team in our meeting on Monday.
