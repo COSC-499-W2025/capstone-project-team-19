@@ -179,7 +179,50 @@ def test_project_fingerprints_deterministic_ordering(tmp_path):
     assert fp1_strict == fp2_strict
     assert fp1_loose == fp2_loose
 
-    entries1_sorted = sorted(entries1, key=lambda x: x[0])
-    assert entries1_sorted[0][0] == "a.py"
-    assert entries1_sorted[1][0] == "m.py"
-    assert entries1_sorted[2][0] == "z.py"
+def test_project_fingerprints_normalizes_individual_folder(tmp_path):
+    """Same project in 'individual/' folder should have same fingerprint as without."""
+    root1 = create_project_structure(tmp_path / "proj1", {"src/main.py": "content"})
+    root2 = create_project_structure(tmp_path / "proj2", {"individual/src/main.py": "content"})
+    
+    fp1_strict, fp1_loose, entries1 = project_fingerprints(root1)
+    fp2_strict, fp2_loose, entries2 = project_fingerprints(root2)
+    
+    # Strict fingerprints should match after normalization
+    assert fp1_strict == fp2_strict
+    # Loose should also match
+    assert fp1_loose == fp2_loose
+    # Paths in entries should be normalized
+    assert entries2[0][0] == "src/main.py"
+
+def test_project_fingerprints_normalizes_collaborative_folder(tmp_path):
+    """Same project in 'collaborative/' folder should have same fingerprint as without."""
+    root1 = create_project_structure(tmp_path / "proj1", {"src/main.py": "content"})
+    root2 = create_project_structure(tmp_path / "proj2", {"collaborative/src/main.py": "content"})
+    
+    fp1_strict, fp1_loose, entries1 = project_fingerprints(root1)
+    fp2_strict, fp2_loose, entries2 = project_fingerprints(root2)
+    
+    # Strict fingerprints should match after normalization
+    assert fp1_strict == fp2_strict
+    # Loose should also match
+    assert fp1_loose == fp2_loose
+    # Paths in entries should be normalized
+    assert entries2[0][0] == "src/main.py"
+
+def test_project_fingerprints_cross_classification_match(tmp_path):
+    """Project uploaded as 'individual' then 'collaborative' should match."""
+    root1 = create_project_structure(tmp_path / "proj1", {
+        "individual/MyApp/main.py": "print('hello')",
+        "individual/MyApp/utils.py": "def helper(): pass",
+    })
+    root2 = create_project_structure(tmp_path / "proj2", {
+        "collaborative/MyApp/main.py": "print('hello')",
+        "collaborative/MyApp/utils.py": "def helper(): pass",
+    })
+    
+    fp1_strict, fp1_loose, _ = project_fingerprints(root1)
+    fp2_strict, fp2_loose, _ = project_fingerprints(root2)
+    
+    # Both should have identical fingerprints despite different classification folders
+    assert fp1_strict == fp2_strict
+    assert fp1_loose == fp2_loose

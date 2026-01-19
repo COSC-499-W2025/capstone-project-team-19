@@ -18,12 +18,14 @@ def show_start_menu(username: str) -> int:
     print("6. Delete old insights")
     print("7. View all projects ranked")
     print("8. View chronological skills")
-    print("9. View all projects")
-    print("10. Exit")
+    print("9. Edit project dates")
+    print("10. Manage project thumbnails")
+    print("11. View all projects")
+    print("12. Exit")
 
     while True:
-        choice = input("\nPlease select an option (1-10): ").strip()
-        if choice in {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}:
+        choice = input("\nPlease select an option (1-12): ").strip()
+        if choice in {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"}:
             return int(choice)
-        print("Invalid choice. Please enter a number between 1 and 10.")
+        print("Invalid choice. Please enter a number between 1 and 12.")
 

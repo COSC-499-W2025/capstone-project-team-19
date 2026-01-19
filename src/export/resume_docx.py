@@ -2,10 +2,15 @@
 Export a saved resume snapshot (stored JSON) to a Word (.docx) document.
 
 Output format:
-- Title
-- Skills Summary (first)
-- Projects grouped by: code/text × individual/collaborative
-- Each project rendered in a consistent block with bullets for contributions and skills.
+- Name
+- Contact
+- Profile 
+- Skills 
+- Projects 
+- Education & certificates
+
+Some items are placeholders for now and will be updated later.
+
 Saves to ./out/ (created if missing).
 """
 
@@ -19,6 +24,15 @@ from typing import Any, Dict, List, Optional
 
 from docx import Document
 
+from src.export.resume_helpers import (
+    format_date_range,
+    add_section_heading,
+    add_placeholder,
+    add_bullet,
+    add_role_date_line,
+    _project_sort_key,
+    clean_languages_above_threshold
+)
 
 def _clean_str(value: Any) -> str | None:
     if not isinstance(value, str):
@@ -105,8 +119,11 @@ def export_resume_record_to_docx(
     filepath = out_path / filename
 
     doc = Document()
-    doc.add_heading(f"Resume — {username}", level=0)
-    doc.add_paragraph(f"Generated on {stamp_display}")
+    # doc.add_heading(f"Resume — {username}", level=0)
+    # doc.add_paragraph(f"Generated on {stamp_display}")
+
+    doc.add_heading(username.upper(), level=0)
+    doc.add_paragraph("Phone | Email | LinkedIn | Location")
 
     resume_json = record.get("resume_json")
     rendered_text = record.get("rendered_text")
@@ -135,95 +152,80 @@ def export_resume_record_to_docx(
     # ---------------------------
     # Skills Summary (FIRST)
     # ---------------------------
-    doc.add_heading("Skills Summary", level=1)
+
+    # PROFILE (placeholder)
+    add_section_heading(doc, "Profile")
+    add_placeholder(doc, "To be updated later.")
+
+    # SKILLS (same logic as before)
+    add_section_heading(doc, "Skills")
 
     def add_skill_line(label: str, items: List[str]) -> None:
         clean = [str(x).strip() for x in items if str(x).strip()]
         if not clean:
             return
-        # Render as a single line
         doc.add_paragraph(f"{label}: {', '.join(sorted(set(clean)))}")
 
-    add_skill_line("Languages", agg.get("languages") or [])
+    languages = clean_languages_above_threshold(
+        agg.get("languages") or [],
+        min_pct=10,
+    )
+
+    add_skill_line("Languages", languages)
+
     add_skill_line("Frameworks", agg.get("frameworks") or [])
     add_skill_line("Technical skills", agg.get("technical_skills") or [])
     add_skill_line("Writing skills", agg.get("writing_skills") or [])
 
-    doc.add_paragraph("")  # spacing before projects
+    projects_sorted = sorted(
+        projects,
+        key=_project_sort_key,
+        reverse=True,  # most recent first
+    )
 
-    # ---------------------------
-    # Projects grouped
-    # ---------------------------
-    groups = [
-        ("code", "individual", "Code — Individual"),
-        ("code", "collaborative", "Code — Collaborative"),
-        ("text", "individual", "Text — Individual"),
-        ("text", "collaborative", "Text — Collaborative"),
-    ]
+    # PROJECTS (no code/text/individual/collaborative labels)
+    add_section_heading(doc, "Projects")
 
-    for ptype, pmode, header in groups:
-        group_entries = [
-            p for p in projects
-            if p.get("project_type") == ptype and p.get("project_mode") == pmode
-        ]
-        if not group_entries:
-            continue
+    for p in projects_sorted:
+        project_name = _resume_display_name(p)
+        doc.add_heading(project_name, level=2)
 
-        doc.add_heading(header, level=1)
+        # role placeholder (until Milestone 3 UI)
+        role = (p.get("role") or "[Role]").strip()  # you can rename key later
 
-        for p in group_entries:
-            project_name = _resume_display_name(p)
-            doc.add_heading(project_name, level=2)
+        date_line = format_date_range(p.get("start_date"), p.get("end_date"))
+        add_role_date_line(doc, role, date_line)
 
-            # Languages / Frameworks
-            langs = p.get("languages") or []
-            fws = p.get("frameworks") or []
-            if langs:
-                doc.add_paragraph(f"Languages: {', '.join(sorted(set(langs)))}")
-            if fws:
-                doc.add_paragraph(f"Frameworks: {', '.join(sorted(set(fws)))}")
+        # bullets (same logic you already have)
+        custom_bullets = _resume_contribution_bullets(p)
+        contrib_bullets = _clean_bullets(p.get("contribution_bullets") or [])
 
-            # Text type line
-            if ptype == "text":
-                doc.add_paragraph(f"Type: {p.get('text_type', 'Text')}")
-
-            # Summary
-            summary_text = _resume_summary_text(p)
-            if summary_text:
-                doc.add_paragraph(f"Summary: {summary_text}")
-
-            # Contributions
-            custom_bullets = _resume_contribution_bullets(p)
-            if custom_bullets:
-                doc.add_paragraph("Contributions:")
-                for bullet in custom_bullets:
-                    _add_bullet(doc, bullet)
-            elif ptype == "code":
+        bullets_to_use: List[str] = []
+        if contrib_bullets:
+            bullets_to_use = contrib_bullets
+        elif custom_bullets:
+            bullets_to_use = custom_bullets
+        else:
+            if p.get("project_type") == "code":
                 activities = p.get("activities") or []
-                if activities:
-                    doc.add_paragraph("Contributions:")
-                    for act in activities:
-                        name = act.get("name") or "activity"
-                        top = act.get("top_file")
-                        top_info = f" (top: {top})" if top else ""
-                        _add_bullet(doc, f"{name}{top_info}")
-                else:
-                    doc.add_paragraph("Contributions: (no activity data)")
+                for act in activities:
+                    name = act.get("name") or "activity"
+                    top = act.get("top_file")
+                    top_info = f" (top: {top})" if top else ""
+                    bullets_to_use.append(f"{name}{top_info}")
             else:
                 pct = p.get("contribution_percent")
                 if isinstance(pct, (int, float)):
-                    doc.add_paragraph(f"Contribution: {pct:.1f}% of document")
+                    bullets_to_use.append(f"Contributed to {pct:.1f}% of document")
 
-            # Skills
-            skills = p.get("skills") or []
-            clean_skills = [str(s).strip() for s in skills if str(s).strip()]
-            if clean_skills:
-                doc.add_paragraph("Skills:")
-                # render as bullets (cleaner than one long comma line)
-                for s in clean_skills:
-                    _add_bullet(doc, s)
+        for b in bullets_to_use:
+            add_bullet(doc, str(b))
 
-            doc.add_paragraph("")  # spacing between projects
+        doc.add_paragraph("")
+
+    # Education & Certificates (placeholder)
+    add_section_heading(doc, "Education & Certificates")
+    add_placeholder(doc, "To be updated later.")
 
     doc.save(str(filepath))
     return filepath

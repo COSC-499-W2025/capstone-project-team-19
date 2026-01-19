@@ -17,10 +17,8 @@ def conn():
 def test_handle_dedup_result_duplicate(conn, monkeypatch):
     pk = insert_project(conn, 1, "Existing")
     result = {"kind": "duplicate", "project_key": pk, "version_key": 1}
-    monkeypatch.setattr("builtins.input", lambda _: "y")
+    # Duplicates are automatically skipped without user prompt
     assert handle_dedup_result(conn, 1, result, "New") is None
-    monkeypatch.setattr("builtins.input", lambda _: "n")
-    assert handle_dedup_result(conn, 1, result, "New") == "New"
 
 def test_handle_dedup_result_new_version(conn):
     pk = insert_project(conn, 1, "Existing")

@@ -11,6 +11,7 @@ from src.menu.resume.helpers import (
     render_snapshot,
 )
 
+from .date_helpers import enrich_snapshot_with_dates
 
 def refresh_saved_resumes_after_project_delete(
     conn,
@@ -109,6 +110,8 @@ def refresh_saved_resumes_after_project_delete(
             "writing_skills": sorted(writing_skills),
         }
 
+        snapshot = enrich_snapshot_with_dates(conn, user_id, snapshot)
+
         rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
         updated_json = json.dumps(snapshot, default=str)
         update_resume_snapshot(conn, user_id, record["id"], updated_json, rendered)
@@ -118,3 +121,4 @@ def refresh_saved_resumes_after_project_delete(
         f"\n[Resume] Refreshed {updated} resume(s); "
         f"removed {removed} empty resume(s); {unaffected} unaffected."
     )
+
