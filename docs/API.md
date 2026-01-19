@@ -211,7 +211,32 @@ Handles user consent for internal processing and external integrations.
 Exposes extracted skills and timelines.
 
 ### **Endpoints**
-
+- **Get Skills**
+    - **Endpoint**: `GET /skills`
+    - **Description**: Returns a chronological list of all skills extracted from the user's projects, including skill level, score, and associated project information.
+    - **Headers**: 
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Response Status**: `200 OK`
+    - **Response Body**: Uses `SkillsListDTO` containing a list of `SkillEventDTO` objects
+        ```json
+        {
+            "success": true,
+            "data": {
+                "skills": [
+                    {
+                        "skill_name": "Python",
+                        "level": "Advanced",
+                        "score": 0.9,
+                        "project_name":"MyProjet",
+                        "actual_activity_date": "2024-01-15",
+                        "recorded_at": "2024-01-20"
+                    }
+                ]
+            },
+            "error": null
+        }
+        ```
+        
 
 
 ---
@@ -223,6 +248,72 @@ Exposes extracted skills and timelines.
 Manages résumé-specific representations of projects.
 
 ### **Endpoints**
+- **List Resumes**
+    - **Endpoint**: `GET /resume`
+    - **Description**: Returns a list of all résumé snapshots belonging to the current user.
+    - **Headers**: 
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Response Status**: `200 OK`
+    - **Response Body**: Uses `ResumeListDTO` containing a list of `ResumeListItemDTO` objects
+        ```json
+        {
+            "success": true,
+            "data": {
+                "resumes": [
+                    {
+                        "id": 1,
+                        "name": "Resume 2024-01-12",
+                        "created_at": "2024-01-12 10:30:00"
+                    }
+                ]
+            },
+            "error": null
+        }
+        ```
+
+- **Get Resume by ID**
+    - **Endpoint**: `GET /resume/{resumeId}`
+    - **Description**: Returns detailed information for a specific résumé snapshot, including all projects, aggregated skills, and rendered text.
+    - **Path Parameters**:
+        - `{resumeId}` (integer, required): The ID of the résumé snapshot
+    - **Headers**: 
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Response Status**: `200 OK` or `404 Not Found`
+    - **Response Body**: Uses `ResumeDetailDTO`
+    ```json
+        {
+            "success": true,
+            "data": {
+                "id": 1,
+                "name": "Resume 2024-01-12",
+                "created_at": "2024-01-12 10:30:00",
+                "projects": [
+                    {
+                        "project_name": "MyProject",
+                        "project_type": "code",
+                        "project_mode": "individual",
+                        "languages": ["Python", "JavaScript"],
+                        "frameworks": ["React", "FastAPI"],
+                        "summary_text": "A web application...",
+                        "skills": ["Backend Development", "Frontend Development"],
+                        "text_type": null,
+                        "contribution_percent": null,
+                        "activities": []
+                    }
+                ],
+                "aggregated_skills": {
+                    "languages": ["Python", "JavaScript"],
+                    "frameworks": ["React", "FastAPI"],
+                    "technical_skills": ["Backend Development", "Frontend Development"],
+                    "writing_skills": []
+                },
+                "rendered_text": "Resume text here..."
+            },
+            "error": null
+        }
+        ```
+        
+        
 
 
 
@@ -265,6 +356,52 @@ Example:
     - `project_type` (string, optional)
     - `project_mode` (string, optional)
     - `created_at` (string, optional)
+
+
+- **SkillEventDTO**
+    - `skill_name` (string, required)
+    - `level` (string, required)
+    - `score` (float, required)
+    - `project_name` (string, required)
+    - `actual_activity_date` (string, optional)
+    - `recorded_at` (string, optional)
+
+- **SkillsListDTO**
+    - `skills` (List[SkillEventDTO], required)
+
+- **ResumeListItemDTO**
+    - `id` (int, required)
+    - `name` (string, required)
+    - `created_at` (string, optional)
+
+- **ResumeListDTO**
+    - `resumes` (List[ResumeListItemDTO], required)
+
+- **ResumeProjectDTO**
+    - `project_name` (string, required)
+    - `project_type` (string, optional)
+    - `project_mode` (string, optional)
+    - `languages` (List[string], optional)
+    - `frameworks` (List[string], optional)
+    - `summary_text` (string, optional)
+    - `skills` (List[string], optional)
+    - `text_type` (string, optional)
+    - `contribution_percent` (float, optional)
+    - `activities` (List[Dict], optional)
+
+- **AggregatedSkillsDTO**
+    - `languages` (List[string], optional)
+    - `frameworks` (List[string], optional)
+    - `technical_skills` (List[string], optional)
+    - `writing_skills` (List[string], optional)
+
+- **ResumeDetailDTO**
+    - `id` (int, required)
+    - `name` (string, required)
+    - `created_at` (string, optional)
+    - `projects` (List[ResumeProjectDTO], optional)
+    - `aggregated_skills` (AggregatedSkillsDTO, optional)
+    - `rendered_text` (string, optional)
 
 - **ConsentRequestDTO**
     - `status` (string, required): Must be either "accepted" or "rejected"
