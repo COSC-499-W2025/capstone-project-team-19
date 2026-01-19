@@ -88,6 +88,38 @@ Handles project ingestion, analysis, classification, and metadata updates.
             "error": null
         }
         ```
+- **GET Project by ID**
+    - **Endpoint**: `GET /projects/{project_ID}`
+    - **Description**: Returns detailed information for a specific project, including full analysis data (languages, frameworks, skills, metrics, contributions).
+    - **Path Parameters**:
+        - {projectId} (integer, required): The project_summary_id of the project to retrieve
+    - **Headers**: 
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Response Status**: `200 OK` on sucess `404 Not Found` if project doesn't exist or belong to user
+    - **Response DTO**: `ProjectDetailDTO`
+    - **Response Body**:
+        ```json
+                {
+            "success": true,
+            "data": {
+                "project_summary_id": 9,
+                "project_name": "My Project",
+                "project_type": "code",
+                "project_mode": "individual",
+                "created_at": "2026-01-12 01:51:24",
+                "summary_text": "A web application built with Python and Flask",
+                "languages": ["Python", "JavaScript"],
+                "frameworks": ["Flask", "React"],
+                "skills": ["Backend Development", "Frontend Development"],
+                "metrics": {
+                    "git": {...},
+                    "code_complexity": {...}
+                },
+                "contributions": {...}
+            },
+            "error": null
+        }
+        ```       
 
 ---
 
@@ -247,6 +279,18 @@ Example:
     - `user_id` (int, required): User identifier
     - `internal_consent` (string, optional): Latest internal consent status, or null if not set
     - `external_consent` (string, optional): Latest external consent status, or null if not set
+- **ProjectDetailDTO** (used by `GET /projects/{projectId}`)
+    - `project_summary_id` (int, required)
+    - `project_name` (string, required)
+    - `project_type` (string, optional)
+    - `project_mode` (string, optional)
+    - `created_at` (string, optional)
+    - `summary_text` (string, optional)
+    - `languages` (array of strings, optional)
+    - `frameworks` (array of strings, optional)
+    - `skills` (array of strings, optional)
+    - `metrics` (object, optional)
+    - `contributions` (object, optional)
 
 ---
 
