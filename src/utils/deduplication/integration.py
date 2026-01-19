@@ -56,14 +56,16 @@ def run_deduplication_for_projects(conn, user_id, target_dir, layout):
     skipped = set()
     
     for project_name in all_projects:
-        # Try to find project directory, check common patterns
+        # Try to find project directory, check common patterns including individual/collaborative subfolders
         candidates = [
             os.path.join(base_path, project_name),
             os.path.join(target_dir, project_name),
         ]
         if root_name:
-            # Also check if project is directly under root
+            # Also check if project is directly under root, or in individual/collaborative subfolders
             candidates.insert(0, os.path.join(target_dir, root_name, project_name))
+            candidates.insert(0, os.path.join(target_dir, root_name, "individual", project_name))
+            candidates.insert(0, os.path.join(target_dir, root_name, "collaborative", project_name))
         
         project_dir = None
         for cand in candidates:
