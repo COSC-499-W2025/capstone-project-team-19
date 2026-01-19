@@ -4,15 +4,15 @@
 
 ### Term 2
 
-- [Week 2 (Jan 12–18)](#t2-week-2-monday-january-12---sunday-january-18)
-- [Week 1 (Jan 5–11)](#t2-week-1-monday-january-5---sunday-january-11)
+- [Week 2 (Jan 12–18)](#t2-week-2-monday-12th- january-12---sunday-18th-january)
+- [Week 1 (Jan 5–11)](#t2-week-1-monday-5th-january---sunday-11th-january)
 
 ### Term 1
 
 - [Week 14 (Dec 1–7)](#week-14-monday-1st-december---sunday-7th-december)
-- [Week 13 (Nov 24–30)](#week-13-monday-november-24---sunday-november-30)
-- [Week 12 (Nov 17–23)](#week-12-monday-november-17---sunday-november-23)
-- [Week 10 (Nov 3–9)](#week-10-monday-november-3---sunday-november-9)
+- [Week 13 (Nov 24–30)](#week-13-monday-24th-november---sunday-30th-november)
+- [Week 12 (Nov 17–23)](#week-12-monday-17th-november---sunday-23rd-november)
+- [Week 10 (Nov 3–9)](#week-10-monday-3rd-november---sunday-9th-november)
 - [Week 9 (Oct 27–Nov 2)](#week-9-monday-27th-october---sunday-2nd-november)
 - [Week 8 (Oct 20–26)](#week-8-monday-20th-october---sunday-26th-october)
 - [Week 7 (Oct 13–19)](#week-7-monday-13th-october---sunday-19th-october)
@@ -114,7 +114,7 @@ I also gave feedback to Timmi's PR, finding the small error about the path issue
 
 Next week plan: Continue the unfinished feature, and continue implementing milestone requirement 3.
 
-## (T2 Week 2) Monday 5th January - Sunday 11th January
+## (T2 Week 2) Monday 12th January - Sunday 18th January
 ![Screenshot of week 2_T2 peer eval](./screenshots/Johanes-Jan12-18.png)
 Week recap: 
 
