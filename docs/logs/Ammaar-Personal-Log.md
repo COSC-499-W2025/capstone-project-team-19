@@ -1,5 +1,26 @@
 # Personal Log - Ammaar
 
+## Table of Contents
+
+### Term 2
+- [Week 2 (Jan 12-18)](#t2-week-2-monday-january-12---sunday-january-18)
+- [Week 1 (Jan 5-11)](#t2-week-1-monday-january-5---sunday-january-11)
+
+### Term 1
+- [Week 14 (Dec 1-7)](#week-14-monday-1st-december---sunday-7th-december)
+- [Week 13 (Nov 24-30)](#week-13-monday-24th-november---sunday-30th-november)
+- [Week 12 (Nov 17-23)](#week-12-monday-17th-november---sunday-23rd-november)
+- [Week 10 (Nov 3-9)](#week-10-monday-3rd-november---sunday-9th-november)
+- [Week 9 (Oct 27-Nov 2)](#week-9-monday-27th-october---sunday-2nd-november)
+- [Week 8 (Oct 20-26)](#week-8-monday-20th-october---sunday-26th-october)
+- [Week 7 (Oct 13-19)](#week-7-monday-13th-october---sunday-19th-october)
+- [Week 6 (Oct 6-12)](#week-6-monday-6th-october---sunday-12th-october)
+- [Week 5 (Sept 29-Oct 5)](#week-5-monday-29th-september---sunday-5th-october)
+- [Week 4 (Sept 22-28)](#week-4-monday-22nd---sunday-28th-september)
+- [Week 3 (Sept 15-21)](#week-3-monday-15th---sunday-21st-september)
+
+---
+
 ## (Week 3) Monday 15th - Sunday 21st September
 
 ![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Sept-15-21.png)
@@ -147,3 +168,17 @@ For my feature PR (#332), I implemented the key role incorporation system for co
 For PR reviews, I reviewed Johannes's project reranking feature (#337) which added three intuitive menu options (reorder multiple projects, set specific rank, reset to automatic ranking) under menu 6. I suggested switching the manual reorder input from typing full project names to number selection like he did for "set specific project rank" to make it faster and less error-prone, and recommended adding test coverage for the interactive_reorder input validation and set_specific_rank flows to close the gap. I reviewed Salma's Word export feature (#336) which added DOCX exporters for portfolio and resume views with standardized layouts matching the CLI views. I caught two issues: export filenames are date-only so multiple exports on the same day silently overwrite earlier docs (suggested adding timestamps or prompting before overwriting), and the invalid-choice message says "Please enter 1–3" even though option 4 exists.
 
 Next week's focus: I'll address any follow-up items from the key role PR and continue working on remaining milestone deliverables.
+
+## (T2 Week 2) Monday January 12 - Sunday January 18
+
+![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Jan12-Jan18.png)
+
+Week recap: This week I worked on two feature PRs and reviewed three PRs from teammates.
+
+For my first feature PR ([#354](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/354)), I fixed two resume rendering bugs. Resume creation now calls render_snapshot with the required conn/user_id arguments so creating a resume no longer crashes after the helper signature change. Resume rendering no longer crashes when a text project's activity breakdown has only two stages as we now format a two-stage summary safely.
+
+For my second feature PR ([#355](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/355)), I implemented the resume customization system that introduces manual wording overrides for project summaries, contributions, and display names. The system supports resume-only edits versus global overrides, applies global overrides across existing resumes while respecting resume-only edits, and updates portfolio/exports to render the manual overrides.
+
+For PR reviews, I reviewed Salma's resume export improvements ([#368](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/368)) which reworked the resume structure with proper sections (profile, skills, projects, education) and fixed bullet points to show clear contributions. I tested manually and confirmed the docx and PDF resumes match the CLI display with all tests passing. I reviewed Timmi's duplicate checking changes ([#363](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/363)) which fixed deduplication logic with path normalization for individual/collaborative folders and implemented two-tier logic for exact duplicates versus content matches, but I found that for small projects (< 10 files) it always asks whether the project is related even when similarity is 0% which could be avoided. I reviewed Timmi's API setup PR ([#357](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/357)) which introduced the API skeleton with FastAPI, created src/api/main.py with a health endpoint, established the service layer, and added comprehensive API.md documentation. I caught an edge case where non-existent user IDs returned empty results and the missing health endpoint in the documentation which Timmi fixed along with test cases.
+
+Next week's focus: I'll address follow-up items from the resume customization PR, key role PR (from week 1) and start working on the customize portfolio feature.
