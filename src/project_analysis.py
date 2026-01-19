@@ -42,81 +42,85 @@ except ModuleNotFoundError:
 
 
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
+    result = detect_project_type_auto(conn, user_id, assignments)
+
+    # Only CLI prompts for mixed projects
+    for project_name in result["mixed_projects"]:
+        print(f"\nThe project '{project_name}' contains both code and text files.")
+        while True:
+            choice = input("Type 'c' if it's mainly a CODE project, or 't' if it's mainly a TEXT project: ").strip().lower()
+            if choice in {"c", "code"}:
+                project_type = "code"
+                break
+            if choice in {"t", "text"}:
+                project_type = "text"
+                break
+            print("Please enter 'c' or 't'.")
+
+        conn.execute("""
+            UPDATE project_classifications
+            SET project_type = ?
+            WHERE user_id = ? AND project_name = ?
+        """, (project_type, user_id, project_name))
+
+    conn.commit()
+
+    
+def detect_project_type_auto(
+    conn: sqlite3.Connection,
+    user_id: int,
+    assignments: dict[str, str],
+) -> dict:
     """
-    Determine if each project is code or text by examining files from the 'files' table
-    Updates the project_classifications table with the detected type.
-
-    The function:
-        1. Reads all files for the given user from the 'files' table
-        2. Counts how many files of type 'code' or 'text' belong to each project
-        3. Assigns a project type automatically if unambiguous
-        4. If a project contains both code and text files, the user is prompted to decide
-        5. Updates the 'project_classifications' table accordingly
-
-    Notes:
-        - Projects with no recognizable files (neither code nor text) are skipped and left with a NULL `project_type`
-        - Mixed projects require user input to classify manually
+    API-safe version:
+    - Auto-detects project_type when unambiguous (all code or all text)
+    - Returns mixed projects needing user choice
+    - NO input() calls
     """
-
-    # Grabs file project_name and file_type from 'files' table and creates a list
     files = conn.execute("""
         SELECT project_name, file_type
         FROM files
         WHERE user_id = ? AND project_name IS NOT NULL
     """, (user_id,)).fetchall()
 
-    project_counts = {}
-
-    # counts how many code files vs text files there are in a project
+    project_counts: dict[str, dict[str, int]] = {}
     for project_name, file_type in files:
-        if project_name not in project_counts:
-            project_counts[project_name] = {"code": 0, "text": 0}
+        project_counts.setdefault(project_name, {"code": 0, "text": 0})
         if file_type in {"code", "text"}:
             project_counts[project_name][file_type] += 1
 
-    # Decides which project is which type based on project_counts values
-    for project_name, classification in assignments.items():
+    auto_types: dict[str, str] = {}
+    mixed_projects: list[str] = []
+    unknown_projects: list[str] = []
+
+    for project_name in assignments.keys():
         counts = project_counts.get(project_name, {"code": 0, "text": 0})
 
         if counts["code"] > 0 and counts["text"] == 0:
-            project_type = "code"
+            auto_types[project_name] = "code"
         elif counts["text"] > 0 and counts["code"] == 0:
-            project_type = "text"
-        elif counts["code"] == 0 and counts["text"] == 0: # likely will not happen, rare case (still important to check)
-            # No recognizable files at all
-            print(f"No valid files found for project '{project_name}'. Project type left as NULL.")
-            project_type = None
+            auto_types[project_name] = "text"
+        elif counts["code"] == 0 and counts["text"] == 0:
+            unknown_projects.append(project_name)
         else:
-            # project type can not be decided, mixed files
-            # prompt user to state whether a project is code or text
-            print(f"\nThe project '{project_name}' contains both code and text files.")
-            while True:
-                choice = input("Type 'c' if it's mainly a CODE project, or 't' if it's mainly a TEXT project: ").strip().lower()
-                if choice in {"c", "code"}:
-                    project_type = "code"
-                    break
-                elif choice in {"t", "text"}:
-                    project_type = "text"
-                    break
-                else:
-                    print("Please enter 'c' or 't'.")
+            mixed_projects.append(project_name)
 
-        # skip update if the project type is still unknown
-        if project_type is None:
-            print(f"Detected UNKNOWN project type for: {project_name} (skipping update)")
-            continue  # skip database update if project is unknown
-        
-        if constants.VERBOSE:
-            print(f"Detected {project_type.upper()} project: {project_name}")
-
-        # Save detected project type into the database
+    # write auto-detected types to DB
+    for project_name, project_type in auto_types.items():
         conn.execute("""
             UPDATE project_classifications
-            SET project_type = ? 
+            SET project_type = ?
             WHERE user_id = ? AND project_name = ?
         """, (project_type, user_id, project_name))
 
     conn.commit()
+
+    return {
+        "auto_types": auto_types,
+        "mixed_projects": mixed_projects,
+        "unknown_projects": unknown_projects,
+    }
+
 
 def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
     """

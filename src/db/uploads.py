@@ -11,6 +11,7 @@ UPLOAD_STATUSES = {
     "started",
     "parsed",
     "needs_classification",
+    "needs_project_types",
     "needs_file_roles",
     "needs_summaries",
     "analyzing",

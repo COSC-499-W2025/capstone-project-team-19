@@ -59,9 +59,9 @@ def post_upload_classifications(
 @router.post("/upload/{upload_id}/project-types", response_model=ApiResponse[UploadDTO])
 def post_upload_project_types(
     upload_id: int,
-    payload: ProjectTypesRequest,
+    body: ProjectTypesRequest,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
-    upload = submit_project_types(conn, user_id, upload_id, payload.project_types)
+    upload = submit_project_types(conn, user_id, upload_id, body.project_types)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)

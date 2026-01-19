@@ -14,6 +14,7 @@ from src.db.uploads import (
 
 from src.utils.parsing import ZIP_DATA_DIR, parse_zip_file, analyze_project_layout
 from src.db.projects import record_project_classifications, store_parsed_files
+from src.project_analysis import detect_project_type_auto
 
 UPLOAD_DIR = Path(ZIP_DATA_DIR) / "_uploads"
 
@@ -55,7 +56,6 @@ def start_upload(conn, user_id: int, file: UploadFile) -> dict:
             "state": {"error": "No valid files were processed from ZIP."},
         }
 
-    # optional: persist parsed metadata to DB (matches your CLI behavior if you already do this there)
     store_parsed_files(conn, files_info, user_id)
 
     layout = analyze_project_layout(files_info)
@@ -66,8 +66,37 @@ def start_upload(conn, user_id: int, file: UploadFile) -> dict:
         "layout": layout,
         "files_info_count": len(files_info),
     }
+    
+    auto_assignments = layout.get("auto_assignments") or {}
+    pending_projects = layout.get("pending_projects") or []
 
-    # after parsing, next step is usually classification
+    # if everything was auto-classified, commit it immediately and move forward
+    if auto_assignments and not pending_projects:
+        # persist to same table CLI uses
+        record_project_classifications(conn, user_id, str(zip_path), zip_name, auto_assignments)
+
+        # auto-detect project types (API-safe)
+        type_result = detect_project_type_auto(conn, user_id, auto_assignments)
+
+        patch = {
+            **state,
+            "classifications": auto_assignments,
+            "project_types_auto": type_result["auto_types"],
+            "project_types_mixed": type_result["mixed_projects"],
+            "project_types_unknown": type_result["unknown_projects"],
+        }
+
+        next_status = "needs_project_types" if type_result["mixed_projects"] else "needs_file_roles"
+
+        set_upload_state(conn, upload_id, state=patch, status=next_status)
+
+        return {
+            "upload_id": upload_id,
+            "status": next_status,
+            "zip_name": zip_name,
+            "state": patch,
+        }
+
     set_upload_state(conn, upload_id, state=state, status="needs_classification")
 
     return {
@@ -109,25 +138,54 @@ def submit_classifications(conn, user_id: int, upload_id: int, assignments: dict
     invalid = {k: v for k, v in assignments.items() if v not in allowed}
     if invalid:
         raise HTTPException(status_code=422, detail={"invalid_assignments": invalid})
+    
+    state = upload.get("state") or {}
+    layout = state.get("layout") or {}
+
+    known_projects = set(layout.get("pending_projects") or []) | set((layout.get("auto_assignments") or {}).keys())
+    if not known_projects:
+        raise HTTPException(status_code=409, detail="Upload layout missing; parse step not completed")
+
+    unknown_projects = [p for p in assignments.keys() if p not in known_projects]
+    if unknown_projects:
+        raise HTTPException(
+            status_code=422,
+            detail={"unknown_projects": unknown_projects, "known_projects": sorted(known_projects)},
+        )
 
     zip_path = upload.get("zip_path")
     if not zip_path:
         raise HTTPException(status_code=400, detail="Upload missing zip_path")
-
-    zip_name = Path(zip_path).stem
+    
+    zip_name = upload.get("zip_name")
+    if not zip_name:
+        zip_name = Path(zip_path).stem
 
     record_project_classifications(conn, user_id, zip_path, zip_name, assignments)
+    
+    # auto-detect project types (API-safe)
+    type_result = detect_project_type_auto(conn, user_id, assignments)
+    
+    patch = {
+        "classifications": assignments,
+        "project_types_auto": type_result["auto_types"],
+        "project_types_mixed": type_result["mixed_projects"],
+        "project_types_unknown": type_result["unknown_projects"],
+    }
+    
+    # if any mixed → next step is project-types
+    next_status = "needs_project_types" if type_result["mixed_projects"] else "needs_file_roles"
 
     new_state = patch_upload_state(
         conn,
         upload_id,
-        patch={"classifications": assignments},
-        status="parsed",
+        patch=patch,
+        status=next_status,
     )
 
     return {
         "upload_id": upload_id,
-        "status": "parsed",
+        "status": next_status,
         "zip_name": upload.get("zip_name"),
         "state": new_state,
     }
@@ -139,38 +197,43 @@ def submit_project_types(conn, user_id: int, upload_id: int, project_types: dict
         raise HTTPException(status_code=404, detail="Upload not found")
 
     state = upload.get("state") or {}
-    layout = state.get("layout") or {}
+    mixed = set(state.get("project_types_mixed") or [])
 
-    # We need to know what projects exist from layout
-    known_projects = set(layout.get("auto_assignments", {}).keys()) | set(layout.get("pending_projects", []))
+    if not mixed:
+        raise HTTPException(status_code=409, detail="No mixed projects require type selection")
 
-    if not known_projects:
-        raise HTTPException(status_code=409, detail="Upload has no detected projects to set types for")
-
-    # Validate keys are known projects
-    unknown = {k: v for k, v in project_types.items() if k not in known_projects}
-    if unknown:
-        raise HTTPException(status_code=422, detail={"unknown_projects": list(unknown.keys())})
-
-    # Validate values
-    allowed_types = {"code", "text"}
-    bad_vals = {k: v for k, v in project_types.items() if v not in allowed_types}
+    allowed = {"code", "text"}
+    bad_vals = {k: v for k, v in project_types.items() if v not in allowed}
     if bad_vals:
         raise HTTPException(status_code=422, detail={"invalid_project_types": bad_vals})
+
+    # must cover only mixed projects (no extras)
+    extra = set(project_types.keys()) - mixed
+    missing = mixed - set(project_types.keys())
+    if extra:
+        raise HTTPException(status_code=422, detail={"unknown_projects": sorted(extra)})
+    if missing:
+        raise HTTPException(status_code=422, detail={"missing_projects": sorted(missing)})
+
+    for project_name, ptype in project_types.items():
+        conn.execute("""
+            UPDATE project_classifications
+            SET project_type = ?
+            WHERE user_id = ? AND project_name = ?
+        """, (ptype, user_id, project_name))
+    conn.commit()
 
     new_state = patch_upload_state(
         conn,
         upload_id,
-        patch={"project_types": project_types},
-        status=upload["status"], 
+        patch={"project_types_manual": project_types},
+        status="needs_file_roles",
     )
 
-    update_upload_status(conn, upload_id, "needs_file_roles")
-
-    refreshed = get_upload_by_id(conn, upload_id)
     return {
         "upload_id": upload_id,
-        "status": refreshed["status"],
-        "zip_name": refreshed.get("zip_name"),
-        "state": refreshed.get("state") or {},
+        "status": "needs_file_roles",
+        "zip_name": upload.get("zip_name"),
+        "state": new_state,
     }
+
