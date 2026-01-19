@@ -3,9 +3,9 @@ from sqlite3 import Connection
 
 from src.api.dependencies import get_db, get_current_user_id
 from src.api.schemas.common import ApiResponse
-from src.api.schemas.projects import ProjectListDTO, ProjectListItemDTO
+from src.api.schemas.projects import ProjectListDTO, ProjectListItemDTO, ProjectDetailDTO
 from src.api.schemas.uploads import UploadDTO, ClassificationsRequest, ProjectTypesRequest
-from src.services.projects_service import list_projects
+from src.services.projects_service import list_projects, get_project_by_id
 from src.services.uploads_service import start_upload, get_upload_status, submit_classifications, submit_project_types
 
 
@@ -65,3 +65,16 @@ def post_upload_project_types(
 ):
     upload = submit_project_types(conn, user_id, upload_id, body.project_types)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+@router.get("/{project_id}", response_model=ApiResponse[ProjectDetailDTO])
+def get_project(
+    project_id: int,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    project = get_project_by_id(conn, user_id, project_id)
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    dto = ProjectDetailDTO(**project)
+    return ApiResponse(success=True, data=dto, error=None)

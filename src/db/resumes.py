@@ -3,10 +3,10 @@ src/db/resumes.py
 
 Helpers for storing and retrieving frozen resume snapshots.
 """
+from __future__ import annotations
 
 import sqlite3
 from typing import Dict, List, Any, Optional
-
 
 def insert_resume_snapshot(
     conn: sqlite3.Connection,

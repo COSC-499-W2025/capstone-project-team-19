@@ -339,6 +339,8 @@ CREATE TABLE IF NOT EXISTS project_summaries (
     project_mode        TEXT,
     summary_json        TEXT NOT NULL,
     created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    manual_start_date   TEXT,  -- Manual override for start date (ISO format YYYY-MM-DD)
+    manual_end_date     TEXT,  -- Manual override for end date (ISO format YYYY-MM-DD)
     UNIQUE(user_id, project_name),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
@@ -645,3 +647,13 @@ CREATE TABLE IF NOT EXISTS uploads (
 CREATE INDEX IF NOT EXISTS idx_uploads_user_time
   ON uploads(user_id, created_at);
 
+CREATE TABLE IF NOT EXISTS project_thumbnails (
+    thumbnail_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL,
+    project_name TEXT NOT NULL,
+    image_path   TEXT NOT NULL,
+    added_at     TEXT NOT NULL,
+    updated_at   TEXT NOT NULL,
+    UNIQUE(user_id, project_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);

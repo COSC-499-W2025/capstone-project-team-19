@@ -126,6 +126,11 @@ from .project_summaries import (
     get_project_summary_by_name,
     get_all_projects_with_dates,
     get_all_user_project_summaries,
+    set_project_dates,
+    get_project_dates,
+    clear_project_dates,
+    clear_all_project_dates,
+    get_all_manual_dates,
     update_project_summary_json,
 )
 
@@ -141,7 +146,7 @@ from .resumes import (
     insert_resume_snapshot,
     list_resumes,
     get_resume_snapshot,
-    update_resume_snapshot,      
+    update_resume_snapshot,
     delete_resume_snapshot
 )
 
@@ -172,11 +177,13 @@ from .portfolio import (
 # deduplication
 from .deduplication import (
     find_existing_version_by_strict_fp,
+    find_existing_version_by_loose_fp,
     get_latest_versions,
     get_hash_set_for_version,
     insert_project,
     insert_project_version,
-    insert_version_files)
+    insert_version_files
+)
 
 # project rankings
 from .project_rankings import (
@@ -199,6 +206,12 @@ from .uploads import (
     patch_upload_state,
     mark_upload_failed,
     delete_upload,
+)
+from .project_thumbnails import (
+    upsert_project_thumbnail,
+    get_project_thumbnail_path,
+    delete_project_thumbnail,
+    list_thumbnail_projects,
 )
 
 __all__ = [
@@ -268,12 +281,18 @@ __all__ = [
     "update_git_individual_metrics",
     "get_git_individual_metrics",
     "extract_git_metrics",
+    "set_project_dates",
+    "get_project_dates",
+    "clear_project_dates",
+    "clear_all_project_dates",
+    "get_all_manual_dates",
     "find_existing_version_by_strict_fp",
+    "find_existing_version_by_loose_fp",
     "get_latest_versions",
     "get_hash_set_for_version",
     "insert_project",
     "insert_project_version",
-    "insert_version_files"
+    "insert_version_files",
     "set_project_rank",
     "get_project_rank",
     "get_all_project_ranks",
@@ -288,8 +307,6 @@ __all__ = [
     "update_resume_snapshot",
     "delete_resume_snapshot",
     "delete_project_everywhere",
-    "insert_version_files",
-    "set_project_rank",
     "create_upload",
     "get_upload_by_id",
     "list_uploads_for_user",
@@ -299,4 +316,8 @@ __all__ = [
     "patch_upload_state",
     "mark_upload_failed",
     "delete_upload",
+    "upsert_project_thumbnail",
+    "get_project_thumbnail_path",
+    "delete_project_thumbnail",
+    "list_thumbnail_projects",
 ]

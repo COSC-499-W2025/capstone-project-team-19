@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 from docx import Document
 
+from PIL import Image
+
 # Use an in-memory SQLite database to test real SQL + JSON behavior without touching production data.
 @pytest.fixture()
 def mem_conn():
@@ -22,9 +24,23 @@ def mem_conn():
         )
         """
     )
+
+    conn.execute(
+        """
+        CREATE TABLE project_thumbnails (
+            thumbnail_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER NOT NULL,
+            project_name TEXT NOT NULL,
+            image_path   TEXT NOT NULL,
+            added_at     TEXT NOT NULL,
+            updated_at   TEXT NOT NULL,
+            UNIQUE(user_id, project_name)
+        )
+        """
+    )
+
     conn.commit()
     return conn
-
 
 def _doc_text(path: Path) -> str:
     doc = Document(str(path))
@@ -248,3 +264,69 @@ def test_portfolio_export_uses_manual_overrides(monkeypatch, tmp_path, mem_conn)
     assert "Project: Manual summary" in txt
     assert "Contribution: Did X" in txt
     assert "Contribution: Did Y" in txt
+
+def test_portfolio_export_embeds_thumbnail_when_available(monkeypatch, tmp_path, mem_conn):
+    import src.export.portfolio_docx as exp
+
+    # Freeze datetime.now() used by exporter
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    if fmt == "%Y-%m-%d_%H-%M-%S":
+                        return "2026-01-10_15-36-58"
+                    if fmt == "%Y-%m-%d at %H:%M:%S":
+                        return "2026-01-10 at 15:36:58"
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    # Patch ranking + formatters to keep test focused
+    monkeypatch.setattr(exp, "collect_project_data", lambda conn, user_id: [("paper", 0.708)])
+    monkeypatch.setattr(exp, "format_duration", lambda *a, **k: "Duration: N/A")
+    monkeypatch.setattr(exp, "format_activity_line", lambda *a, **k: "Activity: N/A")
+    monkeypatch.setattr(exp, "format_skills_block", lambda summary: ["Skills: N/A"])
+    monkeypatch.setattr(exp, "format_summary_block", lambda *a, **k: ["Summary: x"])
+
+    # Insert one project summary row
+    mem_conn.execute(
+        """
+        INSERT INTO project_summaries(user_id, project_name, project_type, project_mode, summary_json, created_at)
+        VALUES(?,?,?,?,?,?)
+        """,
+        (1, "paper", "text", "individual", json.dumps({"summary_text": "x"}), "2026-01-01"),
+    )
+    mem_conn.commit()
+
+    # Create a tiny valid PNG in tmp_path
+    png_bytes = (
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+        b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc``\x00"
+        b"\x00\x00\x00\x02\x00\x01\xe2!\xbc3\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+
+    # Create a real PNG via Pillow (python-docx reliably accepts this)
+    img_path = tmp_path / "thumb.png"
+    img = Image.new("RGB", (10, 10), (255, 0, 0))
+    img.save(img_path)
+
+    # Store thumbnail in DB (so exporter finds it via real SQL)
+    mem_conn.execute(
+        """
+        INSERT INTO project_thumbnails(user_id, project_name, image_path, added_at, updated_at)
+        VALUES(?,?,?,?,?)
+        """,
+        (1, "paper", str(img_path), "2026-01-01", "2026-01-01"),
+    )
+    mem_conn.commit()
+
+    out_dir = tmp_path / "out"
+    path = exp.export_portfolio_to_docx(mem_conn, 1, "salma", out_dir=str(out_dir))
+    assert path.exists()
+
+    doc = Document(str(path))
+    # robust: check the docx package has at least one image part
+    assert len(doc.part.package.image_parts) >= 1
+

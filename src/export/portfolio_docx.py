@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Tuple
 from docx import Document
 
 from src.insights.rank_projects.rank_project_importance import collect_project_data
-from src.db import get_project_summary_row
+from src.db import get_project_summary_row, get_project_thumbnail_path
 from src.insights.portfolio import (
     format_duration,
     format_languages,
@@ -32,6 +32,7 @@ from src.insights.portfolio import (
     resolve_portfolio_display_name,
 )
 
+from docx.shared import Inches
 
 def _safe_slug(s: str) -> str:
     """Make a filename-safe slug."""
@@ -99,6 +100,16 @@ def export_portfolio_to_docx(
         # Heading for project
         display_name = resolve_portfolio_display_name(summary, project_name)
         doc.add_heading(f"{display_name}", level=1)
+
+        # Project thumbnail (image)
+        thumb = get_project_thumbnail_path(conn, user_id, project_name)
+        if thumb:
+            p = Path(thumb)
+            if p.exists():
+                try:
+                    doc.add_picture(str(p), width=Inches(2.0))
+                except Exception:
+                    pass
 
         # Metadata lines
         doc.add_paragraph(f"Score: {score:.3f}")
