@@ -12,10 +12,16 @@ def _doc_text(path: Path) -> str:
 
 def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     """
-    Covers: R1 + X1 (deterministic filename via frozen datetime) + structure/order:
-    Skills Summary first, then grouped sections, with project blocks.
+    Covers: deterministic filename via frozen datetime + structure/order:
+    Name -> Contact -> (PROFILE, SKILLS, PROJECTS, EDUCATION & CERTIFICATES)
+    Projects are sorted by most-recent end_date/start_date first.
     """
     import src.export.resume_docx as exp
+    from docx import Document
+
+    def _doc_text(path: Path) -> str:
+        doc = Document(str(path))
+        return "\n".join(p.text for p in doc.paragraphs if p.text is not None)
 
     # Freeze datetime.now() used by exporter
     class _FakeDatetime:
@@ -32,70 +38,90 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
 
     monkeypatch.setattr(exp, "datetime", _FakeDatetime)
 
+    # New-format snapshot (sections + projects w/ role + dates + bullets)
     snapshot = {
+        "contact_line": "Phone | Email | LinkedIn | Location",
+        "profile_text": "To be updated later.",
+        "education_text": "To be updated later.",
         "aggregated_skills": {
-            "languages": ["Python", "SQL"],
-            "frameworks": ["LightGBM"],
+            "languages": ["Python 88%", "SQL 12%"], 
+            "frameworks": ["FastAPI"],
             "technical_skills": ["Algorithms"],
             "writing_skills": ["Clear communication"],
         },
         "projects": [
+            # INTENTIONALLY unsorted input (older first) so we can assert sorting.
             {
-                "project_name": "code_ind",
-                "project_type": "code",
-                "project_mode": "individual",
-                "languages": ["Python"],
-                "frameworks": ["LightGBM"],
-                "summary_text": "code summary",
-                "activities": [{"name": "feature_coding", "top_file": "a.py"}],
-                "skills": ["Algorithms"],
+                "project_name": "older_project",
+                "role": "[Role]",
+                "start_date": "2024-12-01",
+                "end_date": "2024-12-31",
+                "contribution_bullets": ["Old bullet A"],
             },
             {
-                "project_name": "text_collab",
-                "project_type": "text",
-                "project_mode": "collaborative",
-                "text_type": "Academic writing",
-                "summary_text": "text summary",
-                "contribution_percent": 91.0,
-                "skills": ["Clear communication"],
+                "project_name": "newer_project",
+                "role": "[Role]",
+                "start_date": "2025-08-01",
+                "end_date": "2025-11-01",
+                "contribution_bullets": ["New bullet A", "New bullet B"],
             },
         ],
     }
 
     record = {"resume_json": json.dumps(snapshot), "rendered_text": "fallback"}
     out_dir = tmp_path / "out"
-    path = exp.export_resume_record_to_docx(username="salma", record=record, out_dir=str(out_dir))
+
+    path = exp.export_resume_record_to_docx(username="john", record=record, out_dir=str(out_dir))
 
     assert out_dir.exists()
     assert path.exists()
-    assert path.name == "resume_salma_2026-01-10_15-36-58.docx"
+    assert path.name == "resume_john_2026-01-10_15-36-58.docx"
 
     txt = _doc_text(path)
 
-    assert "Resume — salma" in txt
-    assert "Generated on 2026-01-10 at 15:36:58" in txt
+    # Name should appear (exact heading string depends on your implementation;
+    # this assertion is flexible and just ensures "john" is present early)
+    assert "john" in txt.lower()
 
-    # Title + skills first
-    assert "Skills Summary" in txt
-    assert "Languages: Python, SQL" in txt or "Languages: SQL, Python" in txt
+    # Required sections exist
+    assert "PROFILE" in txt
+    assert "SKILLS" in txt
+    assert "PROJECTS" in txt
+    assert "EDUCATION & CERTIFICATES" in txt
 
-    # Order check (Skills Summary appears before projects)
-    idx_skills = txt.find("Skills Summary")
-    idx_code = txt.find("Code — Individual")
-    assert idx_skills != -1 and idx_code != -1
-    assert idx_skills < idx_code
+    # Order: PROFILE -> SKILLS -> PROJECTS -> EDUCATION
+    idx_profile = txt.find("PROFILE")
+    idx_skills = txt.find("SKILLS")
+    idx_projects = txt.find("PROJECTS")
+    idx_edu = txt.find("EDUCATION & CERTIFICATES")
+    assert -1 not in (idx_profile, idx_skills, idx_projects, idx_edu)
+    assert idx_profile < idx_skills < idx_projects < idx_edu
 
-    # Project block content
-    assert "code_ind" in txt
-    assert "Summary: code summary" in txt
-    assert "Contributions:" in txt
-    assert "feature_coding (top: a.py)" in txt
-    assert "Skills:" in txt
+    # Skills lines rendered
+    assert "Languages:" in txt
+    assert ("Python" in txt) and ("SQL" in txt)
+    assert "Frameworks:" in txt
+    assert "FastAPI" in txt
+    assert "Technical skills:" in txt
+    assert "Algorithms" in txt
+    assert "Writing skills:" in txt
+    assert "Clear communication" in txt
 
-    assert "Text — Collaborative" in txt
-    assert "text_collab" in txt
-    assert "Type: Academic writing" in txt
-    assert "Contribution: 91.0% of document" in txt
+    # Projects content: role/date line should show up (format may vary slightly)
+    assert "newer_project" in txt
+    assert "older_project" in txt
+    assert "[Role]" in txt
+
+    # Contributions bullets appear
+    assert "New bullet A" in txt
+    assert "New bullet B" in txt
+    assert "Old bullet A" in txt
+
+    # Sorting check: newer should appear before older
+    assert txt.find("newer_project") < txt.find("older_project")
+
+    # Optional: verify date range text appears somewhere (don’t overfit formatting)
+    assert "2025" in txt and "2024" in txt
 
 
 def test_resume_export_nonhappy_no_saved_resumes(monkeypatch, capsys):
@@ -105,7 +131,7 @@ def test_resume_export_nonhappy_no_saved_resumes(monkeypatch, capsys):
     import src.menu.resume.flow as flow
 
     monkeypatch.setattr(flow, "list_resumes", lambda conn, user_id: [])
-    ok = flow._handle_export_resume_docx(conn=None, user_id=1, username="salma")
+    ok = flow._handle_export_resume_docx(conn=None, user_id=1, username="john")
     out = capsys.readouterr().out
     assert ok is False
     assert "No saved resumes yet" in out
@@ -128,14 +154,14 @@ def test_resume_export_nonhappy_cancel_invalid_selection(monkeypatch, capsys):
 
     # cancel (Enter)
     monkeypatch.setattr("builtins.input", lambda _: "")
-    ok = flow._handle_export_resume_docx(conn=None, user_id=1, username="salma")
+    ok = flow._handle_export_resume_docx(conn=None, user_id=1, username="john")
     out = capsys.readouterr().out
     assert ok is False
     assert "Cancelled" in out
 
     # invalid index (999)
     monkeypatch.setattr("builtins.input", lambda _: "999")
-    ok = flow._handle_export_resume_docx(conn=None, user_id=1, username="salma")
+    ok = flow._handle_export_resume_docx(conn=None, user_id=1, username="john")
     out = capsys.readouterr().out
     assert ok is False
     assert "Invalid selection" in out
@@ -152,7 +178,7 @@ def test_resume_export_nonhappy_record_missing(monkeypatch, capsys):
     monkeypatch.setattr(flow, "get_resume_snapshot", lambda conn, user_id, rid: None)
     monkeypatch.setattr("builtins.input", lambda _: "1")
 
-    ok = flow._handle_export_resume_docx(conn=None, user_id=1, username="salma")
+    ok = flow._handle_export_resume_docx(conn=None, user_id=1, username="john")
     out = capsys.readouterr().out
     assert ok is False
     assert "Unable to load the selected resume" in out
@@ -182,13 +208,13 @@ def test_resume_export_fallback_to_rendered_text(monkeypatch, tmp_path):
 
     # R6: bad JSON + good rendered_text
     record = {"resume_json": "{not json", "rendered_text": "LINE1\nLINE2\n"}
-    path = exp.export_resume_record_to_docx(username="salma", record=record, out_dir=str(out_dir))
+    path = exp.export_resume_record_to_docx(username="john", record=record, out_dir=str(out_dir))
     txt = _doc_text(path)
     assert "Resume Snapshot" in txt
     assert "LINE1" in txt and "LINE2" in txt
 
     # R7: bad JSON + missing rendered_text
     record2 = {"resume_json": "{not json", "rendered_text": ""}
-    path2 = exp.export_resume_record_to_docx(username="salma", record=record2, out_dir=str(out_dir))
+    path2 = exp.export_resume_record_to_docx(username="john", record=record2, out_dir=str(out_dir))
     txt2 = _doc_text(path2)
     assert "Resume data is missing or unreadable" in txt2
