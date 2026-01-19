@@ -94,7 +94,7 @@ I also gave feedback to Timmi's PR, finding the small error about the path issue
 Next week plan: Continue the unfinished feature, and continue implementing milestone requirement 3.
 
 # (T2 Week 2) Monday 5th January - Sunday 11th January
-![Screenshot of week 1_T2 peer eval](./screenshots/Johanes-Jan12-18.PNG)
+![Screenshot of week 2_T2 peer eval](./screenshots/Johanes-Jan12-18.png)
 Week recap: 
 
 This week i worked on 2 PRs and reviewed 2 PRs:
