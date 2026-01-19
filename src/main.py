@@ -84,8 +84,9 @@ def prompt_and_store():
             edit_project_dates_menu(conn, user_id, username)
         elif menu_choice == 10:
             manage_project_thumbnails(conn, user_id, username)
-            project_list(conn, user_id, username)
         elif menu_choice == 11:
+            project_list(conn, user_id, username)
+        elif menu_choice == 12:
             print("\nThank you for using the system. Goodbye!")
             return None
         elif menu_choice == 1:
