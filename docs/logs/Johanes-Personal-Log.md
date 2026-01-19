@@ -1,5 +1,26 @@
 # Personal Log - Johanes
 
+## Table of Contents
+
+### Term 2
+
+- [Week 2 (Jan 12–18)](#t2-week-2-monday-january-12---sunday-january-18)
+- [Week 1 (Jan 5–11)](#t2-week-1-monday-january-5---sunday-january-11)
+
+### Term 1
+
+- [Week 14 (Dec 1–7)](#week-14-monday-1st-december---sunday-7th-december)
+- [Week 13 (Nov 24–30)](#week-13-monday-november-24---sunday-november-30)
+- [Week 12 (Nov 17–23)](#week-12-monday-november-17---sunday-november-23)
+- [Week 10 (Nov 3–9)](#week-10-monday-november-3---sunday-november-9)
+- [Week 9 (Oct 27–Nov 2)](#week-9-monday-27th-october---sunday-2nd-november)
+- [Week 8 (Oct 20–26)](#week-8-monday-20th-october---sunday-26th-october)
+- [Week 7 (Oct 13–19)](#week-7-monday-13th-october---sunday-19th-october)
+- [Week 6 (Oct 6–12)](#week-6-monday-6th-october---sunday-12th-october)
+- [Week 5 (Sept 29–Oct 5)](#week-5-monday-29th-september---sunday-5th-october)
+- [Week 4 (Sept 22–28)](#week-4-monday-22nd---sunday-28th-september)
+- [Week 3 (Sept 15–21)](#week-3-monday-15th---sunday-21st-september)
+
 ## (Week 3) Monday 15th - Sunday 21st September
 
 ![Screenshot of week 3 peer eval](./screenshots/Johanes-Sept15-21.PNG)
@@ -61,7 +82,7 @@ Week recap: I created a new table to store the metrics, with foreign key to the 
 
 Next week plan: I plan to modify start menu to display options such as analyze new project, view old project, delete old project, and view resume items and view portfolio items
 
-# (Week 13) Monday 24th November - Sunday 30th November
+## (Week 13) Monday 24th November - Sunday 30th November
 ![Screenshot of week 13 peer eval](./screenshots/Johanes-Nov24-30.PNG)
 Week recap: I stored necessary code metrics that was not merged last week, and also stored the individual github analysis metrics. I started modifying the menu options to show 6 choices, retrieve old summaries, retrieve portfolio, retrieve resume, delete old insights, start new analysis, and quit. The implementation is done in src/menu to separate the menu files. I also implemented the retrieve old summaries menu by taking the summary_text in the project_summaries table. In further PR, my teammate modified the list menu to show another menu for requirement of milestone 1. 
 
@@ -69,7 +90,7 @@ I also reviewed Ammaar's PR, Adara's PR, and some other teammates.
 
 Next week plan: I plan to help with the video demo and presentation slides.
 
-# (Week 14) Monday 1st December - Sunday 7th December
+## (Week 14) Monday 1st December - Sunday 7th December
 ![Screenshot of week 14 peer eval](./screenshots/Johanes-Dec1-7.PNG)
 Week recap: I updated the System Architecture Diagram based on what we have currently in milestone 1. Added Skill Bucket Analysis box, Activity Type box, and updated the description. I also reorganized the flow of the diagram.
 Me and my teammate also worked on the presentation.
@@ -78,7 +99,7 @@ I reviewed some of my teammate's PR.
 
 Next week plan: No sprint next week. Preparing for final exam. 
 
-# (T2 Week 1) Monday 5th January - Sunday 11th January
+## (T2 Week 1) Monday 5th January - Sunday 11th January
 ![Screenshot of week 1_T2 peer eval](./screenshots/Johanes-Jan5-11.PNG)
 Week recap: 
 
@@ -93,7 +114,7 @@ I also gave feedback to Timmi's PR, finding the small error about the path issue
 
 Next week plan: Continue the unfinished feature, and continue implementing milestone requirement 3.
 
-# (T2 Week 2) Monday 5th January - Sunday 11th January
+## (T2 Week 2) Monday 5th January - Sunday 11th January
 ![Screenshot of week 2_T2 peer eval](./screenshots/Johanes-Jan12-18.png)
 Week recap: 
 
