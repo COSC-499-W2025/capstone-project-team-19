@@ -92,3 +92,22 @@ I also gave feedback to Timmi's PR, finding the small error about the path issue
 
 
 Next week plan: Continue the unfinished feature, and continue implementing milestone requirement 3.
+
+# (T2 Week 2) Monday 5th January - Sunday 11th January
+![Screenshot of week 1_T2 peer eval](./screenshots/Johanes-Jan12-18.PNG)
+Week recap: 
+
+This week i worked on 2 PRs and reviewed 2 PRs:
+
+1st PR: ([#338])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/338)
+I continued the draft PR I made about editing date functionality. In the pr we also discussed about possible additional edge cases that I overlooked.
+
+2nd PR: ([#370])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/370)
+I implemented both POST and GET api endpoint for the consents, based on the user_id. 
+
+PR I reviewed: ([#372])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/372)
+I reviewed salma's PR about add images for project thumbnails and found a bug where the image not showing for big dimensions, which was addressed by resizing image into 800x800 if it exceeds the limit of 800x800. I also noticed other bug such as saving duplicates of edited thumbnails. I also gave feedback about the CLI menu.
+
+I also tested ivona's PR ([#374])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/374) for the endpoints of get skills, all resumes, and specific resume
+
+Next week plan: Continue implementing other api endpoints
