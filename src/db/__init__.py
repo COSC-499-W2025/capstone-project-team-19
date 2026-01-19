@@ -177,6 +177,7 @@ from .portfolio import (
 # deduplication
 from .deduplication import (
     find_existing_version_by_strict_fp,
+    find_existing_version_by_loose_fp,
     get_latest_versions,
     get_hash_set_for_version,
     insert_project,
@@ -266,6 +267,7 @@ __all__ = [
     "clear_all_project_dates",
     "get_all_manual_dates",
     "find_existing_version_by_strict_fp",
+    "find_existing_version_by_loose_fp",
     "get_latest_versions",
     "get_hash_set_for_version",
     "insert_project",
