@@ -1,6 +1,24 @@
 # Personal Log - Ivona
+## Table of Contents
 
-## (Week 3) Monday 15th - Sunday 21st September
+### Term 2
+- [Week 1 (Jan 5-11)](#t2-week-1-jan-5-11)
+- [Week 2 (Jan 12-18)](#t2-week-2-jan-12-18)
+
+### Term 1
+- [Week 3 (Sept 15-21)](#week-3-sept-15-21)
+- [Week 4 (Sept 22-28)](#week-4-sept-22-28)
+- [Week 5 (Sept 29 - Oct 5)](#week-5-sept-29---oct-5)
+- [Week 6 (Oct 6-12)](#week-6-oct-6-12)
+- [Week 7 (Oct 13-19)](#week-7-oct-13-19)
+- [Week 8 (Oct 20-26)](#week-8-oct-20-26)
+- [Week 9 (Oct 27 - Nov 2)](#week-9-oct-27---nov-2)
+- [Week 10 (Nov 3-9)](#week-10-nov-3-9)
+- [Week 12 (Nov 17-23)](#week-12-nov-17-23)
+- [Week 13 (Nov 24-30)](#week-13-nov-24-30)
+- [Week 14 (Dec 1-7)](#week-14-dec-1-7)
+
+## (Week 3) Monday 15th - Sunday 21st September {#week-3-sept-15-21}
 
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Sept15-21.PNG)
 
@@ -8,30 +26,30 @@ Week Recap:
 Monday: Met teammates and discussed the project and worked on functional and non-functional requirments.
 Wednesday: Talked to other teams as a sub team of 3 about their functional/ non-fucntional requirments. Met back up with our full team and discussed what we found out.
 
-## (Week 4) Monday 22th - Sunday 28st September
+## (Week 4) Monday 22th - Sunday 28st September {#week-4-sept-22-28}
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Sept.22-28.PNG)
 
 Week Recap:
 I was absent from class this week due to health reasons. I provided my professor with a doctor’s note and informed my team of my situation. Because of this, I wasn’t able to contribute earlier in the week, but by Saturday night/Sunday I caught up on all team discussions and reviewed the work completed. I contributed by helping with the UML Use Case Diagram.
 
-## (Week 5) SeptemberMonday 29th - Sunday October 5th 
+## (Week 5) SeptemberMonday 29th - Sunday October 5th {#week-5-sept-29---oct-5} 
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Sept29-Oct5.PNG)
 
 Helped polish up the DFD. Then on Wednesday my team and I talked to other teams and compared DFDs in class. We took notes on their DFDs on how they differed from ours. We had dissucions with the teams to better understand their diagrams.
 
-## (Week 6) Monday 6th - Sunday 12st October
+## (Week 6) Monday 6th - Sunday 12st October {#week-6-oct-6-12}
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Oct.6-12.PNG)
 
 This week I worked on the external consent feature for milestone #1. Pr #40.
 I implemented the tests, file and updated main file to ask user's permission to use external services on their files. Reviewed teammate's PRs.
 
-## (Week 7) Monday 13th - Sunday 19st October
+## (Week 7) Monday 13th - Sunday 19st October {#week-7-oct-13-19}
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Oct.13-19.PNG)
 
 This week I worked on the feature for detecting languages and frameworks used in coding projects. I implemented the languages and framework detection and then refactored the languages to be more efficient(PR 90).
 My plan now is to do the same with the framework but there is an aditional step that needs to be done (adding config files to the database) which I discussed with the team. So I will continue to work on that next week. As well as with extracting key contributation metrics in a project (without LLM).
 
-## (Week 8) Monday 20th - Sunday 26st October
+## (Week 8) Monday 20th - Sunday 26st October {#week-8-oct-20-26}
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Oct.20-26.PNG)
 
 This week I completed two PRs (109 and 122). 
@@ -43,7 +61,7 @@ The second PR, I worked on the framework detection for coding projects. I made a
 
 Next week I will continue working on the language/framework detection feature. I plan to add support for frameworks that aren't usually declared in config./dep. files. Store the languages/frameworks found in a database. And maybe expand the language detection supported files (depending on what the team decides on Monday.) And If time premits I will start working on extracting key contributation metrics in a project.
 
-## (Week 9) Monday October 27th - Sunday November 2nd 
+## (Week 9) Monday October 27th - Sunday November 2nd {#week-9-oct-27---nov-2} 
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Oct.27-Nov.2.PNG)
 
 This week I completed the PR 168.
@@ -56,7 +74,7 @@ I originally didn't plan to work on this week but at the Wednesday meeting we di
 Next Week: I plan to either go back to explanding the framework detector as I originally planned to last week or/and to get contributation metrics from the Google Drive files.
 
 
-## (Week 10) Monday Nov 3rd - Sunday November 9th 
+## (Week 10) Monday Nov 3rd - Sunday November 9th {#week-10-nov-3-9} 
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Nov.3-9.PNG)
 
 This week I worked on PR[COSC-499-W2025/capstone-project-team-19#198](https://github.com/COSC-499-W2025/capstone-project-team-19/issues/198). I spent a lot of time figuring out which metrics to use so that we can accurately assess collaborative text projects. And how to represent this in the database. 
@@ -70,7 +88,7 @@ This week I worked on PR[COSC-499-W2025/capstone-project-team-19#198](https://gi
 Next Week:
 Continue extracting/improving Google drive collaboration data. Fix the 2 bugs. Refactor/clean code.
 
-## (Week 12) Monday Nov 17th - Sunday November 23th 
+## (Week 12) Monday Nov 17th - Sunday November 23th {#week-12-nov-17-23} 
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Nov.17-23.PNG)
 
 This week I attended group meetings, reviewed PRs, made 2 PRs and helped Timmi with starting the organization for planning what is left for milestone 1.
@@ -90,7 +108,7 @@ Next Week:
 I plan to finnish the contributation skills from text projects by getting the metrics from the comments API and stroing them in the database.
 
 
-## (Week 13) Monday Nov 24th - Sunday November 30th 
+## (Week 13) Monday Nov 24th - Sunday November 30th {#week-13-nov-24-30} 
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Nov.24-30.PNG)
 
 This Week:
@@ -109,7 +127,7 @@ Working with the team on the presentation slide and demo video.
 Finishing the contributation skills from text projects by getting the metrics from the comments API and stroing them in the database.
 
 
-## (Week 14) Monday Dec 1st - Sunday November 7th 
+## (Week 14) Monday Dec 1st - Sunday November 7th {#week-14-dec-1-7}
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Dec.1-7.PNG)
 This Week:
 I worked on making the presentation and preparing for it, creating PR#321, PR#299, reviewing PRs,and atttending team meetings.
@@ -124,9 +142,9 @@ This PR conserned with writting the instructions to the TAs in the read me on ho
 Next Week:
 Next week is winter break so I don't have any plans for the project yet.
 
+-----------T2 WEEKLY LOGS---------------------------
 
-
-## (Week 14) Monday Dec 1st - Sunday November 7th 
+## (Week 1) Monday  Jan 5th - Sunday Jan 11th {#t2-week-1-jan-5-11}
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Jan.5-11.PNG)
 This Week:
 I worked on PR #350:
@@ -134,3 +152,31 @@ This PR was working on milestone requiremnt 21. It gave user the option to selec
 
 Next Week:
 I will be taking on a new task probably to start implementing the APIs as we havent started that yet and don't have a lot of user customizarion tasks left to do.
+
+
+## (Week 2) Monday  Jan 12th - Sunday Jan 18th {#t2-week-2-jan-12-18}
+![Screenshot of this week's peer eval](./screenshots/Ivona-Jan.12-18.PNG)
+
+Week recap: This week I worked on 2 feature PRs and reviewed 3 PRs.
+
+Coding PRs:
+1st PR: ([#369](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/369))
+I implemented the api endpoint to retrieve the analysis done for a certain project based on the project's id. I followed the structure of our api implementation, added api documentation, testing and added a db query.
+
+2nd PR: ([#374](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/374))
+I implemented 3 api endpoints (to get all the user's skills, get all the user's resumes, get a specific resume by the id). I followed the structure of our api implementation, added api documentation,and testing for each.
+
+Reviewing PRs:
+1st PR review (Timmi's): ([#357](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/357))
+I reviewed this PR which was the API set up, this was done to lay out the format of the structure and expectations for how the api endpoints should be written in our system.
+
+2nd PR review (Johane's) ([#370](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/370)) This PR implemented 2 api endpoints, I requested changes to make the tests smaller by making a db set up fixture.
+
+3rd PR review (Adara's) ([#376](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/376)) This PR worked on POST / projects/upload api endpoint and required careful consideration and organization for how to implement. I requested a few changes and asked a few questions about this PR as it was a new idea of how to implement that we hadn't discussed yet. This feature is not yet done and will need to continue working on it the next 2 weeks.
+
+Next Week: 
+I plan on working on more api endpoints, this may include helping Adara with the 19 endpoints needed for the POST / projects/upload especially the Google Aouth ones since I worked on implementing that feature in term 1. 
+
+
+
+
