@@ -20,14 +20,29 @@ def validate_image_path(path_str: str) -> Path:
         img.verify()
     return p
 
+MAX_SIZE = 800  # px
 
-def copy_to_images_dir(src: Path, images_dir: Path, user_id: int, project_name: str) -> Path:
+def save_standardized_thumbnail(
+    src: Path,
+    images_dir: Path,
+    user_id: int,
+    project_name: str,
+) -> Path:
     images_dir.mkdir(parents=True, exist_ok=True)
 
     safe = "".join(ch if ch.isalnum() else "_" for ch in project_name).strip("_").lower()
     if not safe:
         safe = "project"
 
-    dst = images_dir / f"u{user_id}_{safe}{src.suffix.lower()}"
-    shutil.copyfile(src, dst)
+    dst = images_dir / f"u{user_id}_{safe}.png"
+
+    with Image.open(src) as img:
+        img = img.convert("RGB")  # normalize format
+
+        # Downscale only if larger than max
+        if img.width > MAX_SIZE or img.height > MAX_SIZE:
+            img.thumbnail((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
+
+        img.save(dst, format="PNG", optimize=True)
+
     return dst
