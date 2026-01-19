@@ -330,6 +330,38 @@ Example:
     - `project_mode` (string, optional)
     - `created_at` (string, optional)
 
+### **Upload Wizard DTOs (Projects Upload)**
+
+- **UploadDTO**
+    - `upload_id` (int, required)
+    - `status` (string, required)  
+      Allowed values:
+        - `"started"`
+        - `"parsed"`
+        - `"needs_classification"`
+        - `"needs_file_roles"`
+        - `"needs_summaries"`
+        - `"analyzing"`
+        - `"done"`
+        - `"failed"`
+    - `zip_name` (string, optional)
+    - `state` (object, optional)
+
+- **ClassificationsRequest**
+    - `assignments` (object, required)  
+      Shape: `{ "<project_name>": "<classification>" }`  
+      Allowed values:
+        - `"individual"`
+        - `"collaborative"`
+
+- **ProjectTypesRequest** 
+    - `project_types` (object, required)  
+      Shape: `{ "<project_name>": "<project_type>" }`  
+      Allowed values:
+        - `"text"`
+        - `"code"`
+
+
 ---
 
 ## **Best Practices**
