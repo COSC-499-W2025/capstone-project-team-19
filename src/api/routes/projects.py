@@ -4,7 +4,7 @@ from sqlite3 import Connection
 from src.api.dependencies import get_db, get_current_user_id
 from src.api.schemas.common import ApiResponse
 from src.api.schemas.projects import ProjectListDTO, ProjectListItemDTO, ProjectDetailDTO
-from src.api.schemas.uploads import UploadDTO, ClassificationsRequest, ProjectTypesRequest, ProjectFilesDTO, MainFileRequestDTO
+from src.api.schemas.uploads import UploadDTO, ClassificationsRequest, ProjectTypesRequest, UploadProjectFilesDTO, MainFileRequestDTO
 from src.services.projects_service import list_projects, get_project_by_id
 from src.services.uploads_service import start_upload, get_upload_status, submit_classifications, submit_project_types, list_project_files, set_project_main_file
 
@@ -84,7 +84,7 @@ def get_project(
 
 @router.get(
     "/upload/{upload_id}/projects/{project_name}/files",
-    response_model=ApiResponse[ProjectFilesDTO],
+    response_model=ApiResponse[UploadProjectFilesDTO],
 )
 def get_upload_project_files(
     upload_id: int,
@@ -93,7 +93,7 @@ def get_upload_project_files(
     conn: Connection = Depends(get_db),
 ):
     data = list_project_files(conn, user_id, upload_id, project_name)
-    return ApiResponse(success=True, data=ProjectFilesDTO(**data), error=None)
+    return ApiResponse(success=True, data=UploadProjectFilesDTO(**data), error=None)
 
 
 @router.post(
