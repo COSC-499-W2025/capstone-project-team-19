@@ -27,7 +27,7 @@ def login(payload: LoginIn, conn: sqlite3.Connection = Depends(get_db)):
     
     token = create_access_token(
         secret=get_jwt_secret(),
-        user_id=user["user id"],
+        user_id=user["user_id"],
         username=user["username"],
         expires_minutes=60
     )
