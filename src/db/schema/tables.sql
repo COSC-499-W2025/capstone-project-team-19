@@ -637,7 +637,7 @@ CREATE TABLE IF NOT EXISTS uploads (
   zip_name    TEXT,
   zip_path    TEXT,
   status      TEXT NOT NULL DEFAULT 'started'
-              CHECK(status IN ('started','parsed','needs_classification','needs_project_types','needs_file_roles','needs_summaries','analyzing','done','failed')),
+              CHECK(status IN ('started','parsed','needs_dedup','needs_classification','needs_project_types','needs_file_roles','needs_summaries','analyzing','done','failed')),
   state_json  TEXT, 
   created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at  TEXT DEFAULT CURRENT_TIMESTAMP,

@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional, Literal
 UploadStatus = Literal[
     "started",
     "parsed",
+    "needs_dedup",
     "needs_classification",
     "needs_project_types",
     "needs_file_roles",
@@ -24,5 +25,10 @@ class ClassificationsRequest(BaseModel):
 
 class ProjectTypesRequest(BaseModel):
     project_types: Dict[str, str]  # project_name -> code|text
+    
+DedupDecision = Literal["skip", "new_project", "new_version"]
+
+class DedupResolveRequestDTO(BaseModel):
+    decisions: Dict[str, DedupDecision]
 
 
