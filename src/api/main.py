@@ -3,7 +3,7 @@ from src.api.routes.projects import router as projects_router
 from src.api.routes.skills import router as skills_router
 from src.api.routes.resumes import router as resumes_router
 from src.api.routes.consent import router as consent_router
-from src.api.routes.auth import router as auth_router
+from src.api.auth.routes import router as auth_router
 
 app = FastAPI(title="Capstone API")
 
