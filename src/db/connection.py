@@ -20,6 +20,7 @@ def connect(db_path: str | Path | None = None) -> sqlite3.Connection:
         Path(target).parent.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(target)
+    conn.row_factory = sqlite3.Row  # Return rows as dictionaries
     conn.execute("PRAGMA foreign_keys=ON;")
     if target != ":memory:":
         conn.execute("PRAGMA journal_mode=WAL;")

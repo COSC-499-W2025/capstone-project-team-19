@@ -1,24 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-import os
 import sqlite3
 
 from .security import hash_password, verify_password, create_access_token
+from .deps import get_jwt_secret, get_db
 from ..schemas.auth import RegisterIn, LoginIn, TokenOut
 from ...db.users import get_user_auth_by_username, create_user_with_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-def get_db() -> sqlite3.Connection:
-    # Replace with YOUR db dependency
-    # e.g. from src.db.connection import get_conn
-    raise NotImplementedError
-# i think this already exists in the system, maybe just import it?????
-
-def get_jwt_secret() -> str:
-    secret = os.getenv("JWT_SECRET")
-    if not secret:
-        raise RuntimeError("JWT_SECRET is not set")
-    return secret
 
 @router.post("/register")
 def register(payload: RegisterIn, conn: sqlite3.Connection = Depends(get_db)):
@@ -34,7 +22,7 @@ def register(payload: RegisterIn, conn: sqlite3.Connection = Depends(get_db)):
 @router.post("/login", response_model=TokenOut)
 def login(payload: LoginIn, conn: sqlite3.Connection = Depends(get_db)):
     user = get_user_auth_by_username(conn, payload.username)
-    if not user or not verify_password(payload.password, user["password hash"]):
+    if not user or not verify_password(payload.password, user["hashed_password"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     
     token = create_access_token(
