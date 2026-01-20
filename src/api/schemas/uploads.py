@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Any, Dict, Optional, Literal
+from typing import Any, Dict, Optional, Literal, List
 
 UploadStatus = Literal[
     "started",
@@ -24,5 +24,21 @@ class ClassificationsRequest(BaseModel):
 
 class ProjectTypesRequest(BaseModel):
     project_types: Dict[str, str]  # project_name -> code|text
+    
+class UploadFileItemDTO(BaseModel):
+    relpath: str                  
+    file_name: str
+    file_type: Optional[str] = None
+    extension: Optional[str] = None
+    size_bytes: Optional[int] = None
+
+class UploadProjectFilesDTO(BaseModel):
+    project_name: str
+    all_files: List[UploadFileItemDTO]
+    text_files: List[UploadFileItemDTO]
+    csv_files: List[UploadFileItemDTO]
+
+class MainFileRequestDTO(BaseModel):
+    relpath: str
 
 
