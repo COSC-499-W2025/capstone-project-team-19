@@ -40,7 +40,7 @@ def start_upload(conn, user_id: int, file: UploadFile) -> dict:
 
     update_upload_zip_metadata(conn, upload_id, zip_name=zip_name, zip_path=str(zip_path))
 
-    # Step 4A: parse + layout (same automatic work CLI does)
+    # parse + layout (same automatic work CLI does)
     files_info = parse_zip_file(str(zip_path), user_id=user_id, conn=conn)
     if not files_info:
         set_upload_state(
