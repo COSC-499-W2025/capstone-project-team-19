@@ -4,9 +4,9 @@ from sqlite3 import Connection
 from src.api.dependencies import get_db, get_current_user_id
 from src.api.schemas.common import ApiResponse
 from src.api.schemas.projects import ProjectListDTO, ProjectListItemDTO, ProjectDetailDTO
-from src.api.schemas.uploads import UploadDTO, ClassificationsRequest, ProjectTypesRequest
+from src.api.schemas.uploads import UploadDTO, ClassificationsRequest, ProjectTypesRequest, ProjectFilesDTO, MainFileRequestDTO
 from src.services.projects_service import list_projects, get_project_by_id
-from src.services.uploads_service import start_upload, get_upload_status, submit_classifications, submit_project_types
+from src.services.uploads_service import start_upload, get_upload_status, submit_classifications, submit_project_types, list_project_files, set_project_main_file
 
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -65,6 +65,8 @@ def post_upload_project_types(
 ):
     upload = submit_project_types(conn, user_id, upload_id, body.project_types)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
 @router.get("/{project_id}", response_model=ApiResponse[ProjectDetailDTO])
 def get_project(
     project_id: int,
@@ -78,3 +80,33 @@ def get_project(
     
     dto = ProjectDetailDTO(**project)
     return ApiResponse(success=True, data=dto, error=None)
+
+
+@router.get(
+    "/upload/{upload_id}/projects/{project_name}/files",
+    response_model=ApiResponse[ProjectFilesDTO],
+)
+def get_upload_project_files(
+    upload_id: int,
+    project_name: str,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    data = list_project_files(conn, user_id, upload_id, project_name)
+    return ApiResponse(success=True, data=ProjectFilesDTO(**data), error=None)
+
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_name}/main-file",
+    response_model=ApiResponse[UploadDTO],
+)
+def post_upload_project_main_file(
+    upload_id: int,
+    project_name: str,
+    body: MainFileRequestDTO,  
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = set_project_main_file(conn, user_id, upload_id, project_name, body.relpath)
+    return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
