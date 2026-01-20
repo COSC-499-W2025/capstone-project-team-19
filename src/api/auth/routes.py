@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 import sqlite3
 
 from .security import hash_password, verify_password, create_access_token
-from .deps import get_jwt_secret, get_db
+from ..dependencies import get_jwt_secret, get_db
 from ..schemas.auth import RegisterIn, LoginIn, TokenOut
 from ...db.users import get_user_auth_by_username, create_user_with_password
 
