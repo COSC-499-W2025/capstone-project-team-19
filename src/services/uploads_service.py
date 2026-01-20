@@ -15,6 +15,7 @@ from src.db.uploads import (
 from src.utils.parsing import ZIP_DATA_DIR, parse_zip_file, analyze_project_layout
 from src.db.projects import record_project_classifications, store_parsed_files
 from src.project_analysis import detect_project_type_auto
+from src.utils.deduplication.api_integration import run_deduplication_for_projects_api
 
 UPLOAD_DIR = Path(ZIP_DATA_DIR) / "_uploads"
 
@@ -34,18 +35,15 @@ def start_upload(conn, user_id: int, file: UploadFile) -> dict:
     zip_name = _safe_name(file.filename or f"upload_{upload_id}.zip")
     zip_path = UPLOAD_DIR / f"{upload_id}_{zip_name}"
 
-    # stream copy (don’t read entire zip into memory)
     with open(zip_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
     update_upload_zip_metadata(conn, upload_id, zip_name=zip_name, zip_path=str(zip_path))
 
-    # parse + layout (same automatic work CLI does)
     files_info = parse_zip_file(str(zip_path), user_id=user_id, conn=conn)
     if not files_info:
         set_upload_state(
-            conn,
-            upload_id,
+            conn, upload_id,
             state={"error": "No valid files were processed from ZIP."},
             status="failed",
         )
@@ -56,15 +54,57 @@ def start_upload(conn, user_id: int, file: UploadFile) -> dict:
             "state": {"error": "No valid files were processed from ZIP."},
         }
 
-    store_parsed_files(conn, files_info, user_id)
-
+    # Build layout BEFORE writing to DB so dedup can filter
     layout = analyze_project_layout(files_info)
+
+    # Compute target_dir like CLI (parse_zip_file extracts under ZIP_DATA_DIR/<zip_stem>)
+    extract_dir = Path(ZIP_DATA_DIR) / Path(str(zip_path)).stem
+
+    dedup = run_deduplication_for_projects_api(conn, user_id, str(extract_dir), layout)
+
+    skipped = dedup["skipped"]
+    if skipped:
+        files_info = [f for f in files_info if f.get("project_name") not in skipped]
+        layout = analyze_project_layout(files_info)
+
+    if not files_info:
+        set_upload_state(
+            conn, upload_id,
+            state={
+                "zip_name": zip_name,
+                "zip_path": str(zip_path),
+                "layout": layout,
+                "files_info_count": 0,
+                "dedup_skipped_projects": sorted(list(skipped)),
+                "message": "All projects were skipped by deduplication (duplicates).",
+            },
+            status="failed",
+        )
+        return {
+            "upload_id": upload_id,
+            "status": "failed",
+            "zip_name": zip_name,
+            "state": {
+                "zip_name": zip_name,
+                "zip_path": str(zip_path),
+                "layout": layout,
+                "files_info_count": 0,
+                "dedup_skipped_projects": sorted(list(skipped)),
+                "message": "All projects were skipped by deduplication (duplicates).",
+            },
+        }
+
+    # Only store the kept parsed files now
+    store_parsed_files(conn, files_info, user_id)
 
     state = {
         "zip_name": zip_name,
         "zip_path": str(zip_path),
         "layout": layout,
         "files_info_count": len(files_info),
+        "dedup_skipped_projects": sorted(list(skipped)),
+        "dedup_asks": dedup["asks"],                  # optional info for later
+        "dedup_new_versions": dedup["new_versions"],  # optional info for later
     }
     
     auto_assignments = layout.get("auto_assignments") or {}
