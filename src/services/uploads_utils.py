@@ -76,22 +76,16 @@ def safe_relpath(relpath: str) -> str:
 
 def compute_relpath_under_zip_data(zip_data_dir: Path, file_path: str) -> str:
     """
-    Convert an absolute extracted file path into a stable relative path under ZIP_DATA_DIR.
-    Example output: "5_text_projects/text_projects/ProjA/report.docx"
+    Convert an absolute extracted file path into a POSIX relpath under ZIP_DATA_DIR.
+    Example:
+      ZIP_DATA_DIR=/.../src/analysis/zip_data
+      file_path=/.../src/analysis/zip_data/myzip/ProjA/docs/report.docx
+      -> myzip/ProjA/docs/report.docx
     """
-    if not file_path:
-        raise ValueError("file_path missing")
-
-    base = zip_data_dir.resolve()
-    fp = Path(file_path).resolve()
-
-    try:
-        rel = fp.relative_to(base)
-    except ValueError as e:
-        raise ValueError(f"file_path is not under ZIP_DATA_DIR: {file_path}") from e
-
-    # Always return posix paths for API consistency
-    return PurePosixPath(rel.as_posix()).as_posix()
+    base = Path(zip_data_dir).resolve()
+    p = Path(file_path).resolve()
+    rel = p.relative_to(base)  # raises ValueError if p not under base
+    return PurePosixPath(rel).as_posix()
 
 
 def build_file_item_from_row(zip_data_dir: Path, row: Tuple[Any, ...]) -> Dict[str, Any]:

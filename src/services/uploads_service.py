@@ -27,10 +27,30 @@ from src.services.uploads_utils import (
     safe_relpath,
     build_file_item_from_row,
     categorize_project_files,
+    compute_relpath_under_zip_data,
 )
 
 
+
 UPLOAD_DIR = Path(ZIP_DATA_DIR) / "_uploads"
+
+
+def get_project_relpath_set(conn: sqlite3.Connection, user_id: int, project_name: str) -> set[str]:
+    rows = conn.execute(
+        """
+        SELECT file_path
+        FROM files
+        WHERE user_id = ? AND project_name = ? AND file_path IS NOT NULL
+        """,
+        (user_id, project_name),
+    ).fetchall()
+
+    relpaths: set[str] = set()
+    for (file_path,) in rows:
+        # ZIP_DATA_DIR is the base for extraction, so this is stable
+        relpaths.add(compute_relpath_under_zip_data(Path(ZIP_DATA_DIR), str(file_path)))
+
+    return relpaths
 
 
 def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> dict:
@@ -215,6 +235,88 @@ def submit_project_types(conn: sqlite3.Connection, user_id: int, upload_id: int,
     return {
         "upload_id": upload_id,
         "status": "needs_file_roles",
+        "zip_name": upload.get("zip_name"),
+        "state": new_state,
+    }
+    
+
+def list_project_files(conn: sqlite3.Connection, user_id: int, upload_id: int, project_name: str) -> dict:
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    if upload["status"] not in {"needs_file_roles", "needs_summaries"}:
+        raise HTTPException(status_code=409, detail=f"Upload not ready for file picking (status={upload['status']})")
+
+    state = upload.get("state") or {}
+    known_projects = get_layout_known_projects(state)
+    if project_name not in known_projects:
+        raise HTTPException(status_code=404, detail="Project not found in this upload")
+
+    rows = conn.execute(
+        """
+        SELECT file_name, file_path, extension, file_type, size_bytes, created, modified, project_name
+        FROM files
+        WHERE user_id = ? AND project_name = ?
+        ORDER BY file_path ASC
+        """,
+        (user_id, project_name),
+    ).fetchall()
+
+    items = [build_file_item_from_row(Path(ZIP_DATA_DIR), r) for r in rows]
+    buckets = categorize_project_files(items)
+
+    return {
+        "upload_id": upload_id,
+        "project_name": project_name,
+        **buckets,
+    }
+
+
+def set_project_main_file(conn: sqlite3.Connection, user_id: int, upload_id: int, project_name: str, relpath: str) -> dict:
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    if upload["status"] not in {"needs_file_roles"}:
+        raise HTTPException(status_code=409, detail=f"Upload not ready to set main file (status={upload['status']})")
+
+    state = upload.get("state") or {}
+    known_projects = get_layout_known_projects(state)
+    if project_name not in known_projects:
+        raise HTTPException(status_code=404, detail="Project not found in this upload")
+
+    try:
+        relpath_norm = safe_relpath(relpath)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    valid_relpaths = get_project_relpath_set(conn, user_id, project_name)
+    if relpath_norm not in valid_relpaths:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "message": "relpath not found for this project",
+                "project_name": project_name,
+                "relpath": relpath_norm,
+            },
+        )
+
+    patch = {
+        "file_roles": {
+            **(state.get("file_roles") or {}),
+            project_name: {
+                **((state.get("file_roles") or {}).get(project_name) or {}),
+                "main_file": relpath_norm,
+            },
+        }
+    }
+
+    new_state = patch_upload_state(conn, upload_id, patch=patch, status="needs_file_roles")
+
+    return {
+        "upload_id": upload_id,
+        "status": upload["status"],
         "zip_name": upload.get("zip_name"),
         "state": new_state,
     }
