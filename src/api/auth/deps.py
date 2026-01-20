@@ -34,3 +34,9 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="User not found")
 
     return {"id": user["user_id"], "username": user["username"]}
+
+def get_current_user_id(
+    current_user: dict = Depends(get_current_user),
+) -> int:
+    """Extract user_id from the current authenticated user."""
+    return current_user["id"]
