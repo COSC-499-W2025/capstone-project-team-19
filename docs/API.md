@@ -25,17 +25,18 @@ http://localhost:8000
 ## Table of Contents
 
 1. [Health](#health)
-2. [Projects](#projects)
-3. [Uploads Wizard](#uploads-wizard)
-4. [Privacy Consent](#privacyconsent)
-5. [Skills](#skills)
-6. [Resume](#resume)
-7. [Portfolio](#portfolio)
-8. [Path Variables](#path-variables)  
-9. [DTO References](#dto-references)  
-10. [Best Practices](#best-practices)  
-11. [Error Codes](#error-codes)  
-12. [Example Error Response](#example-error-response)  
+2. [Authentication](#authentication)
+3. [Projects](#projects)
+4. [Uploads Wizard](#uploads-wizard)
+5. [Privacy Consent](#privacyconsent)
+6. [Skills](#skills)
+7. [Resume](#resume)
+8. [Portfolio](#portfolio)
+9. [Path Variables](#path-variables)  
+10. [DTO References](#dto-references)  
+11. [Best Practices](#best-practices)  
+12. [Error Codes](#error-codes)  
+13. [Example Error Response](#example-error-response)  
 
 ---
 
@@ -54,6 +55,54 @@ Basic health checkpoint to verify the service is up and responding.
         ```json
         {"status":"ok"}
         ```
+
+---
+
+## **Authentication**
+
+**Base URL:** `/auth`
+
+Handles authentication and security for the endpoints. 
+
+### **Endpoints**
+
+- **Register**
+    - **Endpoint**: `POST /register`
+    - **Description**: Uploads username and password to database. Checks i fthe username already exists in the database.
+    - **Headers**: None.
+    - **Request Body**:
+    ```json
+        {
+            "username": "John Doe",
+            "password": "securepassword123"
+        }
+    ```
+    - **Response Body**:
+    ```json
+        {
+            "user_id": 1,
+            "username": "John Doe"
+        }
+    ```
+
+- **Login**
+    - **Endpoint**: `POST /login`
+    - **Description**: Takes in a username and password, checks that the username exists and the password is correct. Returns an authorization (bearer) token that expires after 60 minutes.
+    - **Headers**: None.
+    - **Request Body**: 
+    ```json
+        {
+            "username": "John Doe",
+            "password": "securepassword"
+        }
+    ```
+    - **Response Body**:
+    ```json
+        {
+            "access_token": "token",
+            "token_type": "bearer"
+        }
+    ```
 
 ---
 
