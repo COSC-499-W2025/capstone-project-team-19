@@ -30,7 +30,7 @@ def test_register_success(client, monkeypatch):
     monkeypatch.setattr(auth_routes, "create_user_with_password", lambda conn, username, email, pw_hash: 123)
 
     res = client.post("/auth/register", json={"username": "alice", "password": "pw123"})
-    assert res.status_code == 200
+    assert res.status_code == 201
     data = res.json()
     assert data["user_id"] == 123
     assert data["username"] == "alice"

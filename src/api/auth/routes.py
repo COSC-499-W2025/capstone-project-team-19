@@ -8,7 +8,7 @@ from ...db.users import get_user_auth_by_username, create_user_with_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/register")
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterIn, conn: sqlite3.Connection = Depends(get_db)):
     existing = get_user_auth_by_username(conn, payload.username)
     if existing:

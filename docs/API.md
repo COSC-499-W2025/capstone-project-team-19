@@ -94,7 +94,7 @@ Handles authentication and security for the endpoints.
     - **Endpoint**: `POST /register`
     - **Description**: Uploads username and password to database. Checks if the username already exists in the database.
     - **Headers**: None.
-    - **Response Status**: `200 OK` on success, `400 Bad Request` if username already taken
+    - **Response Status**: `201 Created` on success, `400 Bad Request` if username already taken
     - **Request Body**:
     ```json
         {
