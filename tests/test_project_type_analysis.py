@@ -1,8 +1,14 @@
 import sqlite3
 from datetime import datetime
 
-from src.project_analysis import detect_project_type, get_individual_contributions, run_individual_analysis
+from src.project_analysis import (
+    detect_project_type,
+    detect_project_type_auto,
+    get_individual_contributions,
+    run_individual_analysis,
+)
 from src import constants
+
 
 # helper methods to create a test database, so the real database is not used
 def setup_in_memory_db():
@@ -95,70 +101,172 @@ def insert_classification(conn, user_id, project_name, classification, project_t
         (user_id, project_name, classification, project_type, datetime.now().isoformat()),
     )
 
-# tests for detect_project_type() function
 
-def test_code_only_project_updates_to_code():
+# -----------------------------
+# tests for detect_project_type_auto()
+# -----------------------------
+
+def test_detect_project_type_auto_code_only_writes_and_returns():
     conn = setup_in_memory_db()
     user_id = 1
+
     insert_file(conn, user_id, "projA", "code")
     insert_classification(conn, user_id, "projA", "individual")
 
-    detect_project_type(conn, user_id, {"projA": "individual"})
+    result = detect_project_type_auto(conn, user_id, {"projA": "individual"})
 
-    result = conn.execute("SELECT project_type FROM project_classifications WHERE project_name='projA'").fetchone()[0]
-    assert result == "code"
+    assert result["auto_types"] == {"projA": "code"}
+    assert result["mixed_projects"] == []
+    assert result["unknown_projects"] == []
+
+    db_type = conn.execute(
+        "SELECT project_type FROM project_classifications WHERE project_name='projA'"
+    ).fetchone()[0]
+    assert db_type == "code"
 
 
-def test_text_only_project_updates_to_text():
+def test_detect_project_type_auto_text_only_writes_and_returns():
     conn = setup_in_memory_db()
     user_id = 1
+
     insert_file(conn, user_id, "projB", "text")
     insert_classification(conn, user_id, "projB", "collaborative")
 
-    detect_project_type(conn, user_id, {"projB": "collaborative"})
+    result = detect_project_type_auto(conn, user_id, {"projB": "collaborative"})
 
-    result = conn.execute("SELECT project_type FROM project_classifications WHERE project_name='projB'").fetchone()[0]
-    assert result == "text"
+    assert result["auto_types"] == {"projB": "text"}
+    assert result["mixed_projects"] == []
+    assert result["unknown_projects"] == []
+
+    db_type = conn.execute(
+        "SELECT project_type FROM project_classifications WHERE project_name='projB'"
+    ).fetchone()[0]
+    assert db_type == "text"
 
 
-def test_no_files_defaults_to_null(capsys):
+def test_detect_project_type_auto_unknown_project_keeps_null_and_reports_unknown():
     conn = setup_in_memory_db()
     user_id = 1
+
     insert_classification(conn, user_id, "projC", "individual")
 
-    detect_project_type(conn, user_id, {"projC": "individual"})
+    result = detect_project_type_auto(conn, user_id, {"projC": "individual"})
 
-    output = capsys.readouterr().out
-    assert "Project type left as NULL" in output
+    assert result["auto_types"] == {}
+    assert result["mixed_projects"] == []
+    assert result["unknown_projects"] == ["projC"]
 
-    result = conn.execute("""
-        SELECT project_type
-        FROM project_classifications
-        WHERE project_name='projC'
-    """).fetchone()[0]
+    db_type = conn.execute(
+        "SELECT project_type FROM project_classifications WHERE project_name='projC'"
+    ).fetchone()[0]
+    assert db_type is None
 
-    # project_type should still be NULL
-    assert result is None
+
+def test_detect_project_type_auto_mixed_project_is_returned_and_not_written():
+    conn = setup_in_memory_db()
+    user_id = 1
+
+    insert_file(conn, user_id, "projD", "code")
+    insert_file(conn, user_id, "projD", "text")
+    insert_classification(conn, user_id, "projD", "collaborative")
+
+    result = detect_project_type_auto(conn, user_id, {"projD": "collaborative"})
+
+    assert result["auto_types"] == {}
+    assert result["mixed_projects"] == ["projD"]
+    assert result["unknown_projects"] == []
+
+    db_type = conn.execute(
+        "SELECT project_type FROM project_classifications WHERE project_name='projD'"
+    ).fetchone()[0]
+    assert db_type is None
+
+
+def test_detect_project_type_auto_never_prompts(monkeypatch):
+    """
+    Guardrail: detect_project_type_auto() must be API-safe (no input()).
+    """
+    conn = setup_in_memory_db()
+    user_id = 1
+
+    insert_file(conn, user_id, "projA", "code")
+    insert_classification(conn, user_id, "projA", "individual")
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("input() should not be called in detect_project_type_auto")
+
+    monkeypatch.setattr("builtins.input", _boom)
+
+    result = detect_project_type_auto(conn, user_id, {"projA": "individual"})
+    assert result["auto_types"]["projA"] == "code"
+
+
+# -----------------------------
+# tests for detect_project_type() wrapper (CLI-only mixed prompts)
+# -----------------------------
+
+def test_detect_project_type_wrapper_does_not_prompt_for_unambiguous(monkeypatch):
+    conn = setup_in_memory_db()
+    user_id = 1
+
+    insert_file(conn, user_id, "projA", "code")
+    insert_classification(conn, user_id, "projA", "individual")
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("input() should not be called for unambiguous projects")
+
+    monkeypatch.setattr("builtins.input", _boom)
+
+    detect_project_type(conn, user_id, {"projA": "individual"})
+
+    db_type = conn.execute(
+        "SELECT project_type FROM project_classifications WHERE project_name='projA'"
+    ).fetchone()[0]
+    assert db_type == "code"
 
 
 def test_mixed_files_prompts_user(monkeypatch):
     conn = setup_in_memory_db()
     user_id = 1
-    # One code and one text file, so tghe project will return as mixed (and detect_project_type() function cannot state it is code or text)
+
+    # One code and one text file => mixed (needs user choice in wrapper)
     insert_file(conn, user_id, "projD", "code")
     insert_file(conn, user_id, "projD", "text")
     insert_classification(conn, user_id, "projD", "collaborative")
 
-    # Simulate user typing 'c' when prompted to classify a project on whether it is code or text
+    # Simulate user typing 'c' when prompted
     monkeypatch.setattr("builtins.input", lambda _: "c")
 
     detect_project_type(conn, user_id, {"projD": "collaborative"})
 
-    result = conn.execute("SELECT project_type FROM project_classifications WHERE project_name='projD'").fetchone()[0]
+    result = conn.execute(
+        "SELECT project_type FROM project_classifications WHERE project_name='projD'"
+    ).fetchone()[0]
     assert result == "code"
 
 
+def test_no_files_defaults_to_null():
+    """
+    detect_project_type_auto() now reports unknown projects instead of printing.
+    Wrapper leaves project_type as NULL for unknowns.
+    """
+    conn = setup_in_memory_db()
+    user_id = 1
+
+    insert_classification(conn, user_id, "projC", "individual")
+
+    detect_project_type(conn, user_id, {"projC": "individual"})
+
+    db_type = conn.execute(
+        "SELECT project_type FROM project_classifications WHERE project_name='projC'"
+    ).fetchone()[0]
+    assert db_type is None
+
+
+# -----------------------------
 # tests for send_to_analysis() function
+# -----------------------------
+
 def test_send_to_analysis_calls_correct_flows_verbose(monkeypatch, capsys):
     from src import constants
     constants.VERBOSE = True
@@ -185,13 +293,16 @@ def test_send_to_analysis_calls_correct_flows_verbose(monkeypatch, capsys):
     monkeypatch.setattr("builtins.input", lambda _="": next(answers))
 
     from src.project_analysis import send_to_analysis
-    send_to_analysis(conn, user_id,
-                     {"projText": "individual", "projCode": "collaborative", "projNull": "individual"},
-                     "accepted", "/tmp/fake.zip")
+    send_to_analysis(
+        conn,
+        user_id,
+        {"projText": "individual", "projCode": "collaborative", "projNull": "individual"},
+        "accepted",
+        "/tmp/fake.zip",
+    )
 
     out = capsys.readouterr().out
 
-    # VERBOSE prints clearly
     assert "[INDIVIDUAL] Running individual projects..." in out
     assert "  → projText (text)" in out
     assert "[COLLABORATIVE] Running collaborative projects..." in out
@@ -200,6 +311,7 @@ def test_send_to_analysis_calls_correct_flows_verbose(monkeypatch, capsys):
 
     assert called["text"]
     assert called["collab"]
+
 
 def test_send_to_analysis_calls_correct_flows_non_verbose(monkeypatch, capsys):
     from src import constants
@@ -227,13 +339,16 @@ def test_send_to_analysis_calls_correct_flows_non_verbose(monkeypatch, capsys):
     monkeypatch.setattr("builtins.input", lambda _="": next(answers))
 
     from src.project_analysis import send_to_analysis
-    send_to_analysis(conn, user_id,
-                     {"projText": "individual", "projCode": "collaborative", "projNull": "individual"},
-                     "accepted", "/tmp/fake.zip")
+    send_to_analysis(
+        conn,
+        user_id,
+        {"projText": "individual", "projCode": "collaborative", "projNull": "individual"},
+        "accepted",
+        "/tmp/fake.zip",
+    )
 
     out = capsys.readouterr().out
 
-    # Must still show item lines, but *no phase headers*
     assert "projText" in out
     assert "projCode" in out
     assert "[INDIVIDUAL]" not in out
@@ -243,7 +358,10 @@ def test_send_to_analysis_calls_correct_flows_non_verbose(monkeypatch, capsys):
     assert called["collab"]
 
 
-# tests for routing layer (get_individual_contributions() function and run_individual_analysis() function)
+# -----------------------------
+# tests for routing layer (get_individual_contributions() and run_individual_analysis())
+# -----------------------------
+
 def test_get_individual_contributions_branches_verbose(monkeypatch, capsys, tmp_path):
     from src import constants
     constants.VERBOSE = True
@@ -255,9 +373,9 @@ def test_get_individual_contributions_branches_verbose(monkeypatch, capsys, tmp_
     monkeypatch.setattr(pa, "analyze_code_contributions", lambda *a, **kw: called.__setitem__("code", True))
 
     conn = setup_in_memory_db()
-    zip_path = str(tmp_path / "file.zip"); (tmp_path / "file.zip").write_text("")
+    zip_path = str(tmp_path / "file.zip")
+    (tmp_path / "file.zip").write_text("")
 
-    from src.project_analysis import get_individual_contributions
     get_individual_contributions(conn, 1, "pA", "text", "acc", zip_path)
     get_individual_contributions(conn, 1, "pB", "code", "acc", zip_path)
 
@@ -266,6 +384,7 @@ def test_get_individual_contributions_branches_verbose(monkeypatch, capsys, tmp_
     assert called["text"] and called["code"]
     assert "[COLLABORATIVE] Preparing contribution analysis for 'pA' (text)" in out
     assert "[COLLABORATIVE] Preparing contribution analysis for 'pB' (code)" in out
+
 
 def test_get_individual_contributions_branches_non_verbose(monkeypatch, capsys, tmp_path):
     from src import constants
@@ -278,9 +397,9 @@ def test_get_individual_contributions_branches_non_verbose(monkeypatch, capsys, 
     monkeypatch.setattr(pa, "analyze_code_contributions", lambda *a, **kw: called.__setitem__("code", True))
 
     conn = setup_in_memory_db()
-    zip_path = str(tmp_path / "file.zip"); (tmp_path / "file.zip").write_text("")
+    zip_path = str(tmp_path / "file.zip")
+    (tmp_path / "file.zip").write_text("")
 
-    from src.project_analysis import get_individual_contributions
     get_individual_contributions(conn, 1, "pA", "text", "acc", zip_path)
     get_individual_contributions(conn, 1, "pB", "code", "acc", zip_path)
 
@@ -294,7 +413,6 @@ def test_get_individual_contributions_branches_non_verbose(monkeypatch, capsys, 
 def test_run_individual_analysis_branches(monkeypatch):
     called = {"text": False, "code": False}
 
-    # run_text_analysis / run_code_analysis both now receive zip_path too
     monkeypatch.setattr(
         "src.project_analysis.run_text_analysis",
         lambda *a, **kw: called.__setitem__("text", True),
@@ -306,11 +424,9 @@ def test_run_individual_analysis_branches(monkeypatch):
 
     conn = setup_in_memory_db()
 
-    from src.project_analysis import run_individual_analysis
-
-    # Note: run_individual_analysis now expects zip_path at the end
     run_individual_analysis(conn, 1, "projText", "text", "accepted", "/tmp/fake.zip")
     run_individual_analysis(conn, 1, "projCode", "code", "accepted", "/tmp/fake.zip")
 
     assert called["text"]
     assert called["code"]
+
