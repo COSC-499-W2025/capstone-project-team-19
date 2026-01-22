@@ -1,8 +1,8 @@
 import json
 import sqlite3
 import pytest
-from src.db import init_schema, save_project_summary
-from src.menu.portfolio import view_portfolio_items
+from src.db import get_project_summary_by_name, init_schema, save_project_summary
+from src.menu.portfolio import _handle_edit_portfolio_wording, view_portfolio_items
 
 
 def _make_portfolio_summary(
@@ -73,6 +73,9 @@ def stub_portfolio_db_helpers(monkeypatch):
         lambda *a, **k: None,
         raising=False,
     )
+
+    # Default to declining export + edit prompts in portfolio view.
+    mp("builtins.input", lambda _="": "n")
 
 
 def test_portfolio_no_projects(conn, capsys, monkeypatch):
@@ -223,3 +226,137 @@ def test_portfolio_uses_manual_overrides(conn, capsys, monkeypatch):
     assert "Contribution: Did X" in out
     assert "Contribution: Did Y" in out
     assert "Original summary" not in out
+
+
+def test_portfolio_portfolio_overrides_take_priority(conn, capsys, monkeypatch):
+    user_id = 1
+    summary = {
+        "project_name": "proj1",
+        "project_type": "code",
+        "project_mode": "individual",
+        "languages": [],
+        "frameworks": [],
+        "summary_text": "Original summary",
+        "skills": [],
+        "metrics": {},
+        "contributions": {},
+        "manual_overrides": {
+            "display_name": "Manual Name",
+            "summary_text": "Manual summary",
+            "contribution_bullets": ["Manual X"],
+        },
+        "portfolio_overrides": {
+            "display_name": "Portfolio Name",
+            "summary_text": "Portfolio summary",
+            "contribution_bullets": ["Portfolio A", "Portfolio B"],
+        },
+    }
+    save_project_summary(conn, user_id, "proj1", json.dumps(summary))
+
+    monkeypatch.setattr(
+        "src.menu.portfolio.collect_project_data",
+        lambda c, uid: [("proj1", 0.8)],
+        raising=False,
+    )
+
+    view_portfolio_items(conn, user_id, "Kevin")
+    out = capsys.readouterr().out
+
+    assert "[1] Portfolio Name" in out
+    assert "Project: Portfolio summary" in out
+    assert "Contribution: Portfolio A" in out
+    assert "Contribution: Portfolio B" in out
+    assert "Manual summary" not in out
+
+
+def test_portfolio_edit_portfolio_only_updates_overrides(conn, monkeypatch):
+    user_id = 1
+    summary = {
+        "project_name": "proj1",
+        "project_type": "text",
+        "project_mode": "individual",
+        "summary_text": "Original summary",
+        "skills": [],
+        "metrics": {},
+        "contributions": {},
+    }
+    save_project_summary(conn, user_id, "proj1", json.dumps(summary))
+
+    monkeypatch.setattr(
+        "src.menu.portfolio.collect_project_data",
+        lambda c, uid: [("proj1", 0.8)],
+        raising=False,
+    )
+
+    inputs = iter(["1", "1", "1", "Updated summary"])
+    monkeypatch.setattr("builtins.input", lambda _="": next(inputs))
+
+    assert _handle_edit_portfolio_wording(conn, user_id, "Kevin") is True
+
+    row = get_project_summary_by_name(conn, user_id, "proj1")
+    summary_dict = json.loads(row["summary_json"])
+    assert summary_dict["portfolio_overrides"]["summary_text"] == "Updated summary"
+
+
+def test_portfolio_edit_global_updates_manual_overrides(conn, monkeypatch):
+    user_id = 1
+    summary = {
+        "project_name": "proj1",
+        "project_type": "text",
+        "project_mode": "individual",
+        "summary_text": "Original summary",
+        "skills": [],
+        "metrics": {},
+        "contributions": {},
+    }
+    save_project_summary(conn, user_id, "proj1", json.dumps(summary))
+
+    monkeypatch.setattr(
+        "src.menu.portfolio.collect_project_data",
+        lambda c, uid: [("proj1", 0.8)],
+        raising=False,
+    )
+
+    called = {"applied": False}
+
+    def _fake_apply(*args, **kwargs):
+        called["applied"] = True
+
+    monkeypatch.setattr("src.menu.portfolio._apply_manual_overrides_to_resumes", _fake_apply)
+
+    inputs = iter(["1", "2", "1", "Global summary"])
+    monkeypatch.setattr("builtins.input", lambda _="": next(inputs))
+
+    assert _handle_edit_portfolio_wording(conn, user_id, "Kevin") is True
+    assert called["applied"] is True
+
+    row = get_project_summary_by_name(conn, user_id, "proj1")
+    summary_dict = json.loads(row["summary_json"])
+    assert summary_dict["manual_overrides"]["summary_text"] == "Global summary"
+
+
+def test_portfolio_edit_cancel_selection_is_noop(conn, monkeypatch):
+    user_id = 1
+    summary = {
+        "project_name": "proj1",
+        "project_type": "text",
+        "project_mode": "individual",
+        "summary_text": "Original summary",
+        "skills": [],
+        "metrics": {},
+        "contributions": {},
+    }
+    save_project_summary(conn, user_id, "proj1", json.dumps(summary))
+
+    monkeypatch.setattr(
+        "src.menu.portfolio.collect_project_data",
+        lambda c, uid: [("proj1", 0.8)],
+        raising=False,
+    )
+    monkeypatch.setattr("builtins.input", lambda _="": "")
+
+    assert _handle_edit_portfolio_wording(conn, user_id, "Kevin") is False
+
+    row = get_project_summary_by_name(conn, user_id, "proj1")
+    summary_dict = json.loads(row["summary_json"])
+    assert summary_dict.get("portfolio_overrides") is None
