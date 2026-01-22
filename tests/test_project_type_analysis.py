@@ -10,7 +10,6 @@ from src.project_analysis import (
 from src import constants
 
 
-# helper methods to create a test database, so the real database is not used
 def setup_in_memory_db():
     conn = sqlite3.connect(":memory:")
     conn.execute("""
@@ -100,11 +99,6 @@ def insert_classification(conn, user_id, project_name, classification, project_t
         "INSERT INTO project_classifications (user_id, project_name, classification, project_type, recorded_at) VALUES (?, ?, ?, ?, ?)",
         (user_id, project_name, classification, project_type, datetime.now().isoformat()),
     )
-
-
-# -----------------------------
-# tests for detect_project_type_auto()
-# -----------------------------
 
 def test_detect_project_type_auto_code_only_writes_and_returns():
     conn = setup_in_memory_db()
@@ -200,11 +194,6 @@ def test_detect_project_type_auto_never_prompts(monkeypatch):
     result = detect_project_type_auto(conn, user_id, {"projA": "individual"})
     assert result["auto_types"]["projA"] == "code"
 
-
-# -----------------------------
-# tests for detect_project_type() wrapper (CLI-only mixed prompts)
-# -----------------------------
-
 def test_detect_project_type_wrapper_does_not_prompt_for_unambiguous(monkeypatch):
     conn = setup_in_memory_db()
     user_id = 1
@@ -229,12 +218,10 @@ def test_mixed_files_prompts_user(monkeypatch):
     conn = setup_in_memory_db()
     user_id = 1
 
-    # One code and one text file => mixed (needs user choice in wrapper)
     insert_file(conn, user_id, "projD", "code")
     insert_file(conn, user_id, "projD", "text")
     insert_classification(conn, user_id, "projD", "collaborative")
 
-    # Simulate user typing 'c' when prompted
     monkeypatch.setattr("builtins.input", lambda _: "c")
 
     detect_project_type(conn, user_id, {"projD": "collaborative"})
@@ -246,10 +233,6 @@ def test_mixed_files_prompts_user(monkeypatch):
 
 
 def test_no_files_defaults_to_null():
-    """
-    detect_project_type_auto() now reports unknown projects instead of printing.
-    Wrapper leaves project_type as NULL for unknowns.
-    """
     conn = setup_in_memory_db()
     user_id = 1
 
@@ -261,11 +244,6 @@ def test_no_files_defaults_to_null():
         "SELECT project_type FROM project_classifications WHERE project_name='projC'"
     ).fetchone()[0]
     assert db_type is None
-
-
-# -----------------------------
-# tests for send_to_analysis() function
-# -----------------------------
 
 def test_send_to_analysis_calls_correct_flows_verbose(monkeypatch, capsys):
     from src import constants
@@ -357,10 +335,6 @@ def test_send_to_analysis_calls_correct_flows_non_verbose(monkeypatch, capsys):
     assert called["text"]
     assert called["collab"]
 
-
-# -----------------------------
-# tests for routing layer (get_individual_contributions() and run_individual_analysis())
-# -----------------------------
 
 def test_get_individual_contributions_branches_verbose(monkeypatch, capsys, tmp_path):
     from src import constants
