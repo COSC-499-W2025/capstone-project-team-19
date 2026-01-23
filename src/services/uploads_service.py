@@ -24,7 +24,6 @@ from src.utils.deduplication.api_integration import (
 )
 
 from src.services.uploads_util import (
-    safe_upload_zip_name,
     extract_dir_from_upload_zip,
     rename_project_in_layout,
     remove_project_from_layout,
@@ -43,7 +42,7 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
 
     upload_id = create_upload(conn, user_id, status="started", state={})
 
-    zip_name = safe_upload_zip_name(file.filename or f"upload_{upload_id}.zip")
+    zip_name = file.filename
     zip_path = UPLOAD_DIR / f"{upload_id}_{zip_name}"
 
     with open(zip_path, "wb") as f:

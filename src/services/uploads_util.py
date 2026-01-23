@@ -4,14 +4,6 @@ from pathlib import Path
 import re
 from typing import Any
 
-
-def safe_upload_zip_name(name: str) -> str:
-    name = (name or "").strip()
-    name = name.split("/")[-1].split("\\")[-1]
-    name = re.sub(r"[^a-zA-Z0-9._-]+", "_", name)
-    return name or "upload.zip"
-
-
 def extract_dir_from_upload_zip(zip_data_dir: str, zip_path: str) -> Path:
     # parse_zip_file extracts under ZIP_DATA_DIR/<zip_stem>
     return Path(zip_data_dir) / Path(zip_path).stem
