@@ -55,35 +55,20 @@ def apply_project_rename_to_files_info(files_info: list[dict], old: str, new: st
 
 
 def build_project_filetype_index(files_info: list[dict]) -> dict[str, dict[str, bool]]:
-    """
-    Per-upload summary so project type inference is upload-scoped.
-    Returns: { project_name: {"has_code": bool, "has_text": bool} }
-    """
-    out: dict[str, dict[str, bool]] = {}
+    out: dict[str, dict[str, bool]] = {} # Returns: { project_name: {"has_code": bool, "has_text": bool} }
 
     for f in files_info:
         project = f.get("project_name")
         if not project:
             continue
-
         entry = out.setdefault(project, {"has_code": False, "has_text": False})
-
         ft = (f.get("file_type") or "").lower()
-        ext = (f.get("extension") or "").lower()
-
-        # Prefer parse_zip_file's file_type if it exists
         if ft == "code":
             entry["has_code"] = True
             continue
         if ft == "text":
             entry["has_text"] = True
             continue
-
-        # fallback by extension
-        if ext in {"py", "java", "js", "ts", "cpp", "c", "h", "hpp", "cs", "rb", "go", "rs", "php", "swift"}:
-            entry["has_code"] = True
-        elif ext in {"md", "txt", "pdf", "docx", "doc", "rtf"}:
-            entry["has_text"] = True
 
     return out
 
