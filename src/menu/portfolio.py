@@ -28,9 +28,53 @@ from src.menu.resume.flow import (
     _update_project_manual_overrides,
 )
 
+
+def view_portfolio_menu(conn, user_id: int, username: str) -> None:
+    """
+    Portfolio submenu with options to view, edit, and export.
+    """
+    while True:
+        print("\nPortfolio options:")
+        print("")
+        print("1. View portfolio")
+        print("2. Edit wording")
+        print("3. Export to Word (.docx)")
+        print("4. Back to main menu")
+        choice = input("Select an option (1-4): ").strip()
+
+        if choice == "1":
+            _display_portfolio(conn, user_id, username)
+            print("")
+            continue
+        elif choice == "2":
+            handled = _handle_edit_portfolio_wording(conn, user_id, username)
+            if handled:
+                print("")
+                continue
+        elif choice == "3":
+            handled = _handle_export_portfolio(conn, user_id, username)
+            if handled:
+                print("")
+                continue
+        elif choice == "4":
+            print("")
+            return
+        else:
+            print("Invalid choice, please enter 1, 2, 3, or 4.")
+
+
+# Keep old function name as alias for backwards compatibility
 def view_portfolio_items(conn, user_id: int, username: str) -> None:
     """
-    Display a ranked portfolio view for the user.
+    Backwards-compatible alias for view_portfolio_menu.
+    """
+    view_portfolio_menu(conn, user_id, username)
+
+
+def _display_portfolio(conn, user_id: int, username: str) -> bool:
+    """
+    Display the ranked portfolio view (no prompts).
+    Returns True if portfolio was displayed, False if no projects.
     """
     try:
         project_scores = collect_project_data(conn, user_id)
@@ -39,7 +83,7 @@ def view_portfolio_items(conn, user_id: int, username: str) -> None:
             print(f"\n{'=' * 80}")
             print("No projects found. Please analyze some projects first.")
             print(f"{'=' * 80}\n")
-            return
+            return False
 
         print(f"\n{'=' * 80}")
         print(f"Portfolio view for {username}")
@@ -85,29 +129,27 @@ def view_portfolio_items(conn, user_id: int, username: str) -> None:
             print()  # blank line between projects
 
         print(f"{'=' * 80}\n")
-
-        # --- Export prompt ---
-        answer = input(
-            "Do you want to export this portfolio to a Word document (.docx)? (y/n) "
-        ).strip().lower()
-
-        if answer == "y":
-            out_file = export_portfolio_to_docx(conn, user_id, username, out_dir="./out")
-            print(f"\nSaving portfolio to {out_file} ...")
-            print("✓ Export complete.\n")
-
-        edit_answer = input(
-            "Do you want to edit wording in this portfolio? (y/n) "
-        ).strip().lower()
-        if edit_answer == "y":
-            _handle_edit_portfolio_wording(conn, user_id, username)
-
-        print("\nReturning to main menu...\n")
-        return
+        return True
 
     except Exception as e:
         print(f"Error displaying portfolio items: {e}")
         print(f"{'=' * 80}\n")
+        return False
+
+
+def _handle_export_portfolio(conn, user_id: int, username: str) -> bool:
+    """
+    Export the portfolio to a Word document.
+    """
+    project_scores = collect_project_data(conn, user_id)
+    if not project_scores:
+        print("No projects found. Please analyze some projects first.")
+        return False
+
+    out_file = export_portfolio_to_docx(conn, user_id, username, out_dir="./out")
+    print(f"\nSaving portfolio to {out_file} ...")
+    print("Export complete.\n")
+    return True
 
 
 def _prompt_edit_sections() -> set[str]:
