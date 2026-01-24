@@ -384,8 +384,9 @@ def format_summary_block(
         if len(manual_bullets) == 1:
             lines.append(f"  - My contribution: {manual_bullets[0]}")
         else:
+            lines.append("  My contributions:")
             for bullet in manual_bullets:
-                lines.append(f"  - Contribution: {bullet}")
+                lines.append(f"    - {bullet}")
         return lines
 
     # Code projects
