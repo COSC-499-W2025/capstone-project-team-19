@@ -347,8 +347,8 @@ def _collect_section_updates(sections: set[str], project_entry: dict | None = No
 
             # Prompt for edit mode
             print("\nHow would you like to edit?")
-            print("1. Add on to existing contributions")
-            print("2. Completely rewrite")
+            print("1. Add new bullet points (keep existing and append new ones)")
+            print("2. Replace all (delete existing and write new bullet points)")
             mode = input("Select (1-2): ").strip()
 
             if mode == "1":
