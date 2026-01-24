@@ -125,27 +125,13 @@ def test_portfolio_export_happy_creates_out_and_contains_fields(monkeypatch, tmp
     assert "Project: test project" in txt
 
 
-def test_portfolio_view_decline_export(monkeypatch, mem_conn, capsys):
+def test_portfolio_menu_back_without_export(monkeypatch, mem_conn, capsys):
     """
-    Covers: P2 (user answers 'n' -> no export call)
+    Covers: P2 (user selects 'Back' -> no export call)
     """
     import src.menu.portfolio as menu
 
     monkeypatch.setattr(menu, "collect_project_data", lambda conn, user_id: [("paper", 0.1)])
-    monkeypatch.setattr(
-        menu,
-        "get_project_summary_row",
-        lambda conn, user_id, name: {
-            "summary": {"summary_text": "x"},
-            "project_type": "text",
-            "project_mode": "individual",
-            "created_at": "2026-01-01",
-        },
-    )
-    monkeypatch.setattr(menu, "format_duration", lambda *a, **k: "Duration: N/A")
-    monkeypatch.setattr(menu, "format_activity_line", lambda *a, **k: "Activity: N/A")
-    monkeypatch.setattr(menu, "format_skills_block", lambda s: ["Skills: N/A"])
-    monkeypatch.setattr(menu, "format_summary_block", lambda *a, **k: ["Summary: x"])
 
     called = {"export": False}
 
@@ -153,11 +139,12 @@ def test_portfolio_view_decline_export(monkeypatch, mem_conn, capsys):
         called["export"] = True
 
     monkeypatch.setattr(menu, "export_portfolio_to_docx", _fake_export)
-    monkeypatch.setattr("builtins.input", lambda _: "n")
+    # Select option 4 (Back to main menu) immediately
+    monkeypatch.setattr("builtins.input", lambda _: "4")
 
-    menu.view_portfolio_items(mem_conn, user_id=1, username="salma")
+    menu.view_portfolio_menu(mem_conn, user_id=1, username="salma")
     out = capsys.readouterr().out
-    assert "Returning to main menu" in out
+    assert "Portfolio options:" in out
     assert called["export"] is False
 
 
@@ -262,8 +249,9 @@ def test_portfolio_export_uses_manual_overrides(monkeypatch, tmp_path, mem_conn)
     txt = _doc_text(path)
     assert "Manual Name" in txt
     assert "Project: Manual summary" in txt
-    assert "Contribution: Did X" in txt
-    assert "Contribution: Did Y" in txt
+    assert "My contributions:" in txt
+    assert "Did X" in txt
+    assert "Did Y" in txt
 
 
 def test_portfolio_export_uses_portfolio_overrides(monkeypatch, tmp_path, mem_conn):
@@ -310,8 +298,11 @@ def test_portfolio_export_uses_portfolio_overrides(monkeypatch, tmp_path, mem_co
     txt = _doc_text(path)
     assert "Portfolio Name" in txt
     assert "Project: Portfolio summary" in txt
-    assert "Contribution: Portfolio A" in txt
-    assert "Contribution: Portfolio B" in txt
+    assert "My contributions:" in txt
+    assert "Portfolio A" in txt
+    assert "Portfolio B" in txt
+
+
 def test_portfolio_export_embeds_thumbnail_when_available(monkeypatch, tmp_path, mem_conn):
     import src.export.portfolio_docx as exp
 

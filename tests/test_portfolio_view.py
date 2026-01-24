@@ -2,7 +2,7 @@ import json
 import sqlite3
 import pytest
 from src.db import get_project_summary_by_name, init_schema, save_project_summary
-from src.menu.portfolio import _handle_edit_portfolio_wording, view_portfolio_items
+from src.menu.portfolio import _handle_edit_portfolio_wording, _display_portfolio, view_portfolio_menu
 
 
 def _make_portfolio_summary(
@@ -74,9 +74,6 @@ def stub_portfolio_db_helpers(monkeypatch):
         raising=False,
     )
 
-    # Default to declining export + edit prompts in portfolio view.
-    mp("builtins.input", lambda _="": "n")
-
 
 def test_portfolio_no_projects(conn, capsys, monkeypatch):
     monkeypatch.setattr(
@@ -85,7 +82,7 @@ def test_portfolio_no_projects(conn, capsys, monkeypatch):
         raising=False,
     )
 
-    view_portfolio_items(conn, user_id=1, username="Kevin")
+    _display_portfolio(conn, user_id=1, username="Kevin")
     out = capsys.readouterr().out
 
     assert "No projects found" in out
@@ -102,7 +99,7 @@ def test_portfolio_single_basic_project(conn, capsys, monkeypatch):
         raising=False,
     )
 
-    view_portfolio_items(conn, user_id, "Kevin")
+    _display_portfolio(conn, user_id, "Kevin")
     out = capsys.readouterr().out
 
     assert "[1] proj1" in out
@@ -131,7 +128,7 @@ def test_portfolio_multiple_projects_order(conn, capsys, monkeypatch):
         raising=False,
     )
 
-    view_portfolio_items(conn, user_id, "Kevin")
+    _display_portfolio(conn, user_id, "Kevin")
     out = capsys.readouterr().out
 
     assert "[1] C" in out
@@ -148,7 +145,7 @@ def test_portfolio_missing_fields(conn, capsys, monkeypatch):
         raising=False,
     )
 
-    view_portfolio_items(conn, 1, "Kevin")
+    _display_portfolio(conn, 1, "Kevin")
     out = capsys.readouterr().out
 
     assert "[1] Bare" in out
@@ -181,7 +178,7 @@ def test_portfolio_prefers_manual_contribution_for_collab_code(conn, capsys, mon
         raising=False,
     )
 
-    view_portfolio_items(conn, user_id, "Kevin")
+    _display_portfolio(conn, user_id, "Kevin")
     out = capsys.readouterr().out
 
     assert "Project: LLM project summary" in out
@@ -218,13 +215,14 @@ def test_portfolio_uses_manual_overrides(conn, capsys, monkeypatch):
     )
     monkeypatch.setattr("builtins.input", lambda _: "n")
 
-    view_portfolio_items(conn, user_id, "Kevin")
+    _display_portfolio(conn, user_id, "Kevin")
     out = capsys.readouterr().out
 
     assert "[1] Manual Name" in out
     assert "Project: Manual summary" in out
-    assert "Contribution: Did X" in out
-    assert "Contribution: Did Y" in out
+    assert "My contributions:" in out
+    assert "- Did X" in out
+    assert "- Did Y" in out
     assert "Original summary" not in out
 
 
@@ -259,13 +257,14 @@ def test_portfolio_portfolio_overrides_take_priority(conn, capsys, monkeypatch):
         raising=False,
     )
 
-    view_portfolio_items(conn, user_id, "Kevin")
+    _display_portfolio(conn, user_id, "Kevin")
     out = capsys.readouterr().out
 
     assert "[1] Portfolio Name" in out
     assert "Project: Portfolio summary" in out
-    assert "Contribution: Portfolio A" in out
-    assert "Contribution: Portfolio B" in out
+    assert "My contributions:" in out
+    assert "- Portfolio A" in out
+    assert "- Portfolio B" in out
     assert "Manual summary" not in out
 
 
