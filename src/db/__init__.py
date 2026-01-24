@@ -180,6 +180,7 @@ from .deduplication import (
     find_existing_version_by_loose_fp,
     get_latest_versions,
     get_hash_set_for_version,
+    get_relpath_set_for_version,
     insert_project,
     insert_project_version,
     insert_version_files
@@ -290,6 +291,7 @@ __all__ = [
     "find_existing_version_by_loose_fp",
     "get_latest_versions",
     "get_hash_set_for_version",
+    "get_relpath_set_for_version",
     "insert_project",
     "insert_project_version",
     "insert_version_files",

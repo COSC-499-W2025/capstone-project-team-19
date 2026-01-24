@@ -50,6 +50,13 @@ def get_hash_set_for_version(conn, version_key: int) -> set[str]:
     ).fetchall()
     return {r[0] for r in rows}
 
+def get_relpath_set_for_version(conn, version_key: int) -> set[str]:
+    rows = conn.execute(
+        "SELECT relpath FROM version_files WHERE version_key = ?",
+        (version_key,),
+    ).fetchall()
+    return {r[0] for r in rows}
+
 
 # writing to db for duplication checks
 

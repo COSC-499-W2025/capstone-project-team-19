@@ -17,11 +17,16 @@ def handle_dedup_result(conn, user_id, result, display_name):
     elif kind == "ask":
         pk = result["best_match_project_key"]
         sim = result["similarity"]
+        path_sim = result.get("path_similarity")
         file_count = result.get("file_count", "unknown")
         row = conn.execute("SELECT display_name FROM projects WHERE project_key = ?", (pk,)).fetchone()
         existing = row[0] if row else "unknown"
-        print(f"\nProject '{display_name}' looks related to '{existing}' (similarity: {sim:.1%}" + 
-              (f", files: {file_count}" if file_count != "unknown" else "") + ").")
+        extra = ""
+        if path_sim is not None:
+            extra += f", path similarity: {path_sim:.1%}"
+        if file_count != "unknown":
+            extra += f", files: {file_count}"
+        print(f"\nProject '{display_name}' looks related to '{existing}' (similarity: {sim:.1%}{extra}).")
         print("Is this:")
         print("  [N]  New project")
         print("  [V]  New version of the existing project")

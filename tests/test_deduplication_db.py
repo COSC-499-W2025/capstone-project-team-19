@@ -2,7 +2,7 @@ import sqlite3
 import pytest
 from src.db.deduplication import (
     insert_project, insert_project_version, insert_version_files,
-    find_existing_version_by_strict_fp, find_existing_version_by_loose_fp, get_latest_versions, get_hash_set_for_version
+    find_existing_version_by_strict_fp, find_existing_version_by_loose_fp, get_latest_versions, get_hash_set_for_version, get_relpath_set_for_version
 )
 
 @pytest.fixture
@@ -65,3 +65,10 @@ def test_get_hash_set_for_version(conn):
     insert_version_files(conn, vk, [("a.py", "hash1"), ("b.py", "hash2")])
     hashes = get_hash_set_for_version(conn, vk)
     assert hashes == {"hash1", "hash2"}
+
+def test_get_relpath_set_for_version(conn):
+    pk = insert_project(conn, 1, "Test")
+    vk = insert_project_version(conn, pk, None, "fp", "fp")
+    insert_version_files(conn, vk, [("a.py", "hash1"), ("b.py", "hash2")])
+    relpaths = get_relpath_set_for_version(conn, vk)
+    assert relpaths == {"a.py", "b.py"}
