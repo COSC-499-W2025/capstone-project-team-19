@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Any, List, Optional, Dict
+from typing import Any, List, Optional, Dict, Literal
 
 class ResumeListItemDTO(BaseModel):
     id: int
@@ -34,3 +34,15 @@ class ResumeDetailDTO(BaseModel):
     projects: List[ResumeProjectDTO] = []
     aggregated_skills: AggregatedSkillsDTO = AggregatedSkillsDTO()
     rendered_text: Optional[str] = None
+
+class ResumeGenerateRequestDTO(BaseModel):
+    name: str
+    project_ids: Optional[List[int]] = None
+
+class ResumeEditRequestDTO(BaseModel):
+    name: Optional[str] = None
+    project_name: str
+    scope: Literal["resume_only", "global"]
+    display_name: Optional[str] = None
+    summary_text: Optional[str] = None
+    contribution_bullets: Optional[List[str]] = None
