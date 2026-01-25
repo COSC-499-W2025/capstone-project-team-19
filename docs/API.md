@@ -477,10 +477,90 @@ Manages résumé-specific representations of projects.
             "error": null
         }
         ```
-        
-        
 
+- **Generate Resume**
+    - **Endpoint**: `POST /resume/generate`
+    - **Description**: Creates a new résumé snapshot from the user's projects. If `project_ids` is not provided, automatically selects the top 5 ranked projects. Builds the snapshot, enriches with contribution bullets and dates, and renders the text.
+    - **Headers**:
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Request Body**: Uses `ResumeGenerateRequestDTO`
+        ```json
+        {
+            "name": "My Resume",
+            "project_ids": [1, 3, 5]
+        }
+        ```
+        - `name` (string, required): Name for the résumé snapshot
+        - `project_ids` (array of integers, optional): List of project IDs to include. If omitted, uses top 5 ranked projects.
+    - **Response Status**: `201 Created` or `400 Bad Request`
+    - **Response Body**: Uses `ResumeDetailDTO`
+        ```json
+        {
+            "success": true,
+            "data": {
+                "id": 2,
+                "name": "My Resume",
+                "created_at": "2024-01-15 14:30:00",
+                "projects": [...],
+                "aggregated_skills": {...},
+                "rendered_text": "..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `400 Bad Request`: No valid projects found for the given IDs
+        - `401 Unauthorized`: Missing X-User-Id header
+        - `404 Not Found`: User not found
 
+- **Edit Resume**
+    - **Endpoint**: `POST /resume/{resumeId}/edit`
+    - **Description**: Edits a specific project within a résumé snapshot. Supports two scopes: `resume_only` (changes apply only to this résumé) or `global` (changes apply to all résumés containing this project and update the project_summaries table).
+    - **Path Parameters**:
+        - `{resumeId}` (integer, required): The ID of the résumé snapshot to edit
+    - **Headers**:
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Request Body**: Uses `ResumeEditRequestDTO`
+        ```json
+        {
+            "name": "Updated Resume Name",
+            "project_name": "MyProject",
+            "scope": "resume_only",
+            "display_name": "Custom Project Name",
+            "summary_text": "Updated project summary...",
+            "contribution_bullets": [
+                "Built feature X",
+                "Improved performance by 50%"
+            ]
+        }
+        ```
+        - `name` (string, optional): New name for the résumé (rename)
+        - `project_name` (string, required): Name of the project to edit within the résumé
+        - `scope` (string, required): Either `"resume_only"` or `"global"`
+            - `resume_only`: Changes apply only to this résumé
+            - `global`: Changes apply to all résumés and update project_summaries
+        - `display_name` (string, optional): Custom display name for the project
+        - `summary_text` (string, optional): Updated summary text
+        - `contribution_bullets` (array of strings, optional): Custom contribution bullet points
+    - **Response Status**: `200 OK` or `404 Not Found`
+    - **Response Body**: Uses `ResumeDetailDTO`
+        ```json
+        {
+            "success": true,
+            "data": {
+                "id": 1,
+                "name": "Updated Resume Name",
+                "created_at": "2024-01-12 10:30:00",
+                "projects": [...],
+                "aggregated_skills": {...},
+                "rendered_text": "..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing X-User-Id header
+        - `404 Not Found`: Resume or project not found
 
 ---
 
@@ -598,6 +678,18 @@ Example:
     - `projects` (List[ResumeProjectDTO], optional)
     - `aggregated_skills` (AggregatedSkillsDTO, optional)
     - `rendered_text` (string, optional)
+
+- **ResumeGenerateRequestDTO**
+    - `name` (string, required): Name for the new résumé snapshot
+    - `project_ids` (List[int], optional): Project IDs to include. If omitted, uses top 5 ranked projects.
+
+- **ResumeEditRequestDTO**
+    - `name` (string, optional): New name for the résumé
+    - `project_name` (string, required): Name of the project to edit
+    - `scope` (string, required): Either `"resume_only"` or `"global"`
+    - `display_name` (string, optional): Custom display name for the project
+    - `summary_text` (string, optional): Updated summary text
+    - `contribution_bullets` (List[string], optional): Custom contribution bullet points
 
 - **ConsentRequestDTO**
     - `status` (string, required): Must be either "accepted" or "rejected"
