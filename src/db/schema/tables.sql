@@ -8,8 +8,9 @@
 
 CREATE TABLE IF NOT EXISTS users (
     user_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    username  TEXT,
-    email     TEXT
+    username  TEXT UNIQUE,
+    email     TEXT,
+    hashed_password TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_nocase
