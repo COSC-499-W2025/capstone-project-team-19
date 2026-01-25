@@ -266,9 +266,9 @@ def export_resume_record_to_pdf(
         story.append(Paragraph(meta, MetaItalic))
 
         bullets = _clean_bullets(
-            p.get("resume_contributions_override")
+            p.get("contribution_bullets")
+            or p.get("resume_contributions_override")
             or p.get("manual_contribution_bullets")
-            or p.get("contribution_bullets")
             or []
         )
 

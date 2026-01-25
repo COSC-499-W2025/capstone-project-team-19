@@ -201,10 +201,10 @@ def export_resume_record_to_docx(
         contrib_bullets = _clean_bullets(p.get("contribution_bullets") or [])
 
         bullets_to_use: List[str] = []
-        if custom_bullets:
-            bullets_to_use = custom_bullets
-        elif contrib_bullets:
+        if contrib_bullets:
             bullets_to_use = contrib_bullets
+        elif custom_bullets:
+            bullets_to_use = custom_bullets
         else:
             if p.get("project_type") == "code":
                 activities = p.get("activities") or []
