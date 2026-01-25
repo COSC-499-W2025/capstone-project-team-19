@@ -226,7 +226,9 @@ A template file (`.env.example`) is provided and should be copied directly.
     ```env
     GROQ_API_KEY=<your-api-key>
     GITHUB_CLIENT_ID=""
-
+    GITHUB_CLIENT_SECRET=<your-new-client-secret>
+    
+    GITHUB_REDIRECT_URI=http://localhost:8000/auth/github/callback
     DEVICE_CODE_URL="https://github.com/login/device/code"
     TOKEN_URL="https://github.com/login/oauth/access_token"
     ```
@@ -239,17 +241,20 @@ A template file (`.env.example`) is provided and should be copied directly.
 
 ### GitHub OAuth (optional)
 
-GitHub OAuth is used to analyze collaboration metrics such as commits, pull requests, reviews, and contribution frequency. This integration uses GitHub's **Device Flow OAuth**.
+GitHub OAuth is used to analyze collaboration metrics such as commits, pull requests, reviews, and contribution frequency. This integration uses GitHub's **Code Flow OAuth**.
 
 To enable GitHub analysis:
 1. Create a GitHub OAuth App:
    - Visit https://github.com/settings/developers
    - Select **OAuth Apps --> New OAuth App**
    - Application name: `Capstone Portfolio Analyzer`
-   - Homepage URL: `http://localhost`
-   - Authorization callback URL: `http://localhost`
+   - Homepage URL: `http://localhost:8000`
+   - Authorization callback URL: `http://localhost:8000/auth/github/callback`
 2. Copy the **Client ID** from the OAuth app.
-3. Add the following to your `.env` file (as shown in `.env.example`):
+3. Generate a client secret:
+   - Click "Generate a new client secret"
+   - Copy the client secret and add to your `.env` file 
+4. Add the following to your `.env` file (as shown in `.env.example`):
     ```env
     GITHUB_CLIENT_ID=<your-client-id>
     ```
