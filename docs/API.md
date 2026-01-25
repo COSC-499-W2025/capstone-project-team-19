@@ -551,7 +551,7 @@ Manages résumé-specific representations of projects.
         }
         ```
         - `name` (string, required): Name for the résumé snapshot
-        - `project_ids` (array of integers, optional): List of `project_summary_id` values from the `project_summaries` table. Get these IDs from `GET /projects`. If omitted, uses top 5 ranked projects.
+        - `project_ids` (array of integers, optional): List of `project_summary_id` values from the `project_summaries` table. Get these IDs from `GET /projects`. If omitted (no project_ids, just name), uses top 5 ranked projects.
     - **Response Status**: `201 Created` or `400 Bad Request`
     - **Response Body**: Uses `ResumeDetailDTO`
         ```json
@@ -595,7 +595,7 @@ Manages résumé-specific representations of projects.
         }
         ```
         - `name` (string, optional): New name for the résumé (rename)
-        - `project_name` (string, optional): The text name of the project to edit. If omitted, only the résumé name is updated.
+        - `project_name` (string, optional): The text name of the project to edit. If omitted (no "project_name", just "name"), only the résumé name is updated.
         - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
             - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
             - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
