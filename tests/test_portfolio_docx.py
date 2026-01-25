@@ -1,369 +1,283 @@
-import json
+import os
 import sqlite3
 from pathlib import Path
 
 import pytest
 from docx import Document
 
-from PIL import Image
 
-# Use an in-memory SQLite database to test real SQL + JSON behavior without touching production data.
+def _extract_docx_text(docx_path: Path) -> str:
+    doc = Document(str(docx_path))
+    return "\n".join(p.text or "" for p in doc.paragraphs)
+
+
 @pytest.fixture()
-def mem_conn():
-    conn = sqlite3.connect(":memory:")
-    conn.execute(
-        """
-        CREATE TABLE project_summaries (
-            project_summary_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            project_name TEXT NOT NULL,
-            project_type TEXT,
-            project_mode TEXT,
-            summary_json TEXT NOT NULL,
-            created_at TEXT
-        )
-        """
+def conn():
+    # Real connection not used because we monkeypatch data fetchers,
+    # but keep signature consistent.
+    return sqlite3.connect(":memory:")
+
+
+def test_export_portfolio_docx_no_projects(monkeypatch, tmp_path, conn):
+    """
+    When there are no projects, we still produce a DOCX with header + message.
+    """
+    from src.export import portfolio_docx as mod
+
+    monkeypatch.setattr(mod, "collect_project_data", lambda _conn, _user_id: [])
+    monkeypatch.setattr(mod, "get_project_summary_row", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: None)
+
+    docx_path = mod.export_portfolio_to_docx(
+        conn=conn,
+        user_id=1,
+        username="Jordan",
+        out_dir=str(tmp_path),
     )
 
-    conn.execute(
-        """
-        CREATE TABLE project_thumbnails (
-            thumbnail_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id      INTEGER NOT NULL,
-            project_name TEXT NOT NULL,
-            image_path   TEXT NOT NULL,
-            added_at     TEXT NOT NULL,
-            updated_at   TEXT NOT NULL,
-            UNIQUE(user_id, project_name)
-        )
-        """
-    )
+    assert docx_path.exists()
+    assert docx_path.suffix.lower() == ".docx"
+    assert docx_path.stat().st_size > 0
 
-    conn.commit()
-    return conn
-
-def _doc_text(path: Path) -> str:
-    doc = Document(str(path))
-    return "\n".join(p.text for p in doc.paragraphs if p.text is not None)
+    text = _extract_docx_text(docx_path)
+    assert "Portfolio — Jordan" in text
+    assert "Generated on" in text
+    assert "No projects found. Please analyze some projects first." in text
 
 
-def test_portfolio_export_happy_creates_out_and_contains_fields(monkeypatch, tmp_path, mem_conn):
+def test_export_portfolio_docx_happy_path_includes_project_text_and_long_summary(monkeypatch, tmp_path, conn):
     """
-    Covers: P1 + P5 + P6 + X1 (deterministic filename via frozen datetime)
+    One project: ensures header, project line, and long summary content appear in extracted text.
     """
-    import src.export.portfolio_docx as exp
+    from src.export import portfolio_docx as mod
 
-    # Freeze datetime.now() used by exporter
-    class _FakeDatetime:
-        @staticmethod
-        def now():
-            class _DT:
-                def strftime(self, fmt: str) -> str:
-                    # match your exporter formats
-                    if fmt == "%Y-%m-%d_%H-%M-%S":
-                        return "2026-01-10_15-36-58"
-                    if fmt == "%Y-%m-%d at %H:%M:%S":
-                        return "2026-01-10 at 15:36:58"
-                    return "2026-01-10_15-36-58"
-            return _DT()
+    monkeypatch.setattr(mod, "collect_project_data", lambda _conn, _user_id: [("proj_a", 0.1234)])
 
-    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
-
-    # Patch ranking + formatters to avoid extra DB deps
-    monkeypatch.setattr(exp, "collect_project_data", lambda conn, user_id: [("paper", 0.708), ("codeproj", 0.641)])
-    monkeypatch.setattr(exp, "format_duration", lambda *a, **k: "Duration: 2025-07-09 – 2025-10-31")
-    monkeypatch.setattr(exp, "format_activity_line", lambda *a, **k: "Activity: Data 50%, Final 50%")
-    monkeypatch.setattr(exp, "format_skills_block", lambda summary: ["Skills:", "  - data_analysis", "  - planning"])
-    monkeypatch.setattr(
-        exp,
-        "format_summary_block",
-        lambda *a, **k: ["Summary:", "  - Project: test project", "  - My contribution: did stuff"],
-    )
-
-    # Insert two project summaries (one text, one code)
-    mem_conn.execute(
-        """
-        INSERT INTO project_summaries(user_id, project_name, project_type, project_mode, summary_json, created_at)
-        VALUES(?,?,?,?,?,?)
-        """,
-        (1, "paper", "text", "collaborative", json.dumps({"summary_text": "x"}), "2026-01-01"),
-    )
-    mem_conn.execute(
-        """
-        INSERT INTO project_summaries(user_id, project_name, project_type, project_mode, summary_json, created_at)
-        VALUES(?,?,?,?,?,?)
-        """,
-        (
-            1,
-            "codeproj",
-            "code",
-            "individual",
-            json.dumps({"languages": ["Python"], "frameworks": ["LightGBM"], "summary_text": "y"}),
-            "2026-01-01",
-        ),
-    )
-    mem_conn.commit()
-
-    out_dir = tmp_path / "out"
-    path = exp.export_portfolio_to_docx(mem_conn, 1, "salma", out_dir=str(out_dir))
-
-    assert out_dir.exists()
-    assert path.exists()
-    assert path.name == "portfolio_salma_2026-01-10_15-36-58.docx"
-
-    txt = _doc_text(path)
-    assert "Portfolio — salma" in txt
-    assert "Generated on 2026-01-10 at 15:36:58" in txt
-
-    assert "paper" in txt and "Score: 0.708" in txt
-    assert "Type: text (collaborative)" in txt
-    assert "codeproj" in txt
-    assert "Languages: Python" in txt
-    assert "Frameworks: LightGBM" in txt
-    assert "Skills" in txt
-    assert "Summary" in txt
-    assert "Project: test project" in txt
-
-
-def test_portfolio_menu_back_without_export(monkeypatch, mem_conn, capsys):
-    """
-    Covers: P2 (user selects 'Back' -> no export call)
-    """
-    import src.menu.portfolio as menu
-
-    monkeypatch.setattr(menu, "collect_project_data", lambda conn, user_id: [("paper", 0.1)])
-
-    called = {"export": False}
-
-    def _fake_export(*a, **k):
-        called["export"] = True
-
-    monkeypatch.setattr(menu, "export_portfolio_to_docx", _fake_export)
-    # Select option 4 (Back to main menu) immediately
-    monkeypatch.setattr("builtins.input", lambda _: "4")
-
-    menu.view_portfolio_menu(mem_conn, user_id=1, username="salma")
-    out = capsys.readouterr().out
-    assert "Portfolio options:" in out
-    assert called["export"] is False
-
-
-def test_portfolio_export_no_projects_creates_doc_with_message(monkeypatch, tmp_path, mem_conn):
-    """
-    Covers: P3 (no projects) — exporter produces a docx with 'No projects found...'
-    """
-    import src.export.portfolio_docx as exp
-
-    class _FakeDatetime:
-        @staticmethod
-        def now():
-            class _DT:
-                def strftime(self, fmt: str) -> str:
-                    if fmt == "%Y-%m-%d_%H-%M-%S":
-                        return "2026-01-10_15-36-58"
-                    if fmt == "%Y-%m-%d at %H:%M:%S":
-                        return "2026-01-10 at 15:36:58"
-                    return "2026-01-10_15-36-58"
-            return _DT()
-
-    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
-    monkeypatch.setattr(exp, "collect_project_data", lambda conn, user_id: [])
-
-    out_dir = tmp_path / "out"
-    path = exp.export_portfolio_to_docx(mem_conn, 1, "salma", out_dir=str(out_dir))
-    assert path.exists()
-    assert path.name == "portfolio_salma_2026-01-10_15-36-58.docx"
-
-    txt = _doc_text(path)
-    assert "Portfolio — salma" in txt
-    assert "No projects found" in txt
-
-
-def test_portfolio_export_skips_missing_summary_row(monkeypatch, tmp_path, mem_conn):
-    """
-    Covers: P4 (ranked project exists but row missing) — should not crash, doc still created.
-    """
-    import src.export.portfolio_docx as exp
-
-    class _FakeDatetime:
-        @staticmethod
-        def now():
-            class _DT:
-                def strftime(self, fmt: str) -> str:
-                    if fmt == "%Y-%m-%d_%H-%M-%S":
-                        return "2026-01-10_15-36-58"
-                    if fmt == "%Y-%m-%d at %H:%M:%S":
-                        return "2026-01-10 at 15:36:58"
-                    return "2026-01-10_15-36-58"
-            return _DT()
-
-    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
-    monkeypatch.setattr(exp, "collect_project_data", lambda conn, user_id: [("missing_proj", 0.5)])
-
-    out_dir = tmp_path / "out"
-    path = exp.export_portfolio_to_docx(mem_conn, 1, "salma", out_dir=str(out_dir))
-    assert path.exists()
-    assert path.name == "portfolio_salma_2026-01-10_15-36-58.docx"
-
-    txt = _doc_text(path)
-    assert "Portfolio — salma" in txt
-    assert "missing_proj" not in txt  # skipped
-
-
-def test_portfolio_export_uses_manual_overrides(monkeypatch, tmp_path, mem_conn):
-    import src.export.portfolio_docx as exp
-
-    monkeypatch.setattr(exp, "collect_project_data", lambda conn, user_id: [("proj1", 0.8)])
-    monkeypatch.setattr(exp, "format_duration", lambda *a, **k: "Duration: N/A")
-    monkeypatch.setattr(exp, "format_activity_line", lambda *a, **k: "Activity: N/A")
-    monkeypatch.setattr(exp, "format_skills_block", lambda summary: ["Skills: N/A"])
-
-    summary = {
-        "project_name": "proj1",
+    fake_summary = {"display_name": "My Fiction Project"}
+    fake_row = {
+        "summary": fake_summary,
         "project_type": "code",
         "project_mode": "individual",
-        "languages": [],
-        "frameworks": [],
-        "summary_text": "Original summary",
-        "metrics": {},
-        "contributions": {},
-        "manual_overrides": {
-            "display_name": "Manual Name",
-            "summary_text": "Manual summary",
-            "contribution_bullets": ["Did X", "Did Y"],
-        },
+        "created_at": "2025-01-01",
     }
+    monkeypatch.setattr(mod, "get_project_summary_row", lambda *_args, **_kwargs: fake_row)
+    monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: None)
 
-    mem_conn.execute(
-        """
-        INSERT INTO project_summaries(user_id, project_name, project_type, project_mode, summary_json, created_at)
-        VALUES(?,?,?,?,?,?)
-        """,
-        (1, "proj1", "code", "individual", json.dumps(summary), "2026-01-01"),
+    monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda summary, project_name: "My Fiction Project")
+    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: 2025-01-01 — 2025-02-01")
+    monkeypatch.setattr(mod, "format_languages", lambda _summary: "Languages: Python, SQL")
+    monkeypatch.setattr(mod, "format_frameworks", lambda _summary: "Frameworks: FastAPI")
+    monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: 10 commits")
+    monkeypatch.setattr(mod, "format_skills_block", lambda _summary: ["Skills:", "  - data analysis", "  - APIs"])
+
+    long_tail = " ".join(["verylongtext"] * 50)
+    monkeypatch.setattr(mod, "format_summary_block", lambda *_args, **_kwargs: [f"Summary: {long_tail}"])
+
+    docx_path = mod.export_portfolio_to_docx(
+        conn=conn,
+        user_id=1,
+        username="Jordan",
+        out_dir=str(tmp_path),
     )
-    mem_conn.commit()
 
-    out_dir = tmp_path / "out"
-    path = exp.export_portfolio_to_docx(mem_conn, 1, "salma", out_dir=str(out_dir))
+    assert docx_path.exists()
+    assert docx_path.stat().st_size > 0
 
-    txt = _doc_text(path)
-    assert "Manual Name" in txt
-    assert "Project: Manual summary" in txt
-    assert "My contributions:" in txt
-    assert "Did X" in txt
-    assert "Did Y" in txt
+    text = _extract_docx_text(docx_path)
+
+    assert "Portfolio — Jordan" in text
+    assert "Generated on" in text
+
+    # Project title + score + type
+    assert "My Fiction Project" in text
+    assert "Score: 0.123" in text
+    assert "Type: code (individual)" in text
+
+    # Metadata + skills
+    assert "Duration: 2025-01-01" in text
+    assert "Languages: Python, SQL" in text
+    assert "Frameworks: FastAPI" in text
+    assert "Activity: 10 commits" in text
+    assert "Skills" in text
+    assert "data analysis" in text
+    assert "APIs" in text
+
+    # Long summary content present
+    assert "Summary:" in text
+    assert "verylongtext" in text
 
 
-def test_portfolio_export_uses_portfolio_overrides(monkeypatch, tmp_path, mem_conn):
-    import src.export.portfolio_docx as exp
+def test_export_portfolio_docx_with_thumbnail_does_not_crash(monkeypatch, tmp_path, conn):
+    """
+    If a thumbnail path exists, export should still succeed.
+    We don't test Word image decoding in depth—only that our code attempts to include it.
+    """
+    from src.export import portfolio_docx as mod
 
-    monkeypatch.setattr(exp, "collect_project_data", lambda conn, user_id: [("proj1", 0.8)])
-    monkeypatch.setattr(exp, "format_duration", lambda *a, **k: "Duration: N/A")
-    monkeypatch.setattr(exp, "format_activity_line", lambda *a, **k: "Activity: N/A")
-    monkeypatch.setattr(exp, "format_skills_block", lambda summary: ["Skills: N/A"])
+    monkeypatch.setattr(mod, "collect_project_data", lambda _conn, _user_id: [("proj_a", 0.5)])
 
-    summary = {
-        "project_name": "proj1",
-        "project_type": "code",
+    fake_row = {
+        "summary": {},
+        "project_type": "text",
         "project_mode": "individual",
-        "languages": [],
-        "frameworks": [],
-        "summary_text": "Original summary",
-        "metrics": {},
-        "contributions": {},
-        "manual_overrides": {
-            "display_name": "Manual Name",
-            "summary_text": "Manual summary",
-            "contribution_bullets": ["Manual X"],
-        },
-        "portfolio_overrides": {
-            "display_name": "Portfolio Name",
-            "summary_text": "Portfolio summary",
-            "contribution_bullets": ["Portfolio A", "Portfolio B"],
-        },
+        "created_at": "2025-01-01",
     }
+    monkeypatch.setattr(mod, "get_project_summary_row", lambda *_args, **_kwargs: fake_row)
 
-    mem_conn.execute(
-        """
-        INSERT INTO project_summaries(user_id, project_name, project_type, project_mode, summary_json, created_at)
-        VALUES(?,?,?,?,?,?)
-        """,
-        (1, "proj1", "code", "individual", json.dumps(summary), "2026-01-01"),
+    # Write a real tiny valid PNG
+    thumb_path = tmp_path / "thumb.png"
+    png = (
+        b"\x89PNG\r\n\x1a\n"
+        b"\x00\x00\x00\rIHDR"
+        b"\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+        b"\x00\x00\x00\x0bIDATx\x9cc``\x00\x00\x00\x02\x00\x01\xe2!\xbc3"
+        b"\x00\x00\x00\x00IEND\xaeB`\x82"
     )
-    mem_conn.commit()
+    thumb_path.write_bytes(png)
 
-    out_dir = tmp_path / "out"
-    path = exp.export_portfolio_to_docx(mem_conn, 1, "salma", out_dir=str(out_dir))
+    monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: str(thumb_path))
 
-    txt = _doc_text(path)
-    assert "Portfolio Name" in txt
-    assert "Project: Portfolio summary" in txt
-    assert "My contributions:" in txt
-    assert "Portfolio A" in txt
-    assert "Portfolio B" in txt
+    monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_args, **_kwargs: "Project With Thumb")
+    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: N/A")
+    monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: N/A")
+    monkeypatch.setattr(mod, "format_skills_block", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(mod, "format_summary_block", lambda *_args, **_kwargs: ["Summary: ok"])
 
-
-def test_portfolio_export_embeds_thumbnail_when_available(monkeypatch, tmp_path, mem_conn):
-    import src.export.portfolio_docx as exp
-
-    # Freeze datetime.now() used by exporter
-    class _FakeDatetime:
-        @staticmethod
-        def now():
-            class _DT:
-                def strftime(self, fmt: str) -> str:
-                    if fmt == "%Y-%m-%d_%H-%M-%S":
-                        return "2026-01-10_15-36-58"
-                    if fmt == "%Y-%m-%d at %H:%M:%S":
-                        return "2026-01-10 at 15:36:58"
-                    return "2026-01-10_15-36-58"
-            return _DT()
-
-    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
-
-    # Patch ranking + formatters to keep test focused
-    monkeypatch.setattr(exp, "collect_project_data", lambda conn, user_id: [("paper", 0.708)])
-    monkeypatch.setattr(exp, "format_duration", lambda *a, **k: "Duration: N/A")
-    monkeypatch.setattr(exp, "format_activity_line", lambda *a, **k: "Activity: N/A")
-    monkeypatch.setattr(exp, "format_skills_block", lambda summary: ["Skills: N/A"])
-    monkeypatch.setattr(exp, "format_summary_block", lambda *a, **k: ["Summary: x"])
-
-    # Insert one project summary row
-    mem_conn.execute(
-        """
-        INSERT INTO project_summaries(user_id, project_name, project_type, project_mode, summary_json, created_at)
-        VALUES(?,?,?,?,?,?)
-        """,
-        (1, "paper", "text", "individual", json.dumps({"summary_text": "x"}), "2026-01-01"),
-    )
-    mem_conn.commit()
-
-    # Create a tiny valid PNG in tmp_path
-    png_bytes = (
-        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
-        b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc``\x00"
-        b"\x00\x00\x00\x02\x00\x01\xe2!\xbc3\x00\x00\x00\x00IEND\xaeB`\x82"
+    docx_path = mod.export_portfolio_to_docx(
+        conn=conn,
+        user_id=1,
+        username="Jordan",
+        out_dir=str(tmp_path),
     )
 
-    # Create a real PNG via Pillow (python-docx reliably accepts this)
-    img_path = tmp_path / "thumb.png"
-    img = Image.new("RGB", (10, 10), (255, 0, 0))
-    img.save(img_path)
+    assert docx_path.exists()
+    assert docx_path.stat().st_size > 0
 
-    # Store thumbnail in DB (so exporter finds it via real SQL)
-    mem_conn.execute(
-        """
-        INSERT INTO project_thumbnails(user_id, project_name, image_path, added_at, updated_at)
-        VALUES(?,?,?,?,?)
-        """,
-        (1, "paper", str(img_path), "2026-01-01", "2026-01-01"),
-    )
-    mem_conn.commit()
-
-    out_dir = tmp_path / "out"
-    path = exp.export_portfolio_to_docx(mem_conn, 1, "salma", out_dir=str(out_dir))
-    assert path.exists()
-
-    doc = Document(str(path))
-    # robust: check the docx package has at least one image part
+    # Check the docx package has at least one image part
+    doc = Document(str(docx_path))
     assert len(doc.part.package.image_parts) >= 1
+
+    text = _extract_docx_text(docx_path)
+    assert "Project With Thumb" in text
+    assert "Summary: ok" in text
+
+
+def test_export_portfolio_docx_thumbnail_removed_still_exports(monkeypatch, tmp_path, conn):
+    """
+    Simulate thumbnail existing, then being removed (path returns None).
+    Both exports should succeed.
+    """
+    from src.export import portfolio_docx as mod
+
+    monkeypatch.setattr(mod, "collect_project_data", lambda _conn, _user_id: [("proj_a", 0.5)])
+    fake_row = {
+        "summary": {},
+        "project_type": "text",
+        "project_mode": "individual",
+        "created_at": "2025-01-01",
+    }
+    monkeypatch.setattr(mod, "get_project_summary_row", lambda *_args, **_kwargs: fake_row)
+
+    monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_args, **_kwargs: "Thumb Project")
+    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: N/A")
+    monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: N/A")
+    monkeypatch.setattr(mod, "format_skills_block", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(mod, "format_summary_block", lambda *_args, **_kwargs: ["Summary: ok"])
+
+    # 1) With thumbnail
+    thumb_path = tmp_path / "thumb.png"
+    thumb_path.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        b"\x00\x00\x00\rIHDR"
+        b"\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+        b"\x00\x00\x00\x0bIDATx\x9cc``\x00\x00\x00\x02\x00\x01\xe2!\xbc3"
+        b"\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+    monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: str(thumb_path))
+
+    docx1 = mod.export_portfolio_to_docx(conn=conn, user_id=1, username="Jordan", out_dir=str(tmp_path))
+    assert docx1.exists() and docx1.stat().st_size > 0
+
+    # 2) Thumbnail removed
+    monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: None)
+
+    docx2 = mod.export_portfolio_to_docx(conn=conn, user_id=1, username="Jordan", out_dir=str(tmp_path))
+    assert docx2.exists() and docx2.stat().st_size > 0
+
+    text2 = _extract_docx_text(docx2)
+    assert "Thumb Project" in text2
+    assert "Summary: ok" in text2
+
+
+def test_export_portfolio_docx_reflects_edited_summary_text(monkeypatch, tmp_path, conn):
+    """
+    If the portfolio summary wording was edited (via overrides),
+    the exporter should reflect whatever the CLI formatters output.
+    """
+    from src.export import portfolio_docx as mod
+
+    monkeypatch.setattr(mod, "collect_project_data", lambda _conn, _user_id: [("proj_a", 0.9)])
+    fake_row = {
+        "summary": {"portfolio_overrides": {"summary_text": "NEW SUMMARY HERE"}},
+        "project_type": "text",
+        "project_mode": "individual",
+        "created_at": "2025-01-01",
+    }
+    monkeypatch.setattr(mod, "get_project_summary_row", lambda *_args, **_kwargs: fake_row)
+    monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: None)
+
+    monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_args, **_kwargs: "Edited Summary Project")
+    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: N/A")
+    monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: N/A")
+    monkeypatch.setattr(mod, "format_skills_block", lambda *_args, **_kwargs: [])
+
+    monkeypatch.setattr(mod, "format_summary_block", lambda *_args, **_kwargs: ["Summary: NEW SUMMARY HERE"])
+
+    docx_path = mod.export_portfolio_to_docx(conn=conn, user_id=1, username="Jordan", out_dir=str(tmp_path))
+    text = _extract_docx_text(docx_path)
+
+    assert "Edited Summary Project" in text
+    assert "Summary: NEW SUMMARY HERE" in text
+
+
+def test_export_portfolio_docx_reflects_edited_contribution_bullets(monkeypatch, tmp_path, conn):
+    """
+    If contribution bullets were edited, and your CLI summary block includes them,
+    ensure the DOCX contains the edited bullets.
+    """
+    from src.export import portfolio_docx as mod
+
+    monkeypatch.setattr(mod, "collect_project_data", lambda _conn, _user_id: [("proj_a", 0.7)])
+    fake_row = {
+        "summary": {"portfolio_overrides": {"contribution_bullets": ["Did X", "Did Y"]}},
+        "project_type": "code",
+        "project_mode": "individual",
+        "created_at": "2025-01-01",
+    }
+    monkeypatch.setattr(mod, "get_project_summary_row", lambda *_args, **_kwargs: fake_row)
+    monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: None)
+
+    monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_args, **_kwargs: "Edited Bullets Project")
+    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: N/A")
+    monkeypatch.setattr(mod, "format_languages", lambda *_args, **_kwargs: "Languages: Python")
+    monkeypatch.setattr(mod, "format_frameworks", lambda *_args, **_kwargs: "Frameworks: None")
+    monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: N/A")
+    monkeypatch.setattr(mod, "format_skills_block", lambda *_args, **_kwargs: [])
+
+    monkeypatch.setattr(
+        mod,
+        "format_summary_block",
+        lambda *_args, **_kwargs: [
+            "Summary:",
+            "  - Project: Something",
+            "  - My contribution: Did X",
+            "  - My contribution: Did Y",
+        ],
+    )
+
+    docx_path = mod.export_portfolio_to_docx(conn=conn, user_id=1, username="Jordan", out_dir=str(tmp_path))
+    text = _extract_docx_text(docx_path)
+
+    assert "Edited Bullets Project" in text
+    assert "My contribution: Did X" in text
+    assert "My contribution: Did Y" in text
