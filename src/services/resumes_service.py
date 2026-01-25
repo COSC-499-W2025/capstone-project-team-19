@@ -104,8 +104,8 @@ def edit_resume(
     conn,
     user_id: int,
     resume_id: int,
-    project_name: str,
-    scope: Literal["resume_only", "global"],
+    project_name: Optional[str] = None,
+    scope: Optional[Literal["resume_only", "global"]] = None,
     name: Optional[str] = None,
     display_name: Optional[str] = None,
     summary_text: Optional[str] = None,
@@ -130,6 +130,14 @@ def edit_resume(
             (name, user_id, resume_id),
         )
         conn.commit()
+
+    # If no project_name provided, just return after name update (name-only edit)
+    if project_name is None:
+        return get_resume_by_id(conn, user_id, resume_id)
+
+    # For project editing, scope is required
+    if scope is None:
+        scope = "resume_only"  # Default to resume_only if not specified
 
     # Find the project entry in the snapshot
     projects = snapshot.get("projects") or []

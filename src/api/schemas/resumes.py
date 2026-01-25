@@ -41,8 +41,8 @@ class ResumeGenerateRequestDTO(BaseModel):
 
 class ResumeEditRequestDTO(BaseModel):
     name: Optional[str] = None
-    project_name: str
-    scope: Literal["resume_only", "global"]
+    project_name: Optional[str] = None
+    scope: Optional[Literal["resume_only", "global"]] = None
     display_name: Optional[str] = None
     summary_text: Optional[str] = None
     contribution_bullets: Optional[List[str]] = None

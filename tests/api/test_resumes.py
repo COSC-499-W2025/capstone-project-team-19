@@ -299,6 +299,27 @@ def test_edit_resume_update_name(client, auth_headers, seed_conn):
     assert body["data"]["name"] == "New Name"
 
 
+def test_edit_resume_name_only(client, auth_headers, seed_conn):
+    """Test renaming a resume without editing any project (name-only update)"""
+    resume_json = json.dumps({
+        "projects": [{"project_name": "TestProject"}],
+        "aggregated_skills": {}
+    })
+    resume_id = insert_resume_snapshot(seed_conn, 1, "Original Name", resume_json)
+    seed_conn.commit()
+
+    # Only provide name, no project_name or scope
+    res = client.post(
+        f"/resume/{resume_id}/edit",
+        json={"name": "Renamed Resume"},
+        headers=auth_headers
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+    assert body["data"]["name"] == "Renamed Resume"
+
+
 def test_edit_resume_contribution_bullets(client, auth_headers, seed_conn):
     """Test editing contribution bullets with replace mode (default)"""
     resume_json = json.dumps({
