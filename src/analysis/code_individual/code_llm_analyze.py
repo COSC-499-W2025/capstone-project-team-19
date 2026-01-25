@@ -5,6 +5,10 @@ from typing import Any, Dict, Optional
 from src.utils.helpers import extract_code_file, extract_readme_file, read_file_content
 from dotenv import load_dotenv
 from groq import Groq
+from src.utils.language_detector import detect_languages
+from src.utils.framework_detector import detect_frameworks
+from .code_llm_analyze_helper import _infer_project_root_folder, _readme_mentions_detected_tech
+
 try:
     from src import constants
 except ModuleNotFoundError:
@@ -18,7 +22,11 @@ def run_code_llm_analysis(
     parsed_files,
     zip_path,
     project_name=None,
-    focus_file_paths=None,  # NEW: optional list of file paths to focus on
+    focus_file_paths=None,
+    conn=None,
+    user_id=None,
+    detected_languages=None,     
+    detected_frameworks=None,    
 ) -> Optional[Dict[str, Any]]:
 
     if not isinstance(parsed_files, list):
@@ -131,14 +139,72 @@ def run_code_llm_analysis(
     if readme_text and len(readme_text) > 8000:
         readme_text = readme_text[:8000]
 
+        # 3. Infer a project name if not provided
+    project_folders = sorted(
+        set(os.path.dirname(f["file_path"]).split(os.sep)[0] for f in project_code_files)
+    )
+    if not project_name:
+        project_name = project_folders[0] if project_folders else zip_name
+
+    # NEW: Tech stack evidence from existing detectors (no duplication)
+    detected_languages = []
+    detected_frameworks = []
+
+    # ALWAYS define this first (prevents UnboundLocalError)
+    tech_stack_block = (
+        "TECH STACK (evidence-based):\n"
+        "- Languages: Unknown\n"
+        "- Frameworks: Unknown\n"
+    )
+
+    # If we have DB context, fill it with real values
+    if conn is not None and user_id is not None:
+        try:
+            detected_languages = detect_languages(conn, project_name)
+        except Exception as e:
+            if constants.VERBOSE:
+                print("DEBUG detect_languages failed:", e)
+
+        try:
+            detected_frameworks = sorted(list(detect_frameworks(conn, project_name, user_id, zip_path)))
+        except Exception as e:
+            if constants.VERBOSE:
+                print("DEBUG detect_frameworks failed:", e)
+
+        tech_stack_block = (
+            "TECH STACK (evidence-based):\n"
+            f"- Languages: {', '.join(detected_languages) if detected_languages else 'Unknown'}\n"
+            f"- Frameworks: {', '.join(detected_frameworks) if detected_frameworks else 'Unknown'}\n"
+        )
+
+    if constants.VERBOSE:
+        print("DEBUG detected_languages:", detected_languages)
+        print("DEBUG detected_frameworks:", detected_frameworks)
+        print("DEBUG tech_stack_block ready")
+
+    readme_tech_ok = False
+    if readme_text:
+        readme_tech_ok = (
+            len(readme_text) >= 1500 and
+            _readme_mentions_detected_tech(readme_text, detected_languages, detected_frameworks)
+        )
+
+    if constants.VERBOSE:
+        print("DEBUG readme_tech_ok (README mentions detected tech):", readme_tech_ok)
+
     # We now build TWO contexts:
     #  - project_context_parts: README + code snippets (for project summary)
     #  - contrib_context_parts: code snippets ONLY (for contribution summary)
     project_context_parts: list[str] = []
     contrib_context_parts: list[str] = []
 
+    # If readme present: use readme, code context, tech stack
+    # Otherwise: only code context and tech stack
     if readme_text:
         project_context_parts.append(f"README:\n{readme_text}")
+
+    # Always include tech stack evidence
+    project_context_parts.append(tech_stack_block)
 
     # 2. Build context from code files
     # PROJECT context: use ALL project files (ignore focus_file_paths here)
@@ -183,17 +249,10 @@ def run_code_llm_analysis(
     if not contribution_context:
         contribution_context = project_context
 
-    # 3. Infer a project name if not provided
-    project_folders = sorted(
-        set(os.path.dirname(f["file_path"]).split(os.sep)[0] for f in project_code_files)
-    )
-    if not project_name:
-        project_name = project_folders[0] if project_folders else zip_name
-
     # 4. Call the existing LLM helpers
     #    - Project summary: README + light code context
     #    - Contribution summary: CODE-ONLY context (no README content)
-    project_summary = generate_code_llm_project_summary(readme_text, project_context)
+    project_summary = generate_code_llm_project_summary(project_context, readme_tech_ok)
     contribution_summary = generate_code_llm_contribution_summary(contribution_context)
 
     display_code_llm_results(
@@ -228,66 +287,53 @@ def display_code_llm_results(project_name, project_summary, contribution_summary
     print("\n" + "-" * 80 + "\n")
 
 
-def generate_code_llm_project_summary(
-    readme_text: str | None,
-    project_context: str | None = None,
-) -> str:
+def generate_code_llm_project_summary(project_context: str, readme_tech_ok: bool) -> str:
     """
     Produce a high-level project description (not tied to a single contributor).
-    Uses README if available; otherwise falls back to code context (file headers/comments).
+    Emphasizes purpose, functionality, and scope — uses README when present.
     """
-
-    # Pick the best available source text (avoid identical placeholder prompts)
-    source_label = None
-    source_text = None
-
-    if readme_text and readme_text.strip():
-        source_label = "README"
-        source_text = readme_text.strip()
-    elif project_context and project_context.strip():
-        source_label = "CODE_CONTEXT"
-        source_text = project_context.strip()
-    else:
-        return "[Project summary unavailable: no README or code context found]"
-
-    # Keep context bounded
-    source_text = source_text[:8000]  # enough for summary; cheaper + safer
+    if not project_context or not project_context.strip():
+        return "[Project summary unavailable: no context found]"
 
     prompt = f"""
 You are describing a software project at a high level for documentation.
 
-Use the provided {source_label} as the source of truth.
-- If the source is CODE_CONTEXT, infer purpose and features from file structure, comments, and tech stack clues.
-- If the source is README, summarize what it explicitly says.
-
 Focus ONLY on:
-- what the project does (purpose, goals, end users)
-- major features/modules
-- main technologies/frameworks
+- what the project is for (purpose, goals, and end users)
+- what major features or modules exist
+- the general technologies/frameworks mentioned
 - avoid specific function names or file references
 
 Do NOT:
 - mention individual contributors, commits, or versions
 - use phrases like "is being developed", "is under development", or "aims to"
 
-Use the README as the primary source when available.
-If no README is present, infer the project’s purpose, features, and technologies
-from the code structure, file names, and comments.
+Important constraints:
+- Use the README as the primary source for purpose and features when present.
+- README_TECH_OK indicates whether the README explicitly mentions detected languages or frameworks.
+- If README_TECH_OK is False, do not infer technologies from the README; only mention those in TECH STACK.
+- Do not mention any technologies not present in TECH STACK or explicitly stated in the README.
+- When uncertain, omit the technology rather than guessing.
 
-Source ({source_label}):
-{source_text}
+Format rules:
+- Output exactly one plain paragraph.
+- No headings, bullet points, numbering, or markdown.
+- Do not include labels (e.g., "Project Overview", "Technologies") or inference notes.
 
-Output ONE concise paragraph (80–110 words) in PRESENT TENSE starting with
-"A project that..." or "An application that...".
-""".strip()
+README_TECH_OK: {readme_tech_ok}
 
+Context (README if available + TECH STACK + code context):
+{project_context[:8000]}
+
+Output one concise paragraph (80–110 words) written in PRESENT TENSE starting with "A project that..." or "An application that...".
+"""
     try:
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
                 {
                     "role": "system",
-                    "content": "You write concise, factual project summaries from technical context.",
+                    "content": "You write concise, factual project summaries based on technical documentation.",
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -298,7 +344,6 @@ Output ONE concise paragraph (80–110 words) in PRESENT TENSE starting with
     except Exception as e:
         print(f"Error generating project summary: {e}")
         return "[Project summary unavailable due to API error]"
-
 
 def generate_code_llm_contribution_summary(project_context):
     """
@@ -358,45 +403,3 @@ def _sanitize_resume_paragraph(text: str) -> str:
         text = re.sub(r"^As\s+an?\s+[^,]+,\s*", "", text)
 
     return text
-
-def _infer_project_root_folder(code_files, project_name: str | None, zip_name: str | None = None) -> str | None:
-    wrappers = {"individual", "collaborative", "collab"}
-
-    candidates = []
-    for f in code_files:
-        fp = (f.get("file_path") or "").replace("\\", "/").strip("/")
-        if not fp:
-            continue
-
-        parts = fp.split("/")
-        if len(parts) < 2:
-            continue
-
-        # Case: zip_name/<...>
-        if zip_name and parts[0] == zip_name:
-            if len(parts) < 3:
-                continue
-
-            second = parts[1].lower()
-            # zip_name/individual/project_name/...
-            if second in wrappers:
-                if len(parts) >= 3:
-                    candidates.append(parts[2])
-            # zip_name/project_name/...
-            else:
-                candidates.append(parts[1])
-
-        # Case: no zip_name prefix, fallback to first segment
-        else:
-            candidates.append(parts[0])
-
-    if not candidates:
-        return None
-
-    # Prefer exact match if provided
-    uniq = sorted(set(candidates))
-    if project_name and project_name in uniq:
-        return project_name
-
-    from collections import Counter
-    return Counter(candidates).most_common(1)[0][0]

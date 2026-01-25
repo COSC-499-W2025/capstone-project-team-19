@@ -572,6 +572,8 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
                 zip_path,
                 project_name,
                 focus_file_paths=focus_file_paths,
+                conn=conn,
+                user_id=user_id
             )
 
             if llm_results:
@@ -652,7 +654,14 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     # --- Run LLM summary LAST, and only once ---
     if current_ext_consent == "accepted":
         print(f"\n[INDIVIDUAL-CODE] Running LLM-based summary for '{project_name}'...")
-        llm_results = run_code_llm_analysis(parsed_files, zip_path, project_name)
+        llm_results = run_code_llm_analysis(
+            parsed_files,
+            zip_path,
+            project_name,
+            conn=conn,
+            user_id=user_id,
+        )
+
         if summary and llm_results:
             summary.summary_text = llm_results.get("project_summary")
             summary.contributions["llm_contribution_summary"] = llm_results.get("contribution_summary")
