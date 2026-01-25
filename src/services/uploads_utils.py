@@ -88,14 +88,24 @@ def compute_relpath_under_zip_data(zip_data_dir: Path, file_path: str) -> str:
     return PurePosixPath(rel).as_posix()
 
 
+from pathlib import Path, PurePosixPath
+from typing import Any, Dict, Tuple
+
 def build_file_item_from_row(zip_data_dir: Path, row: Tuple[Any, ...]) -> Dict[str, Any]:
-    """
-    Expected row shape (from files table):
-    (file_name, file_path, extension, file_type, size_bytes, created, modified, project_name)
-    """
     file_name, file_path, ext, file_type, size_bytes, created, modified, project_name = row
 
-    relpath = compute_relpath_under_zip_data(zip_data_dir, str(file_path))
+    p = Path(str(file_path))
+    try:
+        relpath = compute_relpath_under_zip_data(zip_data_dir, str(file_path))
+    except ValueError:
+        # fallback: strip to start at project folder if possible (safe + stable)
+        posix = PurePosixPath(p.as_posix())
+        if project_name and project_name in posix.parts:
+            i = posix.parts.index(project_name)
+            relpath = PurePosixPath(*posix.parts[i:]).as_posix()
+        else:
+            # last resort: just return filename (still safe)
+            relpath = PurePosixPath(p.name).as_posix()
 
     return {
         "file_name": file_name,
@@ -107,7 +117,6 @@ def build_file_item_from_row(zip_data_dir: Path, row: Tuple[Any, ...]) -> Dict[s
         "modified": modified,
         "project_name": project_name,
     }
-
 
 def categorize_project_files(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
     """

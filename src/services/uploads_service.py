@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from fastapi import UploadFile, HTTPException
 import shutil
 import sqlite3
@@ -46,9 +46,21 @@ def get_project_relpath_set(conn: sqlite3.Connection, user_id: int, project_name
     ).fetchall()
 
     relpaths: set[str] = set()
+    base = Path(ZIP_DATA_DIR)
+
     for (file_path,) in rows:
-        # ZIP_DATA_DIR is the base for extraction, so this is stable
-        relpaths.add(compute_relpath_under_zip_data(Path(ZIP_DATA_DIR), str(file_path)))
+        p = Path(str(file_path))
+        try:
+            rel = compute_relpath_under_zip_data(base, str(file_path))
+        except ValueError:
+            posix = PurePosixPath(p.as_posix())
+            if project_name in posix.parts:
+                i = posix.parts.index(project_name)
+                rel = PurePosixPath(*posix.parts[i:]).as_posix()
+            else:
+                rel = PurePosixPath(p.name).as_posix()
+
+        relpaths.add(rel)
 
     return relpaths
 
