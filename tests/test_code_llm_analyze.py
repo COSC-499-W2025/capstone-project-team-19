@@ -67,11 +67,15 @@ def test_generate_code_llm_summary_sanitization(mock_client, mock_llm_response_f
         "As a software developer, I implemented a data pipeline in main.cpp using load_weather_data "
         "and compute_summary from data_utils.py to process CSV inputs."
     )
-    ctx = "README + headers: load_weather_data, compute_summary, Matplotlib mentioned."
 
-    result = code_llm_analyze.generate_code_llm_project_summary("")
+    # New signature: (project_context, readme_tech_ok)
+    result = code_llm_analyze.generate_code_llm_project_summary(
+        "TECH STACK (evidence-based):\n- Languages: C++\n- Frameworks: Unknown\n\n"
+        "### main.cpp ###\n// headers: load_weather_data, compute_summary\n",
+        readme_tech_ok=False,
+    )
 
-    # Sanitizer should remove role preamble and replace file names
+    # Sanitizer should remove role preamble and collapse newlines
     assert not re.match(r"^As\s+an?\s", result, flags=re.IGNORECASE)
     assert "\n" not in result.strip()
 
@@ -80,15 +84,31 @@ def test_generate_code_llm_summary_sanitization(mock_client, mock_llm_response_f
 @patch("src.analysis.code_individual.code_llm_analyze.extract_readme_file", return_value=None)
 @patch("src.analysis.code_individual.code_llm_analyze.extract_code_file", return_value=None)
 def test_run_code_llm_analysis_no_readable_context(
-    mock_extract_code, mock_extract_readme, mock_client, mock_parsed_files_single_project, capsys, tmp_path
+    mock_extract_code, mock_extract_readme, mock_client, mock_parsed_files_single_project, capsys, tmp_path, mock_llm_response_factory
 ):
+    """
+    Updated behavior: even if README + code snippets are unreadable,
+    the function still runs using the TECH STACK block as minimal context.
+    """
+    mock_client.chat.completions.create.return_value = mock_llm_response_factory(
+        "An application that summarizes a project based on minimal context."
+    )
+
     zip_path = str(tmp_path / "code_projects.zip")
+
     code_llm_analyze.run_code_llm_analysis(mock_parsed_files_single_project, zip_path)
     out = capsys.readouterr().out
 
-    assert "No readable code context found. Skipping LLM analysis." in out
-    # LLM should not be called
-    assert mock_client.chat.completions.create.call_count == 0
+    # It should NOT skip anymore (tech stack block keeps project_context non-empty)
+    assert "No readable code context found. Skipping LLM analysis." not in out
+
+    # LLM should be called twice: project summary + contribution summary
+    assert mock_client.chat.completions.create.call_count == 2
+
+    # Project summary prompt should include TECH STACK evidence block
+    _, kwargs0 = mock_client.chat.completions.create.call_args_list[0]
+    prompt0 = kwargs0["messages"][1]["content"]
+    assert "TECH STACK (evidence-based):" in prompt0
 
 
 @patch("src.analysis.code_individual.code_llm_analyze.client")
@@ -162,6 +182,7 @@ def test_contribution_summary_uses_top_files_only(
         assert "a.py" not in prompt_text
         assert "c.py" not in prompt_text
 
+
 @patch("src.analysis.code_individual.code_llm_analyze.client")
 @patch("src.analysis.code_individual.code_llm_analyze.extract_code_file", return_value="// code header\n")
 def test_no_project_readme_does_not_fallback_to_zip_root_readme(
@@ -210,5 +231,7 @@ def test_no_project_readme_does_not_fallback_to_zip_root_readme(
 
         # Ensure zip-root README is NOT used
         assert "ROOT README SHOULD NOT BE USED" not in prompt_text
-        # Ensure we fell back to code context
-        assert "Source (CODE_CONTEXT)" in prompt_text
+        # Ensure we fell back to code context (new prompt doesn't include "Source (CODE_CONTEXT)")
+        assert "Context (README if available + TECH STACK + code context):" in prompt_text
+        # and confirms no README section is present in context
+        assert "README:" not in prompt_text
