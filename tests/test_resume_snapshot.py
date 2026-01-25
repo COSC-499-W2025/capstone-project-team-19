@@ -490,3 +490,139 @@ def test_create_resume_stores_contribution_bullets(monkeypatch):
     data = json.loads(snap["resume_json"])
 
     assert data["projects"][0]["contribution_bullets"] == ["Contributed X."]
+
+
+class TestCollectSectionUpdatesContributionBullets:
+    """Tests for add-on vs rewrite choice in _collect_section_updates."""
+
+    def test_add_on_mode_appends_bullets(self, monkeypatch):
+        """When user selects '1' (add on), new bullets are appended to existing."""
+        # Use manual_contribution_bullets - this is what resolve_resume_contribution_bullets checks
+        project_entry = {
+            "manual_contribution_bullets": ["Existing bullet 1", "Existing bullet 2"]
+        }
+        # Simulate: select mode "1", enter "New bullet", then empty line to finish
+        inputs = iter(["1", "New bullet", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        updates = resume_flow._collect_section_updates({"contribution_bullets"}, project_entry)
+
+        assert updates["contribution_bullets"] == [
+            "Existing bullet 1",
+            "Existing bullet 2",
+            "New bullet",
+        ]
+
+    def test_add_on_mode_no_new_bullets_returns_none(self, monkeypatch):
+        """When user selects add-on but enters no bullets, returns None."""
+        project_entry = {
+            "manual_contribution_bullets": ["Existing bullet"]
+        }
+        # Simulate: select mode "1", then immediately empty line (no new bullets)
+        inputs = iter(["1", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        updates = resume_flow._collect_section_updates({"contribution_bullets"}, project_entry)
+
+        assert updates["contribution_bullets"] is None
+
+    def test_rewrite_mode_replaces_bullets(self, monkeypatch):
+        """When user selects '2' (rewrite), bullets are completely replaced."""
+        project_entry = {
+            "manual_contribution_bullets": ["Old bullet 1", "Old bullet 2"]
+        }
+        # Simulate: select mode "2", enter new bullets, then empty line
+        inputs = iter(["2", "New bullet A", "New bullet B", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        updates = resume_flow._collect_section_updates({"contribution_bullets"}, project_entry)
+
+        assert updates["contribution_bullets"] == ["New bullet A", "New bullet B"]
+
+    def test_invalid_mode_defaults_to_rewrite(self, monkeypatch):
+        """When user enters invalid mode, defaults to rewrite behavior."""
+        project_entry = {
+            "manual_contribution_bullets": ["Old bullet"]
+        }
+        # Simulate: invalid mode "3", enter new bullet, then empty line
+        inputs = iter(["3", "Replacement bullet", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        updates = resume_flow._collect_section_updates({"contribution_bullets"}, project_entry)
+
+        assert updates["contribution_bullets"] == ["Replacement bullet"]
+
+    def test_no_existing_contributions_uses_original_flow(self, monkeypatch):
+        """When no existing contributions, uses simple input flow (no mode prompt)."""
+        project_entry = {}  # No contribution_bullets
+        # Simulate: just enter bullets directly (no mode selection needed)
+        inputs = iter(["First bullet", "Second bullet", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        updates = resume_flow._collect_section_updates({"contribution_bullets"}, project_entry)
+
+        assert updates["contribution_bullets"] == ["First bullet", "Second bullet"]
+
+    def test_no_project_entry_uses_original_flow(self, monkeypatch):
+        """When project_entry is None, uses simple input flow."""
+        # Simulate: just enter bullets directly
+        inputs = iter(["Bullet one", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        updates = resume_flow._collect_section_updates({"contribution_bullets"}, None)
+
+        assert updates["contribution_bullets"] == ["Bullet one"]
+
+    def test_manual_override_bullets_used_for_existing(self, monkeypatch):
+        """Test that manual_contribution_bullets are resolved as existing bullets."""
+        project_entry = {
+            "manual_contribution_bullets": ["Manual bullet 1", "Manual bullet 2"]
+        }
+        # Simulate: select mode "1" (add on), enter new bullet, finish
+        inputs = iter(["1", "Added bullet", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        updates = resume_flow._collect_section_updates({"contribution_bullets"}, project_entry)
+
+        assert updates["contribution_bullets"] == [
+            "Manual bullet 1",
+            "Manual bullet 2",
+            "Added bullet",
+        ]
+
+    def test_resume_override_bullets_take_priority(self, monkeypatch):
+        """Test that resume_contributions_override takes priority over contribution_bullets."""
+        project_entry = {
+            "contribution_bullets": ["Base bullet"],
+            "resume_contributions_override": ["Override bullet 1", "Override bullet 2"]
+        }
+        # Simulate: select mode "1" (add on), enter new bullet, finish
+        inputs = iter(["1", "New bullet", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        updates = resume_flow._collect_section_updates({"contribution_bullets"}, project_entry)
+
+        # Should use resume_contributions_override as the base
+        assert updates["contribution_bullets"] == [
+            "Override bullet 1",
+            "Override bullet 2",
+            "New bullet",
+        ]
+
+    def test_base_contribution_bullets_used_as_fallback(self, monkeypatch):
+        """Test that contribution_bullets (base field) is used when no overrides exist."""
+        project_entry = {
+            "contribution_bullets": ["Base bullet 1", "Base bullet 2"]
+        }
+        # Simulate: select mode "1" (add on), enter new bullet, finish
+        inputs = iter(["1", "New bullet", ""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        updates = resume_flow._collect_section_updates({"contribution_bullets"}, project_entry)
+
+        # New bullet should be appended to the end
+        assert updates["contribution_bullets"] == [
+            "Base bullet 1",
+            "Base bullet 2",
+            "New bullet",
+        ]

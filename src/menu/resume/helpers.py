@@ -61,6 +61,10 @@ def resolve_resume_contribution_bullets(entry: Dict[str, Any]) -> List[str]:
     manual_bullets = _clean_bullets(entry.get("manual_contribution_bullets"))
     if manual_bullets:
         return manual_bullets
+    # Fallback to contribution_bullets (set when resume is first created)
+    base_bullets = _clean_bullets(entry.get("contribution_bullets"))
+    if base_bullets:
+        return base_bullets
     return []
 
 
@@ -235,30 +239,26 @@ def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
     if summary_text:
         lines.append(f"  Summary: {summary_text}")
 
-    # Contributions (single source of truth = stored bullets, else compute)
-    lines.append("  Contributions:")
-    # Contributions
+    # Contributions (single source of truth = stored/override bullets, else compute)
     custom_bullets = resolve_resume_contribution_bullets(p)
     if custom_bullets:
         lines.append("  Contributions:")
         for bullet in custom_bullets:
             lines.append(f"    • {bullet}")
-    elif p.get("project_type") == "code":
-        project_name = p.get("project_name") or ""
-        is_collab = bool(p.get("is_collaborative") or p.get("project_mode") == "collaborative")
-
-    bullets = p.get("contribution_bullets")
-    if not isinstance(bullets, list) or not bullets:
+    else:
+        # Fall back to computing bullets if no stored/override bullets exist
         if conn and user_id is not None:
             bullets = build_contribution_bullets(conn, user_id, p)
         else:
             bullets = []
 
-    if bullets:
-        for b in bullets:
-            lines.append(f"    • {str(b).strip()}")
-    else:
-        lines.append("    • (no contribution bullets available)")
+        if bullets:
+            lines.append("  Contributions:")
+            for b in bullets:
+                lines.append(f"    • {str(b).strip()}")
+        else:
+            lines.append("  Contributions:")
+            lines.append("    • (no contribution bullets available)")
 
     # Skills
     skills = p.get("skills") or []
