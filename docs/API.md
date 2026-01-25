@@ -148,12 +148,14 @@ Uploads are tracked as a resumable multi-step “wizard” using an `uploads` ta
 
 ### **Wizard Flow**
 
-A typical flow for the first four endpoints:
+A typical flow for the first six endpoints:
 
 1. **Start upload**: `POST /projects/upload`  
 2. **Poll/resume**: `GET /projects/upload/{upload_id}`  
 3. **Submit classifications**: `POST /projects/upload/{upload_id}/classifications`  
 4. **Resolve mixed project types (optional)**: `POST /projects/upload/{upload_id}/project-types`  
+5. **List project files (file roles)**: `GET /projects/upload/{upload_id}/projects/{project_name}/files`  
+6. **Set project main file**: `POST /projects/upload/{upload_id}/projects/{project_name}/main-file`  
 
 ---
 
@@ -283,6 +285,99 @@ A typical flow for the first four endpoints:
     - **Notes**:
         - Returns `422 Unprocessable Entity` if the request includes unknown project names (not present in `layout.auto_assignments` or `layout.pending_projects`).
         - Returns `422 Unprocessable Entity` if project type values are not `code` or `text`.
+
+
+- **List Project Files**
+    - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project_name}/files`
+    - **Description**: Returns all parsed files for a project within an upload, plus convenience buckets for `text_files` and `csv_files`. Clients should use the returned `relpath` values for subsequent file-role selection calls.
+    - **Headers**:
+        - `X-User-Id` (integer, required)
+    - **Path Params**:
+        - `upload_id` (integer, required)
+        - `project_name` (string, required)
+    - **Valid Upload Status**:
+        - `needs_file_roles`
+        - `needs_summaries`
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `UploadProjectFilesDTO`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+            "project_name": "ProjectA",
+            "all_files": [
+                {
+                "relpath": "text_projects/ProjectA/readme.txt",
+                "file_name": "readme.txt",
+                "file_type": "text",
+                "extension": ".txt",
+                "size_bytes": 123
+                }
+            ],
+            "text_files": [
+                {
+                "relpath": "text_projects/ProjectA/readme.txt",
+                "file_name": "readme.txt",
+                "file_type": "text",
+                "extension": ".txt",
+                "size_bytes": 123
+                }
+            ],
+            "csv_files": []
+            },
+            "error": null
+        }
+        ```
+    - **Notes**:
+        - Returns `409 Conflict` if the upload is not in `needs_file_roles` or `needs_summaries`.
+        - Returns `404 Not Found` if the project is not part of this upload (not present in the upload’s layout).
+
+
+
+- **Set Project Main File**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/main-file`
+    - **Description**: Stores the client-selected main file for a project (by `relpath`) in `uploads.state.file_roles[project_name].main_file`. The relpath must match one of the parsed files for that project.
+    - **Headers**:
+        - `X-User-Id` (integer, required)
+    - **Path Params**:
+        - `upload_id` (integer, required)
+        - `project_name` (string, required)
+    - **Valid Upload Status**:
+        - `needs_file_roles`
+    - **Request DTO**: `MainFileRequestDTO`
+    - **Request Body**:
+        ```json
+        {
+            "relpath": "text_projects/ProjectA/readme.txt"
+        }
+        ```
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `UploadDTO`
+    - **Response Body (state excerpt)**:
+        ```json
+        {
+        "success": true,
+        "data": {
+            "upload_id": 5,
+            "status": "needs_file_roles",
+            "zip_name": "text_projects.zip",
+            "state": {
+            "file_roles": {
+                "ProjectA": {
+                "main_file": "text_projects/ProjectA/readme.txt"
+                }
+            }
+            }
+        },
+        "error": null
+        }
+        ```
+    - **Notes**:
+        - Returns `409 Conflict` if the upload is not in `needs_file_roles`.
+        - Returns `422 Unprocessable Entity` if `relpath` is invalid (absolute path, contains `..`, etc.).
+        - Returns `404 Not Found` if the relpath is not found for that project.
+
 
 
 ---
