@@ -26,15 +26,16 @@ http://localhost:8000
 
 1. [Health](#health)
 2. [Projects](#projects)
-3. [PrivacyConsent](#privacyconsent)
-4. [Skills](#skills)
-5. [Resume](#resume)
-6. [Portfolio](#portfolio)
-7. [Path Variables](#path-variables)  
-8. [DTO References](#dto-references)  
-9. [Best Practices](#best-practices)  
-10. [Error Codes](#error-codes)  
-11. [Example Error Response](#example-error-response)  
+3. [GitHub Integration](#github-integration)
+4. [PrivacyConsent](#privacyconsent)
+5. [Skills](#skills)
+6. [Resume](#resume)
+7. [Portfolio](#portfolio)
+8. [Path Variables](#path-variables)  
+9. [DTO References](#dto-references)  
+10. [Best Practices](#best-practices)  
+11. [Error Codes](#error-codes)  
+12. [Example Error Response](#example-error-response)  
 
 ---
 
@@ -119,9 +120,118 @@ Handles project ingestion, analysis, classification, and metadata updates.
             },
             "error": null
         }
-        ```       
-
+        ```      
 ---
+
+## **GitHub Integration**
+
+**Base URL:** `/projects/upload/{upload_id}/projects/{project}/github` and `/auth`
+
+Handles GitHub OAuth authentication and repository linking for projects during the upload wizard flow.
+
+### **Endpoints**
+- **Start GitHub Connection**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project}/github/start`
+    - **Description**: Initiates GitHub OAuth connection flow for a project. If `connect_now` is `true` and user is not already connected, returns an authorization URL. If `connect_now` is `false`, records that GitHub connection was skipped.
+    - **Path Parameters**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project}` (string, required): The project name
+    - **Headers**: 
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Request Body**:
+        {
+            "connect_now": true
+        }
+    - **Response Status**: `200 OK` on success, `404 Not Found` if upload doesn't exist or belong to user
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "auth_url": "https://github.com/login/oauth/authorize?client_id=...&state=..."
+            },
+            "error": null
+        }
+        ```
+        if user is already connected or connect_now is false, auth_url will be null
+
+- **GitHub OAuth Callback**
+    - **Endpoint**: `GET /auth/github/callback`
+    - **Description**: Handles the OAuth callback from GitHub after user authorizes the application. Exchanges the authorization code for an access token and saves it. No authentication required - this is a public callback endpoint.
+    - **Query Parameters**:
+        - `code` (string, required): Authorization code from GitHub
+        - `state` (string, optional): OAuth state parameter for security
+    - **Response Status**: `200 OK` on success, `400 Bad Request` if code exchange fails or state is invalid
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "message": "GitHub connected successfully",
+            "data": {
+                "success": true,
+                "user_id": 1,
+                "upload_id": 1,
+                "project_name": "MyProject"
+            }
+        }
+        ```
+
+- **List GitHub Repositories**
+    - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project}/github/repos`
+    - **Description**: Returns a list of the user's GitHub repositories that can be linked to the project. Requires GitHub to be connected first.
+    - **Path Parameters**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project}` (string, required): The project name
+    - **Headers**: 
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Response Status**: `200 OK` on success, `401 Unauthorized` if GitHub is not connected, `404 Not Found` if upload doesn't exist
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "repos": [
+                    {
+                        "full_name": "owner/repo1"
+                    },
+                    {
+                        "full_name": "owner/repo2"
+                    }
+                ]
+            },
+            "error": null
+        }
+        ```
+
+- **Link GitHub Repository**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project}/github/link`
+    - **Description**: Links a GitHub repository to the project. The repository must be accessible by the authenticated user.
+    - **Path Parameters**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project}` (string, required): The project name
+    - **Headers**: 
+        - `X-User-Id` (integer, required): Current user identifier
+    - **Request Body**:
+        {
+            "repo_full_name": "owner/repo-name"
+        }
+    - **Response Status**: `200 OK` on success, `400 Bad Request` if GitHub is not connected or repo format is invalid, `404 Not Found` if upload doesn't exist
+    - **Response Body**:
+        ```json
+               {
+            "success": true,
+            "data": {
+                "success": true,
+                "repo_full_name": "owner/repo-name"
+            },
+            "error": null
+        }
+        ```
+        
+        
+        
+
+
 
 ## **PrivacyConsent**
 
@@ -428,6 +538,21 @@ Example:
     - `skills` (array of strings, optional)
     - `metrics` (object, optional)
     - `contributions` (object, optional)
+
+- **GitHubStartRequest**
+    - `connect_now` (boolean, required)
+
+- **GitHubStartResponse**
+    - `auth_url` (string, optional)
+
+- **GitHubRepoDTO**
+    - `full_name` (string, required)
+
+- **GitHubReposResponse**
+    - `repos` (List[GitHubRepoDTO], required)
+
+- **GitHubLinkRequest**
+    - `repo_full_name` (string, required)
 
 ---
 
