@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Optional, Literal
 from src.db.resumes import list_resumes, get_resume_snapshot, insert_resume_snapshot, update_resume_snapshot
-from src.db.project_summaries import get_project_summary_by_id, get_project_summary_by_name, update_project_summary_json
+from src.db.project_summaries import get_project_summary_by_id
 from src.db import get_all_user_project_summaries
 from src.models.project_summary import ProjectSummary
 from src.menu.resume.helpers import (
@@ -8,10 +8,13 @@ from src.menu.resume.helpers import (
     render_snapshot,
     enrich_snapshot_with_contributions,
     apply_resume_only_updates,
-    resume_only_override_fields,
     resolve_resume_contribution_bullets,
 )
 from src.insights.rank_projects.rank_project_importance import collect_project_data
+from src.services.resume_overrides import (
+    update_project_manual_overrides,
+    apply_manual_overrides_to_resumes,
+)
 import json
 
 def list_user_resumes(conn, user_id: int) -> List[Dict[str, Any]]:
@@ -178,9 +181,9 @@ def edit_resume(
 
     else:  # scope == "global"
         # Update project_summaries and fan out to all resumes
-        manual_overrides = _update_project_manual_overrides(conn, user_id, project_name, updates)
+        manual_overrides = update_project_manual_overrides(conn, user_id, project_name, updates)
         if manual_overrides is not None:
-            _apply_manual_overrides_to_resumes(
+            apply_manual_overrides_to_resumes(
                 conn,
                 user_id,
                 project_name,
@@ -190,106 +193,3 @@ def edit_resume(
             )
 
     return get_resume_by_id(conn, user_id, resume_id)
-
-
-def _update_project_manual_overrides(
-    conn,
-    user_id: int,
-    project_name: str,
-    updates: Dict[str, Any],
-) -> Optional[Dict[str, Any]]:
-    """Update manual overrides in project_summaries table."""
-    summary_row = get_project_summary_by_name(conn, user_id, project_name)
-    if not summary_row:
-        return None
-
-    try:
-        summary_dict = json.loads(summary_row["summary_json"])
-    except Exception:
-        return None
-
-    overrides = summary_dict.get("manual_overrides") or {}
-    if not isinstance(overrides, dict):
-        overrides = {}
-
-    for key, value in updates.items():
-        if value:
-            overrides[key] = value
-        else:
-            overrides.pop(key, None)
-
-    if overrides:
-        summary_dict["manual_overrides"] = overrides
-    else:
-        summary_dict.pop("manual_overrides", None)
-
-    updated = update_project_summary_json(conn, user_id, project_name, json.dumps(summary_dict))
-    if not updated:
-        return None
-    return overrides
-
-
-def _apply_manual_overrides_to_resumes(
-    conn,
-    user_id: int,
-    project_name: str,
-    overrides: Dict[str, Any],
-    fields: set,
-    force_resume_id: Optional[int] = None,
-) -> None:
-    """Apply global overrides to all saved resumes containing this project."""
-    resumes = list_resumes(conn, user_id)
-
-    for r in resumes:
-        record = get_resume_snapshot(conn, user_id, r["id"])
-        if not record:
-            continue
-        try:
-            snapshot = json.loads(record["resume_json"])
-        except Exception:
-            continue
-
-        projects = snapshot.get("projects") or []
-        changed = False
-
-        for entry in projects:
-            if entry.get("project_name") != project_name:
-                continue
-
-            resume_only_fields = resume_only_override_fields(entry)
-            force_update = force_resume_id == r["id"]
-
-            # If this is the selected resume, clear resume-only overrides so global applies
-            if force_update and resume_only_fields:
-                clear_updates = {field: None for field in fields}
-                apply_resume_only_updates(entry, clear_updates)
-                resume_only_fields = resume_only_override_fields(entry)
-
-            if "display_name" in fields:
-                if "display_name" not in resume_only_fields or force_update:
-                    if overrides.get("display_name"):
-                        entry["manual_display_name"] = overrides["display_name"]
-                    else:
-                        entry.pop("manual_display_name", None)
-                    changed = True
-
-            if "summary_text" in fields:
-                if "summary_text" not in resume_only_fields or force_update:
-                    if overrides.get("summary_text"):
-                        entry["manual_summary_text"] = overrides["summary_text"]
-                    else:
-                        entry.pop("manual_summary_text", None)
-                    changed = True
-
-            if "contribution_bullets" in fields:
-                if "contribution_bullets" not in resume_only_fields or force_update:
-                    if overrides.get("contribution_bullets"):
-                        entry["manual_contribution_bullets"] = overrides["contribution_bullets"]
-                    else:
-                        entry.pop("manual_contribution_bullets", None)
-                    changed = True
-
-        if changed:
-            rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
-            updated_json = json.dumps(snapshot, default=str)
-            update_resume_snapshot(conn, user_id, r["id"], updated_json, rendered)
