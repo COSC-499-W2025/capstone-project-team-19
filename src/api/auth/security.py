@@ -8,6 +8,29 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 JWT_ALGORITHM = "HS256"
 
+def validate_password_strength(password: str) -> str:
+    """
+    Basic password strength rules:
+    - Minimum length: 8 characters
+    - Must contain at least one lowercase letter, one uppercase letter, and one digit
+    """
+    if password is None:
+        raise ValueError("Password cannot be empty")
+
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters long")
+
+    has_lower = any(c.islower() for c in password)
+    has_upper = any(c.isupper() for c in password)
+    has_digit = any(c.isdigit() for c in password)
+
+    if not (has_lower and has_upper and has_digit):
+        raise ValueError(
+            "Password must include at least one uppercase letter, one lowercase letter, and one number"
+        )
+
+    return password
+
 def _truncate_password_for_bcrypt(password: str) -> str:
     """
     Truncate password to 72 bytes (bcrypt limit), ensuring we don't cut

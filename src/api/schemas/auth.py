@@ -1,8 +1,9 @@
 from pydantic import BaseModel, Field, field_validator
+from ..auth.security import validate_password_strength
 
 class RegisterIn(BaseModel):
     username: str = Field(..., min_length=1, description="Username cannot be empty")
-    password: str = Field(..., min_length=1, description="Password cannot be empty")
+    password: str = Field(..., min_length=8, description="Password must be at least 8 characters long and include upper/lowercase and a number")
     
     @field_validator('username')
     @classmethod
@@ -14,9 +15,7 @@ class RegisterIn(BaseModel):
     @field_validator('password')
     @classmethod
     def validate_password_not_empty(cls, v: str) -> str:
-        if not v:
-            raise ValueError('Password cannot be empty')
-        return v
+        return validate_password_strength(v)
 
 class LoginIn(BaseModel):
     username: str = Field(..., min_length=1, description="Username cannot be empty")

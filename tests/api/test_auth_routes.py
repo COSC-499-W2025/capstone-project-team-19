@@ -29,11 +29,18 @@ def test_register_success(client, monkeypatch):
     # User creation returns new id
     monkeypatch.setattr(auth_routes, "create_user_with_password", lambda conn, username, email, pw_hash: 123)
 
-    res = client.post("/auth/register", json={"username": "alice", "password": "pw123"})
+    res = client.post("/auth/register", json={"username": "alice", "password": "Abcd1234"})
     assert res.status_code == 201
     data = res.json()
     assert data["user_id"] == 123
     assert data["username"] == "alice"
+
+def test_register_rejects_weak_password_422(client, monkeypatch):
+    # No existing user (validation should fail before DB call matters)
+    monkeypatch.setattr(auth_routes, "get_user_auth_by_username", lambda conn, username: None)
+
+    res = client.post("/auth/register", json={"username": "alice", "password": "abcde"})
+    assert res.status_code == 422
 
 def test_register_duplicate_username_400(client, monkeypatch):
     # Simulate username already existing
@@ -43,7 +50,7 @@ def test_register_duplicate_username_400(client, monkeypatch):
         lambda conn, username: {"user_id": 1, "username": username, "hashed_password": "x"},
     )
 
-    res = client.post("/auth/register", json={"username": "alice", "password": "pw123"})
+    res = client.post("/auth/register", json={"username": "alice", "password": "Abcd1234"})
     assert res.status_code == 400
     assert res.json()["detail"] == "Username already taken"
 
