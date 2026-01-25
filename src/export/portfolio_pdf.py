@@ -147,7 +147,7 @@ def export_portfolio_to_pdf(
         fontName="Helvetica-Bold",
         fontSize=22,
         leading=26,
-        alignment=TA_CENTER,
+        alignment=TA_LEFT,
         spaceAfter=10, 
     )
 
