@@ -1,16 +1,18 @@
 from typing import List, Dict, Any, Optional, Literal
-from src.db.resumes import list_resumes, get_resume_snapshot, insert_resume_snapshot, update_resume_snapshot
-from src.db.project_summaries import get_project_summary_by_id
-from src.db import get_all_user_project_summaries
-from src.models.project_summary import ProjectSummary
+from src.db.resumes import list_resumes, get_resume_snapshot, update_resume_snapshot
 from src.menu.resume.helpers import (
-    build_resume_snapshot,
     render_snapshot,
-    enrich_snapshot_with_contributions,
     apply_resume_only_updates,
     resolve_resume_contribution_bullets,
 )
 from src.insights.rank_projects.rank_project_importance import collect_project_data
+from src.services.resume_generation import (
+    build_resume_snapshot_data,
+    insert_resume_snapshot_record,
+    load_all_project_summaries,
+    load_project_summaries_by_ids,
+    select_ranked_summaries,
+)
 from src.services.resume_overrides import (
     update_project_manual_overrides,
     apply_manual_overrides_to_resumes,
@@ -52,55 +54,23 @@ def generate_resume(
     name: str,
     project_ids: Optional[List[int]] = None,
 ) -> Optional[Dict[str, Any]]:
-    summaries: List[ProjectSummary] = []
-
     if project_ids:
-        # Fetch project summaries by IDs
-        for project_id in project_ids:
-            row = get_project_summary_by_id(conn, user_id, project_id)
-            if row and row.get("summary_json"):
-                try:
-                    summary_dict = json.loads(row["summary_json"])
-                    summaries.append(ProjectSummary.from_dict(summary_dict))
-                except (json.JSONDecodeError, Exception):
-                    continue
+        summaries = load_project_summaries_by_ids(conn, user_id, project_ids)
     else:
         # No project_ids provided - use top 5 ranked projects (like menu flow)
         ranked = collect_project_data(conn, user_id)
         if not ranked:
             return None
 
-        top_names = [proj_name for proj_name, _score in ranked[:5]]
+        all_summaries = load_all_project_summaries(conn, user_id)
+        summaries, _selected_names = select_ranked_summaries(all_summaries, ranked)
 
-        # Load all summaries and filter to top ranked
-        all_rows = get_all_user_project_summaries(conn, user_id)
-        for row in all_rows:
-            if row["project_name"] in top_names:
-                try:
-                    summary_dict = json.loads(row["summary_json"])
-                    summaries.append(ProjectSummary.from_dict(summary_dict))
-                except (json.JSONDecodeError, Exception):
-                    continue
-
-        # Sort by ranking order
-        ranked_dict = {proj_name: score for proj_name, score in ranked}
-        summaries.sort(key=lambda s: ranked_dict.get(s.project_name, 0.0), reverse=True)
-
-    if not summaries:
+    snapshot_data = build_resume_snapshot_data(conn, user_id, summaries, print_output=False)
+    if not snapshot_data:
         return None
+    snapshot, rendered = snapshot_data
 
-    # Build snapshot (extracts projects and aggregates skills)
-    snapshot = build_resume_snapshot(summaries)
-
-    # Enrich with contribution bullets and dates
-    snapshot = enrich_snapshot_with_contributions(conn, user_id, snapshot)
-
-    # Render to text
-    rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
-
-    # Store in DB
-    resume_json = json.dumps(snapshot, default=str)
-    resume_id = insert_resume_snapshot(conn, user_id, name, resume_json, rendered)
+    resume_id = insert_resume_snapshot_record(conn, user_id, name, snapshot, rendered)
     return get_resume_by_id(conn, user_id, resume_id)
 
 def edit_resume(

@@ -11,7 +11,6 @@ from datetime import datetime
 
 from src.db import (
     get_all_user_project_summaries,
-    insert_resume_snapshot,
     list_resumes,
     get_resume_snapshot,
     update_resume_snapshot,
@@ -19,16 +18,19 @@ from src.db import (
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from .helpers import (
     load_project_summaries,
-    build_resume_snapshot,
     render_snapshot,
     resolve_resume_display_name,
     resolve_resume_summary_text,
     resolve_resume_contribution_bullets,
     apply_resume_only_updates,
-    enrich_snapshot_with_contributions
 )
 from src.export.resume_docx import export_resume_record_to_docx
 from src.export.resume_pdf import export_resume_record_to_pdf
+from src.services.resume_generation import (
+    build_resume_snapshot_data,
+    insert_resume_snapshot_record,
+    select_ranked_summaries,
+)
 from src.services.resume_overrides import (
     update_project_manual_overrides,
     apply_manual_overrides_to_resumes,
@@ -46,9 +48,6 @@ def _handle_create_resume(conn, user_id: int, username: str):
     if not ranked:
         print("No projects available to rank.")
         return
-    
-    # Create a dict for quick lookup: project_name -> score
-    ranked_dict = {name: score for name, score in ranked}
     
     # Show ranked projects with scores
     print("\nAvailable projects (ranked by importance):")
@@ -69,15 +68,11 @@ def _handle_create_resume(conn, user_id: int, username: str):
     choice = input("\nYour selection: ").strip()
     
     if not choice:
-        # Default: top 5
-        top_names = [name for name, _score in ranked[:5]]
-        selected_summaries = [s for s in summaries if s.project_name in top_names]
-        # Sort by ranking order (highest score first)
-        selected_summaries.sort(
-            key=lambda s: ranked_dict.get(s.project_name, 0.0),
-            reverse=True
+        selected_summaries, selected_names = select_ranked_summaries(summaries, ranked)
+        print(
+            f"\n[Resume] Using top {len(selected_summaries)} ranked projects: "
+            f"{', '.join(selected_names)}"
         )
-        print(f"\n[Resume] Using top {len(selected_summaries)} ranked projects: {', '.join(top_names)}")
     else:
         # Parse user selection (handle comma-separated numbers)
         selected_indices = set()
@@ -89,13 +84,7 @@ def _handle_create_resume(conn, user_id: int, username: str):
         
         if not selected_indices:
             print("No valid selections. Using top 5 ranked projects.")
-            top_names = [name for name, _score in ranked[:5]]
-            selected_summaries = [s for s in summaries if s.project_name in top_names]
-            # Sort by ranking order
-            selected_summaries.sort(
-                key=lambda s: ranked_dict.get(s.project_name, 0.0),
-                reverse=True
-            )
+            selected_summaries, selected_names = select_ranked_summaries(summaries, ranked)
         else:
             # Limit to 5 projects maximum
             MAX_PROJECTS = 5
@@ -106,27 +95,26 @@ def _handle_create_resume(conn, user_id: int, username: str):
                 sorted_indices = sorted(selected_indices)
                 selected_indices = set(sorted_indices[:MAX_PROJECTS])
             
-            selected_names = [ranked[i-1][0] for i in sorted(selected_indices)]
-            selected_summaries = [s for s in summaries if s.project_name in selected_names]
-            # Sort by ranking order (highest score first)
-            selected_summaries.sort(
-                key=lambda s: ranked_dict.get(s.project_name, 0.0),
-                reverse=True
+            selected_summaries, selected_names = select_ranked_summaries(
+                summaries,
+                ranked,
+                selected_indices=selected_indices,
             )
-            print(f"\n[Resume] Using {len(selected_summaries)} selected projects: {', '.join(selected_names)}")
+            print(
+                f"\n[Resume] Using {len(selected_summaries)} selected projects: "
+                f"{', '.join(selected_names)}"
+            )
     
-    snapshot = build_resume_snapshot(selected_summaries)
-
-    # NEW: freeze the "Contributed..." bullets into the snapshot JSON
-    snapshot = enrich_snapshot_with_contributions(conn, user_id, snapshot)
-
-    rendered = render_snapshot(conn, user_id, snapshot)
+    snapshot_data = build_resume_snapshot_data(conn, user_id, selected_summaries, print_output=True)
+    if not snapshot_data:
+        print("Unable to build a resume snapshot from the selected projects.")
+        return
+    snapshot, rendered = snapshot_data
 
     default_name = f"Resume {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     name = input(f"\nEnter a name for this resume [{default_name}]: ").strip() or default_name
 
-    resume_json = json.dumps(snapshot, default=str)
-    insert_resume_snapshot(conn, user_id, name, resume_json, rendered)
+    insert_resume_snapshot_record(conn, user_id, name, snapshot, rendered)
     print(f"\n[Resume] Saved snapshot '{name}'.")
 
 def _handle_view_existing_resume(conn, user_id: int) -> bool:
