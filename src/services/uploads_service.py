@@ -199,9 +199,6 @@ def submit_project_types(conn, user_id: int, upload_id: int, project_types: dict
     state = upload.get("state") or {}
     mixed = set(state.get("project_types_mixed") or [])
 
-    if not mixed:
-        raise HTTPException(status_code=409, detail="No mixed projects require type selection")
-
     allowed = {"code", "text"}
     bad_vals = {k: v for k, v in project_types.items() if v not in allowed}
     if bad_vals:
@@ -209,9 +206,13 @@ def submit_project_types(conn, user_id: int, upload_id: int, project_types: dict
 
     # must cover only mixed projects (no extras)
     extra = set(project_types.keys()) - mixed
-    missing = mixed - set(project_types.keys())
     if extra:
         raise HTTPException(status_code=422, detail={"unknown_projects": sorted(extra)})
+
+    if not mixed:
+        raise HTTPException(status_code=409, detail="No mixed projects require type selection")
+
+    missing = mixed - set(project_types.keys())
     if missing:
         raise HTTPException(status_code=422, detail={"missing_projects": sorted(missing)})
 

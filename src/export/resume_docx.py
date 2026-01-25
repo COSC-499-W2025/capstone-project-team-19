@@ -196,15 +196,15 @@ def export_resume_record_to_docx(
         date_line = format_date_range(p.get("start_date"), p.get("end_date"))
         add_role_date_line(doc, role, date_line)
 
-        # bullets (same logic you already have)
+        # bullets - priority: overrides first, then base contribution_bullets
         custom_bullets = _resume_contribution_bullets(p)
         contrib_bullets = _clean_bullets(p.get("contribution_bullets") or [])
 
         bullets_to_use: List[str] = []
-        if contrib_bullets:
-            bullets_to_use = contrib_bullets
-        elif custom_bullets:
+        if custom_bullets:
             bullets_to_use = custom_bullets
+        elif contrib_bullets:
+            bullets_to_use = contrib_bullets
         else:
             if p.get("project_type") == "code":
                 activities = p.get("activities") or []
