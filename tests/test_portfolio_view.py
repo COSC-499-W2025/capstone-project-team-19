@@ -359,3 +359,61 @@ def test_portfolio_edit_cancel_selection_is_noop(conn, monkeypatch):
     row = get_project_summary_by_name(conn, user_id, "proj1")
     summary_dict = json.loads(row["summary_json"])
     assert summary_dict.get("portfolio_overrides") is None
+
+
+def test_portfolio_global_edit_clears_portfolio_override(conn, capsys, monkeypatch):
+    """
+    Bug fix test: When a user first edits portfolio-only, then edits globally,
+    the portfolio_overrides for that field should be cleared so the global
+    manual_overrides take effect (since portfolio_overrides has higher priority).
+    """
+    user_id = 1
+    # Start with a project that has existing portfolio_overrides
+    summary = {
+        "project_name": "proj1",
+        "project_type": "text",
+        "project_mode": "individual",
+        "summary_text": "Original summary",
+        "skills": [],
+        "metrics": {},
+        "contributions": {},
+        "portfolio_overrides": {
+            "summary_text": "Portfolio-only summary",
+        },
+    }
+    save_project_summary(conn, user_id, "proj1", json.dumps(summary))
+
+    monkeypatch.setattr(
+        "src.menu.portfolio.collect_project_data",
+        lambda c, uid: [("proj1", 0.8)],
+        raising=False,
+    )
+
+    # Mock _apply_manual_overrides_to_resumes to avoid resume-related side effects
+    monkeypatch.setattr(
+        "src.menu.portfolio._apply_manual_overrides_to_resumes",
+        lambda *args, **kwargs: None,
+    )
+
+    # Simulate: select project 1, scope 2 (global), edit section 1 (summary_text)
+    inputs = iter(["1", "2", "1", "Global summary"])
+    monkeypatch.setattr("builtins.input", lambda _="": next(inputs))
+
+    assert _handle_edit_portfolio_wording(conn, user_id, "Kevin") is True
+
+    row = get_project_summary_by_name(conn, user_id, "proj1")
+    summary_dict = json.loads(row["summary_json"])
+
+    # Global override should be set
+    assert summary_dict["manual_overrides"]["summary_text"] == "Global summary"
+
+    # Portfolio override should be cleared for this field
+    portfolio_overrides = summary_dict.get("portfolio_overrides") or {}
+    assert "summary_text" not in portfolio_overrides
+
+    # Verify the portfolio now uses the global override by displaying it
+    _display_portfolio(conn, user_id, "Kevin")
+    out = capsys.readouterr().out
+    assert "Summary: Global summary" in out
+    # The old portfolio-only summary should no longer appear in the final display
+    assert "Summary: Portfolio-only summary" not in out
