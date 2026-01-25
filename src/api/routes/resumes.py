@@ -70,6 +70,7 @@ def post_resume_edit(
         display_name=request.display_name,
         summary_text=request.summary_text,
         contribution_bullets=request.contribution_bullets,
+        contribution_edit_mode=request.contribution_edit_mode,
     )
 
     if not resume:

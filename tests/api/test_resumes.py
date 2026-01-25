@@ -104,42 +104,42 @@ def test_get_resume_by_id_success(client, auth_headers, seed_conn):
     assert data["aggregated_skills"]["languages"] == ["Python"]
 
 # POST /resume/generate tests
-def test_generate_resume_requires_user_header():
+def test_generate_resume_requires_user_header(client):
     """Test that POST /resume/generate requires X-User-Id header"""
     res = client.post("/resume/generate", json={"name": "Test"})
     assert res.status_code == 401
 
 
-def test_generate_resume_with_false_user():
+def test_generate_resume_with_false_user(client, auth_headers_nonexistent_user):
     """Test that POST /resume/generate returns 404 for non-existent user"""
-    res = client.post("/resume/generate", json={"name": "Test"}, headers={"X-User-Id": "999999"})
+    res = client.post("/resume/generate", json={"name": "Test"}, headers=auth_headers_nonexistent_user)
     assert res.status_code == 404
     assert "not found" in res.json()["detail"].lower()
 
 
-def test_generate_resume_no_projects_returns_error(setup_db):
+def test_generate_resume_no_projects_returns_error(client, auth_headers):
     """Test that generating resume with no projects returns 400"""
     res = client.post(
         "/resume/generate",
         json={"name": "Empty Resume", "project_ids": []},
-        headers={"X-User-Id": "1"}
+        headers=auth_headers
     )
     assert res.status_code == 400
     assert "no valid projects" in res.json()["detail"].lower()
 
 
-def test_generate_resume_invalid_project_ids_returns_error(setup_db):
+def test_generate_resume_invalid_project_ids_returns_error(client, auth_headers):
     """Test that generating resume with invalid project IDs returns 400"""
     res = client.post(
         "/resume/generate",
         json={"name": "Bad Resume", "project_ids": [999, 1000]},
-        headers={"X-User-Id": "1"}
+        headers=auth_headers
     )
     assert res.status_code == 400
     assert "no valid projects" in res.json()["detail"].lower()
 
 
-def test_generate_resume_with_project_ids_success(setup_db):
+def test_generate_resume_with_project_ids_success(client, auth_headers, seed_conn):
     """Test generating a resume with specific project IDs"""
     # Create project summaries
     summary_json = json.dumps({
@@ -151,13 +151,14 @@ def test_generate_resume_with_project_ids_success(setup_db):
         "summary_text": "A test project",
         "metrics": {}
     })
-    save_project_summary(setup_db, 1, "TestProject", summary_json)
-    project_id = get_project_summary_by_name(setup_db, 1, "TestProject")["project_summary_id"]
+    save_project_summary(seed_conn, 1, "TestProject", summary_json)
+    seed_conn.commit()
+    project_id = get_project_summary_by_name(seed_conn, 1, "TestProject")["project_summary_id"]
 
     res = client.post(
         "/resume/generate",
         json={"name": "My Resume", "project_ids": [project_id]},
-        headers={"X-User-Id": "1"}
+        headers=auth_headers
     )
     assert res.status_code == 201
     body = res.json()
@@ -171,7 +172,7 @@ def test_generate_resume_with_project_ids_success(setup_db):
     assert "Python" in data["aggregated_skills"]["languages"]
 
 
-def test_generate_resume_without_project_ids_uses_top_ranked(setup_db):
+def test_generate_resume_without_project_ids_uses_top_ranked(client, auth_headers, seed_conn):
     """Test generating resume without project_ids uses top 5 ranked projects"""
     # Create multiple project summaries
     for i in range(3):
@@ -184,12 +185,13 @@ def test_generate_resume_without_project_ids_uses_top_ranked(setup_db):
             "summary_text": f"Project {i} description",
             "metrics": {}
         })
-        save_project_summary(setup_db, 1, f"Project{i}", summary_json)
+        save_project_summary(seed_conn, 1, f"Project{i}", summary_json)
+    seed_conn.commit()
 
     res = client.post(
         "/resume/generate",
         json={"name": "Auto Resume"},
-        headers={"X-User-Id": "1"}
+        headers=auth_headers
     )
     assert res.status_code == 201
     body = res.json()
@@ -201,7 +203,7 @@ def test_generate_resume_without_project_ids_uses_top_ranked(setup_db):
 
 
 # POST /resume/{resume_id}/edit tests
-def test_edit_resume_requires_user_header():
+def test_edit_resume_requires_user_header(client):
     """Test that POST /resume/{id}/edit requires X-User-Id header"""
     res = client.post("/resume/1/edit", json={
         "project_name": "Test",
@@ -210,35 +212,36 @@ def test_edit_resume_requires_user_header():
     assert res.status_code == 401
 
 
-def test_edit_resume_not_found(setup_db):
+def test_edit_resume_not_found(client, auth_headers):
     """Test editing a resume that doesn't exist"""
     res = client.post(
         "/resume/999/edit",
         json={"project_name": "Test", "scope": "resume_only"},
-        headers={"X-User-Id": "1"}
+        headers=auth_headers
     )
     assert res.status_code == 404
     assert "not found" in res.json()["detail"].lower()
 
 
-def test_edit_resume_project_not_found(setup_db):
+def test_edit_resume_project_not_found(client, auth_headers, seed_conn):
     """Test editing a project that doesn't exist in the resume"""
     resume_json = json.dumps({
         "projects": [{"project_name": "ExistingProject"}],
         "aggregated_skills": {}
     })
-    resume_id = insert_resume_snapshot(setup_db, 1, "Test Resume", resume_json)
+    resume_id = insert_resume_snapshot(seed_conn, 1, "Test Resume", resume_json)
+    seed_conn.commit()
 
     res = client.post(
         f"/resume/{resume_id}/edit",
         json={"project_name": "NonExistentProject", "scope": "resume_only"},
-        headers={"X-User-Id": "1"}
+        headers=auth_headers
     )
     assert res.status_code == 404
     assert "not found" in res.json()["detail"].lower()
 
 
-def test_edit_resume_resume_only_scope(setup_db):
+def test_edit_resume_resume_only_scope(client, auth_headers, seed_conn):
     """Test editing a resume with resume_only scope"""
     resume_json = json.dumps({
         "projects": [{
@@ -249,7 +252,8 @@ def test_edit_resume_resume_only_scope(setup_db):
         }],
         "aggregated_skills": {}
     })
-    resume_id = insert_resume_snapshot(setup_db, 1, "Test Resume", resume_json)
+    resume_id = insert_resume_snapshot(seed_conn, 1, "Test Resume", resume_json)
+    seed_conn.commit()
 
     res = client.post(
         f"/resume/{resume_id}/edit",
@@ -259,7 +263,7 @@ def test_edit_resume_resume_only_scope(setup_db):
             "summary_text": "Updated summary",
             "display_name": "Custom Display Name"
         },
-        headers={"X-User-Id": "1"}
+        headers=auth_headers
     )
     assert res.status_code == 200
     body = res.json()
@@ -272,13 +276,14 @@ def test_edit_resume_resume_only_scope(setup_db):
     assert "Custom Display Name" in data["rendered_text"]
 
 
-def test_edit_resume_update_name(setup_db):
+def test_edit_resume_update_name(client, auth_headers, seed_conn):
     """Test renaming a resume"""
     resume_json = json.dumps({
         "projects": [{"project_name": "TestProject"}],
         "aggregated_skills": {}
     })
-    resume_id = insert_resume_snapshot(setup_db, 1, "Old Name", resume_json)
+    resume_id = insert_resume_snapshot(seed_conn, 1, "Old Name", resume_json)
+    seed_conn.commit()
 
     res = client.post(
         f"/resume/{resume_id}/edit",
@@ -287,15 +292,15 @@ def test_edit_resume_update_name(setup_db):
             "project_name": "TestProject",
             "scope": "resume_only"
         },
-        headers={"X-User-Id": "1"}
+        headers=auth_headers
     )
     assert res.status_code == 200
     body = res.json()
     assert body["data"]["name"] == "New Name"
 
 
-def test_edit_resume_contribution_bullets(setup_db):
-    """Test editing contribution bullets"""
+def test_edit_resume_contribution_bullets(client, auth_headers, seed_conn):
+    """Test editing contribution bullets with replace mode (default)"""
     resume_json = json.dumps({
         "projects": [{
             "project_name": "TestProject",
@@ -304,7 +309,8 @@ def test_edit_resume_contribution_bullets(setup_db):
         }],
         "aggregated_skills": {}
     })
-    resume_id = insert_resume_snapshot(setup_db, 1, "Test Resume", resume_json)
+    resume_id = insert_resume_snapshot(seed_conn, 1, "Test Resume", resume_json)
+    seed_conn.commit()
 
     bullets = ["Built feature X", "Improved performance by 50%"]
     res = client.post(
@@ -314,7 +320,7 @@ def test_edit_resume_contribution_bullets(setup_db):
             "scope": "resume_only",
             "contribution_bullets": bullets
         },
-        headers={"X-User-Id": "1"}
+        headers=auth_headers
     )
     assert res.status_code == 200
 
@@ -325,7 +331,43 @@ def test_edit_resume_contribution_bullets(setup_db):
     assert "Improved performance by 50%" in data["rendered_text"]
 
 
-def test_edit_resume_global_scope(setup_db):
+def test_edit_resume_contribution_bullets_append_mode(client, auth_headers, seed_conn):
+    """Test editing contribution bullets with append mode"""
+    resume_json = json.dumps({
+        "projects": [{
+            "project_name": "TestProject",
+            "project_type": "code",
+            "project_mode": "individual",
+            "contribution_bullets": ["Existing bullet 1", "Existing bullet 2"]
+        }],
+        "aggregated_skills": {}
+    })
+    resume_id = insert_resume_snapshot(seed_conn, 1, "Test Resume", resume_json)
+    seed_conn.commit()
+
+    new_bullets = ["New bullet 3", "New bullet 4"]
+    res = client.post(
+        f"/resume/{resume_id}/edit",
+        json={
+            "project_name": "TestProject",
+            "scope": "resume_only",
+            "contribution_bullets": new_bullets,
+            "contribution_edit_mode": "append"
+        },
+        headers=auth_headers
+    )
+    assert res.status_code == 200
+
+    # Verify the rendered_text contains both old and new bullets
+    data = res.json()["data"]
+    assert data["rendered_text"] is not None
+    assert "Existing bullet 1" in data["rendered_text"]
+    assert "Existing bullet 2" in data["rendered_text"]
+    assert "New bullet 3" in data["rendered_text"]
+    assert "New bullet 4" in data["rendered_text"]
+
+
+def test_edit_resume_global_scope(client, auth_headers, seed_conn):
     """Test editing with global scope updates project_summaries"""
     # Create project summary first
     summary_json = json.dumps({
@@ -336,7 +378,8 @@ def test_edit_resume_global_scope(setup_db):
         "summary_text": "Original",
         "metrics": {}
     })
-    save_project_summary(setup_db, 1, "TestProject", summary_json)
+    save_project_summary(seed_conn, 1, "TestProject", summary_json)
+    seed_conn.commit()
 
     # Create resume with this project
     resume_json = json.dumps({
@@ -347,7 +390,8 @@ def test_edit_resume_global_scope(setup_db):
         }],
         "aggregated_skills": {}
     })
-    resume_id = insert_resume_snapshot(setup_db, 1, "Test Resume", resume_json)
+    resume_id = insert_resume_snapshot(seed_conn, 1, "Test Resume", resume_json)
+    seed_conn.commit()
 
     res = client.post(
         f"/resume/{resume_id}/edit",
@@ -356,11 +400,11 @@ def test_edit_resume_global_scope(setup_db):
             "scope": "global",
             "summary_text": "Globally updated summary"
         },
-        headers={"X-User-Id": "1"}
+        headers=auth_headers
     )
     assert res.status_code == 200
 
     # Verify project_summaries was updated with manual_overrides
-    project_row = get_project_summary_by_name(setup_db, 1, "TestProject")
+    project_row = get_project_summary_by_name(seed_conn, 1, "TestProject")
     summary_dict = json.loads(project_row["summary_json"])
     assert summary_dict.get("manual_overrides", {}).get("summary_text") == "Globally updated summary"

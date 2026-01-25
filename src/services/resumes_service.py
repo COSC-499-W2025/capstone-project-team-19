@@ -9,6 +9,7 @@ from src.menu.resume.helpers import (
     enrich_snapshot_with_contributions,
     apply_resume_only_updates,
     resume_only_override_fields,
+    resolve_resume_contribution_bullets,
 )
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 import json
@@ -109,6 +110,7 @@ def edit_resume(
     display_name: Optional[str] = None,
     summary_text: Optional[str] = None,
     contribution_bullets: Optional[List[str]] = None,
+    contribution_edit_mode: Literal["append", "replace"] = "replace",
 ) -> Optional[Dict[str, Any]]:
 
     # Get the resume record
@@ -147,7 +149,13 @@ def edit_resume(
     if summary_text is not None:
         updates["summary_text"] = summary_text or None
     if contribution_bullets is not None:
-        updates["contribution_bullets"] = contribution_bullets or None
+        if contribution_edit_mode == "append" and contribution_bullets:
+            # Append new bullets to existing ones
+            current_bullets = resolve_resume_contribution_bullets(project_entry)
+            updates["contribution_bullets"] = current_bullets + contribution_bullets
+        else:
+            # Replace mode: use provided bullets directly
+            updates["contribution_bullets"] = contribution_bullets or None
 
     if not updates:
         # No field updates, just return existing
