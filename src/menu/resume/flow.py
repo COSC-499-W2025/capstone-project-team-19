@@ -25,6 +25,7 @@ from .helpers import (
     render_snapshot,
     resolve_resume_display_name,
     resolve_resume_summary_text,
+    resolve_resume_contribution_bullets,
     resume_only_override_fields,
     apply_resume_only_updates,
     enrich_snapshot_with_contributions
@@ -242,7 +243,7 @@ def _handle_edit_resume_wording(conn, user_id: int, username: str) -> bool:
         print("Cancelled.")
         return False
 
-    updates = _collect_section_updates(sections)
+    updates = _collect_section_updates(sections, project_entry)
     if not updates:
         print("No updates provided.")
         return False
@@ -325,7 +326,7 @@ def _prompt_edit_sections() -> set[str]:
     return selected
 
 
-def _collect_section_updates(sections: set[str]) -> dict[str, Any]:
+def _collect_section_updates(sections: set[str], project_entry: dict | None = None) -> dict[str, Any]:
     updates: dict[str, Any] = {}
     if "display_name" in sections:
         display_name = input("New display name (leave blank to clear): ").strip()
@@ -334,14 +335,52 @@ def _collect_section_updates(sections: set[str]) -> dict[str, Any]:
         summary_text = input("New summary text (leave blank to clear): ").strip()
         updates["summary_text"] = summary_text or None
     if "contribution_bullets" in sections:
-        print("Enter contribution bullets (one per line). Press Enter on a blank line to finish.")
-        bullets: list[str] = []
-        while True:
-            line = input("> ").strip()
-            if not line:
-                break
-            bullets.append(line)
-        updates["contribution_bullets"] = bullets or None
+        current_bullets: list[str] = []
+        if project_entry:
+            current_bullets = resolve_resume_contribution_bullets(project_entry)
+
+        # Show current contributions if they exist
+        if current_bullets:
+            print("\nCurrent contributions:")
+            for bullet in current_bullets:
+                print(f"  • {bullet}")
+
+            # Prompt for edit mode
+            print("\nHow would you like to edit?")
+            print("1. Add new bullet points (keep existing and append new ones)")
+            print("2. Replace all (delete existing and write new bullet points)")
+            mode = input("Select (1-2): ").strip()
+
+            if mode == "1":
+                print("\nEnter additional contribution bullets (one per line). Press Enter on a blank line to finish.")
+                new_bullets: list[str] = []
+                while True:
+                    line = input("> ").strip()
+                    if not line:
+                        break
+                    new_bullets.append(line)
+                # Append new bullets to existing
+                updates["contribution_bullets"] = current_bullets + new_bullets if new_bullets else None
+            else:
+                # Rewrite mode (mode == "2" or invalid input defaults to rewrite)
+                print("\nEnter contribution bullets (one per line). Press Enter on a blank line to finish.")
+                bullets: list[str] = []
+                while True:
+                    line = input("> ").strip()
+                    if not line:
+                        break
+                    bullets.append(line)
+                updates["contribution_bullets"] = bullets or None
+        else:
+            # No existing contributions - use original flow
+            print("Enter contribution bullets (one per line). Press Enter on a blank line to finish.")
+            bullets: list[str] = []
+            while True:
+                line = input("> ").strip()
+                if not line:
+                    break
+                bullets.append(line)
+            updates["contribution_bullets"] = bullets or None
     return updates
 
 
