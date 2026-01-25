@@ -13,6 +13,7 @@ except ModuleNotFoundError:
 load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
+
 def run_code_llm_analysis(
     parsed_files,
     zip_path,
@@ -31,31 +32,102 @@ def run_code_llm_analysis(
 
     code_files = all_code_files
 
+    REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
+    zip_name = os.path.splitext(os.path.basename(zip_path))[0]
+    base_path = os.path.join(ZIP_DATA_DIR, zip_name)
+
+    # Infer the likely project root folder EARLY (and do NOT let focus_file_paths shrink it)
+    project_root_folder = _infer_project_root_folder(all_code_files, project_name, zip_name=zip_name)
+
+    # Project files = everything in that project folder (used for PROJECT summary)
+    project_code_files = code_files
+    if project_root_folder:
+        prefixes = [
+            f"{zip_name}/{project_root_folder}/",
+            f"{zip_name}/individual/{project_root_folder}/",
+            f"{zip_name}/collaborative/{project_root_folder}/",
+            f"{zip_name}/collab/{project_root_folder}/",
+            f"{project_root_folder}/",  # fallback if zip_name isn't in paths
+        ]
+
+        project_code_files = [
+            f for f in all_code_files
+            if any((f.get("file_path") or "").replace("\\", "/").startswith(p) for p in prefixes)
+        ]
+
+    # Contribution files = optionally focus-filtered (used for CONTRIBUTION summary)
+    contrib_code_files = project_code_files
+
     # If we know which files the user actually touched, restrict to those
     if focus_file_paths:
         normalized_focus = [p.replace("\\", "/") for p in focus_file_paths]
         filtered = []
 
-        for f in all_code_files:
+        for f in project_code_files:
             fp = (f.get("file_path") or "").replace("\\", "/")
             # Match if the parsed path *ends with* one of the focus paths
             if any(fp.endswith(target) for target in normalized_focus):
                 filtered.append(f)
 
         if filtered:
-            code_files = filtered
-            
-    REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ZIP_DATA_DIR = os.path.join(REPO_ROOT, "zip_data")
-    zip_name = os.path.splitext(os.path.basename(zip_path))[0]
-    base_path = os.path.join(ZIP_DATA_DIR, zip_name)
-        
+            contrib_code_files = filtered
+
     if constants.VERBOSE:
         print(f"\n{'='*80}")
-        print(f"Analyzing {len(code_files)} file(s) using LLM-based analysis...")
+        print(f"Analyzing {len(contrib_code_files)} file(s) using LLM-based analysis...")
         print(f"{'='*80}\n")
-    
-    readme_text = extract_readme_file(base_path)
+        # DEBUG: helps confirm we are not analyzing the same files for every project
+        print(f"DEBUG zip_name: {zip_name}")
+        print(f"DEBUG project_name (arg): {project_name}")
+        print(f"DEBUG inferred project_root_folder: {project_root_folder}")
+        print(f"DEBUG all_code_files: {len(all_code_files)}")
+        print(f"DEBUG project_code_files (for project summary): {len(project_code_files)}")
+        print(f"DEBUG contrib_code_files (for contribution summary): {len(contrib_code_files)}")
+        print("DEBUG sample project_code_files:")
+        for x in project_code_files[:5]:
+            print("  -", (x.get("file_path") or ""), "|", (x.get("file_name") or ""))
+        print("DEBUG sample contrib_code_files:")
+        for x in contrib_code_files[:5]:
+            print("  -", (x.get("file_path") or ""), "|", (x.get("file_name") or ""))
+        print(f"\n{'='*80}\n")
+
+    readme_text = None
+
+    # Determine which relative project directory actually matches the parsed file paths.
+    # Supports:
+    #   zip_name/project_name/...
+    #   zip_name/individual/project_name/...
+    #   zip_name/collaborative/project_name/...
+    project_dir_rel = None
+    if project_root_folder:
+        project_dir_rel_candidates = [
+            f"{zip_name}/{project_root_folder}",
+            f"{zip_name}/individual/{project_root_folder}",
+            f"{zip_name}/collaborative/{project_root_folder}",
+            f"{zip_name}/collab/{project_root_folder}",
+            f"{project_root_folder}",  # fallback if zip_name isn't in paths
+        ]
+
+        for cand in project_dir_rel_candidates:
+            cand_prefix = cand + "/"
+            if any(((f.get("file_path") or "").replace("\\", "/")).startswith(cand_prefix) for f in all_code_files):
+                project_dir_rel = cand
+                break
+
+        if constants.VERBOSE:
+            print("DEBUG project_dir_rel used for README:", project_dir_rel)
+
+        if project_dir_rel:
+            readme_text = extract_readme_file(os.path.join(base_path, project_dir_rel))
+
+    # Do NOT fall back to zip root README for per-project summaries
+    # (it contaminates summaries with other projects' README content)
+    if not readme_text:
+        readme_text = None
+        if constants.VERBOSE:
+            print("DEBUG README: none found in project folder; using CODE_CONTEXT for project summary")
+
     if readme_text and len(readme_text) > 8000:
         readme_text = readme_text[:8000]
 
@@ -69,7 +141,20 @@ def run_code_llm_analysis(
         project_context_parts.append(f"README:\n{readme_text}")
 
     # 2. Build context from code files
-    for file_info in code_files:
+    # PROJECT context: use ALL project files (ignore focus_file_paths here)
+    for file_info in project_code_files:
+        file_path = os.path.join(base_path, file_info["file_path"])
+
+        # For focused collaborative analysis, use full file contents.
+        # For other cases, keep the lighter "headers + comments" mode.
+        code_context = extract_code_file(file_path)
+
+        if code_context:
+            snippet = f"### {file_info['file_name']} ###\n{code_context}"
+            project_context_parts.append(snippet)
+
+    # CONTRIBUTION context: use focused files if provided (or all project files otherwise)
+    for file_info in contrib_code_files:
         file_path = os.path.join(base_path, file_info["file_path"])
 
         # For focused collaborative analysis, use full file contents.
@@ -81,10 +166,12 @@ def run_code_llm_analysis(
 
         if code_context:
             snippet = f"### {file_info['file_name']} ###\n{code_context}"
-            project_context_parts.append(snippet)
             contrib_context_parts.append(snippet)
 
     project_context = "\n\n".join(project_context_parts)
+    if len(project_context) > 12000:
+        project_context = project_context[:12000]
+
     contribution_context = "\n\n".join(contrib_context_parts)
 
     if not project_context:
@@ -98,7 +185,7 @@ def run_code_llm_analysis(
 
     # 3. Infer a project name if not provided
     project_folders = sorted(
-        set(os.path.dirname(f["file_path"]).split(os.sep)[0] for f in code_files)
+        set(os.path.dirname(f["file_path"]).split(os.sep)[0] for f in project_code_files)
     )
     if not project_name:
         project_name = project_folders[0] if project_folders else zip_name
@@ -106,7 +193,7 @@ def run_code_llm_analysis(
     # 4. Call the existing LLM helpers
     #    - Project summary: README + light code context
     #    - Contribution summary: CODE-ONLY context (no README content)
-    project_summary = generate_code_llm_project_summary(readme_text)
+    project_summary = generate_code_llm_project_summary(readme_text, project_context)
     contribution_summary = generate_code_llm_contribution_summary(contribution_context)
 
     display_code_llm_results(
@@ -122,7 +209,7 @@ def run_code_llm_analysis(
         print(f"{'='*80}\n")
         print(f"All insights successfully generated for: {zip_name}.")
         print(f"\n{'='*80}\n")
-    
+
     return {
         "project_summary": project_summary,
         "contribution_summary": contribution_summary,
@@ -139,53 +226,79 @@ def display_code_llm_results(project_name, project_summary, contribution_summary
     print(textwrap.fill(contribution_summary, width=80, subsequent_indent="    "))
 
     print("\n" + "-" * 80 + "\n")
-    
 
-def generate_code_llm_project_summary(readme_text):
+
+def generate_code_llm_project_summary(
+    readme_text: str | None,
+    project_context: str | None = None,
+) -> str:
     """
     Produce a high-level project description (not tied to a single contributor).
-    Emphasizes purpose, functionality, and scope — uses README primarily.
+    Uses README if available; otherwise falls back to code context (file headers/comments).
     """
-    if not readme_text:
-        readme_text = "No README content was found for this project."
+
+    # Pick the best available source text (avoid identical placeholder prompts)
+    source_label = None
+    source_text = None
+
+    if readme_text and readme_text.strip():
+        source_label = "README"
+        source_text = readme_text.strip()
+    elif project_context and project_context.strip():
+        source_label = "CODE_CONTEXT"
+        source_text = project_context.strip()
+    else:
+        return "[Project summary unavailable: no README or code context found]"
+
+    # Keep context bounded
+    source_text = source_text[:8000]  # enough for summary; cheaper + safer
 
     prompt = f"""
 You are describing a software project at a high level for documentation.
 
+Use the provided {source_label} as the source of truth.
+- If the source is CODE_CONTEXT, infer purpose and features from file structure, comments, and tech stack clues.
+- If the source is README, summarize what it explicitly says.
+
 Focus ONLY on:
-- what the project is for (purpose, goals, and end users)
-- what major features or modules exist
-- the general technologies/frameworks mentioned
+- what the project does (purpose, goals, end users)
+- major features/modules
+- main technologies/frameworks
 - avoid specific function names or file references
 
 Do NOT:
 - mention individual contributors, commits, or versions
 - use phrases like "is being developed", "is under development", or "aims to"
 
-Use the README as the main source.
+Use the README as the primary source when available.
+If no README is present, infer the project’s purpose, features, and technologies
+from the code structure, file names, and comments.
 
-README:
-{readme_text[:5000]}
+Source ({source_label}):
+{source_text}
 
-Output one concise paragraph (80–100 words) written in PRESENT TENSE starting with "A project that..." or "An application that...".
-"""
+Output ONE concise paragraph (80–110 words) in PRESENT TENSE starting with
+"A project that..." or "An application that...".
+""".strip()
+
     try:
         completion = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
                 {
                     "role": "system",
-                    "content": "You write concise, factual project summaries based on technical documentation.",
+                    "content": "You write concise, factual project summaries from technical context.",
                 },
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
-            max_tokens=180,
+            max_tokens=220,
         )
         return _sanitize_resume_paragraph(completion.choices[0].message.content.strip())
     except Exception as e:
         print(f"Error generating project summary: {e}")
         return "[Project summary unavailable due to API error]"
+
 
 def generate_code_llm_contribution_summary(project_context):
     """
@@ -230,7 +343,7 @@ DO NOT begin with "Here's a paragraph" or any sort of preamble and go into the p
     except Exception as e:
         print(f"Error generating contribution summary: {e}")
         return "[Contribution summary unavailable due to API error]"
-    
+
 
 def _sanitize_resume_paragraph(text: str) -> str:
     # Remove leading role preambles like "As a software developer," / "As an engineer,"
@@ -246,4 +359,44 @@ def _sanitize_resume_paragraph(text: str) -> str:
 
     return text
 
+def _infer_project_root_folder(code_files, project_name: str | None, zip_name: str | None = None) -> str | None:
+    wrappers = {"individual", "collaborative", "collab"}
 
+    candidates = []
+    for f in code_files:
+        fp = (f.get("file_path") or "").replace("\\", "/").strip("/")
+        if not fp:
+            continue
+
+        parts = fp.split("/")
+        if len(parts) < 2:
+            continue
+
+        # Case: zip_name/<...>
+        if zip_name and parts[0] == zip_name:
+            if len(parts) < 3:
+                continue
+
+            second = parts[1].lower()
+            # zip_name/individual/project_name/...
+            if second in wrappers:
+                if len(parts) >= 3:
+                    candidates.append(parts[2])
+            # zip_name/project_name/...
+            else:
+                candidates.append(parts[1])
+
+        # Case: no zip_name prefix, fallback to first segment
+        else:
+            candidates.append(parts[0])
+
+    if not candidates:
+        return None
+
+    # Prefer exact match if provided
+    uniq = sorted(set(candidates))
+    if project_name and project_name in uniq:
+        return project_name
+
+    from collections import Counter
+    return Counter(candidates).most_common(1)[0][0]
