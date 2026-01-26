@@ -48,7 +48,15 @@ def test_upload_start_and_get_status(client, auth_headers):
     upload = body["data"]
     assert "upload_id" in upload
     upload_id = upload["upload_id"]
-    assert upload["status"] in {"needs_classification", "failed"}
+
+    # Flow can now land in more states depending on dedup/type inference
+    assert upload["status"] in {
+        "needs_dedup",
+        "needs_classification",
+        "needs_project_types",
+        "needs_file_roles",
+        "failed",
+    }
 
     # GET upload status
     res2 = client.get(f"/projects/upload/{upload_id}", headers=auth_headers)
@@ -65,7 +73,23 @@ def test_submit_classifications_validates_values(client, auth_headers, seed_conn
         headers=auth_headers,
         files={"file": ("test.zip", zip_bytes, "application/zip")},
     ).json()
-    upload_id = start["data"]["upload_id"]
+    upload = start["data"]
+    upload_id = upload["upload_id"]
+
+    # If dedup blocks us, resolve it (default decisions: new_project for all asked keys)
+    if upload["status"] == "needs_dedup":
+        asks = (upload.get("state") or {}).get("dedup_asks") or {}
+        decisions = {k: "new_project" for k in asks.keys()}
+        resolved = client.post(
+            f"/projects/upload/{upload_id}/dedup/resolve",
+            headers=auth_headers,
+            json={"decisions": decisions},
+        )
+        assert resolved.status_code == 200
+        upload = resolved.json()["data"]
+
+    # This test expects classifications to be allowed now
+    assert upload["status"] in {"needs_classification", "parsed"}
 
     # invalid classification
     bad = client.post(
@@ -100,26 +124,44 @@ def test_submit_classifications_validates_values(client, auth_headers, seed_conn
 
 def test_submit_project_types_unknown_project_is_422(client, auth_headers):
     # Mixed project: text + code
-    zip_bytes = _make_zip_bytes({
-        "ProjectA/readme.txt": "hello",
-        "ProjectA/main.py": "print('hi')",
-    })
+    zip_bytes = _make_zip_bytes(
+        {
+            "ProjectA/readme.txt": "hello",
+            "ProjectA/main.py": "print('hi')",
+        }
+    )
 
     start = client.post(
         "/projects/upload",
         headers=auth_headers,
         files={"file": ("test.zip", zip_bytes, "application/zip")},
     ).json()
-    upload_id = start["data"]["upload_id"]
+    upload = start["data"]
+    upload_id = upload["upload_id"]
+
+    # Resolve dedup if it blocks us
+    if upload["status"] == "needs_dedup":
+        asks = (upload.get("state") or {}).get("dedup_asks") or {}
+        decisions = {k: "new_project" for k in asks.keys()}
+        resolved = client.post(
+            f"/projects/upload/{upload_id}/dedup/resolve",
+            headers=auth_headers,
+            json={"decisions": decisions},
+        )
+        assert resolved.status_code == 200
+        upload = resolved.json()["data"]
 
     # Must classify first so project_types_mixed gets computed
-    classified = client.post(
-        f"/projects/upload/{upload_id}/classifications",
-        headers=auth_headers,
-        json={"assignments": {"ProjectA": "individual"}},
-    )
-    assert classified.status_code == 200
-    assert classified.json()["data"]["status"] == "needs_project_types"
+    if upload["status"] == "needs_classification":
+        classified = client.post(
+            f"/projects/upload/{upload_id}/classifications",
+            headers=auth_headers,
+            json={"assignments": {"ProjectA": "individual"}},
+        )
+        assert classified.status_code == 200
+        upload = classified.json()["data"]
+
+    assert upload["status"] == "needs_project_types"
 
     # Now unknown project key should 422
     res = client.post(
@@ -128,4 +170,3 @@ def test_submit_project_types_unknown_project_is_422(client, auth_headers):
         json={"project_types": {"NotAProject": "text"}},
     )
     assert res.status_code == 422
-

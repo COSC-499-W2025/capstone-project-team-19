@@ -34,7 +34,19 @@ from src.services.uploads_util import (
     remove_project_key_in_index,
 )
 
+from src.services.uploads_file_roles_util import (
+    safe_relpath,
+    build_file_item_from_row,
+    categorize_project_files,
+)
+
 UPLOAD_DIR = Path(ZIP_DATA_DIR) / "_uploads"
+
+# defaults if dedup logic is not executed or returns nothing
+skipped_set: set[str] = set()
+asks: dict = {}
+new_versions: dict = {}
+project_filetype_index: dict = {}
 
 
 def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> dict:
@@ -356,3 +368,136 @@ def submit_project_types(conn: sqlite3.Connection, user_id: int, upload_id: int,
         status="needs_file_roles",
     )
     return {"upload_id": upload_id, "status": "needs_file_roles", "zip_name": upload.get("zip_name"), "state": new_state}
+
+
+def _known_projects_from_layout(layout: dict) -> set[str]:
+    return set((layout.get("auto_assignments") or {}).keys()) | set(layout.get("pending_projects") or [])
+
+
+def _rows_for_project_scoped_to_upload(
+    conn: sqlite3.Connection,
+    user_id: int,
+    project_name: str,
+    zip_path: str,
+):
+    """
+    Try to scope file listing to the current upload by matching the zip stem in file_path.
+    Falls back to unscoped query if the scoped one returns nothing (to avoid breaking if
+    file_path storage is inconsistent).
+    """
+    zip_stem = Path(zip_path).stem
+
+    scoped = conn.execute(
+        """
+        SELECT file_name, file_path, extension, file_type, size_bytes, created, modified, project_name
+        FROM files
+        WHERE user_id = ? AND project_name = ?
+          AND (
+            file_path LIKE ? OR file_path LIKE ?
+          )
+        ORDER BY file_path ASC
+        """,
+        (user_id, project_name, f"%/{zip_stem}/%", f"{zip_stem}/%"),
+    ).fetchall()
+
+    if scoped:
+        return scoped
+
+    # fallback (older DB rows might not include zip_stem)
+    return conn.execute(
+        """
+        SELECT file_name, file_path, extension, file_type, size_bytes, created, modified, project_name
+        FROM files
+        WHERE user_id = ? AND project_name = ?
+        ORDER BY file_path ASC
+        """,
+        (user_id, project_name),
+    ).fetchall()
+
+
+def list_project_files(conn: sqlite3.Connection, user_id: int, upload_id: int, project_name: str) -> dict:
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    if upload["status"] not in {"needs_file_roles", "needs_summaries"}:
+        raise HTTPException(status_code=409, detail=f"Upload not ready for file picking (status={upload['status']})")
+
+    state = upload.get("state") or {}
+    layout = state.get("layout") or {}
+    known_projects = _known_projects_from_layout(layout)
+    if project_name not in known_projects:
+        raise HTTPException(status_code=404, detail="Project not found in this upload")
+
+    zip_path = upload.get("zip_path")
+    if not zip_path:
+        raise HTTPException(status_code=400, detail="Upload missing zip_path")
+
+    rows = _rows_for_project_scoped_to_upload(conn, user_id, project_name, zip_path)
+
+    items = [build_file_item_from_row(Path(ZIP_DATA_DIR), r) for r in rows]
+    buckets = categorize_project_files(items)
+
+    return {
+        "upload_id": upload_id,
+        "project_name": project_name,
+        **buckets,
+    }
+
+
+def set_project_main_file(conn: sqlite3.Connection, user_id: int, upload_id: int, project_name: str, relpath: str) -> dict:
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    if upload["status"] != "needs_file_roles":
+        raise HTTPException(status_code=409, detail=f"Upload not ready to set main file (status={upload['status']})")
+
+    state = upload.get("state") or {}
+    layout = state.get("layout") or {}
+    known_projects = _known_projects_from_layout(layout)
+    if project_name not in known_projects:
+        raise HTTPException(status_code=404, detail="Project not found in this upload")
+
+    zip_path = upload.get("zip_path")
+    if not zip_path:
+        raise HTTPException(status_code=400, detail="Upload missing zip_path")
+
+    try:
+        relpath_norm = safe_relpath(relpath)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    rows = _rows_for_project_scoped_to_upload(conn, user_id, project_name, zip_path)
+    valid_relpaths = {
+        build_file_item_from_row(Path(ZIP_DATA_DIR), r).get("relpath") for r in rows
+    }
+
+    if relpath_norm not in valid_relpaths:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "message": "relpath not found for this project",
+                "project_name": project_name,
+                "relpath": relpath_norm,
+            },
+        )
+
+    patch = {
+        "file_roles": {
+            **(state.get("file_roles") or {}),
+            project_name: {
+                **((state.get("file_roles") or {}).get(project_name) or {}),
+                "main_file": relpath_norm,
+            },
+        }
+    }
+
+    new_state = patch_upload_state(conn, upload_id, patch=patch, status="needs_file_roles")
+
+    return {
+        "upload_id": upload_id,
+        "status": upload["status"],
+        "zip_name": upload.get("zip_name"),
+        "state": new_state,
+    }
