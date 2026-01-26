@@ -29,6 +29,7 @@ from src.menu.resume.flow import (
     _apply_manual_overrides_to_resumes,
     _update_project_manual_overrides,
 )
+from src.services import resume_overrides
 
 
 def view_portfolio_menu(conn, user_id: int, username: str) -> None:
@@ -393,7 +394,7 @@ def _handle_edit_portfolio_wording(conn, user_id: int, username: str) -> bool:
         print("[Portfolio] Updated wording for this portfolio.")
         return True
 
-    manual_overrides = _update_project_manual_overrides(conn, user_id, project_name, updates)
+    manual_overrides = resume_overrides.update_project_manual_overrides(conn, user_id, project_name, updates)
     if manual_overrides is None:
         print("Unable to update project summary for global overrides.")
         return False
@@ -402,12 +403,13 @@ def _handle_edit_portfolio_wording(conn, user_id: int, username: str) -> bool:
     # so the global manual_overrides take effect (they have lower priority).
     _clear_portfolio_overrides_for_fields(conn, user_id, project_name, set(updates.keys()))
 
-    _apply_manual_overrides_to_resumes(
+    resume_overrides.apply_manual_overrides_to_resumes(
         conn,
         user_id,
         project_name,
         manual_overrides,
         set(updates.keys()),
+        log_summary=True,
     )
     print("[Portfolio] Updated wording across resumes and portfolio.")
     return True

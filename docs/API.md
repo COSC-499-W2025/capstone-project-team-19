@@ -538,10 +538,107 @@ Manages résumé-specific representations of projects.
             "error": null
         }
         ```
-        
-        
 
+- **Generate Resume**
+    - **Endpoint**: `POST /resume/generate`
+    - **Description**: Creates a new résumé snapshot from the user's projects. If `project_ids` is not provided, automatically selects the top 5 ranked projects. Builds the snapshot, enriches with contribution bullets and dates, and renders the text.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: Uses `ResumeGenerateRequestDTO`
+        ```json
+        {
+            "name": "My Resume",
+            "project_ids": [1, 3, 5]
+        }
+        ```
+        - `name` (string, required): Name for the résumé snapshot
+        - `project_ids` (array of integers, optional): List of `project_summary_id` values from the `project_summaries` table. Get these IDs from `GET /projects`. If omitted (no project_ids, just name), uses top 5 ranked projects.
+    - **Response Status**: `201 Created` or `400 Bad Request`
+    - **Response Body**: Uses `ResumeDetailDTO`
+        ```json
+        {
+            "success": true,
+            "data": {
+                "id": 2,
+                "name": "My Resume",
+                "created_at": "2024-01-15 14:30:00",
+                "projects": [...],
+                "aggregated_skills": {...},
+                "rendered_text": "..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `400 Bad Request`: No valid projects found for the given IDs
+        - `401 Unauthorized`: Missing X-User-Id header
+        - `404 Not Found`: User not found
 
+- **Edit Resume**
+    - **Endpoint**: `POST /resume/{resume_id}/edit`
+    - **Description**: Edits a résumé snapshot. Can rename the résumé, edit project details, or both. Project editing is optional - you can rename a résumé without editing any project.
+    - **Path Parameters**:
+        - `{resume_id}` (integer, required): The `id` from `resume_snapshots` table. Get this from `GET /resume` list.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: Uses `ResumeEditRequestDTO`
+        ```json
+        {
+            "name": "Updated Resume Name",
+            "project_name": "MyProject",
+            "scope": "resume_only",
+            "display_name": "Custom Project Name",
+            "summary_text": "Updated project summary...",
+            "contribution_bullets": [
+                "Built feature X",
+                "Improved performance by 50%"
+            ],
+            "contribution_edit_mode": "replace"
+        }
+        ```
+        - `name` (string, optional): New name for the résumé (rename)
+        - `project_name` (string, optional): The text name of the project to edit. If omitted (no "project_name", just "name"), only the résumé name is updated.
+        - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
+            - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
+            - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
+        - `display_name` (string, optional): Custom display name for the project
+        - `summary_text` (string, optional): Updated summary text
+        - `contribution_bullets` (array of strings, optional): Custom contribution bullet points
+        - `contribution_edit_mode` (string, optional): How to apply contribution bullets. Defaults to `"replace"`.
+            - `"replace"`: Replace all existing bullets with the provided list
+            - `"append"`: Keep existing bullets and add the provided bullets to the end
+    - **Response Status**: `200 OK` or `404 Not Found`
+    - **Response Body**: Uses `ResumeDetailDTO`
+        ```json
+        {
+            "success": true,
+            "data": {
+                "id": 1,
+                "name": "Updated Resume Name",
+                "created_at": "2024-01-12 10:30:00",
+                "projects": [...],
+                "aggregated_skills": {...},
+                "rendered_text": "..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Resume or project not found
+    - **Example: Rename résumé only (no project editing)**:
+        ```json
+        {
+            "name": "My Updated Resume"
+        }
+        ```
+    - **Example: Append new bullets to existing**:
+        ```json
+        {
+            "project_name": "MyProject",
+            "scope": "resume_only",
+            "contribution_bullets": ["Added new feature Y"],
+            "contribution_edit_mode": "append"
+        }
+        ```
 
 ---
 
@@ -557,12 +654,38 @@ Manages portfolio showcase configuration.
 
 ---
 
-## **Path Variables**
+## **Path Variables & Identifiers**
 
-- `{project_id}` (integer, required): The ID of a project (project_summary_id)  
-- `{resume_id}` (integer, required): The ID of a résumé snapshot  
-- `{upload_id}` (integer, required): The ID of an upload session  
-- `{portfolio_id}` (integer, required): The ID of a portfolio (reserved for future use)  
+### Path Variables
+
+- `{project_id}` (integer): Maps to `project_summary_id` from the `project_summaries` table
+- `{resume_id}` (integer): Maps to `id` from the `resume_snapshots` table
+- `{upload_id}` (integer): Maps to `upload_id` from the `uploads` table
+- `{portfolio_id}` (integer): Reserved for future use
+
+### Important: Identifier Sources
+
+The API uses different identifiers depending on the resource. Here's where each identifier comes from:
+
+| API Parameter | Database Table | Database Column | Description |
+|---------------|----------------|-----------------|-------------|
+| `project_id` / `project_ids` | `project_summaries` | `project_summary_id` | Unique ID for a project summary |
+| `project_name` | Various tables | `project_name` | Text identifier used across tables |
+| `resume_id` | `resume_snapshots` | `id` | Unique ID for a saved résumé |
+| `upload_id` | `uploads` | `upload_id` | Unique ID for an upload session |
+| `user_id` | `users` | `user_id` | Unique ID for a user |
+
+**Note:** There is no generic `project_id` column in the database. Projects are primarily identified by:
+- `project_summary_id` (integer) - Used in API endpoints as `{project_id}`
+- `project_name` (text) - Used within résumé/portfolio data structures
+
+### How to Get Project IDs
+
+To get `project_summary_id` values for use in endpoints like `POST /resume/generate`:
+
+1. Call `GET /projects` to list all projects
+2. Each project in the response includes `project_summary_id`
+3. Use these IDs in the `project_ids` array  
 
 ---
 
@@ -659,6 +782,19 @@ Example:
     - `projects` (List[ResumeProjectDTO], optional)
     - `aggregated_skills` (AggregatedSkillsDTO, optional)
     - `rendered_text` (string, optional)
+
+- **ResumeGenerateRequestDTO**
+    - `name` (string, required): Name for the new résumé snapshot
+    - `project_ids` (List[int], optional): List of `project_summary_id` values from `project_summaries` table. Get these from `GET /projects`. If omitted, uses top 5 ranked projects.
+
+- **ResumeEditRequestDTO**
+    - `name` (string, optional): New name for the résumé
+    - `project_name` (string, optional): Text name of the project to edit. If omitted, only name is updated.
+    - `scope` (string, optional): `"resume_only"` (default) or `"global"`. Required when editing a project.
+    - `display_name` (string, optional): Custom display name for the project
+    - `summary_text` (string, optional): Updated summary text
+    - `contribution_bullets` (List[string], optional): Custom contribution bullet points
+    - `contribution_edit_mode` (string, optional): `"replace"` (default) or `"append"`
 
 - **ConsentRequestDTO**
     - `status` (string, required): Must be either "accepted" or "rejected"
