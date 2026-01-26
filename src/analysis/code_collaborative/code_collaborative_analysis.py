@@ -45,7 +45,8 @@ from .code_collaborative_analysis_helper import (
     compute_metrics,
     print_project_card,
     print_portfolio_summary,
-    prompt_collab_descriptions
+    prompt_collab_descriptions,
+    prompt_key_role,
 )
 try:
     from src import constants
@@ -214,6 +215,24 @@ def analyze_code_project(conn: sqlite3.Connection,
             # store non llm contribution summary for non-LLM views
             if "llm_contribution_summary" not in summary.contributions:
                 summary.contributions["non_llm_contribution_summary"] = desc_clean
+
+        # 7.3) Extract or prompt for key role
+        try:
+            consent_row = conn.execute(
+                "SELECT status FROM external_consent WHERE user_id = ?", (user_id,)
+            ).fetchone()
+            external_consent = consent_row[0] if consent_row else None
+        except Exception:
+            external_consent = None
+
+        if external_consent == "accepted" and desc_clean:
+            from src.analysis.text_individual.llm_summary import extract_key_role_llm
+            key_role = extract_key_role_llm(desc_clean)
+        else:
+            key_role = prompt_key_role(project_name)
+
+        if key_role:
+            summary.contributions["key_role"] = key_role
 
     # 7.5) save file contributions to database for skill extraction filtering
     file_contributions_data = metrics.get("file_contributions", {})
