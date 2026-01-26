@@ -11,15 +11,8 @@ from src.db import (
     insert_project,
     insert_project_version,
     insert_version_files,
+    _lookup_existing_name
 )
-
-
-def _lookup_existing_name(conn: sqlite3.Connection, project_key: int) -> str | None:
-    row = conn.execute(
-        "SELECT display_name FROM projects WHERE project_key = ?",
-        (project_key,),
-    ).fetchone()
-    return row[0] if row else None
 
 
 def find_project_dir(target_dir: str, root_name: str | None, project_name: str) -> str | None:
