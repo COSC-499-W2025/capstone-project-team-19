@@ -1,11 +1,7 @@
-from fastapi.testclient import TestClient
 import pytest
-from src.api.main import app
 import src.db as db
 from src.db.projects import record_project_classification
 
-
-client = TestClient(app)
 @pytest.fixture
 def setup_db(tmp_path, monkeypatch):
     """Fixture to set up database with schema and test user - uses TEST database"""
@@ -19,37 +15,39 @@ def setup_db(tmp_path, monkeypatch):
     yield conn
     conn.close()
 
-def test_skills_requires_user_header():
+def test_skills_requires_user_header(client):
     """Test that skills endpoint requires X-User-Id header"""
     res = client.get("/skills")
     assert res.status_code == 401
 
-def test_skills_with_user_header_returns_ok(setup_db):
+def test_skills_with_user_header_returns_ok(client, auth_headers):
     """Test that skills endpoint returns 200 OK with valid user header"""
 
-    res = client.get("/skills", headers={"X-User-Id": "1"})
+    res = client.get("/skills", headers=auth_headers)
     assert res.status_code == 200
     body = res.json()
     assert body["success"] is True
     assert "data" in body   
 
-def test_skills_with_false_user():
+def test_skills_with_false_user(client, auth_headers_nonexistent_user):
     """Test that skills endpoint returns 404 for non-existent user"""
-    res = client.get("/skills", headers={"X-User-Id": "999999"})
+    res = client.get("/skills", headers=auth_headers_nonexistent_user)
     assert res.status_code == 404
     body = res.json()
     assert body["detail"] == "User not found"
 
-def test_skills_with_data(setup_db):
+def test_skills_with_data(client, auth_headers, seed_conn):
     """Test that skills endpoint returns correct data structure with actual skills"""
     import json
     from src.db.skills import insert_project_skill
+    from src.db.projects import record_project_classifications
     
-    record_project_classification(setup_db, 1, "/tmp/test.zip", "test.zip", "TestProject", "individual")
-    insert_project_skill(setup_db, 1, "TestProject", "Python", "Advanced", 0.9, json.dumps([]))
-    setup_db.commit()
+    # Record project classification in the seed_conn
+    record_project_classifications(seed_conn, 1, "/tmp/test.zip", "test.zip", {"TestProject": "individual"})
+    insert_project_skill(seed_conn, 1, "TestProject", "Python", "Advanced", 0.9, json.dumps([]))
+    seed_conn.commit()
     
-    res = client.get("/skills", headers={"X-User-Id": "1"})
+    res = client.get("/skills", headers=auth_headers)
     assert res.status_code == 200
     body = res.json()
     assert body["success"] is True

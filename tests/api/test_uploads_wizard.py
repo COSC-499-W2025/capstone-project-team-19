@@ -1,22 +1,9 @@
 import io
 import zipfile
+import pytest
 
-from fastapi.testclient import TestClient
-
-from src.api.main import app
-import src.db as db
-
-client = TestClient(app)
-
-
-def _seed_user(user_id: int = 1):
-    conn = db.connect()
-    conn.execute(
-        "INSERT OR IGNORE INTO users(user_id, username) VALUES (?, 'test-user')",
-        (user_id,),
-    )
-    conn.commit()
-    conn.close()
+from src.api.auth.security import create_access_token
+from .conftest import TEST_JWT_SECRET
 
 
 def _make_zip_bytes(files: dict[str, str]) -> bytes:
@@ -27,7 +14,7 @@ def _make_zip_bytes(files: dict[str, str]) -> bytes:
     return buf.getvalue()
 
 
-def test_upload_requires_user_header():
+def test_upload_requires_user_header(client):
     zip_bytes = _make_zip_bytes({"ProjectA/readme.txt": "hello"})
     res = client.post(
         "/projects/upload",
@@ -36,24 +23,22 @@ def test_upload_requires_user_header():
     assert res.status_code == 401
 
 
-def test_upload_invalid_user_is_404():
+def test_upload_invalid_user_is_404(client, auth_headers_nonexistent_user):
     zip_bytes = _make_zip_bytes({"ProjectA/readme.txt": "hello"})
     res = client.post(
         "/projects/upload",
-        headers={"X-User-Id": "999"},
+        headers=auth_headers_nonexistent_user,
         files={"file": ("test.zip", zip_bytes, "application/zip")},
     )
     assert res.status_code == 404
     assert res.json()["detail"] == "User not found"
 
 
-def test_upload_start_and_get_status():
-    _seed_user(1)
-
+def test_upload_start_and_get_status(client, auth_headers):
     zip_bytes = _make_zip_bytes({"ProjectA/readme.txt": "hello"})
     res = client.post(
         "/projects/upload",
-        headers={"X-User-Id": "1"},
+        headers=auth_headers,
         files={"file": ("test.zip", zip_bytes, "application/zip")},
     )
     assert res.status_code == 200
@@ -66,20 +51,18 @@ def test_upload_start_and_get_status():
     assert upload["status"] in {"needs_classification", "failed"}
 
     # GET upload status
-    res2 = client.get(f"/projects/upload/{upload_id}", headers={"X-User-Id": "1"})
+    res2 = client.get(f"/projects/upload/{upload_id}", headers=auth_headers)
     assert res2.status_code == 200
     body2 = res2.json()
     assert body2["success"] is True
     assert body2["data"]["upload_id"] == upload_id
 
 
-def test_submit_classifications_validates_values():
-    _seed_user(1)
-
+def test_submit_classifications_validates_values(client, auth_headers, seed_conn):
     zip_bytes = _make_zip_bytes({"ProjectA/readme.txt": "hello"})
     start = client.post(
         "/projects/upload",
-        headers={"X-User-Id": "1"},
+        headers=auth_headers,
         files={"file": ("test.zip", zip_bytes, "application/zip")},
     ).json()
     upload_id = start["data"]["upload_id"]
@@ -87,7 +70,7 @@ def test_submit_classifications_validates_values():
     # invalid classification
     bad = client.post(
         f"/projects/upload/{upload_id}/classifications",
-        headers={"X-User-Id": "1"},
+        headers=auth_headers,
         json={"assignments": {"ProjectA": "solo"}},
     )
     assert bad.status_code == 422
@@ -95,7 +78,7 @@ def test_submit_classifications_validates_values():
     # valid classification
     ok = client.post(
         f"/projects/upload/{upload_id}/classifications",
-        headers={"X-User-Id": "1"},
+        headers=auth_headers,
         json={"assignments": {"ProjectA": "individual"}},
     )
     assert ok.status_code == 200
@@ -104,34 +87,45 @@ def test_submit_classifications_validates_values():
     assert ok_body["data"]["state"]["classifications"]["ProjectA"] == "individual"
 
     # verify DB write exists
-    conn = db.connect()
-    row = conn.execute(
+    row = seed_conn.execute(
         """
         SELECT classification
         FROM project_classifications
         WHERE user_id = 1 AND project_name = 'ProjectA'
         """,
     ).fetchone()
-    conn.close()
     assert row is not None
     assert row[0] == "individual"
 
 
-def test_submit_project_types_unknown_project_is_422():
-    _seed_user(1)
+def test_submit_project_types_unknown_project_is_422(client, auth_headers):
+    # Mixed project: text + code
+    zip_bytes = _make_zip_bytes({
+        "ProjectA/readme.txt": "hello",
+        "ProjectA/main.py": "print('hi')",
+    })
 
-    zip_bytes = _make_zip_bytes({"ProjectA/readme.txt": "hello"})
     start = client.post(
         "/projects/upload",
-        headers={"X-User-Id": "1"},
+        headers=auth_headers,
         files={"file": ("test.zip", zip_bytes, "application/zip")},
     ).json()
     upload_id = start["data"]["upload_id"]
 
-    # Unknown project key should 422
+    # Must classify first so project_types_mixed gets computed
+    classified = client.post(
+        f"/projects/upload/{upload_id}/classifications",
+        headers=auth_headers,
+        json={"assignments": {"ProjectA": "individual"}},
+    )
+    assert classified.status_code == 200
+    assert classified.json()["data"]["status"] == "needs_project_types"
+
+    # Now unknown project key should 422
     res = client.post(
         f"/projects/upload/{upload_id}/project-types",
-        headers={"X-User-Id": "1"},
+        headers=auth_headers,
         json={"project_types": {"NotAProject": "text"}},
     )
     assert res.status_code == 422
+

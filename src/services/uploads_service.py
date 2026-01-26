@@ -396,4 +396,3 @@ def submit_project_types(conn: sqlite3.Connection, user_id: int, upload_id: int,
         status="needs_file_roles",
     )
     return {"upload_id": upload_id, "status": "needs_file_roles", "zip_name": upload.get("zip_name"), "state": new_state}
-
