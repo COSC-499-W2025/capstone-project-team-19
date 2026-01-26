@@ -11,27 +11,30 @@ from datetime import datetime
 
 from src.db import (
     get_all_user_project_summaries,
-    insert_resume_snapshot,
     list_resumes,
     get_resume_snapshot,
     update_resume_snapshot,
-    get_project_summary_by_name,
-    update_project_summary_json,
 )
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from .helpers import (
     load_project_summaries,
-    build_resume_snapshot,
     render_snapshot,
     resolve_resume_display_name,
     resolve_resume_summary_text,
     resolve_resume_contribution_bullets,
-    resume_only_override_fields,
     apply_resume_only_updates,
-    enrich_snapshot_with_contributions
 )
 from src.export.resume_docx import export_resume_record_to_docx
 from src.export.resume_pdf import export_resume_record_to_pdf
+from src.services.resume_generation import (
+    build_resume_snapshot_data,
+    insert_resume_snapshot_record,
+    select_ranked_summaries,
+)
+from src.services.resume_overrides import (
+    update_project_manual_overrides,
+    apply_manual_overrides_to_resumes,
+)
 
 def _handle_create_resume(conn, user_id: int, username: str):
     summaries = load_project_summaries(conn, user_id, get_all_user_project_summaries)
@@ -45,9 +48,6 @@ def _handle_create_resume(conn, user_id: int, username: str):
     if not ranked:
         print("No projects available to rank.")
         return
-    
-    # Create a dict for quick lookup: project_name -> score
-    ranked_dict = {name: score for name, score in ranked}
     
     # Show ranked projects with scores
     print("\nAvailable projects (ranked by importance):")
@@ -68,15 +68,11 @@ def _handle_create_resume(conn, user_id: int, username: str):
     choice = input("\nYour selection: ").strip()
     
     if not choice:
-        # Default: top 5
-        top_names = [name for name, _score in ranked[:5]]
-        selected_summaries = [s for s in summaries if s.project_name in top_names]
-        # Sort by ranking order (highest score first)
-        selected_summaries.sort(
-            key=lambda s: ranked_dict.get(s.project_name, 0.0),
-            reverse=True
+        selected_summaries, selected_names = select_ranked_summaries(summaries, ranked)
+        print(
+            f"\n[Resume] Using top {len(selected_summaries)} ranked projects: "
+            f"{', '.join(selected_names)}"
         )
-        print(f"\n[Resume] Using top {len(selected_summaries)} ranked projects: {', '.join(top_names)}")
     else:
         # Parse user selection (handle comma-separated numbers)
         selected_indices = set()
@@ -88,13 +84,7 @@ def _handle_create_resume(conn, user_id: int, username: str):
         
         if not selected_indices:
             print("No valid selections. Using top 5 ranked projects.")
-            top_names = [name for name, _score in ranked[:5]]
-            selected_summaries = [s for s in summaries if s.project_name in top_names]
-            # Sort by ranking order
-            selected_summaries.sort(
-                key=lambda s: ranked_dict.get(s.project_name, 0.0),
-                reverse=True
-            )
+            selected_summaries, selected_names = select_ranked_summaries(summaries, ranked)
         else:
             # Limit to 5 projects maximum
             MAX_PROJECTS = 5
@@ -105,27 +95,26 @@ def _handle_create_resume(conn, user_id: int, username: str):
                 sorted_indices = sorted(selected_indices)
                 selected_indices = set(sorted_indices[:MAX_PROJECTS])
             
-            selected_names = [ranked[i-1][0] for i in sorted(selected_indices)]
-            selected_summaries = [s for s in summaries if s.project_name in selected_names]
-            # Sort by ranking order (highest score first)
-            selected_summaries.sort(
-                key=lambda s: ranked_dict.get(s.project_name, 0.0),
-                reverse=True
+            selected_summaries, selected_names = select_ranked_summaries(
+                summaries,
+                ranked,
+                selected_indices=selected_indices,
             )
-            print(f"\n[Resume] Using {len(selected_summaries)} selected projects: {', '.join(selected_names)}")
+            print(
+                f"\n[Resume] Using {len(selected_summaries)} selected projects: "
+                f"{', '.join(selected_names)}"
+            )
     
-    snapshot = build_resume_snapshot(selected_summaries)
-
-    # NEW: freeze the "Contributed..." bullets into the snapshot JSON
-    snapshot = enrich_snapshot_with_contributions(conn, user_id, snapshot)
-
-    rendered = render_snapshot(conn, user_id, snapshot)
+    snapshot_data = build_resume_snapshot_data(conn, user_id, selected_summaries, print_output=True)
+    if not snapshot_data:
+        print("Unable to build a resume snapshot from the selected projects.")
+        return
+    snapshot, rendered = snapshot_data
 
     default_name = f"Resume {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     name = input(f"\nEnter a name for this resume [{default_name}]: ").strip() or default_name
 
-    resume_json = json.dumps(snapshot, default=str)
-    insert_resume_snapshot(conn, user_id, name, resume_json, rendered)
+    insert_resume_snapshot_record(conn, user_id, name, snapshot, rendered)
     print(f"\n[Resume] Saved snapshot '{name}'.")
 
 def _handle_view_existing_resume(conn, user_id: int) -> bool:
@@ -258,18 +247,19 @@ def _handle_edit_resume_wording(conn, user_id: int, username: str) -> bool:
         return True
 
     # Global updates: persist to project_summaries, then fan out to all saved resumes.
-    manual_overrides = _update_project_manual_overrides(conn, user_id, project_name, updates)
+    manual_overrides = update_project_manual_overrides(conn, user_id, project_name, updates)
     if manual_overrides is None:
         print("Unable to update project summary for global overrides.")
         return False
 
-    _apply_manual_overrides_to_resumes(
+    apply_manual_overrides_to_resumes(
         conn,
         user_id,
         project_name,
         manual_overrides,
         updates.keys(),
         force_resume_id=resume_id,
+        log_summary=True,
     )
     print("[Resume] Updated wording across resumes.")
     return True
@@ -383,114 +373,6 @@ def _collect_section_updates(sections: set[str], project_entry: dict | None = No
             updates["contribution_bullets"] = bullets or None
     return updates
 
-
-def _update_project_manual_overrides(conn, user_id: int, project_name: str, updates: dict[str, Any]) -> dict[str, Any] | None:
-    summary_row = get_project_summary_by_name(conn, user_id, project_name)
-    if not summary_row:
-        return None
-
-    try:
-        summary_dict = json.loads(summary_row["summary_json"])
-    except Exception:
-        return None
-
-    # Keep manual overrides on the project summary (shared by resume + portfolio).
-    overrides = summary_dict.get("manual_overrides") or {}
-    if not isinstance(overrides, dict):
-        overrides = {}
-
-    for key, value in updates.items():
-        if value:
-            overrides[key] = value
-        else:
-            overrides.pop(key, None)
-
-    if overrides:
-        summary_dict["manual_overrides"] = overrides
-    else:
-        summary_dict.pop("manual_overrides", None)
-
-    updated = update_project_summary_json(conn, user_id, project_name, json.dumps(summary_dict))
-    if not updated:
-        return None
-    return overrides
-
-
-def _apply_manual_overrides_to_resumes(
-    conn,
-    user_id: int,
-    project_name: str,
-    overrides: dict[str, Any],
-    fields: set[str],
-    force_resume_id: int | None = None,
-) -> None:
-    # Walk all saved resumes and apply the global overrides per matching project.
-    resumes = list_resumes(conn, user_id)
-    updated = 0
-    skipped_fields = 0
-
-    for r in resumes:
-        record = get_resume_snapshot(conn, user_id, r["id"])
-        if not record:
-            continue
-        try:
-            snapshot = json.loads(record["resume_json"])
-        except Exception:
-            continue
-
-        projects = snapshot.get("projects") or []
-        changed = False
-        for entry in projects:
-            if entry.get("project_name") != project_name:
-                continue
-            resume_only_fields = resume_only_override_fields(entry)
-            force_update = force_resume_id == r["id"]
-            # If this is the selected resume, clear resume-only overrides so global applies.
-            if force_update and resume_only_fields:
-                clear_updates = {field: None for field in fields}
-                apply_resume_only_updates(entry, clear_updates)
-                resume_only_fields = resume_only_override_fields(entry)
-
-            if "display_name" in fields:
-                if "display_name" in resume_only_fields and not force_update:
-                    # Respect resume-only overrides on other resumes (skip this field).
-                    skipped_fields += 1
-                else:
-                    if overrides.get("display_name"):
-                        entry["manual_display_name"] = overrides["display_name"]
-                    else:
-                        entry.pop("manual_display_name", None)
-                    changed = True
-            if "summary_text" in fields:
-                if "summary_text" in resume_only_fields and not force_update:
-                    # Respect resume-only overrides on other resumes (skip this field).
-                    skipped_fields += 1
-                else:
-                    if overrides.get("summary_text"):
-                        entry["manual_summary_text"] = overrides["summary_text"]
-                    else:
-                        entry.pop("manual_summary_text", None)
-                    changed = True
-            if "contribution_bullets" in fields:
-                if "contribution_bullets" in resume_only_fields and not force_update:
-                    # Respect resume-only overrides on other resumes (skip this field).
-                    skipped_fields += 1
-                else:
-                    if overrides.get("contribution_bullets"):
-                        entry["manual_contribution_bullets"] = overrides["contribution_bullets"]
-                    else:
-                        entry.pop("manual_contribution_bullets", None)
-                    changed = True
-
-        if changed:
-            # Re-render and persist the updated snapshot.
-            rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
-            updated_json = json.dumps(snapshot, default=str)
-            update_resume_snapshot(conn, user_id, r["id"], updated_json, rendered)
-            updated += 1
-
-    if updated or skipped_fields:
-        print(f"[Resume] Updated {updated} resume(s); skipped {skipped_fields} field update(s) due to resume-only overrides.")
 
 def _handle_export_resume_pdf(conn, user_id: int, username: str) -> bool:
     resumes = list_resumes(conn, user_id)
