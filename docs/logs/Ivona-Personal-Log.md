@@ -182,5 +182,18 @@ I plan on working on more api endpoints, this may include helping Adara with the
 ## (T2 Week 3) Monday January 19 - Sunday January 25
 ![Screenshot of this week's peer eval](./screenshots/Ivona-Jan19-25.PNG)
 
+Coding PRs:
+I worked on PR ([#403](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/403)) to add the github api integration to our project upload flow. In this PR I implemented web OAuth flow for github along with tests for it, 4 api endpoints (to start the oauth flow, to complete the oauth flow, to get the user's github repos, to select repos to add to project). I also added documentation for these endpoints and tests. This PR took me more time than expected as I learned about web OAuth and how to implement it and therefore I was only able to finish this PR this week.
+
+PRs I reviewed:
+
+1st PR review (Ammar's): ([#394](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/394)) on adding functionality for users to customize all aspects of portfolios globally and locally.
+
+2nd PR review (Adar's) ([#389](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/389)) on adding API endpoints for project upload, specifically file picking the main file from a project and getting the list of files in a project.
+
+Next Week:
+I started on GET /portfolio api endpoint and plan to finish it next week. I also plan to continue working on api endpoints for project upload flow, specifically the Google OAuth ones. 
+
+
 
 
