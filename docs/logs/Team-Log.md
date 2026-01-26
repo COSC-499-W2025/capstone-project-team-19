@@ -475,3 +475,31 @@ We will continue implementing the milestone 2 requirements, and fix bugs that wa
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Jan5-Jan11.png) |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Jan5-Jan11.png)     |
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Jan5-Jan11.png)     |
+
+## (Term 2 Week 3) Monday January 19 - Sunday January 25
+
+### Burnup chart
+
+![Burnup chart for Jan 19 - Jan 25](screenshots/week3_T2-burnupchart.png)
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshot                                                                    |
+| --------------- | ----------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Jan19-Jan25.png)     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Jan19-Jan25.png)   |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Jan19-Jan25.png)     |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Jan19-Jan25.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Jan19-Jan25.png)     |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Jan19-Jan25.png)     |
