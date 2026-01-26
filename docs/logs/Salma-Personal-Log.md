@@ -4,6 +4,7 @@
 
 ### Term 2
 
+- [Week 3 (Jan 19–25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12–18)](#t2-week-2-monday-january-12---sunday-january-18)
 - [Week 1 (Jan 5–11)](#t2-week-1-monday-january-5---sunday-january-11)
 
@@ -212,3 +213,19 @@ I also reviewed some PRs such as:
 - Timmi's PR ([#363](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/363) on duplicate checking) to give a suggestion on fixing path issues.
 
 Next week: I plan to add PDF exporting support for portfolios, and potentially take on a task related to API endpoints or other task decided during the team meeting.
+
+## (T2 Week 3) Monday January 19 - Sunday January 25
+
+![Screenshot of this week's peer evaluation](./screenshots/Salma-Jan19-Jan25.PNG)
+
+I worked on PR [#396](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/396) to add PDF export support for portfolios. This included a new submenu option “Export to PDF (.pdf)”, and ensuring that edited portfolio (summary, contributions, display name, thumbnails) is reflected correctly in the exported PDF. I added tests for this feature and fixed test_portfolio_docx.py to align with test_portfolio_pdf.py (current export behavior).
+
+I worked on PR [#401](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/401) to fix bugs in the LLM code summary feature. When no README was present, it incorrectly pulled a README from unrelated projects. I fixed this by correcting path handling, defining a clear no-README fallback using code context, and adding debug messages. Based on feedback from Timmi, I also added a minimum README threshold and tech stack validation. Lastly, I updated tests related to this task.
+
+I also reviewed some PRs such as:
+
+- Ammaar's PR ([#394](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/394)) on portfolio customization, suggesting reduced word redundancy and adding a portfolio submenu.
+- Johanes' PR ([#402](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/402)) on testing API endpoints for resume generation and editing, where I identified a failing test.
+- Timmi's PR ([#398](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/398)) on project deduplication to validate detection of identical, different, and new version of projects.
+
+Next week: Next week, I plan to reformat the portfolio export based on feedback from Johanes and Adara, and take on an API-related task or another item decided during the team meeting.
