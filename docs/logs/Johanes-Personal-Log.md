@@ -3,7 +3,7 @@
 ## Table of Contents
 
 ### Term 2
-
+- [Week 3 (Jan 19-25)](#t2-week-3-monday-19th-january---sunday-25th-january)
 - [Week 2 (Jan 12–18)](#t2-week-2-monday-12th-january---sunday-18th-january)
 - [Week 1 (Jan 5–11)](#t2-week-1-monday-5th-january---sunday-11th-january)
 
@@ -130,5 +130,24 @@ PR I reviewed: ([#372])(https://github.com/COSC-499-W2025/capstone-project-team-
 I reviewed salma's PR about add images for project thumbnails and found a bug where the image not showing for big dimensions, which was addressed by resizing image into 800x800 if it exceeds the limit of 800x800. I also noticed other bug such as saving duplicates of edited thumbnails. I also gave feedback about the CLI menu.
 
 I also tested ivona's PR ([#374])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/374) for the endpoints of get skills, all resumes, and specific resume
+
+Next week plan: Continue implementing other api endpoints
+
+## (T2 Week 3) Monday 19th January - Sunday 25th January
+![Screenshot of week 3_T2 peer eval](./screenshots/Johanes-Jan19-25.png)
+Week recap: 
+
+This week i worked on 1 PR
+
+1st PR: ([#402])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/402)
+I continued implementing the endpoint for resume generating and resume editing. At first I was implementing it following the CLI menu flow. However, I got feedback to make it more flexible so that the user does not have to edit certain project, they can just edit the resume name, which is makes sense. 
+
+PR I reviewed: ([#392])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/392)
+I reviewed Timmi's PR about the authentication, giving feedback about password length and combination limitation to increase security
+
+I also tested Salma's PR ([#396])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/396) 
+Giving feedback about how the PDF should be formatted.
+
+I also reviewed some other PRs giving feedback about reminder on using Authorization: Bearer <token> instead of still using user id in the header.
 
 Next week plan: Continue implementing other api endpoints
