@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 3 (Jan 19-25)](#t2-week-3-monday-19th---sunday-25th-january)
 - [Week 2 (Jan 12-18)](#t2-week-2-monday-12th---sunday-18th-january)
 - [Week 1 (Jan 5-11)](#t2-week-1-monday-5th---sunday-11th-january)
 
@@ -197,3 +198,21 @@ This week I worked on [PR 376](https://github.com/COSC-499-W2025/capstone-projec
 - The biggest blocker was translating CLI `input()` steps into an API-safe flow without breaking the existing analysis logic. I addressed this by separating “auto-detect” logic from “manual input” logic: whenever something can be inferred (folder placement, pure code/text projects), the API advances automatically; when ambiguity exists (mixed project types), the wizard pauses and requires a dedicated endpoint. Another issue was wizard state getting stuck at `needs_classification` even when there were no pending projects, which I fixed by auto-finalizing classifications when `pending_projects` is empty.
 
 **Plan for next week:** Next week I’ll start implementing the next set of wizard endpoints (5–10) that handle the remaining user inputs required before analysis can run, and possibly continue some of the tasks I planned to do as mentioned in the previous T2W1 log.
+
+
+## (T2 Week 3) Monday 19th - Sunday 25th January
+
+![Screenshot of tasks done from this sprint](./screenshots/Adara-Jan19-25.png)
+
+Week recap
+
+This week I worked on [PR 389](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/389). I extended the upload-session API to support the remaining pre-analysis inputs and deduplication resolution, including endpoints to list extracted project files for a given upload (`GET /projects/upload/{upload_id}/projects/{project_name}/files`, returning `all_files`, `text_files`, and `csv_files` with file metadata) and persist a user-selected main file (`POST /projects/upload/{upload_id}/projects/{project_name}/main-file`, validating safe relpaths and storing `state.file_roles[project_name].main_file` in `uploads.state_json`). I also worked on [PR 391](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/391) where I integrated the dedup workflow by supporting `needs_dedup` and a resolve endpoint (`POST /projects/upload/{upload_id}/dedup/resolve`) that records per-project decisions (`skip|new_project|new_version`) and advances the upload state deterministically so the pipeline can continue.
+
+**Testing / debugging tasks:** I added/updated API tests to match the new upload state machine and dedup integration: `tests/api/test_uploads_file_roles.py` covers state gating for file listing, the happy path list→choose main file→state persistence, and unsafe relpath rejection; `tests/api/test_uploads_dedup.py` covers exact-duplicate/loose-match behavior, `needs_dedup` triggering, and the resolve endpoint clearing dedup asks and recording decisions; and `tests/api/test_uploads_wizard.py` covers upload start/status plus validation rules for classification and mixed-project type submission. I debugged failures caused by state/schema drift (e.g., missing initialization for dedup tracking variables like `skipped_set`, and tests asserting outdated “duplicate upload must fail” behavior after the flow advanced to later states like `needs_file_roles`) and aligned both implementation and assertions with the current behavior.
+
+**Reviewing / collaboration tasks:** I reviewed 4 PRs ([396](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/396), [398](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/398), [401](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/398), [403](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/403)) in total, and also flagged that small project uploads can produce edge cases for similarity-based dedup decisions (e.g., Jaccard threshold sensitivity), and suggested a follow-up discussion on whether threshold values should be tuned to better catch real user scenarios.
+
+**Issues / blockers:** The main blocker was keeping the evolving upload state machine consistent across services, schemas, and tests while introducing dedup resolution and new file-role endpoints; several failures came from subtle mismatches between what the service now returns (e.g., progressing to `needs_file_roles` after dedup/auto steps) and what older tests expected (e.g., failing immediately on duplicates). I resolved this by initializing all dedup bookkeeping in `start_upload`, tightening state validation and error paths, and updating assertions to check state keys/decisions rather than assuming a single terminal status for duplicates.
+
+**Plan for next week:** Next week I’ll continue extending the upload API to cover the remaining pre-analysis inputs needed to run the full pipeline (e.g., any summaries/analysis triggers).
+
