@@ -311,7 +311,7 @@ A typical flow for the first four endpoints:
   - **Endpoint**: `POST /projects/upload/{upload_id}/dedup/resolve`
   - **Description**: Resolves dedup “ask” cases that were captured during upload parsing. This step happens before classifications and project types.
   - **Headers**:
-    - `X-User-Id` (integer, required)
+    - `Authentication`: Bearer <token>
   - **Path Params**:
     - `upload_id` (integer, required)
   - **Request Body**:
@@ -605,7 +605,7 @@ Manages résumé-specific representations of projects.
         ```
     - **Error Responses**:
         - `400 Bad Request`: No valid projects found for the given IDs
-        - `401 Unauthorized`: Missing X-User-Id header
+        - `401 Unauthorized`: Missing Authentication header
         - `404 Not Found`: User not found
 
 - **Edit Resume**
