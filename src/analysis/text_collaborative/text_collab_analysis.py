@@ -19,7 +19,8 @@ def analyze_collaborative_text_project(
     parsed_files,
     zip_path,
     external_consent,
-    summary_obj  # ProjectSummary instance
+    summary_obj,  # ProjectSummary instance
+    version_key: int | None = None,
 ):
     """
     Collaborative TEXT project analysis flow.
@@ -43,6 +44,7 @@ def analyze_collaborative_text_project(
         conn=conn,
         user_id=user_id,
         project_name=project_name,
+        version_key=version_key,
         consent=external_consent,
         suppress_print=True
     )
@@ -270,7 +272,7 @@ def analyze_collaborative_text_project(
         ])
 
     # Fetch timestamp data for ALL project files
-    all_project_files = get_files_with_timestamps(conn, user_id, project_name)
+    all_project_files = get_files_with_timestamps(conn, user_id, project_name, version_key=version_key)
 
     # Filter to only files the user contributed to
     user_contributed_files = [

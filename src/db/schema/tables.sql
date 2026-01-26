@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS files (
     created     TEXT,
     modified    TEXT,
     project_name TEXT,
+    version_key INTEGER,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 

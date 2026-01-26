@@ -66,46 +66,6 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
         }
 
     layout = analyze_project_layout(files_info)
-    extract_dir = extract_dir_from_upload_zip(ZIP_DATA_DIR, str(zip_path))
-
-    dedup = run_deduplication_for_projects_api(conn, user_id, str(extract_dir), layout, upload_id=upload_id)
-
-    skipped_set = set(dedup.get("skipped") or set())
-    asks: dict = dedup.get("asks") or {}
-    new_versions: dict = dedup.get("new_versions") or {}
-
-    # 1) Apply auto-skip BEFORE writing parsed files to DB
-    if skipped_set:
-        files_info = [f for f in files_info if f.get("project_name") not in skipped_set]
-        layout = analyze_project_layout(files_info)
-
-    # 2) Apply auto-rename for 'new_version' suggestions
-    for old_name, existing_name in new_versions.items():
-        if existing_name and old_name != existing_name:
-            apply_project_rename_to_files_info(files_info, old_name, existing_name)
-            layout = rename_project_in_layout(layout, old_name, existing_name)
-
-    # If everything got removed, fail early
-    if not files_info:
-        state = {
-            "zip_name": zip_name,
-            "zip_path": str(zip_path),
-            "layout": layout,
-            "files_info_count": 0,
-            "dedup_skipped_projects": sorted(list(skipped_set)),
-            "dedup_asks": asks,
-            "dedup_new_versions": new_versions,
-            "project_filetype_index": {},
-            "message": "All projects were skipped by deduplication (duplicates).",
-        }
-        set_upload_state(conn, upload_id, state=state, status="failed")
-        return {"upload_id": upload_id, "status": "failed", "zip_name": zip_name, "state": state}
-
-    # Store parsed files (kept + post-rename only)
-    store_parsed_files(conn, files_info, user_id)
-
-    # IMPORTANT: build upload-scoped filetype index from CURRENT upload files_info
-    project_filetype_index = build_project_filetype_index(files_info)
 
     state = {
         "zip_name": zip_name,
