@@ -28,6 +28,8 @@ from src.db.code_metrics import (
 from src.db.code_metrics_helpers import extract_complexity_metrics
 import json
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
+from src.analysis.code_collaborative.code_collaborative_analysis_helper import prompt_key_role
+from src.analysis.text_individual.llm_summary import extract_key_role_llm
 from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.analysis.activity_type.code.summary import build_activity_summary
@@ -640,6 +642,29 @@ def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path
         return
     analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=True, summary=summary, version_key=version_key)
 
+    # --- Individual text project contribution description and key role ---
+    if summary is not None:
+        # Prompt for contribution description
+        print("\nDescribe what you wrote/accomplished in this project (1-3 sentences):")
+        try:
+            contribution_desc = input(f"Your work on '{project_name}': ").strip()
+        except EOFError:
+            contribution_desc = ""
+
+        if contribution_desc:
+            summary.contributions["manual_contribution_summary"] = contribution_desc
+        else:
+            summary.contributions["manual_contribution_summary"] = "[No description provided]"
+
+        # Extract or prompt for key role
+        if current_ext_consent == "accepted" and contribution_desc:
+            key_role = extract_key_role_llm(contribution_desc)
+        else:
+            key_role = prompt_key_role(project_name)
+
+        if key_role:
+            summary.contributions["key_role"] = key_role
+
 
 def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
     """Runs full analysis on individual code projects (static metrics + Git + optional LLM)."""
@@ -692,12 +717,35 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     else:
         if constants.VERBOSE:
             print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")
-        
+
         # capture manual project summary
         if summary is not None and not getattr(summary, "summary_text", None):
             summary.summary_text = prompt_manual_code_project_summary(project_name)
-    
-        
+
+    # --- Individual project contribution description and key role ---
+    if summary is not None:
+        # Prompt for contribution description
+        print("\nDescribe what you built/accomplished in this project (1-3 sentences):")
+        try:
+            contribution_desc = input(f"Your work on '{project_name}': ").strip()
+        except EOFError:
+            contribution_desc = ""
+
+        if contribution_desc:
+            summary.contributions["manual_contribution_summary"] = contribution_desc
+        else:
+            summary.contributions["manual_contribution_summary"] = "[No description provided]"
+
+        # Extract or prompt for key role
+        if current_ext_consent == "accepted" and contribution_desc:
+            key_role = extract_key_role_llm(contribution_desc)
+        else:
+            key_role = prompt_key_role(project_name)
+
+        if key_role:
+            summary.contributions["key_role"] = key_role
+
+
 def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text, summary=None, version_key: int | None = None):
     classification_id = get_classification_id(conn, user_id, project_name)
 
