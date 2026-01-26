@@ -2,6 +2,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 3 (Jan 19-25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12-18)](#t2-week-2-monday-january-12---sunday-january-18)
 - [Week 1 (Jan 5-11)](#t2-week-1-monday-january-5---sunday-january-11)
 
@@ -177,6 +178,9 @@ I reviewed this PR which was the API set up, this was done to lay out the format
 Next Week: 
 I plan on working on more api endpoints, this may include helping Adara with the 19 endpoints needed for the POST / projects/upload especially the Google Aouth ones since I worked on implementing that feature in term 1. 
 
+
+## (T2 Week 3) Monday January 19 - Sunday January 25
+![Screenshot of this week's peer eval](./screenshots/Ivona-Jan19-25.PNG)
 
 
 
