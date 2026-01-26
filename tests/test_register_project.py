@@ -57,3 +57,26 @@ def test_register_project_duplicate_renamed_files(conn, tmp_path):
     assert result2["kind"] == "ask"
     assert result2["best_match_project_key"] == result1["project_key"]
     assert result2["similarity"] == 1.0  # Content is 100% identical
+
+def test_register_project_small_project_structure_match_prompts(conn, tmp_path):
+    """
+    For very small projects, hash-only Jaccard is brittle (any file edit changes its hash).
+    If the structure matches strongly but content similarity is low, we should prompt instead
+    of forcing "new project".
+    """
+    proj_dir1 = create_project(
+        tmp_path / "proj1",
+        {"calc.py": "v1", "main.py": "v1 main", "README.md": "same"},
+    )
+    proj_dir2 = create_project(
+        tmp_path / "proj2",
+        {"calc.py": "v2 changed", "main.py": "v2 changed main", "README.md": "same"},
+    )
+
+    result1 = register_project(conn, 1, "Calc", str(proj_dir1))
+    assert result1["kind"] == "new_project"
+
+    result2 = register_project(conn, 1, "Calc v2", str(proj_dir2))
+    assert result2["kind"] == "ask"
+    assert result2["best_match_project_key"] == result1["project_key"]
+    assert result2.get("path_similarity") is not None

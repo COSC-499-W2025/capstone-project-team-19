@@ -29,8 +29,8 @@ SUPPORTED_EXTENSIONS = TEXT_EXTENSIONS.union(CODE_EXTENSIONS)
 UNSUPPORTED_LOG_PATH = os.path.join(ZIP_DATA_DIR, "unsupported_files.json")
 DUPLICATE_LOG_PATH = os.path.join(ZIP_DATA_DIR, "duplicate_files.json")
 
-def parse_zip_file(zip_path, user_id: int | None = None, conn=None):
-    """Extract a ZIP archive and persist file metadata to the database."""
+def parse_zip_file(zip_path, user_id: int | None = None, conn=None, *, persist_to_db: bool = True):
+    """Extract a ZIP archive and (optionally) persist file metadata to the database."""
     zip_path = str(zip_path)
 
     if not os.path.exists(zip_path):
@@ -88,19 +88,20 @@ def parse_zip_file(zip_path, user_id: int | None = None, conn=None):
     layout = analyze_project_layout(files_info)
     _annotate_projects_on_files(files_info, layout)
 
-    # Store parsed data in local database
-    created_conn = False
-    if conn is None:
-        conn = connect()
-        created_conn = True
+    if persist_to_db:
+        # Store parsed data in local database
+        created_conn = False
+        if conn is None:
+            conn = connect()
+            created_conn = True
 
-    if user_id is None:
-        user_id = get_or_create_user(conn, "local-user")
+        if user_id is None:
+            user_id = get_or_create_user(conn, "local-user")
 
-    store_parsed_files(conn, files_info, user_id)
+        store_parsed_files(conn, files_info, user_id)
 
-    if created_conn:
-        conn.close()
+        if created_conn:
+            conn.close()
 
     #with open(METADATA_PATH, "w", encoding="utf-8") as f:
     #   json.dump(files_info, f, indent=4)

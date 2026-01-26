@@ -24,19 +24,20 @@ http://localhost:8000
 
 ## Table of Contents
 
-1. [Health](#health)
+1. [Health](#health
 2. [Authentication](#authentication)
 3. [Projects](#projects)
-4. [Uploads Wizard](#uploads-wizard)
-5. [Privacy Consent](#privacyconsent)
-6. [Skills](#skills)
-7. [Resume](#resume)
-8. [Portfolio](#portfolio)
-9. [Path Variables](#path-variables)  
-10. [DTO References](#dto-references)  
-11. [Best Practices](#best-practices)  
-12. [Error Codes](#error-codes)  
-13. [Example Error Response](#example-error-response)  
+4. [GitHub Integration](#github-integration)
+5. [Uploads Wizard](#uploads-wizard)
+6. [Privacy Consent](#privacyconsent)
+7. [Skills](#skills)
+8. [Resume](#resume)
+9. [Portfolio](#portfolio)
+10. [Path Variables](#path-variables)  
+11. [DTO References](#dto-references)  
+12. [Best Practices](#best-practices)  
+13. [Error Codes](#error-codes)  
+14. [Example Error Response](#example-error-response)  
 
 ---
 
@@ -193,8 +194,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
             },
             "error": null
         }
-        ```       
-
+        ```          
 ---
 
 ## **Uploads Wizard**
@@ -242,37 +242,12 @@ A typical flow for the first six endpoints:
 ### **Endpoints**
 
 - **Start Upload**
-    - **Endpoint**: `POST /projects/upload`
-    - **Description**: Upload a ZIP file, save it to disk, parse the ZIP, and compute the project layout to determine the next wizard step. The server creates an `upload_id` and stores wizard state in the database.
-    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-    - **Request Body**: `multipart/form-data`
-        - `file` (file, required): ZIP file
-    - **Response Status**: `200 OK`
-    - **Response Body**:
-        ```json
-        {
-            "success": true,
-            "data": {
-                "upload_id": 5,
-                "status": "needs_classification",
-                "zip_name": "text_projects.zip",
-                "state": {
-                    "zip_name": "text_projects.zip",
-                    "zip_path": "/.../src/analysis/zip_data/_uploads/5_text_projects.zip",
-                    "layout": {
-                        "root_name": "text_projects",
-                        "auto_assignments": {},
-                        "pending_projects": [
-                            "PlantGrowthStudy"
-                        ],
-                        "stray_locations": []
-                    },
-                    "files_info_count": 8
-                }
-            },
-            "error": null
-        }
-        ```
+  - **Endpoint**: `POST /projects/upload`
+  - **Description**: Upload a ZIP file, save it to disk, parse the ZIP, and compute the project layout to determine the next wizard step. The server creates an `upload_id` and stores wizard state in the database.
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Request Body**: `multipart/form-data`
+      - `file` (file, required): ZIP file
+  - **Response Status**: `200 OK`
 
 - **Get Upload Status (Resume / Poll)**
     - **Endpoint**: `GET /projects/upload/{upload_id}`
@@ -281,12 +256,7 @@ A typical flow for the first six endpoints:
     - **Path Params**:
         - `{upload_id}` (integer, required): The ID of the upload session
     - **Response Status**: `200 OK` on success, `404 Not Found` if upload doesn't exist or belong to user
-    - **Response Body**:
-        ```json
-        {
-            "success": true,
-            "data": {
-                "upload_id": 5,
+    -                 "upload_id": 5,
                 "status": "needs_classification",
                 "zip_name": "text_projects.zip",
                 "state": {
@@ -345,49 +315,122 @@ A typical flow for the first six endpoints:
             "assignments": {
                 "Project A": "individual",
                 "Project B": "collaborative"
-            }
-        }
-        ```
-    - **Response Status**: `200 OK`
-    - **Response Body**:
-        ```json
-        {
-            "success": true,
-            "data": {
-                "upload_id": 1,
-                "status": "parsed",
-                "zip_name": "text_projects.zip",
-                "state": {
-                    "message": "zip saved",
-                    "classifications": {
-                        "Project A": "individual",
-                        "Project B": "collaborative"
-                    }
-                }
-            },
-            "error": null
-        }
-        ```
-
-- **Submit Project Types (Code vs Text) (Optional)**
+                - **Submit Project Types (Code vs Text) (Optional)**
     - **Endpoint**: `POST /projects/upload/{upload_id}/project-types`
     - **Description**: Submit user selections for project type (`code` vs `text`) when a detected project contains both code and text artifacts and requires a choice. The request must use project names exactly as reported in `state.layout.auto_assignments` and `state.layout.pending_projects`.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Path Params**:
         - `{upload_id}` (integer, required): The ID of the upload session
+---
+
+## **GitHub Integration**
+
+**Base URL:** `/projects/upload/{upload_id}/projects/{project}/github` and `/auth`
+
+Handles GitHub OAuth authentication and repository linking for projects during the upload wizard flow.
+
+### **Endpoints**
+- **Start GitHub Connection**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project}/github/start`
+    - **Description**: Initiates GitHub OAuth connection flow for a project. If `connect_now` is `true` and user is not already connected, returns an authorization URL. If `connect_now` is `false`, records that GitHub connection was skipped.
+    - **Path Parameters**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project}` (string, required): The project name
+    - **Headers**: 
+        - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
     - **Request Body**:
+        {
+            "connect_now": true
+        }
+    - **Response Status**: `200 OK` on success, `404 Not Found` if upload doesn't exist or belong to user
+    - **Response Body**:
         ```json
         {
-            "project_types": {
-                "PlantGrowthStudy": "text"
+            "success": true,
+            "data": {
+                "auth_url": "https://github.com/login/oauth/authorize?client_id=...&state=..."
+            },
+            "error": null
+        }
+        ```
+        if user is already connected or connect_now is false, auth_url will be null
+
+- **GitHub OAuth Callback**
+    - **Endpoint**: `GET /auth/github/callback`
+    - **Description**: Handles the OAuth callback from GitHub after user authorizes the application. Exchanges the authorization code for an access token and saves it. No authentication required - this is a public callback endpoint.
+    - **Query Parameters**:
+        - `code` (string, required): Authorization code from GitHub
+        - `state` (string, optional): OAuth state parameter for security
+    - **Response Status**: `200 OK` on success, `400 Bad Request` if code exchange fails or state is invalid
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "message": "GitHub connected successfully",
+            "data": {
+                "success": true,
+                "user_id": 1,
+                "upload_id": 1,
+                "project_name": "MyProject"
             }
         }
         ```
-    - **Response Status**: `200 OK`
-    - **Notes**:
-        - Returns `422 Unprocessable Entity` if the request includes unknown project names (not present in `layout.auto_assignments` or `layout.pending_projects`).
-        - Returns `422 Unprocessable Entity` if project type values are not `code` or `text`.
 
+- **List GitHub Repositories**
+    - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project}/github/repos`
+    - **Description**: Returns a list of the user's GitHub repositories that can be linked to the project. Requires GitHub to be connected first.
+    - **Path Parameters**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project}` (string, required): The project name
+    - **Headers**: 
+        - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
+    - **Response Status**: `200 OK` on success, `401 Unauthorized` if GitHub is not connected, `404 Not Found` if upload doesn't exist
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "repos": [
+                    {
+                        "full_name": "owner/repo1"
+                    },
+                    {
+                        "full_name": "owner/repo2"
+                    }
+                ]
+            },
+            "error": null
+        }
+        ```
+
+
+- **Link GitHub Repository**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project}/github/link`
+    - **Description**: Links a GitHub repository to the project. The repository must be accessible by the authenticated user.
+    - **Path Parameters**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project}` (string, required): The project name
+    - **Headers**: 
+        - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
+    - **Request Body**:
+        {
+            "repo_full_name": "owner/repo-name"
+        }
+    - **Response Status**: `200 OK` on success, `400 Bad Request` if GitHub is not connected or repo format is invalid, `404 Not Found` if upload doesn't exist
+    - **Response Body**:
+        ```json
+               {
+            "success": true,
+            "data": {
+                "success": true,
+                "repo_full_name": "owner/repo-name"
+            },
+            "error": null
+        }
+        ```
+        
+        
+        
 
 - **List Project Files**
     - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project_name}/files`
@@ -485,7 +528,7 @@ A typical flow for the first six endpoints:
 ---
 
 
-## **Privacy Consent**
+## **PrivacyConsent**
 
 **Base URL:** `/privacy-consent`
 
@@ -950,6 +993,21 @@ Example:
     - `skills` (array of strings, optional)
     - `metrics` (object, optional)
     - `contributions` (object, optional)
+
+- **GitHubStartRequest**
+    - `connect_now` (boolean, required)
+
+- **GitHubStartResponse**
+    - `auth_url` (string, optional)
+
+- **GitHubRepoDTO**
+    - `full_name` (string, required)
+
+- **GitHubReposResponse**
+    - `repos` (List[GitHubRepoDTO], required)
+
+- **GitHubLinkRequest**
+    - `repo_full_name` (string, required)
 
 ---
 

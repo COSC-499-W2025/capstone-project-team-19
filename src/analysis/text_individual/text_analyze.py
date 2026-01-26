@@ -19,6 +19,7 @@ def run_text_pipeline(
     conn,
     user_id: int,
     project_name,
+    version_key: int | None = None,
     consent: str = "rejected",
     csv_metadata=None,
     suppress_print=False
@@ -139,7 +140,9 @@ def run_text_pipeline(
 
         # --- Activity type analysis (only for individual mode) ---
         if not suppress_print:
-            all_project_files=get_files_with_timestamps(conn,user_id, current_project_name)
+            all_project_files = get_files_with_timestamps(
+                conn, user_id, current_project_name, version_key=version_key
+            )
         # Store activity type data to database (only if conn is available)
             if conn is not None:
                 classification_id=get_classification_id(conn, user_id, current_project_name)

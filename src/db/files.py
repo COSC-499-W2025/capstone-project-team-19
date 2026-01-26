@@ -120,7 +120,7 @@ def delete_files_for_project(conn, user_id: int, project_name: str):
         WHERE user_id = ? AND project_name = ?
     """, (user_id, project_name))
 
-def get_files_with_timestamps(conn, user_id: int, project_name: str):
+def get_files_with_timestamps(conn, user_id: int, project_name: str, version_key: int | None = None):
     """
     Fetch files for a project with their timestamps.
     Returns a list of dicts with file_name, file_path, created, modified, and file_type.
@@ -132,9 +132,14 @@ def get_files_with_timestamps(conn, user_id: int, project_name: str):
         SELECT file_name, file_path, created, modified, file_type
         FROM files
         WHERE user_id = ? AND project_name = ?
-        ORDER BY modified ASC
     """
-    rows = conn.execute(query, (user_id, project_name)).fetchall()
+    params: list[object] = [user_id, project_name]
+    if version_key is not None:
+        query += " AND version_key = ?"
+        params.append(version_key)
+    query += " ORDER BY modified ASC"
+
+    rows = conn.execute(query, params).fetchall()
     return [
         {
             'file_name': r[0],
