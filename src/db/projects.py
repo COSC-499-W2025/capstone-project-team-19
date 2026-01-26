@@ -40,8 +40,8 @@ def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id
             #Store regular files in files table
             cur.execute("""
                 INSERT INTO files (
-                    user_id, file_name, file_path, extension, file_type, size_bytes, created, modified, project_name
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    user_id, file_name, file_path, extension, file_type, size_bytes, created, modified, project_name, version_key
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 user_id,
                 f.get("file_name"),
@@ -52,6 +52,7 @@ def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id
                 f.get("created"),
                 f.get("modified"),
                 f.get("project_name"),
+                f.get("version_key"),
             ))
     
     conn.commit()

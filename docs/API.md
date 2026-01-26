@@ -194,8 +194,53 @@ Handles project ingestion, analysis, classification, and metadata updates.
             },
             "error": null
         }
-        ```     
-        
+        ```          
+---
+
+## **Uploads Wizard**
+
+**Base URL:** `/projects/upload`
+
+Uploads are tracked as a resumable multi-step “wizard” using an `uploads` table. Each upload has:
+- an `upload_id`
+- a `status` indicating the current step
+- a `state` JSON blob storing wizard context (parsed layout, user selections, dedup context, etc.)
+
+
+### **Upload Status Values**
+
+`uploads.status` is one of:
+
+- `started` – upload session created
+- `needs_dedup` – user must resolve dedup “ask” cases (new in dedup refactor)
+- `needs_classification` – user must classify projects (individual vs collaborative)
+- `parsed` – classifications submitted (temporary state in current implementation)
+- `needs_project_types` – user must resolve code vs text for any mixed/unknown projects
+- `needs_file_roles` – user must select file roles (e.g., main text file) and related inputs
+- `needs_summaries` – user must provide manual summaries (when applicable)
+- `analyzing` – analysis running
+- `done` – analysis completed
+- `failed` – upload failed (error stored in `state.error`)
+
+### **Wizard Flow**
+
+A typical flow for the first four endpoints:
+
+1. **Start upload**: `POST /projects/upload`
+   - parses ZIP and computes layout
+   - runs dedup:
+     - exact duplicates are automatically skipped
+     - “ask” cases are stored for UI resolution
+     - “new_version” suggestions may be recorded
+2. **Poll/resume**: `GET /projects/upload/{upload_id}`
+3. **Resolve dedup (optional)**: `POST /projects/upload/{upload_id}/dedup/resolve`
+4. **Submit classifications**: `POST /projects/upload/{upload_id}/classifications`
+5. **Resolve mixed project types (optional)**: `POST /projects/upload/{upload_id}/project-types` 
+
+---
+
+### **Endpoints**
+
 - **Start Upload**
   - **Endpoint**: `POST /projects/upload`
   - **Description**: Upload a ZIP file, save it to disk, parse the ZIP, and compute the project layout to determine the next wizard step. The server creates an `upload_id` and stores wizard state in the database.
@@ -231,6 +276,32 @@ Handles project ingestion, analysis, classification, and metadata updates.
             "error": null
         }
         ```
+
+- **Resolve Dedup (Optional, New)**
+  - **Endpoint**: `POST /projects/upload/{upload_id}/dedup/resolve`
+  - **Description**: Resolves dedup “ask” cases that were captured during upload parsing. This step happens before classifications and project types.
+  - **Headers**:
+    - `Authentication`: Bearer <token>
+  - **Path Params**:
+    - `upload_id` (integer, required)
+  - **Request Body**:
+    ```json
+    {
+      "decisions": {
+        "PlantGrowthStudy": "new_version"
+      }
+    }
+    ```
+  - **Allowed decision values**:
+    - `skip` – discard this project from the upload
+    - `new_project` – force register this as a new project snapshot
+    - `new_version` – force register this as a new version of the best matched existing project
+  - **Response Status**: `200 OK`
+  - **Response Notes**:
+    - Returns `409 Conflict` if upload status is not `needs_dedup`.
+    - Returns `422 Unprocessable Entity` if decisions are missing or contain unknown projects.
+    - On success, `state.dedup_asks` is cleared and `state.dedup_resolved` is stored.
+
 
 - **Submit Project Classifications**
     - **Endpoint**: `POST /projects/upload/{upload_id}/classifications`
@@ -544,10 +615,107 @@ Manages résumé-specific representations of projects.
             "error": null
         }
         ```
-        
-        
 
+- **Generate Resume**
+    - **Endpoint**: `POST /resume/generate`
+    - **Description**: Creates a new résumé snapshot from the user's projects. If `project_ids` is not provided, automatically selects the top 5 ranked projects. Builds the snapshot, enriches with contribution bullets and dates, and renders the text.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: Uses `ResumeGenerateRequestDTO`
+        ```json
+        {
+            "name": "My Resume",
+            "project_ids": [1, 3, 5]
+        }
+        ```
+        - `name` (string, required): Name for the résumé snapshot
+        - `project_ids` (array of integers, optional): List of `project_summary_id` values from the `project_summaries` table. Get these IDs from `GET /projects`. If omitted (no project_ids, just name), uses top 5 ranked projects.
+    - **Response Status**: `201 Created` or `400 Bad Request`
+    - **Response Body**: Uses `ResumeDetailDTO`
+        ```json
+        {
+            "success": true,
+            "data": {
+                "id": 2,
+                "name": "My Resume",
+                "created_at": "2024-01-15 14:30:00",
+                "projects": [...],
+                "aggregated_skills": {...},
+                "rendered_text": "..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `400 Bad Request`: No valid projects found for the given IDs
+        - `401 Unauthorized`: Missing Authentication header
+        - `404 Not Found`: User not found
 
+- **Edit Resume**
+    - **Endpoint**: `POST /resume/{resume_id}/edit`
+    - **Description**: Edits a résumé snapshot. Can rename the résumé, edit project details, or both. Project editing is optional - you can rename a résumé without editing any project.
+    - **Path Parameters**:
+        - `{resume_id}` (integer, required): The `id` from `resume_snapshots` table. Get this from `GET /resume` list.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: Uses `ResumeEditRequestDTO`
+        ```json
+        {
+            "name": "Updated Resume Name",
+            "project_name": "MyProject",
+            "scope": "resume_only",
+            "display_name": "Custom Project Name",
+            "summary_text": "Updated project summary...",
+            "contribution_bullets": [
+                "Built feature X",
+                "Improved performance by 50%"
+            ],
+            "contribution_edit_mode": "replace"
+        }
+        ```
+        - `name` (string, optional): New name for the résumé (rename)
+        - `project_name` (string, optional): The text name of the project to edit. If omitted (no "project_name", just "name"), only the résumé name is updated.
+        - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
+            - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
+            - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
+        - `display_name` (string, optional): Custom display name for the project
+        - `summary_text` (string, optional): Updated summary text
+        - `contribution_bullets` (array of strings, optional): Custom contribution bullet points
+        - `contribution_edit_mode` (string, optional): How to apply contribution bullets. Defaults to `"replace"`.
+            - `"replace"`: Replace all existing bullets with the provided list
+            - `"append"`: Keep existing bullets and add the provided bullets to the end
+    - **Response Status**: `200 OK` or `404 Not Found`
+    - **Response Body**: Uses `ResumeDetailDTO`
+        ```json
+        {
+            "success": true,
+            "data": {
+                "id": 1,
+                "name": "Updated Resume Name",
+                "created_at": "2024-01-12 10:30:00",
+                "projects": [...],
+                "aggregated_skills": {...},
+                "rendered_text": "..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Resume or project not found
+    - **Example: Rename résumé only (no project editing)**:
+        ```json
+        {
+            "name": "My Updated Resume"
+        }
+        ```
+    - **Example: Append new bullets to existing**:
+        ```json
+        {
+            "project_name": "MyProject",
+            "scope": "resume_only",
+            "contribution_bullets": ["Added new feature Y"],
+            "contribution_edit_mode": "append"
+        }
+        ```
 
 ---
 
@@ -563,12 +731,36 @@ Manages portfolio showcase configuration.
 
 ---
 
-## **Path Variables**
+### Path Variables
 
-- `{project_id}` (integer, required): The ID of a project (project_summary_id)  
-- `{resume_id}` (integer, required): The ID of a résumé snapshot  
-- `{upload_id}` (integer, required): The ID of an upload session  
-- `{portfolio_id}` (integer, required): The ID of a portfolio (reserved for future use)  
+- `{project_id}` (integer): Maps to `project_summary_id` from the `project_summaries` table
+- `{resume_id}` (integer): Maps to `id` from the `resume_snapshots` table
+- `{upload_id}` (integer): Maps to `upload_id` from the `uploads` table
+- `{portfolio_id}` (integer): Reserved for future use
+
+### Important: Identifier Sources
+
+The API uses different identifiers depending on the resource. Here's where each identifier comes from:
+
+| API Parameter | Database Table | Database Column | Description |
+|---------------|----------------|-----------------|-------------|
+| `project_id` / `project_ids` | `project_summaries` | `project_summary_id` | Unique ID for a project summary |
+| `project_name` | Various tables | `project_name` | Text identifier used across tables |
+| `resume_id` | `resume_snapshots` | `id` | Unique ID for a saved résumé |
+| `upload_id` | `uploads` | `upload_id` | Unique ID for an upload session |
+| `user_id` | `users` | `user_id` | Unique ID for a user |
+
+**Note:** There is no generic `project_id` column in the database. Projects are primarily identified by:
+- `project_summary_id` (integer) - Used in API endpoints as `{project_id}`
+- `project_name` (text) - Used within résumé/portfolio data structures
+
+### How to Get Project IDs
+
+To get `project_summary_id` values for use in endpoints like `POST /resume/generate`:
+
+1. Call `GET /projects` to list all projects
+2. Each project in the response includes `project_summary_id`
+3. Use these IDs in the `project_ids` array  
 
 ---
 
@@ -589,6 +781,40 @@ Example:
     - `project_mode` (string, optional)
     - `created_at` (string, optional)
 
+### **Upload Wizard DTOs (Projects Upload)**
+
+- **UploadDTO**
+    - `upload_id` (int, required)
+    - `status` (string, required)  
+      Allowed values:
+        - `"started"`
+        - `"parsed"`
+        - `"needs_classification"`
+        - `"needs_file_roles"`
+        - `"needs_summaries"`
+        - `"analyzing"`
+        - `"done"`
+        - `"failed"`
+    - `zip_name` (string, optional)
+    - `state` (object, optional)
+
+- **ClassificationsRequest**
+    - `assignments` (object, required)  
+      Shape: `{ "<project_name>": "<classification>" }`  
+      Allowed values:
+        - `"individual"`
+        - `"collaborative"`
+
+- **ProjectTypesRequest** 
+    - `project_types` (object, required)  
+      Shape: `{ "<project_name>": "<project_type>" }`  
+      Allowed values:
+        - `"text"`
+        - `"code"`
+
+- **DedupResolveRequestDTO**
+  - `decisions` (object, required)  
+    Allowed values: `"skip"`, `"new_project"`, `"new_version"`
 
 - **SkillEventDTO**
     - `skill_name` (string, required)
@@ -634,6 +860,19 @@ Example:
     - `projects` (List[ResumeProjectDTO], optional)
     - `aggregated_skills` (AggregatedSkillsDTO, optional)
     - `rendered_text` (string, optional)
+
+- **ResumeGenerateRequestDTO**
+    - `name` (string, required): Name for the new résumé snapshot
+    - `project_ids` (List[int], optional): List of `project_summary_id` values from `project_summaries` table. Get these from `GET /projects`. If omitted, uses top 5 ranked projects.
+
+- **ResumeEditRequestDTO**
+    - `name` (string, optional): New name for the résumé
+    - `project_name` (string, optional): Text name of the project to edit. If omitted, only name is updated.
+    - `scope` (string, optional): `"resume_only"` (default) or `"global"`. Required when editing a project.
+    - `display_name` (string, optional): Custom display name for the project
+    - `summary_text` (string, optional): Updated summary text
+    - `contribution_bullets` (List[string], optional): Custom contribution bullet points
+    - `contribution_edit_mode` (string, optional): `"replace"` (default) or `"append"`
 
 - **ConsentRequestDTO**
     - `status` (string, required): Must be either "accepted" or "rejected"

@@ -99,7 +99,12 @@ def test_submit_classifications_validates_values(client, auth_headers, seed_conn
 
 
 def test_submit_project_types_unknown_project_is_422(client, auth_headers):
-    zip_bytes = _make_zip_bytes({"ProjectA/readme.txt": "hello"})
+    # Mixed project: text + code
+    zip_bytes = _make_zip_bytes({
+        "ProjectA/readme.txt": "hello",
+        "ProjectA/main.py": "print('hi')",
+    })
+
     start = client.post(
         "/projects/upload",
         headers=auth_headers,
@@ -107,10 +112,20 @@ def test_submit_project_types_unknown_project_is_422(client, auth_headers):
     ).json()
     upload_id = start["data"]["upload_id"]
 
-    # Unknown project key should 422
+    # Must classify first so project_types_mixed gets computed
+    classified = client.post(
+        f"/projects/upload/{upload_id}/classifications",
+        headers=auth_headers,
+        json={"assignments": {"ProjectA": "individual"}},
+    )
+    assert classified.status_code == 200
+    assert classified.json()["data"]["status"] == "needs_project_types"
+
+    # Now unknown project key should 422
     res = client.post(
         f"/projects/upload/{upload_id}/project-types",
         headers=auth_headers,
         json={"project_types": {"NotAProject": "text"}},
     )
     assert res.status_code == 422
+

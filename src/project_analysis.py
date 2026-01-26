@@ -122,7 +122,7 @@ def detect_project_type_auto(
     }
 
 
-def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
+def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, version_keys: dict[str, int] | None = None):
     """
     Routes each project to the appropriate analysis flow based on its classification and type.
     Collaborative projects trigger contribution analysis.
@@ -183,12 +183,13 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
             print("\n[INDIVIDUAL] Running individual projects...")
         for project_name, project_type in individual:
             print(f"  → {project_name} ({project_type})")
+            vk = (version_keys or {}).get(project_name)
             summary = ProjectSummary(
                 project_name=project_name,
                 project_type=project_type,
                 project_mode="individual"
             )
-            run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary)
+            run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary, version_key=vk)
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
             if project_type == "text":
@@ -229,6 +230,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
                 # 1) run all CODE collab
         for project_name, project_type in code_collab:
             print(f"  → {project_name} ({project_type})")
+            vk = (version_keys or {}).get(project_name)
             summary = ProjectSummary(
                 project_name=project_name,
                 project_type=project_type,
@@ -249,6 +251,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
                 current_ext_consent,
                 zip_path,
                 summary,
+                version_key=vk,
             )
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
@@ -271,12 +274,13 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
         # 2) run all TEXT collab
         for project_name, project_type in text_collab:
             print(f"  → {project_name} ({project_type})")
+            vk = (version_keys or {}).get(project_name)
             summary = ProjectSummary(
                 project_name=project_name,
                 project_type=project_type,
                 project_mode="collaborative"
             )
-            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary)
+            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary, version_key=vk)
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
             if project_type == "text":
@@ -337,7 +341,16 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
 
 
 
-def get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary=None):
+def get_individual_contributions(
+    conn,
+    user_id,
+    project_name,
+    project_type,
+    current_ext_consent,
+    zip_path,
+    summary=None,
+    version_key: int | None = None,
+):
     """
     Analyze collaborative projects to get specific user contributions in a collaborative project.
     The process used to get the individual contributions changes depending on the type of project (code/text).
@@ -346,27 +359,36 @@ def get_individual_contributions(conn, user_id, project_name, project_type, curr
         print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' ({project_type})")
 
     if project_type == "text":
-        analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path)
+        analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path, version_key=version_key)
     elif project_type == "code":
         analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary)
     else:
         print(f"[COLLABORATIVE] Unknown project type for '{project_name}', skipping.")
 
 
-def run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary=None):
+def run_individual_analysis(
+    conn,
+    user_id,
+    project_name,
+    project_type,
+    current_ext_consent,
+    zip_path,
+    summary=None,
+    version_key: int | None = None,
+):
     """
     Run full analysis on an individual project, depending on project_type.
     """
     
     if project_type == "text":
-        run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary)
+        run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key)
     elif project_type == "code":
-        run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary)
+        run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key)
     else:
         print(f"[INDIVIDUAL] Unknown project type for '{project_name}', skipping.")
 
 
-def analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path):
+def analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path, version_key: int | None = None):
     """
     Analyze collaborative text projects with optional Google Drive connection.
     If Google Drive is skipped or fails → fallback to collaborative manual text flow.
@@ -377,7 +399,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     # ------------------------------
     # ALWAYS FETCH PARSED FILES HERE
     # ------------------------------
-    parsed_files = _fetch_files(conn, user_id, project_name, only_text=True)
+    parsed_files = _fetch_files(conn, user_id, project_name, only_text=True, version_key=version_key)
 
     if not parsed_files:
         print(f"[TEXT-COLLAB] No text files found for '{project_name}'. Cannot analyze.")
@@ -411,7 +433,8 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
             parsed_files=parsed_files,
             zip_path=zip_path,
             external_consent=current_ext_consent,
-            summary_obj=summary
+            summary_obj=summary,
+            version_key=version_key,
         )
         return
 
@@ -421,7 +444,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     if not result['success']:
         print("\n[TEXT-COLLAB] Google Drive connection failed → falling back to manual mode.\n")
         analyze_collaborative_text_project(
-            conn, user_id, project_name, parsed_files, None, current_ext_consent, summary
+            conn, user_id, project_name, parsed_files, None, current_ext_consent, summary, version_key=version_key
         )
         return
 
@@ -432,7 +455,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     if not drive_service or not docs_service:
         print("\n[TEXT-COLLAB] Google Drive connected but incomplete services → fallback to manual.\n")
         analyze_collaborative_text_project(
-            conn, user_id, project_name, parsed_files, None, current_ext_consent, summary
+            conn, user_id, project_name, parsed_files, None, current_ext_consent, summary, version_key=version_key
         )
         return
 
@@ -498,7 +521,8 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
         parsed_files=parsed_files,
         zip_path=zip_path,
         external_consent=current_ext_consent,
-        summary_obj=summary
+        summary_obj=summary,
+        version_key=version_key,
     )
 
 
@@ -609,15 +633,15 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
             summary.summary_text = prompt_manual_code_project_summary(project_name)
 
 
-def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary):
-    parsed_files = _fetch_files(conn, user_id, project_name, only_text=True)
+def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
+    parsed_files = _fetch_files(conn, user_id, project_name, only_text=True, version_key=version_key)
     if not parsed_files:
         print(f"[INDIVIDUAL-TEXT] No text files found for '{project_name}'.")
         return
-    analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=True, summary=summary)
+    analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=True, summary=summary, version_key=version_key)
 
 
-def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary):
+def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
     """Runs full analysis on individual code projects (static metrics + Git + optional LLM)."""
     languages = detect_languages(conn, project_name)
     print(f"Languages detected in {project_name}: {languages}")
@@ -629,13 +653,13 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
         summary.languages = languages or []
         summary.frameworks = frameworks or []
 
-    parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
+    parsed_files = _fetch_files(conn, user_id, project_name, only_text=False, version_key=version_key)
     if not parsed_files:
         print(f"[INDIVIDUAL-CODE] No code files found for '{project_name}'.")
         return
 
     # --- Run main code + Git analysis ---
-    analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=False)
+    analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=False, version_key=version_key)
 
     # --- Activity-type summary (individual) ---
     activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
@@ -674,7 +698,7 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
             summary.summary_text = prompt_manual_code_project_summary(project_name)
     
         
-def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text, summary=None):
+def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text, summary=None, version_key: int | None = None):
     classification_id = get_classification_id(conn, user_id, project_name)
 
     if only_text:
@@ -706,6 +730,7 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
             conn=conn,
             user_id=user_id,
             project_name=project_name,
+            version_key=version_key,
             consent=external_consent,
             csv_metadata=csv_metadata
         )

@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional, List, Tuple
 UPLOAD_STATUSES = {
     "started",
     "parsed",
+    "needs_dedup",
     "needs_classification",
     "needs_project_types",
     "needs_file_roles",

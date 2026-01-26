@@ -321,7 +321,7 @@ def test_portfolio_edit_global_updates_manual_overrides(conn, monkeypatch):
     def _fake_apply(*args, **kwargs):
         called["applied"] = True
 
-    monkeypatch.setattr("src.menu.portfolio._apply_manual_overrides_to_resumes", _fake_apply)
+    monkeypatch.setattr("src.services.resume_overrides.apply_manual_overrides_to_resumes", _fake_apply)
 
     inputs = iter(["1", "2", "1", "Global summary"])
     monkeypatch.setattr("builtins.input", lambda _="": next(inputs))
@@ -391,7 +391,7 @@ def test_portfolio_global_edit_clears_portfolio_override(conn, capsys, monkeypat
 
     # Mock _apply_manual_overrides_to_resumes to avoid resume-related side effects
     monkeypatch.setattr(
-        "src.menu.portfolio._apply_manual_overrides_to_resumes",
+        "src.services.resume_overrides.apply_manual_overrides_to_resumes",
         lambda *args, **kwargs: None,
     )
 

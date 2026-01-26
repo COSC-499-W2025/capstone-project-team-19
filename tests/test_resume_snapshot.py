@@ -323,7 +323,7 @@ def test_render_snapshot_uses_manual_overrides():
 
 
 def test_manual_overrides_skip_resume_only(monkeypatch):
-    from src.menu.resume.flow import _apply_manual_overrides_to_resumes
+    from src.services.resume_overrides import apply_manual_overrides_to_resumes
 
     conn = sqlite3.connect(":memory:")
     init_schema(conn)
@@ -378,7 +378,7 @@ def test_manual_overrides_skip_resume_only(monkeypatch):
     insert_resume_snapshot(conn, user_id, "Resume B", json.dumps(snap_b), "rendered")
 
     overrides = {"summary_text": "Manual summary", "display_name": "Manual Name"}
-    _apply_manual_overrides_to_resumes(
+    apply_manual_overrides_to_resumes(
         conn,
         user_id,
         "ProjX",
@@ -402,7 +402,7 @@ def test_manual_overrides_skip_resume_only(monkeypatch):
 
 
 def test_manual_overrides_force_resume_updates_resume_only():
-    from src.menu.resume.flow import _apply_manual_overrides_to_resumes
+    from src.services.resume_overrides import apply_manual_overrides_to_resumes
 
     conn = sqlite3.connect(":memory:")
     init_schema(conn)
@@ -440,7 +440,7 @@ def test_manual_overrides_force_resume_updates_resume_only():
     resume_ids = {r["name"]: r["id"] for r in resumes}
 
     overrides = {"summary_text": "Manual summary", "display_name": "Manual Name"}
-    _apply_manual_overrides_to_resumes(
+    apply_manual_overrides_to_resumes(
         conn,
         user_id,
         "ProjX",

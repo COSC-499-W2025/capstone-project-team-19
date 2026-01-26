@@ -27,6 +27,23 @@ def connect(db_path: str | Path | None = None) -> sqlite3.Connection:
     return conn
 
 
+def _column_names(conn: sqlite3.Connection, table: str) -> set[str]:
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    # PRAGMA table_info returns: cid, name, type, notnull, dflt_value, pk
+    return {r[1] for r in rows} if rows else set()
+
+
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, ddl: str) -> None:
+    """
+    Add a column to an existing table if it's missing.
+    `ddl` should be the column definition part, e.g. "INTEGER" or "TEXT DEFAULT ''".
+    """
+    cols = _column_names(conn, table)
+    if column in cols:
+        return
+    conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+
+
 def init_schema(conn: sqlite3.Connection) -> None:
     """Create all tables and indexes if they don't exist."""
     schema_path = Path(__file__).parent / "schema" / "tables.sql"
@@ -34,5 +51,14 @@ def init_schema(conn: sqlite3.Connection) -> None:
         schema_sql = f.read()
 
     conn.executescript(schema_sql)
+
+    # Version-scoping for project versions/deduplication flows
+    _ensure_column(conn, "files", "version_key", "INTEGER")
+
+    # Indexes that reference migrated columns should be created after migrations.
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_files_user_project_version ON files(user_id, project_name, version_key)"
+    )
+
     conn.commit()
     print(f"Initialized database schema from {schema_path}")
