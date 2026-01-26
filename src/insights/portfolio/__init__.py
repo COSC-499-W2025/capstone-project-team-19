@@ -5,7 +5,9 @@ from .formatters import (
     format_activity_line,
     format_skills_block,
     format_summary_block,
+    resolve_portfolio_contribution_bullets,
     resolve_portfolio_display_name,
+    resolve_portfolio_summary_text,
 )
 
 __all__ = [
@@ -15,5 +17,7 @@ __all__ = [
     "format_activity_line",
     "format_skills_block",
     "format_summary_block",
+    "resolve_portfolio_contribution_bullets",
     "resolve_portfolio_display_name",
+    "resolve_portfolio_summary_text",
 ]

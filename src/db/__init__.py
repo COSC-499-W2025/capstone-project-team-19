@@ -183,7 +183,8 @@ from .deduplication import (
     get_relpath_set_for_version,
     insert_project,
     insert_project_version,
-    insert_version_files
+    insert_version_files,
+    _lookup_existing_name
 )
 
 # project rankings

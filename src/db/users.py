@@ -43,3 +43,19 @@ def get_or_create_user(conn: sqlite3.Connection, username: str, email: Optional[
     )
     conn.commit()
     return cur.lastrowid
+
+def get_user_auth_by_username(conn: sqlite3.Connection, username: str):
+    norm = _normalize_username(username)
+    row = conn.execute(
+        "SELECT user_id, username, hashed_password FROM users WHERE LOWER(username)=LOWER(?)",
+        (norm,),
+    ).fetchone()
+    return row if row else None
+
+def create_user_with_password(conn: sqlite3.Connection, username: str, email: Optional[str], password_hash: str) -> int:
+    cur = conn.execute(
+        "INSERT INTO users (username, email, hashed_password) VALUES (?, ?, ?)",
+        (username.strip(), email, password_hash),
+    )
+    conn.commit()
+    return int(cur.lastrowid)
