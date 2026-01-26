@@ -265,10 +265,11 @@ def export_resume_record_to_pdf(
         story.append(Paragraph(str(title), ProjectTitleStyle))
         story.append(Paragraph(meta, MetaItalic))
 
+        # Priority: resume-specific override > global override > base field
         bullets = _clean_bullets(
-            p.get("contribution_bullets")
-            or p.get("resume_contributions_override")
+            p.get("resume_contributions_override")
             or p.get("manual_contribution_bullets")
+            or p.get("contribution_bullets")
             or []
         )
 
