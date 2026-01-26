@@ -1,5 +1,29 @@
 # Personal Log - Salma
 
+## Table of Contents
+
+### Term 2
+
+- [Week 3 (Jan 19–25)](#t2-week-3-monday-january-19---sunday-january-25)
+- [Week 2 (Jan 12–18)](#t2-week-2-monday-january-12---sunday-january-18)
+- [Week 1 (Jan 5–11)](#t2-week-1-monday-january-5---sunday-january-11)
+
+### Term 1
+
+- [Week 14 (Dec 1–7)](#week-14-monday-1st-december---sunday-7th-december)
+- [Week 13 (Nov 24–30)](#week-13-monday-november-24---sunday-november-30)
+- [Week 12 (Nov 17–23)](#week-12-monday-november-17---sunday-november-23)
+- [Week 10 (Nov 3–9)](#week-10-monday-november-3---sunday-november-9)
+- [Week 9 (Oct 27–Nov 2)](#week-9-monday-27th-october---sunday-2nd-november)
+- [Week 8 (Oct 20–26)](#week-8-monday-20th-october---sunday-26th-october)
+- [Week 7 (Oct 13–19)](#week-7-monday-13th-october---sunday-19th-october)
+- [Week 6 (Oct 6–12)](#week-6-monday-6th-october---sunday-12th-october)
+- [Week 5 (Sept 29–Oct 5)](#week-5-monday-29th-september---sunday-5th-october)
+- [Week 4 (Sept 22–28)](#week-4-monday-22nd---sunday-28th-september)
+- [Week 3 (Sept 15–21)](#week-3-monday-15th---sunday-21st-september)
+
+---
+
 ## (Week 3) Monday 15th - Sunday 21st September
 
 ![Screenshot of week 3 peer eval](./screenshots/Salma-Sept15-21.png)
@@ -147,7 +171,7 @@ I also reviewed and provided feedback on several PRs, including:
 
 Next week: I plan to help with the presentation or demo, and update the README to prevent zip path issues. I will also re-run main to identify and fix remaining issues and edge cases if available.
 
-# (Week 14) Monday 1st December - Sunday 7th December
+## (Week 14) Monday 1st December - Sunday 7th December
 
 ![Screenshot of week 14 peer eval](./screenshots/Salma-Dec1-7.PNG)
 
@@ -163,3 +187,45 @@ I also reviewed and provided feedback on several PRs, including:
 - Johanes’ PR on the system architecture diagram update. I suggested updating the diagram so that all four analysis modes (text and code in both individual and collaborative formats) connect to activity type detection. I also recommended reflecting that collaborative code analysis checks for a .git folder before prompting GitHub integration, and that individual code analysis also runs activity type detection and may request GitHub integration.
 
 Next week: No sprint next week. I’m looking forward to coming back recharged next term and ready for Milestone #2.
+
+## (T2 Week 1) Monday January 5 - Sunday January 11
+
+![Screenshot of this week's peer evaluation](./screenshots/Salma-Jan5-Jan11.PNG)
+
+I worked on PR #336, adding Word (.docx) export for the Portfolio and Resume views so users can generate documents from their analyzed project data. This included building DOCX exporters, adding menu prompts, standardizing layouts (skills, projects, contributions, summaries) to match the CLI, updating .gitignore to exclude ./out/, and updating python-docx dependencies.
+
+I also reviewed PRs from Ammaar (incorporating key roles) to suggest reusing existing summaries, Johanes (project re-ranking) to ensure it works correctly, and Timmi (duplicate detection) to suggest minor UI improvements.
+
+Next week: I plan to add support for project images as thumbnails and include them in DOCX exports for resume and portfolio. I’ll also check with the TA and the team on whether we should support multiple portfolios or keep a single one.
+
+## (T2 Week 2) Monday January 12 - Sunday January 18
+
+![Screenshot of this week's peer evaluation](./screenshots/Salma-Jan12-Jan18.PNG)
+
+I worked on PR [#368](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/368) to improve resume exporting. This included refining contribution bullet points, reorganizing the resume into proper sections (profile, skills, projects, and education), removing unnecessary placeholder text, and adding PDF export support. Based on review feedback, I removed language percentage from the resume exporting and retained only languages with dominance above 10%.
+
+I worked on PR [#372](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/372) to enable users to associate an image with a project's thumbnail. This introduced a “Manage project thumbnails” menu, centralized image storage via an /images directory, database support through a new project_thumbnails table, and integration of thumbnails into portfolio exporting. In response to review feedback, I standardized thumbnail image sizes, resolved image duplication issues, and improved the UI.
+
+I also reviewed some PRs such as:
+
+- Ammaar's PR ([#355](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/355) on customizing resume) to suggest adding an option to add or remove contribution bullet points.
+- Johanes' PR ([#338](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/338) on editing project chronology) to add more validation checks when inserting dates.
+- Timmi's PR ([#363](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/363) on duplicate checking) to give a suggestion on fixing path issues.
+
+Next week: I plan to add PDF exporting support for portfolios, and potentially take on a task related to API endpoints or other task decided during the team meeting.
+
+## (T2 Week 3) Monday January 19 - Sunday January 25
+
+![Screenshot of this week's peer evaluation](./screenshots/Salma-Jan19-Jan25.PNG)
+
+I worked on PR [#396](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/396) to add PDF export support for portfolios. This included a new submenu option “Export to PDF (.pdf)”, and ensuring that edited portfolio (summary, contributions, display name, thumbnails) is reflected correctly in the exported PDF. I added tests for this feature and fixed test_portfolio_docx.py to align with test_portfolio_pdf.py (current export behavior).
+
+I worked on PR [#401](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/401) to fix bugs in the LLM code summary feature. When no README was present, it incorrectly pulled a README from unrelated projects. I fixed this by correcting path handling, defining a clear no-README fallback using code context, and adding debug messages. Based on feedback from Timmi, I also added a minimum README threshold and tech stack validation. Lastly, I updated tests related to this task.
+
+I also reviewed some PRs such as:
+
+- Ammaar's PR ([#394](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/394)) on portfolio customization, suggesting reduced word redundancy and adding a portfolio submenu.
+- Johanes' PR ([#402](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/402)) on testing API endpoints for resume generation and editing, where I identified a failing test.
+- Timmi's PR ([#398](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/398)) on project deduplication to validate detection of identical, different, and new version of projects.
+
+Next week: Next week, I plan to reformat the portfolio export based on feedback from Johanes and Adara, and take on an API-related task or another item decided during the team meeting.

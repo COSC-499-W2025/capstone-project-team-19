@@ -1,5 +1,26 @@
 # Personal Log - Johanes
 
+## Table of Contents
+
+### Term 2
+- [Week 3 (Jan 19-25)](#t2-week-3-monday-19th-january---sunday-25th-january)
+- [Week 2 (Jan 12–18)](#t2-week-2-monday-12th-january---sunday-18th-january)
+- [Week 1 (Jan 5–11)](#t2-week-1-monday-5th-january---sunday-11th-january)
+
+### Term 1
+
+- [Week 14 (Dec 1–7)](#week-14-monday-1st-december---sunday-7th-december)
+- [Week 13 (Nov 24–30)](#week-13-monday-24th-november---sunday-30th-november)
+- [Week 12 (Nov 17–23)](#week-12-monday-17th-november---sunday-23rd-november)
+- [Week 10 (Nov 3–9)](#week-10-monday-3rd-november---sunday-9th-november)
+- [Week 9 (Oct 27–Nov 2)](#week-9-monday-27th-october---sunday-2nd-november)
+- [Week 8 (Oct 20–26)](#week-8-monday-20th-october---sunday-26th-october)
+- [Week 7 (Oct 13–19)](#week-7-monday-13th-october---sunday-19th-october)
+- [Week 6 (Oct 6–12)](#week-6-monday-6th-october---sunday-12th-october)
+- [Week 5 (Sept 29–Oct 5)](#week-5-monday-29th-september---sunday-5th-october)
+- [Week 4 (Sept 22–28)](#week-4-monday-22nd---sunday-28th-september)
+- [Week 3 (Sept 15–21)](#week-3-monday-15th---sunday-21st-september)
+
 ## (Week 3) Monday 15th - Sunday 21st September
 
 ![Screenshot of week 3 peer eval](./screenshots/Johanes-Sept15-21.PNG)
@@ -45,7 +66,7 @@ Week recap: Implementing the individual metrics analysis necessary for code proj
 
 Next week i plan to implement saving project metrics that was produced, into database. Might have to discussed further with teammates on incoming team meeting.
 
-## (Week 10) Monday 3rd November - Sundah 9th November
+## (Week 10) Monday 3rd November - Sunday 9th November
 
 ![Screenshot of week 10 peer eval](./screenshots/Johanes-Nov3-9.PNG)
 
@@ -61,7 +82,7 @@ Week recap: I created a new table to store the metrics, with foreign key to the 
 
 Next week plan: I plan to modify start menu to display options such as analyze new project, view old project, delete old project, and view resume items and view portfolio items
 
-# (Week 13) Monday 24th November - Sunday 30th November
+## (Week 13) Monday 24th November - Sunday 30th November
 ![Screenshot of week 13 peer eval](./screenshots/Johanes-Nov24-30.PNG)
 Week recap: I stored necessary code metrics that was not merged last week, and also stored the individual github analysis metrics. I started modifying the menu options to show 6 choices, retrieve old summaries, retrieve portfolio, retrieve resume, delete old insights, start new analysis, and quit. The implementation is done in src/menu to separate the menu files. I also implemented the retrieve old summaries menu by taking the summary_text in the project_summaries table. In further PR, my teammate modified the list menu to show another menu for requirement of milestone 1. 
 
@@ -69,7 +90,7 @@ I also reviewed Ammaar's PR, Adara's PR, and some other teammates.
 
 Next week plan: I plan to help with the video demo and presentation slides.
 
-# (Week 14) Monday 1st December - Sunday 7th December
+## (Week 14) Monday 1st December - Sunday 7th December
 ![Screenshot of week 14 peer eval](./screenshots/Johanes-Dec1-7.PNG)
 Week recap: I updated the System Architecture Diagram based on what we have currently in milestone 1. Added Skill Bucket Analysis box, Activity Type box, and updated the description. I also reorganized the flow of the diagram.
 Me and my teammate also worked on the presentation.
@@ -78,7 +99,7 @@ I reviewed some of my teammate's PR.
 
 Next week plan: No sprint next week. Preparing for final exam. 
 
-# (T2 Week 1) Monday 5th January - Sunday 11th January
+## (T2 Week 1) Monday 5th January - Sunday 11th January
 ![Screenshot of week 1_T2 peer eval](./screenshots/Johanes-Jan5-11.PNG)
 Week recap: 
 
@@ -92,3 +113,41 @@ I also gave feedback to Timmi's PR, finding the small error about the path issue
 
 
 Next week plan: Continue the unfinished feature, and continue implementing milestone requirement 3.
+
+## (T2 Week 2) Monday 12th January - Sunday 18th January
+![Screenshot of week 2_T2 peer eval](./screenshots/Johanes-Jan12-18.png)
+Week recap: 
+
+This week i worked on 2 PRs and reviewed 2 PRs:
+
+1st PR: ([#338])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/338)
+I continued the draft PR I made about editing date functionality. In the pr we also discussed about possible additional edge cases that I overlooked.
+
+2nd PR: ([#370])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/370)
+I implemented both POST and GET api endpoint for the consents, based on the user_id. 
+
+PR I reviewed: ([#372])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/372)
+I reviewed salma's PR about add images for project thumbnails and found a bug where the image not showing for big dimensions, which was addressed by resizing image into 800x800 if it exceeds the limit of 800x800. I also noticed other bug such as saving duplicates of edited thumbnails. I also gave feedback about the CLI menu.
+
+I also tested ivona's PR ([#374])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/374) for the endpoints of get skills, all resumes, and specific resume
+
+Next week plan: Continue implementing other api endpoints
+
+## (T2 Week 3) Monday 19th January - Sunday 25th January
+![Screenshot of week 3_T2 peer eval](./screenshots/Johanes-Jan19-25.png)
+Week recap: 
+
+This week i worked on 1 PR
+
+1st PR: ([#402])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/402)
+I continued implementing the endpoint for resume generating and resume editing. At first I was implementing it following the CLI menu flow. However, I got feedback to make it more flexible so that the user does not have to edit certain project, they can just edit the resume name, which is makes sense. 
+
+PR I reviewed: ([#392])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/392)
+I reviewed Timmi's PR about the authentication, giving feedback about password length and combination limitation to increase security
+
+I also tested Salma's PR ([#396])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/396) 
+Giving feedback about how the PDF should be formatted.
+
+I also reviewed some other PRs giving feedback about reminder on using Authorization: Bearer <token> instead of still using user id in the header.
+
+Next week plan: Continue implementing other api endpoints
