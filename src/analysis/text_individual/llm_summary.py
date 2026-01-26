@@ -49,6 +49,51 @@ def generate_text_llm_summary(text: str) -> str:
         print(f"Error generating summary: {e}")
         return "[Summary unavailable due to API error]"
     
+def extract_key_role_llm(contribution_description: str) -> str:
+    """
+    Extract a key role/title from the user's contribution description using LLM.
+    Returns a concise professional role or title (2-4 words).
+    """
+    if not contribution_description or not contribution_description.strip():
+        return ""
+
+    # Truncate to avoid exceeding token limits
+    contribution_description = contribution_description[:2000]
+
+    prompt = f"""Based on this contribution description, extract a concise professional role or title (2-4 words).
+
+Examples of good roles: "Backend Developer", "Frontend Lead", "Data Analyst", "Lead Author", "Research Coordinator", "Full-Stack Developer", "Project Manager", "UI Designer", "Technical Writer"
+
+Contribution description:
+{contribution_description}
+
+Return ONLY the role title, nothing else. Do not include any explanation or punctuation."""
+
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a precise role extractor. You identify professional roles "
+                        "from contribution descriptions. Always respond with just 2-4 words."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.1,
+            max_tokens=20,
+        )
+        role = completion.choices[0].message.content.strip()
+        # Clean up any quotes or extra punctuation
+        role = role.strip('"\'.,;:')
+        return role
+    except Exception as e:
+        print(f"Error extracting role: {e}")
+        return ""
+
+
 def generate_contribution_llm_summary(full_text, user_text):
     """
     LLM-generated FIRST-PERSON contribution summary.
