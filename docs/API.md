@@ -204,15 +204,18 @@ Handles project ingestion, analysis, classification, and metadata updates.
 Uploads are tracked as a resumable multi-step “wizard” using an `uploads` table. Each upload has:
 - an `upload_id`
 - a `status` indicating the current step
-- a `state` JSON blob storing wizard context (parsed layout, user selections, etc.)
+- a `state` JSON blob storing wizard context (parsed layout, user selections, dedup context, etc.)
+
 
 ### **Upload Status Values**
 
 `uploads.status` is one of:
 
 - `started` – upload session created
+- `needs_dedup` – user must resolve dedup “ask” cases (new in dedup refactor)
 - `needs_classification` – user must classify projects (individual vs collaborative)
 - `parsed` – classifications submitted (temporary state in current implementation)
+- `needs_project_types` – user must resolve code vs text for any mixed/unknown projects
 - `needs_file_roles` – user must select file roles (e.g., main text file) and related inputs
 - `needs_summaries` – user must provide manual summaries (when applicable)
 - `analyzing` – analysis running
@@ -223,10 +226,16 @@ Uploads are tracked as a resumable multi-step “wizard” using an `uploads` ta
 
 A typical flow for the first four endpoints:
 
-1. **Start upload**: `POST /projects/upload`  
-2. **Poll/resume**: `GET /projects/upload/{upload_id}`  
-3. **Submit classifications**: `POST /projects/upload/{upload_id}/classifications`  
-4. **Resolve mixed project types (optional)**: `POST /projects/upload/{upload_id}/project-types`  
+1. **Start upload**: `POST /projects/upload`
+   - parses ZIP and computes layout
+   - runs dedup:
+     - exact duplicates are automatically skipped
+     - “ask” cases are stored for UI resolution
+     - “new_version” suggestions may be recorded
+2. **Poll/resume**: `GET /projects/upload/{upload_id}`
+3. **Resolve dedup (optional)**: `POST /projects/upload/{upload_id}/dedup/resolve`
+4. **Submit classifications**: `POST /projects/upload/{upload_id}/classifications`
+5. **Resolve mixed project types (optional)**: `POST /projects/upload/{upload_id}/project-types` 
 
 ---
 
@@ -297,6 +306,32 @@ A typical flow for the first four endpoints:
             "error": null
         }
         ```
+
+- **Resolve Dedup (Optional, New)**
+  - **Endpoint**: `POST /projects/upload/{upload_id}/dedup/resolve`
+  - **Description**: Resolves dedup “ask” cases that were captured during upload parsing. This step happens before classifications and project types.
+  - **Headers**:
+    - `Authentication`: Bearer <token>
+  - **Path Params**:
+    - `upload_id` (integer, required)
+  - **Request Body**:
+    ```json
+    {
+      "decisions": {
+        "PlantGrowthStudy": "new_version"
+      }
+    }
+    ```
+  - **Allowed decision values**:
+    - `skip` – discard this project from the upload
+    - `new_project` – force register this as a new project snapshot
+    - `new_version` – force register this as a new version of the best matched existing project
+  - **Response Status**: `200 OK`
+  - **Response Notes**:
+    - Returns `409 Conflict` if upload status is not `needs_dedup`.
+    - Returns `422 Unprocessable Entity` if decisions are missing or contain unknown projects.
+    - On success, `state.dedup_asks` is cleared and `state.dedup_resolved` is stored.
+
 
 - **Submit Project Classifications**
     - **Endpoint**: `POST /projects/upload/{upload_id}/classifications`
@@ -570,7 +605,7 @@ Manages résumé-specific representations of projects.
         ```
     - **Error Responses**:
         - `400 Bad Request`: No valid projects found for the given IDs
-        - `401 Unauthorized`: Missing X-User-Id header
+        - `401 Unauthorized`: Missing Authentication header
         - `404 Not Found`: User not found
 
 - **Edit Resume**
@@ -654,8 +689,6 @@ Manages portfolio showcase configuration.
 
 ---
 
-## **Path Variables & Identifiers**
-
 ### Path Variables
 
 - `{project_id}` (integer): Maps to `project_summary_id` from the `project_summaries` table
@@ -737,6 +770,9 @@ Example:
         - `"text"`
         - `"code"`
 
+- **DedupResolveRequestDTO**
+  - `decisions` (object, required)  
+    Allowed values: `"skip"`, `"new_project"`, `"new_version"`
 
 - **SkillEventDTO**
     - `skill_name` (string, required)
