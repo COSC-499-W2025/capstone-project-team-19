@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 3 (Jan 19-25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12-18)](#t2-week-2-monday-january-12---sunday-january-18)
 - [Week 1 (Jan 5-11)](#t2-week-1-monday-january-5---sunday-january-11)
 
@@ -221,3 +222,19 @@ I reviewed as many PR's as my time allowed, making suggestions and raising quest
 The duplication check PR works off the PR I did last week where I implemented the main duplication flow ([#329](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/329)), and thus was a continuation based on the requested changes by the reviewers. 
 
 Next week I would like to continue implementing endpoints, but also take a look at the security of the system. Some parts of the system are not very secure such as the storage of the GitHub encryption key, authentication for the API endpoints (JWT Auth), and encrypting the database file. I hace created issues for these and plan on bringing them up to my team in our meeting on Monday.
+
+## (T2 Week 3) Monday January 19 - Sunday January 25
+
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Jan19-Jan25.PNG)
+
+This week, I implemented JWT authentication for FastAPI in PR #392. This ensures our API is secure and that no random users can gain access. To make this meaningful, I also had to implement passwords in the database and throughout the system. Without passwords, JWT authentication wouldn’t actually prove anything. If a user can simply claim to be user X with no way to verify it, the token is pointless, thus passwords are necessary.
+
+After this, I updated all existing API endpoints to use `Authorization: Bearer <token>` instead of `X-user-id`.
+
+Additionally, my team members noticed in PR #391 that small projects were sometimes being detected as duplicates. Since I originally implemented the duplication process, I decided to fix this edge case in PR #398. I added more scoring and detection logic specifically for small projects. That said, because small projects naturally contain very few files, our system may still miss some cases. There simply may not be enough data to confidently detect duplication, or (in rare cases), a very small project could be so similar to another that it gets flagged. At the very least, this PR improves the detection and hopefully makes the small case of it not being caught smaller.
+
+Last week, I mentioned wanting to look more deeply into the system’s security. After spending a couple of hours researching, I learned that because we decided on local storage, it’s inherently more difficult to secure the database file. No matter what we do, since the file lives on the user’s machine, they can ultimately do whatever they want with it. They don’t have access to other users’ data, so the only real downside is that they could mess with their own data or the schema, potentially breaking the software. For the scope of this project, this is a minor issue. Fixing it properly would require reworking the entire database system we’ve built over the past few months, so I left it as-is.
+
+I also looked into the security concern around how the GitHub key is stored. The main issue is that the key lives right beside the project on the user’s machine, meaning the user can simply find it if they want. While it would be interesting to move this to a more secure location, the team ultimately agreed it isn’t worth the time and complexity when we have other milestone requirements to meet.
+
+Next week, I plan to continue implementing API endpoints and take on any tasks assigned to me by the team.
