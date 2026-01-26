@@ -266,7 +266,7 @@ Handles GitHub OAuth authentication and repository linking for projects during t
         - `{upload_id}` (integer, required): The upload session ID
         - `{project}` (string, required): The project name
     - **Headers**: 
-        - `X-User-Id` (integer, required): Current user identifier
+        - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
     - **Request Body**:
         {
             "connect_now": true
@@ -312,7 +312,7 @@ Handles GitHub OAuth authentication and repository linking for projects during t
         - `{upload_id}` (integer, required): The upload session ID
         - `{project}` (string, required): The project name
     - **Headers**: 
-        - `X-User-Id` (integer, required): Current user identifier
+        - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
     - **Response Status**: `200 OK` on success, `401 Unauthorized` if GitHub is not connected, `404 Not Found` if upload doesn't exist
     - **Response Body**:
         ```json
@@ -340,7 +340,7 @@ Handles GitHub OAuth authentication and repository linking for projects during t
         - `{upload_id}` (integer, required): The upload session ID
         - `{project}` (string, required): The project name
     - **Headers**: 
-        - `X-User-Id` (integer, required): Current user identifier
+        - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
     - **Request Body**:
         {
             "repo_full_name": "owner/repo-name"
