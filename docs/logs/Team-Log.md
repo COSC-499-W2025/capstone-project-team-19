@@ -5,7 +5,7 @@
 ### Term 2
 - [Week 1 (Jan 5-11)](#term-2-week-1-monday-january-5---sunday-january-11)
 - [Week 2 (Jan 12-18)](#term-2-week-2-monday-january-12---sunday-january-18)
-- [Week 3 (Jan 19-25)](#term-2-week-2-monday-january-19---sunday-january-25)
+- [Week 3 (Jan 19-25)](#term-2-week-3-monday-january-19---sunday-january-25)
 
 ### Term 1
 - [Week 14 (Dec 1-7)](#week-14-monday-december-1---sunday-december-7)
