@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 3 (Jan 19-25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12-18)](#t2-week-2-monday-january-12---sunday-january-18)
 - [Week 1 (Jan 5-11)](#t2-week-1-monday-january-5---sunday-january-11)
 
@@ -182,3 +183,17 @@ For my second feature PR ([#355](https://github.com/COSC-499-W2025/capstone-proj
 For PR reviews, I reviewed Salma's resume export improvements ([#368](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/368)) which reworked the resume structure with proper sections (profile, skills, projects, education) and fixed bullet points to show clear contributions. I tested manually and confirmed the docx and PDF resumes match the CLI display with all tests passing. I reviewed Timmi's duplicate checking changes ([#363](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/363)) which fixed deduplication logic with path normalization for individual/collaborative folders and implemented two-tier logic for exact duplicates versus content matches, but I found that for small projects (< 10 files) it always asks whether the project is related even when similarity is 0% which could be avoided. I reviewed Timmi's API setup PR ([#357](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/357)) which introduced the API skeleton with FastAPI, created src/api/main.py with a health endpoint, established the service layer, and added comprehensive API.md documentation. I caught an edge case where non-existent user IDs returned empty results and the missing health endpoint in the documentation which Timmi fixed along with test cases.
 
 Next week's focus: I'll address follow-up items from the resume customization PR, key role PR (from week 1) and start working on the customize portfolio feature.
+
+## (T2 Week 3) Monday January 19 - Sunday January 25
+
+![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Jan19-Jan25.png)
+
+Week recap: This week I worked on two feature PRs and reviewed two PRs from teammates.
+
+For my first feature PR ([#393](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/393)), I enhanced the contribution bullets editing flow in the resume menu to let users choose whether to append new bullets to existing contributions or completely replace them. This was brought up by Salma in PR #355. Timmi requested clearer wording for the edit options, so I updated the menu text to be more user-friendly.
+
+For my second feature PR ([#394](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/394)), I implemented portfolio wording customization with local vs global overrides. Users can now edit display name, summary text, and contribution bullets from the portfolio view, choosing either portfolio-only changes or global updates shared with resumes. I addressed all feedback received: removed the redundant label, fixed the resume export issue where contribution bullets weren't reflecting edits due to reversed priority order, and added a portfolio submenu similar to the resume flow with options to view, edit wording, export, and return to main menu. I also added a function to clear portfolio overrides for global edits and added a test to cover this scenario.
+
+For PR reviews, I reviewed Timmi's JWT authentication and security PR ([#392](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/392)) which implements JWT authentication for the API with password hashing using bcrypt, /register and /login endpoints, and token validation across all protected endpoints. I tested the full flow with Postman and everything worked correctly. I suggested adding documentation about the JWT_SECRET environment variable and noted that POST /auth/register should return 201 Created instead of 200 OK per REST conventions. I reviewed Adara's deduplication API integration PR ([#391](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/391)) which integrates CLI deduplication logic into the API upload wizard so duplicates are handled before classification steps. I couldn't reproduce test cases 3 and 5 with small projects. Adara investigated and found it's an existing edge case in register_project() where uploads with fewer than 10 files hit the "small projects are noisy" branch and default to new_project unless similarity exceeds 0.85. I suggested adding test cases for the APIs, which Adara added, and then I approved.
+
+Next week's focus: I'll work on updating the "key role" functionality based on the conversation with the TA and professor in class, and also start working on the API routes.
