@@ -23,10 +23,7 @@ from src.insights.portfolio import (
     resolve_portfolio_summary_text,
 )
 from src.export.portfolio_docx import export_portfolio_to_docx
-from src.services.resume_overrides import (
-    apply_manual_overrides_to_resumes,
-    update_project_manual_overrides,
-)
+from src.services import resume_overrides
 
 
 def view_portfolio_menu(conn, user_id: int, username: str) -> None:
@@ -385,7 +382,7 @@ def _handle_edit_portfolio_wording(conn, user_id: int, username: str) -> bool:
         print("[Portfolio] Updated wording for this portfolio.")
         return True
 
-    manual_overrides = update_project_manual_overrides(conn, user_id, project_name, updates)
+    manual_overrides = resume_overrides.update_project_manual_overrides(conn, user_id, project_name, updates)
     if manual_overrides is None:
         print("Unable to update project summary for global overrides.")
         return False
@@ -394,7 +391,7 @@ def _handle_edit_portfolio_wording(conn, user_id: int, username: str) -> bool:
     # so the global manual_overrides take effect (they have lower priority).
     _clear_portfolio_overrides_for_fields(conn, user_id, project_name, set(updates.keys()))
 
-    apply_manual_overrides_to_resumes(
+    resume_overrides.apply_manual_overrides_to_resumes(
         conn,
         user_id,
         project_name,
