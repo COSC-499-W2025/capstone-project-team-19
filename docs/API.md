@@ -24,18 +24,20 @@ http://localhost:8000
 
 ## Table of Contents
 
-1. [Health](#health)
-2. [Projects](#projects)
-3. [GitHub Integration](#github-integration)
-4. [PrivacyConsent](#privacyconsent)
-5. [Skills](#skills)
-6. [Resume](#resume)
-7. [Portfolio](#portfolio)
-8. [Path Variables](#path-variables)  
-9. [DTO References](#dto-references)  
-10. [Best Practices](#best-practices)  
-11. [Error Codes](#error-codes)  
-12. [Example Error Response](#example-error-response)  
+1. [Health](#health
+2. [Authentication](#authentication)
+3. [Projects](#projects)
+4. [GitHub Integration](#github-integration)
+5. [Uploads Wizard](#uploads-wizard)
+6. [Privacy Consent](#privacyconsent)
+7. [Skills](#skills)
+8. [Resume](#resume)
+9. [Portfolio](#portfolio)
+10. [Path Variables](#path-variables)  
+11. [DTO References](#dto-references)  
+12. [Best Practices](#best-practices)  
+13. [Error Codes](#error-codes)  
+14. [Example Error Response](#example-error-response)  
 
 ---
 
@@ -57,6 +59,80 @@ Basic health checkpoint to verify the service is up and responding.
 
 ---
 
+## **Authentication** (Required)
+
+This API uses **Bearer token authentication**.
+
+### Rule
+All endpoints require an access token **except**:
+- `GET /health`
+- `POST /auth/register`
+- `POST /auth/login`
+
+### How to authenticate
+1. Register (once): `POST /auth/register`
+2. Login: `POST /auth/login` then receive `access_token`
+3. Send the token on every request:
+
+**Header**
+- `Authorization: Bearer <access_token>`
+
+### Example
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:8000/projects
+```
+
+### Error Responses
+- `401 Unauthorized` - missing/invalid/expired token
+
+**Base URL:** `/auth`
+
+Handles authentication and security for the endpoints. 
+
+### **Endpoints**
+
+- **Register**
+    - **Endpoint**: `POST /register`
+    - **Description**: Uploads username and password to database. Checks if the username already exists in the database.
+    - **Headers**: None.
+    - **Response Status**: `201 Created` on success, `400 Bad Request` if username already taken
+    - **Request Body**:
+    ```json
+        {
+            "username": "John Doe",
+            "password": "securepassword123"
+        }
+    ```
+    - **Response Body**:
+    ```json
+        {
+            "user_id": 1,
+            "username": "John Doe"
+        }
+    ```
+
+- **Login**
+    - **Endpoint**: `POST /login`
+    - **Description**: Takes in a username and password, checks that the username exists and the password is correct. Returns an authorization (bearer) token that expires after 60 minutes.
+    - **Headers**: None.
+    - **Response Status**: `200 OK` on success, `401 Unauthorized` if credentials are invalid
+    - **Request Body**: 
+    ```json
+        {
+            "username": "John Doe",
+            "password": "securepassword"
+        }
+    ```
+    - **Response Body**:
+    ```json
+        {
+            "access_token": "token",
+            "token_type": "bearer"
+        }
+    ```
+
+---
+
 ## **Projects**
 
 **Base URL:** `/projects`
@@ -68,8 +144,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
 - **List Projects**
     - **Endpoint**: `GET /projects`
     - **Description**: Returns a list of all projects belonging to the current user.
-    - **Headers**: 
-        - `X-User-Id` (integer, required): Current user identifier
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Response Status**: `200 OK`
     - **Response Body**:
         ```json
@@ -90,13 +165,12 @@ Handles project ingestion, analysis, classification, and metadata updates.
         }
         ```
 - **GET Project by ID**
-    - **Endpoint**: `GET /projects/{project_ID}`
+    - **Endpoint**: `GET /projects/{project_id}`
     - **Description**: Returns detailed information for a specific project, including full analysis data (languages, frameworks, skills, metrics, contributions).
     - **Path Parameters**:
-        - {projectId} (integer, required): The project_summary_id of the project to retrieve
-    - **Headers**: 
-        - `X-User-Id` (integer, required): Current user identifier
-    - **Response Status**: `200 OK` on sucess `404 Not Found` if project doesn't exist or belong to user
+        - `{project_id}` (integer, required): The project_summary_id of the project to retrieve
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
     - **Response DTO**: `ProjectDetailDTO`
     - **Response Body**:
         ```json
@@ -120,7 +194,62 @@ Handles project ingestion, analysis, classification, and metadata updates.
             },
             "error": null
         }
-        ```      
+        ```     
+        
+- **Start Upload**
+  - **Endpoint**: `POST /projects/upload`
+  - **Description**: Upload a ZIP file, save it to disk, parse the ZIP, and compute the project layout to determine the next wizard step. The server creates an `upload_id` and stores wizard state in the database.
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Request Body**: `multipart/form-data`
+      - `file` (file, required): ZIP file
+  - **Response Status**: `200 OK`
+
+- **Get Upload Status (Resume / Poll)**
+    - **Endpoint**: `GET /projects/upload/{upload_id}`
+    - **Description**: Returns the current upload wizard state for the given `upload_id`. Use this to resume a wizard flow or refresh the UI.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required): The ID of the upload session
+    - **Response Status**: `200 OK` on success, `404 Not Found` if upload doesn't exist or belong to user
+    -                 "upload_id": 5,
+                "status": "needs_classification",
+                "zip_name": "text_projects.zip",
+                "state": {
+                    "zip_name": "text_projects.zip",
+                    "zip_path": "/.../src/analysis/zip_data/_uploads/5_text_projects.zip",
+                    "layout": {
+                        "root_name": "text_projects",
+                        "auto_assignments": {},
+                        "pending_projects": [
+                            "PlantGrowthStudy"
+                        ],
+                        "stray_locations": []
+                    },
+                    "files_info_count": 8
+                }
+            },
+            "error": null
+        }
+        ```
+
+- **Submit Project Classifications**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/classifications`
+    - **Description**: Submit the user’s classification choices for projects detected within the uploaded ZIP. This replaces the CLI prompt where users classify each project as `individual` or `collaborative`.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `upload_id` (integer, required)
+    - **Request Body**:
+        ```json
+        {
+            "assignments": {
+                "Project A": "individual",
+                "Project B": "collaborative"
+                - **Submit Project Types (Code vs Text) (Optional)**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/project-types`
+    - **Description**: Submit user selections for project type (`code` vs `text`) when a detected project contains both code and text artifacts and requires a choice. The request must use project names exactly as reported in `state.layout.auto_assignments` and `state.layout.pending_projects`.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required): The ID of the upload session
 ---
 
 ## **GitHub Integration**
@@ -203,6 +332,7 @@ Handles GitHub OAuth authentication and repository linking for projects during t
         }
         ```
 
+
 - **Link GitHub Repository**
     - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project}/github/link`
     - **Description**: Links a GitHub repository to the project. The repository must be accessible by the authenticated user.
@@ -244,8 +374,7 @@ Handles user consent for internal processing and external integrations.
 - **Record Internal Processing Consent**
     - **Endpoint**: `POST /privacy-consent/internal`
     - **Description**: Records the user's consent for internal data processing
-    - **Headers**:
-        - `X-User-Id` (integer, required): Current user identifier
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request Body**:
         ```json
         {
@@ -270,8 +399,7 @@ Handles user consent for internal processing and external integrations.
 - **Record External Integration Consent**
     - **Endpoint**: `POST /privacy-consent/external`
     - **Description**: Records the user's consent for external service integrations
-    - **Headers**:
-        - `X-User-Id` (integer, required): Current user identifier
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request Body**:
         ```json
         {
@@ -296,8 +424,7 @@ Handles user consent for internal processing and external integrations.
 - **Get Consent Status**
     - **Endpoint**: `GET /privacy-consent/status`
     - **Description**: Retrieves the current consent status for the authenticated user (returns the most recent consent for each type)
-    - **Headers**:
-        - `X-User-Id` (integer, required): Current user identifier
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Response Status**: `200 OK`
     - **Response Body**:
         ```json
@@ -324,8 +451,7 @@ Exposes extracted skills and timelines.
 - **Get Skills**
     - **Endpoint**: `GET /skills`
     - **Description**: Returns a chronological list of all skills extracted from the user's projects, including skill level, score, and associated project information.
-    - **Headers**: 
-        - `X-User-Id` (integer, required): Current user identifier
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Response Status**: `200 OK`
     - **Response Body**: Uses `SkillsListDTO` containing a list of `SkillEventDTO` objects
         ```json
@@ -347,8 +473,6 @@ Exposes extracted skills and timelines.
         }
         ```
         
-
-
 ---
 
 ## **Resume**
@@ -361,8 +485,7 @@ Manages résumé-specific representations of projects.
 - **List Resumes**
     - **Endpoint**: `GET /resume`
     - **Description**: Returns a list of all résumé snapshots belonging to the current user.
-    - **Headers**: 
-        - `X-User-Id` (integer, required): Current user identifier
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Response Status**: `200 OK`
     - **Response Body**: Uses `ResumeListDTO` containing a list of `ResumeListItemDTO` objects
         ```json
@@ -382,12 +505,11 @@ Manages résumé-specific representations of projects.
         ```
 
 - **Get Resume by ID**
-    - **Endpoint**: `GET /resume/{resumeId}`
+    - **Endpoint**: `GET /resume/{resume_id}`
     - **Description**: Returns detailed information for a specific résumé snapshot, including all projects, aggregated skills, and rendered text.
     - **Path Parameters**:
-        - `{resumeId}` (integer, required): The ID of the résumé snapshot
-    - **Headers**: 
-        - `X-User-Id` (integer, required): Current user identifier
+        - `{resume_id}` (integer, required): The ID of the résumé snapshot
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Response Status**: `200 OK` or `404 Not Found`
     - **Response Body**: Uses `ResumeDetailDTO`
     ```json
@@ -443,10 +565,10 @@ Manages portfolio showcase configuration.
 
 ## **Path Variables**
 
-- `{id}` (integer, required): Generic resource identifier  
-- `{projectId}` (integer, required): The ID of a project  
-- `{resumeId}` (integer, required): The ID of a résumé  
-- `{portfolioId}` (integer, required): The ID of a portfolio  
+- `{project_id}` (integer, required): The ID of a project (project_summary_id)  
+- `{resume_id}` (integer, required): The ID of a résumé snapshot  
+- `{upload_id}` (integer, required): The ID of an upload session  
+- `{portfolio_id}` (integer, required): The ID of a portfolio (reserved for future use)  
 
 ---
 
@@ -526,7 +648,7 @@ Example:
     - `user_id` (int, required): User identifier
     - `internal_consent` (string, optional): Latest internal consent status, or null if not set
     - `external_consent` (string, optional): Latest external consent status, or null if not set
-- **ProjectDetailDTO** (used by `GET /projects/{projectId}`)
+- **ProjectDetailDTO** (used by `GET /projects/{project_id}`)
     - `project_summary_id` (int, required)
     - `project_name` (string, required)
     - `project_type` (string, optional)
@@ -575,6 +697,7 @@ Example:
 | 201  | Created – Resource successfully created  |
 | 204  | No Content – Resource deleted            |
 | 400  | Bad Request – Invalid input              |
+| 401  | Unauthorized – Missing/invalid/expired token |
 | 404  | Not Found – Resource not found           |
 | 409  | Conflict – Duplicate or invalid state    |
 | 422  | Unprocessable Entity – Validation error  |

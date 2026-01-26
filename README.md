@@ -49,7 +49,27 @@ pip install --upgrade pip           # Upgrade pip to avoid weird dependency erro
 pip install -r requirements.txt
 ```
 
-### 4. Run Tests
+### 4. Configure Environment Variables
+
+Copy the example environment file and update it with your configuration:
+
+```bash
+cp .env.example .env
+```
+
+**Important:** Make sure to add a secure `JWT_SECRET` value to your `.env` file. You can generate a secure random string using:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Then add it to your `.env`:
+
+```
+JWT_SECRET=<your_generated_secure_string>
+```
+
+### 5. Run Tests
 Ensure you are in the main directory `/capstone-project-team-19`.
 
 ```bash

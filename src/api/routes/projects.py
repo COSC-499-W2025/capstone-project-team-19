@@ -65,6 +65,7 @@ def post_upload_project_types(
 ):
     upload = submit_project_types(conn, user_id, upload_id, body.project_types)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
 @router.get("/{project_id}", response_model=ApiResponse[ProjectDetailDTO])
 def get_project(
     project_id: int,
