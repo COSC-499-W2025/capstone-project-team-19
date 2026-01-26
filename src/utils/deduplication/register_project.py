@@ -29,7 +29,17 @@ def register_project(conn, user_id: int, display_name: str, project_root: str, u
     if dupl_loose:
         project_key, version_key = dupl_loose
         # Content is identical but structure differs - ask user if it's a new version
-        return {"kind": "ask", "best_match_project_key": project_key, "similarity": 1.0, "file_count": len(entries)}
+        return {
+            "kind": "ask",
+            "best_match_project_key": project_key,
+            "similarity": 1.0,
+            "file_count": len(entries),
+            # include data so caller can materialize a new project/version
+            "upload_id": upload_id,
+            "fingerprint_strict": fp_strict,
+            "fingerprint_loose": fp_loose,
+            "entries": entries,
+        }
 
     # 3. Compare to existing projects (latest versions)
     latest = get_latest_versions(conn, user_id)
@@ -121,6 +131,11 @@ def register_project(conn, user_id: int, display_name: str, project_root: str, u
                 "file_count": len(entries),
                 "path_overlap": best_path_overlap,
                 "content_overlap": best_content_overlap,
+                # include data so caller can materialize a new project/version
+                "upload_id": upload_id,
+                "fingerprint_strict": fp_strict,
+                "fingerprint_loose": fp_loose,
+                "entries": entries,
             }
 
     # Scenario 3: new project
@@ -143,4 +158,9 @@ def register_project(conn, user_id: int, display_name: str, project_root: str, u
         "best_match_project_key": best_pk,
         "similarity": best_content_sim,
         "path_similarity": best_path_sim,
+        # include data so caller can materialize a new project/version
+        "upload_id": upload_id,
+        "fingerprint_strict": fp_strict,
+        "fingerprint_loose": fp_loose,
+        "entries": entries,
     }

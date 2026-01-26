@@ -56,8 +56,6 @@ def start_upload(conn, user_id: int, file: UploadFile) -> dict:
             "state": {"error": "No valid files were processed from ZIP."},
         }
 
-    store_parsed_files(conn, files_info, user_id)
-
     layout = analyze_project_layout(files_info)
 
     state = {

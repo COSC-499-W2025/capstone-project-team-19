@@ -15,7 +15,13 @@ try:
 except ModuleNotFoundError:
     import constants
 
-def _fetch_files(conn: sqlite3.Connection, user_id: int, project_name: str, only_text: bool = False) -> List[Dict[str, str]]:
+def _fetch_files(
+    conn: sqlite3.Connection,
+    user_id: int,
+    project_name: str,
+    only_text: bool = False,
+    version_key: int | None = None,
+) -> List[Dict[str, str]]:
     """
     Fetch files for a project from the 'files' table.
     Returns: [{'file_name','file_type','file_path'}, ...]
@@ -26,6 +32,9 @@ def _fetch_files(conn: sqlite3.Connection, user_id: int, project_name: str, only
         WHERE user_id = ? AND project_name = ?
     """
     params = [user_id, project_name]
+    if version_key is not None:
+        query += " AND version_key = ?"
+        params.append(version_key)
     if only_text:
         query += " AND file_type = 'text'"
 
