@@ -104,7 +104,7 @@ def test_exchange_code_missing_credentials(monkeypatch):
     with pytest.raises(ValueError, match="GITHUB_CLIENT_ID"):
         github_web_oauth.exchange_code_for_token("code123")
     
-        setup_module_vars(monkeypatch, client_secret=None)
+    setup_module_vars(monkeypatch, client_secret=None)
     with pytest.raises(ValueError, match="GITHUB_CLIENT_SECRET"):
         github_web_oauth.exchange_code_for_token("code123")
 
