@@ -132,6 +132,7 @@ from .project_summaries import (
     clear_all_project_dates,
     get_all_manual_dates,
     update_project_summary_json,
+    get_project_summary_by_id
 )
 
 # local git metrics for code collaborative projects
@@ -323,4 +324,5 @@ __all__ = [
     "get_project_thumbnail_path",
     "delete_project_thumbnail",
     "list_thumbnail_projects",
+    "get_project_summary_by_id"
 ]

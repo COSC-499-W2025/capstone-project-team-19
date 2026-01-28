@@ -4,7 +4,25 @@ from src.db import get_all_user_project_summaries, get_project_rank
 from src.models.project_summary import ProjectSummary
 from src.insights.rank_projects.extract_scores import _extract_base_scores, _extract_code_scores, _extract_text_scores
 
-def collect_project_data(conn, user_id, respect_manual_ranking=True):
+def collect_project_ranking_rows(conn, user_id, respect_manual_ranking: bool = True):
+    """
+    Return ranked project rows including DB ids + manual ranks.
+
+    Output shape (sorted):
+        [
+          {
+            "project_summary_id": int,
+            "project_name": str,
+            "score": float,
+            "manual_rank": Optional[int],
+          },
+          ...
+        ]
+
+    Notes:
+    - Sorting respects manual ranks first (ascending), then auto-score (descending).
+    - This function is intended for API use, CLI callers can keep using collect_project_data().
+    """
     project_scores = []
     rows = get_all_user_project_summaries(conn, user_id)
 
@@ -31,17 +49,26 @@ def collect_project_data(conn, user_id, respect_manual_ranking=True):
         if respect_manual_ranking:
             manual_rank = get_project_rank(conn, user_id, project_name)
 
-        project_scores.append((project_name, auto_score, manual_rank))
+        project_scores.append({
+            "project_summary_id": row.get("project_summary_id"),
+            "project_name": project_name,
+            "score": auto_score,
+            "manual_rank": manual_rank,
+        })
 
     # Sort: manual rankings first (ascending), then auto-score (descending)
     project_scores.sort(key=lambda x: (
-        0 if x[2] is not None else 1,  # Manual ranks come first
-        x[2] if x[2] is not None else 0,  # Lower rank number = higher priority
-        -x[1]  # Higher score = higher priority
+        0 if x["manual_rank"] is not None else 1,  # Manual ranks come first
+        x["manual_rank"] if x["manual_rank"] is not None else 0,  # Lower rank number = higher priority
+        -x["score"]  # Higher score = higher priority
     ))
 
+    return project_scores
+
+def collect_project_data(conn, user_id, respect_manual_ranking=True):
+    rows = collect_project_ranking_rows(conn, user_id, respect_manual_ranking=respect_manual_ranking)
     # Return just (name, score) for backward compatibility
-    return [(name, score) for name, score, _ in project_scores]
+    return [(r["project_name"], r["score"]) for r in rows]
 
 def combine_scores(results: list):
     """
