@@ -43,6 +43,48 @@ except ModuleNotFoundError:
     import constants
 
 
+def _prompt_contribution_and_key_role(
+    project_name: str,
+    current_ext_consent: str | None,
+    summary,
+    verb: str = "built",
+) -> None:
+    """
+    Prompt user for contribution description and extract/prompt for key role.
+
+    Used by both run_text_analysis and run_code_analysis for individual projects.
+
+    Args:
+        project_name: Name of the project
+        current_ext_consent: External consent status ("accepted", "rejected", or None)
+        summary: ProjectSummary object to populate
+        verb: Action verb for the prompt (e.g., "wrote" for text, "built" for code)
+    """
+    if summary is None:
+        return
+
+    # Prompt for contribution description
+    print(f"\nDescribe what you {verb}/accomplished in this project (1-3 sentences):")
+    try:
+        contribution_desc = input(f"Your work on '{project_name}': ").strip()
+    except EOFError:
+        contribution_desc = ""
+
+    if contribution_desc:
+        summary.contributions["manual_contribution_summary"] = contribution_desc
+    else:
+        summary.contributions["manual_contribution_summary"] = "[No description provided]"
+
+    # Extract or prompt for key role
+    if current_ext_consent == "accepted" and contribution_desc:
+        key_role = extract_key_role_llm(contribution_desc)
+    else:
+        key_role = prompt_key_role(project_name)
+
+    if key_role:
+        summary.contributions["key_role"] = key_role
+
+
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
     result = detect_project_type_auto(conn, user_id, assignments)
 
@@ -643,27 +685,7 @@ def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=True, summary=summary, version_key=version_key)
 
     # --- Individual text project contribution description and key role ---
-    if summary is not None:
-        # Prompt for contribution description
-        print("\nDescribe what you wrote/accomplished in this project (1-3 sentences):")
-        try:
-            contribution_desc = input(f"Your work on '{project_name}': ").strip()
-        except EOFError:
-            contribution_desc = ""
-
-        if contribution_desc:
-            summary.contributions["manual_contribution_summary"] = contribution_desc
-        else:
-            summary.contributions["manual_contribution_summary"] = "[No description provided]"
-
-        # Extract or prompt for key role
-        if current_ext_consent == "accepted" and contribution_desc:
-            key_role = extract_key_role_llm(contribution_desc)
-        else:
-            key_role = prompt_key_role(project_name)
-
-        if key_role:
-            summary.contributions["key_role"] = key_role
+    _prompt_contribution_and_key_role(project_name, current_ext_consent, summary, verb="wrote")
 
 
 def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
@@ -723,27 +745,7 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
             summary.summary_text = prompt_manual_code_project_summary(project_name)
 
     # --- Individual project contribution description and key role ---
-    if summary is not None:
-        # Prompt for contribution description
-        print("\nDescribe what you built/accomplished in this project (1-3 sentences):")
-        try:
-            contribution_desc = input(f"Your work on '{project_name}': ").strip()
-        except EOFError:
-            contribution_desc = ""
-
-        if contribution_desc:
-            summary.contributions["manual_contribution_summary"] = contribution_desc
-        else:
-            summary.contributions["manual_contribution_summary"] = "[No description provided]"
-
-        # Extract or prompt for key role
-        if current_ext_consent == "accepted" and contribution_desc:
-            key_role = extract_key_role_llm(contribution_desc)
-        else:
-            key_role = prompt_key_role(project_name)
-
-        if key_role:
-            summary.contributions["key_role"] = key_role
+    _prompt_contribution_and_key_role(project_name, current_ext_consent, summary, verb="built")
 
 
 def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text, summary=None, version_key: int | None = None):
