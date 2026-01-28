@@ -141,99 +141,153 @@ class TestPromptKeyRole:
 # Integration tests for key role storage
 # -----------------------------
 class TestKeyRoleIntegration:
-    """Integration tests for key role storage in project summaries."""
+    """Integration tests for key role storage via actual analysis entrypoints."""
 
-    def test_key_role_stored_in_code_collaborative_summary(self):
-        """Test that key_role is stored in contributions for code collaborative projects."""
+    def test_key_role_set_via_llm_in_individual_text_analysis(self, monkeypatch):
+        """Test that key_role is set via LLM when consent accepted in run_text_analysis."""
+        from src.project_analysis import run_text_analysis
         from src.models.project_summary import ProjectSummary
 
         summary = ProjectSummary(
             project_name="TestProject",
-            project_type="code",
-            project_mode="collaborative"
+            project_type="text",
+            project_mode="individual"
         )
 
-        # Simulate key role being added (as done in code_collaborative_analysis.py)
-        summary.contributions["key_role"] = "Backend Developer"
-        summary.contributions["manual_contribution_summary"] = "Implemented REST API"
+        # Mock file fetching to return a simple text file
+        mock_files = [{"file_name": "doc.txt", "content": "Sample text content"}]
+        monkeypatch.setattr(
+            "src.project_analysis._fetch_files",
+            lambda *args, **kwargs: mock_files
+        )
+
+        # Mock analyze_files to do nothing
+        monkeypatch.setattr("src.project_analysis.analyze_files", lambda *args, **kwargs: None)
+
+        # Mock input to provide contribution description
+        inputs = iter(["I wrote the research methodology section"])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        # Mock extract_key_role_llm to return a role
+        monkeypatch.setattr(
+            "src.project_analysis.extract_key_role_llm",
+            lambda desc: "Lead Researcher"
+        )
+
+        run_text_analysis(
+            conn=MagicMock(),
+            user_id=1,
+            project_name="TestProject",
+            current_ext_consent="accepted",
+            zip_path="/fake/path.zip",
+            summary=summary
+        )
+
+        assert summary.contributions["key_role"] == "Lead Researcher"
+        assert summary.contributions["manual_contribution_summary"] == "I wrote the research methodology section"
+
+    def test_key_role_set_via_manual_prompt_in_individual_code_analysis(self, monkeypatch):
+        """Test that key_role is set via manual prompt when consent rejected in run_code_analysis."""
+        from src.project_analysis import run_code_analysis
+        from src.models.project_summary import ProjectSummary
+
+        summary = ProjectSummary(
+            project_name="CodeProject",
+            project_type="code",
+            project_mode="individual"
+        )
+
+        # Mock dependencies
+        monkeypatch.setattr("src.project_analysis.detect_languages", lambda *args: ["Python"])
+        monkeypatch.setattr("src.project_analysis.detect_frameworks", lambda *args: ["Flask"])
+        monkeypatch.setattr("src.project_analysis._fetch_files", lambda *args, **kwargs: [{"file_name": "main.py", "content": "print('hi')"}])
+        monkeypatch.setattr("src.project_analysis.analyze_files", lambda *args, **kwargs: None)
+        monkeypatch.setattr("src.project_analysis.build_activity_summary", lambda *args, **kwargs: MagicMock(per_activity={}))
+        monkeypatch.setattr("src.project_analysis.format_activity_summary", lambda x: "")
+        monkeypatch.setattr("src.project_analysis.store_code_activity_metrics", lambda *args: None)
+        monkeypatch.setattr("src.project_analysis.extract_skills", lambda *args: None)
+        # Mock prompt_manual_code_project_summary which is called when consent rejected
+        monkeypatch.setattr("src.project_analysis.prompt_manual_code_project_summary", lambda proj: "Manual summary")
+
+        # Mock input: contribution desc (empty to skip LLM path)
+        inputs = iter([""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        # Mock prompt_key_role to return the manual input
+        monkeypatch.setattr(
+            "src.project_analysis.prompt_key_role",
+            lambda proj: "Backend Developer"
+        )
+
+        run_code_analysis(
+            conn=MagicMock(),
+            user_id=1,
+            project_name="CodeProject",
+            current_ext_consent="rejected",
+            zip_path="/fake/path.zip",
+            summary=summary
+        )
 
         assert summary.contributions["key_role"] == "Backend Developer"
-        assert "manual_contribution_summary" in summary.contributions
 
-    def test_key_role_stored_in_text_collaborative_summary(self):
-        """Test that key_role is stored in contributions for text collaborative projects."""
-        from src.models.project_summary import ProjectSummary
-
-        summary = ProjectSummary(
-            project_name="ResearchPaper",
-            project_type="text",
-            project_mode="collaborative"
-        )
-
-        summary.contributions["key_role"] = "Lead Author"
-        summary.contributions["manual_contribution_summary"] = "Wrote the introduction and methods sections"
-
-        assert summary.contributions["key_role"] == "Lead Author"
-
-    def test_key_role_stored_in_individual_code_summary(self):
-        """Test that key_role is stored in contributions for individual code projects."""
-        from src.models.project_summary import ProjectSummary
-
-        summary = ProjectSummary(
-            project_name="PersonalProject",
-            project_type="code",
-            project_mode="individual"
-        )
-
-        summary.contributions["key_role"] = "Full-Stack Developer"
-        summary.contributions["manual_contribution_summary"] = "Built the entire application"
-
-        assert summary.contributions["key_role"] == "Full-Stack Developer"
-
-    def test_key_role_stored_in_individual_text_summary(self):
-        """Test that key_role is stored in contributions for individual text projects."""
-        from src.models.project_summary import ProjectSummary
-
-        summary = ProjectSummary(
-            project_name="Thesis",
-            project_type="text",
-            project_mode="individual"
-        )
-
-        summary.contributions["key_role"] = "Researcher"
-        summary.contributions["manual_contribution_summary"] = "Conducted all research and writing"
-
-        assert summary.contributions["key_role"] == "Researcher"
-
-    def test_key_role_not_stored_when_empty(self):
-        """Test that empty key_role is not stored in contributions."""
+    def test_key_role_not_set_when_empty_in_individual_text_analysis(self, monkeypatch):
+        """Test that key_role is not set when user provides empty role."""
+        from src.project_analysis import run_text_analysis
         from src.models.project_summary import ProjectSummary
 
         summary = ProjectSummary(
             project_name="TestProject",
-            project_type="code",
-            project_mode="collaborative"
+            project_type="text",
+            project_mode="individual"
         )
 
-        # Simulate the conditional storage (as done in the analysis files)
-        key_role = ""
-        if key_role:
-            summary.contributions["key_role"] = key_role
+        monkeypatch.setattr("src.project_analysis._fetch_files", lambda *args, **kwargs: [{"file_name": "doc.txt", "content": "text"}])
+        monkeypatch.setattr("src.project_analysis.analyze_files", lambda *args, **kwargs: None)
+
+        # Empty contribution description
+        inputs = iter([""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        # prompt_key_role returns empty string
+        monkeypatch.setattr("src.project_analysis.prompt_key_role", lambda proj: "")
+
+        run_text_analysis(
+            conn=MagicMock(),
+            user_id=1,
+            project_name="TestProject",
+            current_ext_consent="rejected",
+            zip_path="/fake/path.zip",
+            summary=summary
+        )
 
         assert "key_role" not in summary.contributions
 
-    def test_key_role_serializes_to_json(self):
-        """Test that key_role is properly serialized when converting to JSON."""
+    def test_key_role_serializes_to_json_after_analysis(self, monkeypatch):
+        """Test that key_role from analysis is properly serialized to JSON."""
         import json
+        from src.project_analysis import run_text_analysis
         from src.models.project_summary import ProjectSummary
 
         summary = ProjectSummary(
             project_name="TestProject",
-            project_type="code",
-            project_mode="collaborative"
+            project_type="text",
+            project_mode="individual"
         )
-        summary.contributions["key_role"] = "DevOps Engineer"
-        summary.contributions["manual_contribution_summary"] = "Set up CI/CD pipeline"
+
+        monkeypatch.setattr("src.project_analysis._fetch_files", lambda *args, **kwargs: [{"file_name": "doc.txt", "content": "text"}])
+        monkeypatch.setattr("src.project_analysis.analyze_files", lambda *args, **kwargs: None)
+        inputs = iter(["Set up CI/CD pipeline"])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+        monkeypatch.setattr("src.project_analysis.extract_key_role_llm", lambda desc: "DevOps Engineer")
+
+        run_text_analysis(
+            conn=MagicMock(),
+            user_id=1,
+            project_name="TestProject",
+            current_ext_consent="accepted",
+            zip_path="/fake/path.zip",
+            summary=summary
+        )
 
         json_data = json.dumps(summary.__dict__, default=str)
         parsed = json.loads(json_data)
@@ -245,37 +299,165 @@ class TestKeyRoleIntegration:
 # Tests for LLM vs Manual selection logic
 # -----------------------------
 class TestKeyRoleSelectionLogic:
-    """Tests for the logic that decides between LLM extraction and manual prompt."""
+    """Tests for the actual LLM vs manual selection logic in analysis functions."""
 
-    def test_uses_llm_when_consent_accepted_and_description_exists(self):
-        """Test that LLM is used when external consent is accepted and description exists."""
-        # This tests the logic pattern used in the analysis files
-        external_consent = "accepted"
-        contribution_desc = "I implemented the authentication system"
+    def test_llm_called_when_consent_accepted_and_description_exists(self, monkeypatch):
+        """Test that extract_key_role_llm is called when consent accepted and description exists."""
+        from src.project_analysis import run_text_analysis
+        from src.models.project_summary import ProjectSummary
 
-        use_llm = external_consent == "accepted" and bool(contribution_desc)
-        assert use_llm is True
+        summary = ProjectSummary(
+            project_name="TestProject",
+            project_type="text",
+            project_mode="individual"
+        )
 
-    def test_uses_manual_when_consent_rejected(self):
-        """Test that manual prompt is used when consent is rejected."""
-        external_consent = "rejected"
-        contribution_desc = "I implemented the authentication system"
+        monkeypatch.setattr("src.project_analysis._fetch_files", lambda *args, **kwargs: [{"file_name": "doc.txt", "content": "text"}])
+        monkeypatch.setattr("src.project_analysis.analyze_files", lambda *args, **kwargs: None)
 
-        use_llm = external_consent == "accepted" and bool(contribution_desc)
-        assert use_llm is False
+        inputs = iter(["I implemented the authentication system"])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
 
-    def test_uses_manual_when_description_empty(self):
-        """Test that manual prompt is used when description is empty."""
-        external_consent = "accepted"
-        contribution_desc = ""
+        llm_called = {"value": False}
 
-        use_llm = external_consent == "accepted" and bool(contribution_desc)
-        assert use_llm is False
+        def mock_extract_key_role_llm(desc):
+            llm_called["value"] = True
+            return "Auth Developer"
 
-    def test_uses_manual_when_consent_none(self):
-        """Test that manual prompt is used when consent is None."""
-        external_consent = None
-        contribution_desc = "Some description"
+        monkeypatch.setattr("src.project_analysis.extract_key_role_llm", mock_extract_key_role_llm)
+        monkeypatch.setattr("src.project_analysis.prompt_key_role", lambda proj: "Should Not Be Called")
 
-        use_llm = external_consent == "accepted" and bool(contribution_desc)
-        assert use_llm is False
+        run_text_analysis(
+            conn=MagicMock(),
+            user_id=1,
+            project_name="TestProject",
+            current_ext_consent="accepted",
+            zip_path="/fake/path.zip",
+            summary=summary
+        )
+
+        assert llm_called["value"] is True
+        assert summary.contributions["key_role"] == "Auth Developer"
+
+    def test_manual_prompt_called_when_consent_rejected(self, monkeypatch):
+        """Test that prompt_key_role is called when consent is rejected."""
+        from src.project_analysis import run_code_analysis
+        from src.models.project_summary import ProjectSummary
+
+        summary = ProjectSummary(
+            project_name="TestProject",
+            project_type="code",
+            project_mode="individual"
+        )
+
+        monkeypatch.setattr("src.project_analysis.detect_languages", lambda *args: ["Python"])
+        monkeypatch.setattr("src.project_analysis.detect_frameworks", lambda *args: [])
+        monkeypatch.setattr("src.project_analysis._fetch_files", lambda *args, **kwargs: [{"file_name": "main.py", "content": "x=1"}])
+        monkeypatch.setattr("src.project_analysis.analyze_files", lambda *args, **kwargs: None)
+        monkeypatch.setattr("src.project_analysis.build_activity_summary", lambda *args, **kwargs: MagicMock(per_activity={}))
+        monkeypatch.setattr("src.project_analysis.format_activity_summary", lambda x: "")
+        monkeypatch.setattr("src.project_analysis.store_code_activity_metrics", lambda *args: None)
+        monkeypatch.setattr("src.project_analysis.extract_skills", lambda *args: None)
+        # Mock prompt_manual_code_project_summary which is called when consent rejected
+        monkeypatch.setattr("src.project_analysis.prompt_manual_code_project_summary", lambda proj: "Manual summary")
+
+        inputs = iter(["I built the backend"])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        prompt_called = {"value": False}
+
+        def mock_prompt_key_role(proj):
+            prompt_called["value"] = True
+            return "Backend Dev"
+
+        monkeypatch.setattr("src.project_analysis.extract_key_role_llm", lambda desc: "Should Not Be Called")
+        monkeypatch.setattr("src.project_analysis.prompt_key_role", mock_prompt_key_role)
+
+        run_code_analysis(
+            conn=MagicMock(),
+            user_id=1,
+            project_name="TestProject",
+            current_ext_consent="rejected",
+            zip_path="/fake/path.zip",
+            summary=summary
+        )
+
+        assert prompt_called["value"] is True
+        assert summary.contributions["key_role"] == "Backend Dev"
+
+    def test_manual_prompt_called_when_description_empty(self, monkeypatch):
+        """Test that prompt_key_role is called when description is empty (even with consent)."""
+        from src.project_analysis import run_text_analysis
+        from src.models.project_summary import ProjectSummary
+
+        summary = ProjectSummary(
+            project_name="TestProject",
+            project_type="text",
+            project_mode="individual"
+        )
+
+        monkeypatch.setattr("src.project_analysis._fetch_files", lambda *args, **kwargs: [{"file_name": "doc.txt", "content": "text"}])
+        monkeypatch.setattr("src.project_analysis.analyze_files", lambda *args, **kwargs: None)
+
+        # Empty description
+        inputs = iter([""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        prompt_called = {"value": False}
+
+        def mock_prompt_key_role(proj):
+            prompt_called["value"] = True
+            return "Manual Role"
+
+        monkeypatch.setattr("src.project_analysis.extract_key_role_llm", lambda desc: "LLM Should Not Be Called")
+        monkeypatch.setattr("src.project_analysis.prompt_key_role", mock_prompt_key_role)
+
+        run_text_analysis(
+            conn=MagicMock(),
+            user_id=1,
+            project_name="TestProject",
+            current_ext_consent="accepted",  # consent accepted but no description
+            zip_path="/fake/path.zip",
+            summary=summary
+        )
+
+        assert prompt_called["value"] is True
+        assert summary.contributions["key_role"] == "Manual Role"
+
+    def test_manual_prompt_called_when_consent_none(self, monkeypatch):
+        """Test that prompt_key_role is called when consent is None."""
+        from src.project_analysis import run_text_analysis
+        from src.models.project_summary import ProjectSummary
+
+        summary = ProjectSummary(
+            project_name="TestProject",
+            project_type="text",
+            project_mode="individual"
+        )
+
+        monkeypatch.setattr("src.project_analysis._fetch_files", lambda *args, **kwargs: [{"file_name": "doc.txt", "content": "text"}])
+        monkeypatch.setattr("src.project_analysis.analyze_files", lambda *args, **kwargs: None)
+
+        inputs = iter(["Some description"])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        prompt_called = {"value": False}
+
+        def mock_prompt_key_role(proj):
+            prompt_called["value"] = True
+            return "Prompted Role"
+
+        monkeypatch.setattr("src.project_analysis.extract_key_role_llm", lambda desc: "LLM Should Not Be Called")
+        monkeypatch.setattr("src.project_analysis.prompt_key_role", mock_prompt_key_role)
+
+        run_text_analysis(
+            conn=MagicMock(),
+            user_id=1,
+            project_name="TestProject",
+            current_ext_consent=None,  # consent is None
+            zip_path="/fake/path.zip",
+            summary=summary
+        )
+
+        assert prompt_called["value"] is True
+        assert summary.contributions["key_role"] == "Prompted Role"
