@@ -195,6 +195,92 @@ Handles project ingestion, analysis, classification, and metadata updates.
             "error": null
         }
         ```          
+
+- **Project Ranking**
+    - **Description**: Returns/updates the ranked list of projects (with computed scores) and supports manual ranking overrides.
+    - **Ranking Behavior**:
+        - Projects with a `manual_rank` are shown first, sorted by `manual_rank` ascending (1 = highest priority)
+        - Remaining projects are sorted by computed `score` descending
+
+    - **Get Project Ranking**
+        - **Endpoint**: `GET /projects/ranking`
+        - **Description**: Returns all projects in ranked order with computed `score` and (optional) `manual_rank`.
+        - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+        - **Request Body**: None
+        - **Response Status**: `200 OK`
+        - **Response DTO**: `ProjectRankingDTO`
+        - **Response Body**:
+            ```json
+            {
+              "success": true,
+              "data": {
+                "rankings": [
+                  {
+                    "rank": 1,
+                    "project_summary_id": 9,
+                    "project_name": "My Project",
+                    "score": 0.732,
+                    "manual_rank": 1
+                  },
+                  {
+                    "rank": 2,
+                    "project_summary_id": 10,
+                    "project_name": "Another Project",
+                    "score": 0.701,
+                    "manual_rank": null
+                  }
+                ]
+              },
+              "error": null
+            }
+            ```
+
+    - **Replace Entire Ranking Order**
+        - **Endpoint**: `PUT /projects/ranking`
+        - **Description**: Replaces the entire manual ranking order. The request must include **every** project for the user (no extras, no missing). The list order becomes `manual_rank = 1..N`.
+        - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+        - **Request DTO**: `ReplaceProjectRankingRequestDTO`
+        - **Request Body**:
+            ```json
+            {
+              "project_ids": [10, 9, 12]
+            }
+            ```
+        - **Response Status**: `200 OK`
+        - **Response DTO**: `ProjectRankingDTO`
+        - **Error Responses**:
+            - `400 Bad Request` if `project_ids` contains duplicates OR does not include every project_summary_id for the user
+            - `404 Not Found` if any `project_id` does not exist / does not belong to the user
+
+    - **Patch One Project’s Manual Rank**
+        - **Endpoint**: `PATCH /projects/{project_id}/ranking`
+        - **Description**: Sets or clears the manual rank for one project.
+        - **Path Parameters**:
+            - `{project_id}` (integer, required): The `project_summary_id` of the project to update
+        - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+        - **Request DTO**: `PatchProjectRankingRequestDTO`
+        - **Request Body**:
+            - Set manual rank:
+                ```json
+                { "rank": 1 }
+                ```
+            - Clear manual rank (revert to auto ranking for that project):
+                ```json
+                { "rank": null }
+                ```
+        - **Response Status**: `200 OK`
+        - **Response DTO**: `ProjectRankingDTO`
+        - **Error Responses**:
+            - `400 Bad Request` if `rank` is less than 1, or greater than the user’s project count
+            - `404 Not Found` if the project does not exist / does not belong to the user
+
+    - **Reset Ranking to Automatic**
+        - **Endpoint**: `POST /projects/ranking/reset`
+        - **Description**: Clears all manual ranking overrides for the user (reverts to pure computed ranking).
+        - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+        - **Request Body**: None
+        - **Response Status**: `200 OK`
+        - **Response DTO**: `ProjectRankingDTO`
 ---
 
 ## **Uploads Wizard**
@@ -993,6 +1079,22 @@ Example:
     - `skills` (array of strings, optional)
     - `metrics` (object, optional)
     - `contributions` (object, optional)
+
+- **ProjectRankingItemDTO** (used by `GET /projects/ranking`)
+    - `rank` (int, required): The 1-based position in the returned ranking list
+    - `project_summary_id` (int, required)
+    - `project_name` (string, required)
+    - `score` (float, required)
+    - `manual_rank` (int, optional): The stored manual rank override (if set)
+
+- **ProjectRankingDTO**
+    - `rankings` (List[ProjectRankingItemDTO], required)
+
+- **ReplaceProjectRankingRequestDTO** (used by `PUT /projects/ranking`)
+    - `project_ids` (List[int], required): Must include every `project_summary_id` for the user exactly once
+
+- **PatchProjectRankingRequestDTO** (used by `PATCH /projects/{project_id}/ranking`)
+    - `rank` (int, optional): Set a manual rank. Use `null` to clear manual rank.
 
 - **GitHubStartRequest**
     - `connect_now` (boolean, required)
