@@ -81,9 +81,12 @@ def test_analyze_collaborative_text_project(
 
     # Simulated user inputs in order:
     # 1) sections selected → "1,2"
-    # 2) supporting text files → "1" (first_draft)
-    # 3) CSV files → "1"
-    fake_inputs = iter(["1,2", "1", "1", "1"])
+    # 2) contribution description → "My contribution"
+    # 3) supporting text files → "1" (first_draft)
+    # 4) CSV files → "1"
+    # 5) manual contribution summary type → "1"
+    # 6) key role → "Developer"
+    fake_inputs = iter(["1,2", "My contribution", "1", "1", "1", "Developer"])
 
     with (
         patch("src.analysis.text_collaborative.text_collab_analysis.run_text_pipeline",
