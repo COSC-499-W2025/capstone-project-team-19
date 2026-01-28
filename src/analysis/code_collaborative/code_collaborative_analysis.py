@@ -29,6 +29,7 @@ from src.analysis.code_collaborative.github_collaboration.print_collaboration_su
 from src.analysis.code_collaborative.no_git_contributions import (
     store_contributions_without_git,
 )
+from src.analysis.text_individual.llm_summary import extract_key_role_llm
 
 from .code_collaborative_analysis_helper import (
     DEBUG,
@@ -226,7 +227,6 @@ def analyze_code_project(conn: sqlite3.Connection,
             external_consent = None
 
         if external_consent == "accepted" and desc_clean:
-            from src.analysis.text_individual.llm_summary import extract_key_role_llm
             key_role = extract_key_role_llm(desc_clean)
         else:
             key_role = prompt_key_role(project_name)
