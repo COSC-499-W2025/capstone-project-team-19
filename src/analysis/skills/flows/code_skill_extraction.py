@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, List
+from typing import Dict, List, Any, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.analysis.skills.utils.skill_levels import score_to_level
@@ -9,6 +9,12 @@ from src.analysis.skills.buckets.code_buckets import CODE_SKILL_BUCKETS
 from src.db import insert_project_skill
 from src.utils.helpers import read_file_content
 from src.utils.extension_catalog import code_extensions
+
+try:
+    from src.db.project_feedback import upsert_project_feedback
+except Exception:
+    upsert_project_feedback = None
+
 try:
     from src import constants
 except ModuleNotFoundError:
@@ -117,6 +123,59 @@ _DETECTOR_FEEDBACK: Dict[str, Dict[str, str]] = {
     },
 }
 
+def _emit_feedback(
+    feedback_ctx: Optional[Dict[str, Any]],
+    *,
+    skill_name: str,
+    file_name: str,
+    criterion_key: str,
+    criterion_label: str,
+    expected: str,
+    observed: Dict[str, Any],
+    suggestion: str,
+) -> None:
+    """Same shape/pattern as text_detectors.py (callback-first, DB fallback)."""
+    if not feedback_ctx:
+        return
+
+    cb = feedback_ctx.get("add_feedback")
+    if callable(cb):
+        cb(
+            skill_name,
+            file_name,
+            criterion_key,
+            criterion_label,
+            expected,
+            observed,
+            suggestion,
+        )
+        return
+
+    if upsert_project_feedback is None:
+        return
+
+    conn = feedback_ctx.get("conn")
+    user_id = feedback_ctx.get("user_id")
+    project_name = feedback_ctx.get("project_name")
+    project_type = feedback_ctx.get("project_type") or "code"
+
+    if conn is None or user_id is None or not project_name:
+        return
+
+    upsert_project_feedback(
+        conn=conn,
+        user_id=int(user_id),
+        project_name=str(project_name),
+        project_type=str(project_type),
+        skill_name=str(skill_name),
+        file_name=str(file_name or ""),
+        criterion_key=str(criterion_key),
+        criterion_label=str(criterion_label),
+        expected=str(expected),
+        observed=observed or {},
+        suggestion=str(suggestion),
+    )
+
 def extract_code_skills(conn, user_id, project_name, classification, files):
     """
     Main entry point for extracting code-related skills from a project.
@@ -128,6 +187,8 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
         5. Compute skill scores + levels
         6. Save results in the DB
     """
+
+    
 
     if constants.VERBOSE:
         print(f"\n[SKILL EXTRACTION] Running CODE skill extraction for {project_name}")
