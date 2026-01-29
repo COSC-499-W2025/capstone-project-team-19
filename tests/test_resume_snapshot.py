@@ -492,6 +492,68 @@ def test_create_resume_stores_contribution_bullets(monkeypatch):
     assert data["projects"][0]["contribution_bullets"] == ["Contributed X."]
 
 
+def test_create_resume_stores_key_role(monkeypatch):
+    """Test that key_role from project summary is stored in resume snapshot."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    # Create a summary with key_role in contributions
+    summary_with_key_role = {
+        "project_name": "projA",
+        "project_type": "code",
+        "project_mode": "individual",
+        "languages": ["Python"],
+        "frameworks": [],
+        "summary_text": "A test project",
+        "skills": [],
+        "metrics": {},
+        "contributions": {"key_role": "Backend Developer"},
+        "created_at": datetime.now(UTC).isoformat(),
+        "project_id": None,
+    }
+
+    save_project_summary(conn, user_id, "projA", json.dumps(summary_with_key_role))
+
+    monkeypatch.setattr(resume_flow, "collect_project_data", lambda c, u: [("projA", 1.0)])
+    monkeypatch.setattr(helpers, "build_contribution_bullets", lambda c, u, p: [])
+    monkeypatch.setattr("builtins.input", lambda _: "")
+
+    resume_flow._handle_create_resume(conn, user_id, "TestUser")
+
+    snap = get_resume_snapshot(conn, user_id, list_resumes(conn, user_id)[0]["id"])
+    data = json.loads(snap["resume_json"])
+
+    assert data["projects"][0]["key_role"] == "Backend Developer"
+
+
+def test_create_resume_without_key_role(monkeypatch):
+    """Test that resume snapshot works without key_role in contributions."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    # Summary without key_role
+    save_project_summary(
+        conn,
+        user_id,
+        "projA",
+        _make_summary("projA", project_type="code", project_mode="individual"),
+    )
+
+    monkeypatch.setattr(resume_flow, "collect_project_data", lambda c, u: [("projA", 1.0)])
+    monkeypatch.setattr(helpers, "build_contribution_bullets", lambda c, u, p: [])
+    monkeypatch.setattr("builtins.input", lambda _: "")
+
+    resume_flow._handle_create_resume(conn, user_id, "TestUser")
+
+    snap = get_resume_snapshot(conn, user_id, list_resumes(conn, user_id)[0]["id"])
+    data = json.loads(snap["resume_json"])
+
+    # key_role should not be present when not set in source
+    assert "key_role" not in data["projects"][0]
+
+
 class TestCollectSectionUpdatesContributionBullets:
     """Tests for add-on vs rewrite choice in _collect_section_updates."""
 
