@@ -68,6 +68,17 @@ def resolve_resume_contribution_bullets(entry: Dict[str, Any]) -> List[str]:
     return []
 
 
+def resolve_resume_key_role(entry: Dict[str, Any]) -> str | None:
+    """Resolve key role with priority: resume override → manual override → base."""
+    resume_role = _clean_str(entry.get("resume_key_role_override"))
+    if resume_role:
+        return resume_role
+    manual_role = _clean_str(entry.get("manual_key_role"))
+    if manual_role:
+        return manual_role
+    return _clean_str(entry.get("key_role"))
+
+
 def resume_only_override_fields(entry: Dict[str, Any]) -> set[str]:
     fields: set[str] = set()
     if _clean_str(entry.get("resume_display_name_override")):
@@ -76,6 +87,8 @@ def resume_only_override_fields(entry: Dict[str, Any]) -> set[str]:
         fields.add("summary_text")
     if _clean_bullets(entry.get("resume_contributions_override")):
         fields.add("contribution_bullets")
+    if _clean_str(entry.get("resume_key_role_override")):
+        fields.add("key_role")
     return fields
 
 
@@ -105,6 +118,11 @@ def apply_resume_only_updates(entry: dict, updates: dict[str, Any]) -> None:
             entry["resume_contributions_override"] = updates["contribution_bullets"]
         else:
             entry.pop("resume_contributions_override", None)
+    if "key_role" in updates:
+        if updates["key_role"]:
+            entry["resume_key_role_override"] = updates["key_role"]
+        else:
+            entry.pop("resume_key_role_override", None)
 
 
 def apply_manual_overrides(entry: Dict[str, Any], overrides: Dict[str, Any]) -> None:
@@ -119,6 +137,9 @@ def apply_manual_overrides(entry: Dict[str, Any], overrides: Dict[str, Any]) -> 
     bullets = _clean_bullets(overrides.get("contribution_bullets"))
     if bullets:
         entry["manual_contribution_bullets"] = bullets
+    key_role = _clean_str(overrides.get("key_role"))
+    if key_role:
+        entry["manual_key_role"] = key_role
 
 
 
@@ -151,6 +172,9 @@ def build_resume_snapshot(summaries: List[ProjectSummary]) -> Dict[str, Any]:
             "summary_text": ps.summary_text,
             "skills": _extract_skills(ps, map_labels=True),
         }
+        # Extract key_role from contributions
+        if ps.contributions and ps.contributions.get("key_role"):
+            entry["key_role"] = ps.contributions["key_role"]
         if ps.manual_overrides:
             apply_manual_overrides(entry, ps.manual_overrides)
 
@@ -225,6 +249,11 @@ def render_snapshot(
 
 def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
     lines = [f"\n- {resolve_resume_display_name(p)}"]
+
+    # Display key role if available
+    key_role = resolve_resume_key_role(p)
+    if key_role:
+        lines.append(f"  Role: {key_role}")
 
     langs = p.get("languages") or []
     fws = p.get("frameworks") or []

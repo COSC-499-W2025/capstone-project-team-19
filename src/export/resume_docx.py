@@ -86,6 +86,17 @@ def _resume_contribution_bullets(p: Dict[str, Any]) -> List[str]:
     return []
 
 
+def _resume_key_role(p: Dict[str, Any]) -> str | None:
+    """Resolve key role with priority: resume override → manual override → base."""
+    resume_role = _clean_str(p.get("resume_key_role_override"))
+    if resume_role:
+        return resume_role
+    manual_role = _clean_str(p.get("manual_key_role"))
+    if manual_role:
+        return manual_role
+    return _clean_str(p.get("key_role"))
+
+
 def _safe_slug(s: str) -> str:
     s = (s or "").strip().lower()
     s = re.sub(r"[^a-z0-9]+", "_", s)
@@ -190,8 +201,8 @@ def export_resume_record_to_docx(
         project_name = _resume_display_name(p)
         doc.add_heading(project_name, level=2)
 
-        # role placeholder (until Milestone 3 UI)
-        role = (p.get("role") or "[Role]").strip()  # you can rename key later
+        # Resolve key role with priority: resume override → manual override → base
+        role = _resume_key_role(p) or "[Role]"
 
         date_line = format_date_range(p.get("start_date"), p.get("end_date"))
         add_role_date_line(doc, role, date_line)

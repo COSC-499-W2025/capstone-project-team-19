@@ -1,7 +1,8 @@
 import re
 import textwrap
 from src.analysis.text_individual.text_analyze import run_text_pipeline
-from src.analysis.text_individual.llm_summary import generate_text_llm_summary, generate_contribution_llm_summary
+from src.analysis.text_individual.llm_summary import generate_text_llm_summary, generate_contribution_llm_summary, extract_key_role_llm
+from src.analysis.code_collaborative.code_collaborative_analysis_helper import prompt_key_role
 from src.analysis.text_individual.alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.utils.helpers import normalize_pdf_paragraphs
@@ -139,6 +140,18 @@ def analyze_collaborative_text_project(
 
     user_sections = [sections[i - 1] for i in indices]
 
+    # ---------------------------------------------------------
+    # STEP 2A — Ask for contribution description (like code projects)
+    # ---------------------------------------------------------
+    print("\nDescribe your personal contributions to this collaborative text project.")
+    print("Write 1-3 sentences. Be specific about sections/content you primarily worked on.")
+    try:
+        contribution_desc = input(f"Your contribution to '{project_name}': ").strip()
+    except EOFError:
+        contribution_desc = ""
+
+    # Store the description
+    summary_obj.contributions["manual_contribution_summary"] = contribution_desc or "[No manual contribution summary provided]"
 
     contributed_text = "\n\n".join(s["text"] for s in user_sections)
     
@@ -313,6 +326,18 @@ def analyze_collaborative_text_project(
     print(textwrap.fill(contribution_summary, width=80, subsequent_indent="  "))
     if constants.VERBOSE:
         print("="*80 + "\n")
+
+    # ---------------------------------------------------------
+    # STEP 4B — Extract or prompt for key role
+    # ---------------------------------------------------------
+    contribution_desc = summary_obj.contributions.get("manual_contribution_summary", "")
+    if external_consent == "accepted" and contribution_desc and contribution_desc != "[No manual contribution summary provided]":
+        key_role = extract_key_role_llm(contribution_desc)
+    else:
+        key_role = prompt_key_role(project_name)
+
+    if key_role:
+        summary_obj.contributions["key_role"] = key_role
 
     # ---------------------------------------------------------
     # STEP 5 — Run skill detectors on ONLY the contributed text

@@ -492,6 +492,68 @@ def test_create_resume_stores_contribution_bullets(monkeypatch):
     assert data["projects"][0]["contribution_bullets"] == ["Contributed X."]
 
 
+def test_create_resume_stores_key_role(monkeypatch):
+    """Test that key_role from project summary is stored in resume snapshot."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    # Create a summary with key_role in contributions
+    summary_with_key_role = {
+        "project_name": "projA",
+        "project_type": "code",
+        "project_mode": "individual",
+        "languages": ["Python"],
+        "frameworks": [],
+        "summary_text": "A test project",
+        "skills": [],
+        "metrics": {},
+        "contributions": {"key_role": "Backend Developer"},
+        "created_at": datetime.now(UTC).isoformat(),
+        "project_id": None,
+    }
+
+    save_project_summary(conn, user_id, "projA", json.dumps(summary_with_key_role))
+
+    monkeypatch.setattr(resume_flow, "collect_project_data", lambda c, u: [("projA", 1.0)])
+    monkeypatch.setattr(helpers, "build_contribution_bullets", lambda c, u, p: [])
+    monkeypatch.setattr("builtins.input", lambda _: "")
+
+    resume_flow._handle_create_resume(conn, user_id, "TestUser")
+
+    snap = get_resume_snapshot(conn, user_id, list_resumes(conn, user_id)[0]["id"])
+    data = json.loads(snap["resume_json"])
+
+    assert data["projects"][0]["key_role"] == "Backend Developer"
+
+
+def test_create_resume_without_key_role(monkeypatch):
+    """Test that resume snapshot works without key_role in contributions."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    # Summary without key_role
+    save_project_summary(
+        conn,
+        user_id,
+        "projA",
+        _make_summary("projA", project_type="code", project_mode="individual"),
+    )
+
+    monkeypatch.setattr(resume_flow, "collect_project_data", lambda c, u: [("projA", 1.0)])
+    monkeypatch.setattr(helpers, "build_contribution_bullets", lambda c, u, p: [])
+    monkeypatch.setattr("builtins.input", lambda _: "")
+
+    resume_flow._handle_create_resume(conn, user_id, "TestUser")
+
+    snap = get_resume_snapshot(conn, user_id, list_resumes(conn, user_id)[0]["id"])
+    data = json.loads(snap["resume_json"])
+
+    # key_role should not be present when not set in source
+    assert "key_role" not in data["projects"][0]
+
+
 class TestCollectSectionUpdatesContributionBullets:
     """Tests for add-on vs rewrite choice in _collect_section_updates."""
 
@@ -626,3 +688,136 @@ class TestCollectSectionUpdatesContributionBullets:
             "Base bullet 2",
             "New bullet",
         ]
+
+
+class TestKeyRoleInResume:
+    """Tests for key role display and editing in resume snapshots."""
+
+    def test_resolve_resume_key_role_returns_base(self):
+        """Test that resolve_resume_key_role returns base key_role."""
+        entry = {"key_role": "Backend Developer"}
+        assert helpers.resolve_resume_key_role(entry) == "Backend Developer"
+
+    def test_resolve_resume_key_role_manual_overrides_base(self):
+        """Test that manual_key_role takes priority over base key_role."""
+        entry = {
+            "key_role": "Backend Developer",
+            "manual_key_role": "Senior Backend Developer",
+        }
+        assert helpers.resolve_resume_key_role(entry) == "Senior Backend Developer"
+
+    def test_resolve_resume_key_role_resume_overrides_all(self):
+        """Test that resume_key_role_override takes highest priority."""
+        entry = {
+            "key_role": "Backend Developer",
+            "manual_key_role": "Senior Backend Developer",
+            "resume_key_role_override": "Lead Backend Engineer",
+        }
+        assert helpers.resolve_resume_key_role(entry) == "Lead Backend Engineer"
+
+    def test_resolve_resume_key_role_returns_none_when_empty(self):
+        """Test that resolve_resume_key_role returns None when no role set."""
+        entry = {}
+        assert helpers.resolve_resume_key_role(entry) is None
+
+    def test_build_resume_snapshot_includes_key_role(self):
+        """Test that build_resume_snapshot extracts key_role from contributions."""
+        from src.models.project_summary import ProjectSummary
+
+        ps = ProjectSummary(
+            project_name="TestProject",
+            project_type="code",
+            project_mode="individual",
+        )
+        ps.contributions["key_role"] = "Full Stack Developer"
+
+        snapshot = helpers.build_resume_snapshot([ps])
+
+        assert len(snapshot["projects"]) == 1
+        assert snapshot["projects"][0]["key_role"] == "Full Stack Developer"
+
+    def test_build_resume_snapshot_without_key_role(self):
+        """Test that build_resume_snapshot works without key_role."""
+        from src.models.project_summary import ProjectSummary
+
+        ps = ProjectSummary(
+            project_name="TestProject",
+            project_type="code",
+            project_mode="individual",
+        )
+
+        snapshot = helpers.build_resume_snapshot([ps])
+
+        assert len(snapshot["projects"]) == 1
+        assert "key_role" not in snapshot["projects"][0]
+
+    def test_apply_resume_only_updates_sets_key_role_override(self):
+        """Test that apply_resume_only_updates sets resume_key_role_override."""
+        entry = {"key_role": "Developer"}
+        helpers.apply_resume_only_updates(entry, {"key_role": "Senior Developer"})
+
+        assert entry["resume_key_role_override"] == "Senior Developer"
+        assert entry["key_role"] == "Developer"  # Base unchanged
+
+    def test_apply_resume_only_updates_clears_key_role_override(self):
+        """Test that apply_resume_only_updates clears resume_key_role_override when None."""
+        entry = {"key_role": "Developer", "resume_key_role_override": "Senior Developer"}
+        helpers.apply_resume_only_updates(entry, {"key_role": None})
+
+        assert "resume_key_role_override" not in entry
+        assert entry["key_role"] == "Developer"  # Base unchanged
+
+    def test_resume_only_override_fields_includes_key_role(self):
+        """Test that resume_only_override_fields tracks key_role."""
+        entry = {"resume_key_role_override": "Lead Developer"}
+        fields = helpers.resume_only_override_fields(entry)
+
+        assert "key_role" in fields
+
+    def test_apply_manual_overrides_sets_manual_key_role(self):
+        """Test that apply_manual_overrides sets manual_key_role."""
+        entry = {}
+        helpers.apply_manual_overrides(entry, {"key_role": "Tech Lead"})
+
+        assert entry["manual_key_role"] == "Tech Lead"
+
+    def test_collect_section_updates_key_role(self, monkeypatch):
+        """Test that _collect_section_updates handles key_role input."""
+        project_entry = {"key_role": "Developer"}
+        # Simulate: enter new key role
+        inputs = iter(["Senior Developer"])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        updates = resume_flow._collect_section_updates({"key_role"}, project_entry)
+
+        assert updates["key_role"] == "Senior Developer"
+
+    def test_collect_section_updates_key_role_clear(self, monkeypatch):
+        """Test that _collect_section_updates clears key_role when blank."""
+        project_entry = {"key_role": "Developer"}
+        # Simulate: enter blank (clear)
+        inputs = iter([""])
+        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+        updates = resume_flow._collect_section_updates({"key_role"}, project_entry)
+
+        assert updates["key_role"] is None
+
+    def test_prompt_edit_sections_includes_key_role(self, monkeypatch):
+        """Test that _prompt_edit_sections includes key_role as option 4."""
+        # Simulate: select option "4" for key_role
+        monkeypatch.setattr("builtins.input", lambda _: "4")
+
+        sections = resume_flow._prompt_edit_sections()
+
+        assert "key_role" in sections
+
+    def test_prompt_edit_sections_multiple_including_key_role(self, monkeypatch):
+        """Test selecting multiple sections including key_role."""
+        # Simulate: select options "1,4" for summary_text and key_role
+        monkeypatch.setattr("builtins.input", lambda _: "1,4")
+
+        sections = resume_flow._prompt_edit_sections()
+
+        assert "summary_text" in sections
+        assert "key_role" in sections

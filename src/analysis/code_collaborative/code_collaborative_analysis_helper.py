@@ -651,7 +651,7 @@ def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) ->
         print("\nCONTRIBUTION SUMMARIES")
     print("Describe only your personal contributions to the collaborative project.")
     print("Write 1-3 sentences. Be specific about features/files you primarily worked on.")
-    print("Example: “Implemented login API in FastAPI and wrote tests for user_routes.py”.\n")
+    print('Example: "Implemented login API in FastAPI and wrote tests for user_routes.py".\n')
 
     descs = {}
     for project_name, _ in projects:
@@ -662,6 +662,19 @@ def prompt_collab_descriptions(projects: list[tuple[str, str]], consent: str) ->
         descs[project_name] = user_input or "[No manual contribution summary provided]"
 
     return descs
+
+
+def prompt_key_role(project_name: str) -> str:
+    """
+    Ask user for their role/title on a project.
+    Returns the role string entered by the user.
+    """
+    print("\nExamples: 'Backend Developer', 'Lead Author', 'Data Analyst', 'Full-Stack Developer'")
+    try:
+        role = input(f"Your role on '{project_name}': ").strip()
+    except EOFError:
+        role = ""
+    return role
 
 
 
