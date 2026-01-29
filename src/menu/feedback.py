@@ -3,8 +3,7 @@ from typing import List, Dict, Any, Optional
 
 
 NO_FEEDBACK_MSG = (
-    "Feedbacks for Code-based projects coming soon. "
-    "This system currently only gives feedback for Text-based projects."
+    "No feedback found for this project yet. "
 )
 
 
