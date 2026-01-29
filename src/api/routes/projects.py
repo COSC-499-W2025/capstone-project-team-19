@@ -120,7 +120,8 @@ def post_upload_project_main_file(
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
 
 
-@router.get("/{project_id}", response_model=ApiResponse[ProjectDetailDTO])
+# Use `:int` so non-integers like "ranking" never match this route.
+@router.get("/{project_id:int}", response_model=ApiResponse[ProjectDetailDTO])
 def get_project(
     project_id: int,
     user_id: int = Depends(get_current_user_id),

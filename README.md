@@ -92,6 +92,8 @@ cd capstone-project-team-19
 
 # Start the API server
 uvicorn src.api.main:app --reload
+
+> **Note:** If you are getting an error regarding `JWT_SECRET` missing from the .env file but it exists, try running `uvicorn src.api.main:app --reload --env-file .env` instead.
 ```
 
 The API will be available at `http://localhost:8000`. You can:
