@@ -961,6 +961,42 @@ Example:
     - `project_mode` (string, optional)
     - `created_at` (string, optional)
 
+### **Projects DTOs**
+
+- **ProjectListDTO** (used by `GET /projects`)
+    - `projects` (List[ProjectListItemDTO], required)
+
+- **ProjectDetailDTO** (used by `GET /projects/{project_id}`)
+    - `project_summary_id` (int, required)
+    - `project_name` (string, required)
+    - `project_type` (string, optional)
+    - `project_mode` (string, optional)
+    - `created_at` (string, optional)
+    - `summary_text` (string, optional)
+    - `languages` (array of strings, optional)
+    - `frameworks` (array of strings, optional)
+    - `skills` (array of strings, optional)
+    - `metrics` (object, optional)
+    - `contributions` (object, optional)
+
+### **Project Ranking DTOs**
+
+- **ProjectRankingItemDTO** (used by `GET /projects/ranking`)
+    - `rank` (int, required): The 1-based position in the returned ranking list
+    - `project_summary_id` (int, required)
+    - `project_name` (string, required)
+    - `score` (float, required)
+    - `manual_rank` (int, optional): The stored manual rank override (if set)
+
+- **ProjectRankingDTO**
+    - `rankings` (List[ProjectRankingItemDTO], required)
+
+- **ReplaceProjectRankingRequestDTO** (used by `PUT /projects/ranking`)
+    - `project_ids` (List[int], required): Must include every `project_summary_id` for the user exactly once
+
+- **PatchProjectRankingRequestDTO** (used by `PATCH /projects/{project_id}/ranking`)
+    - `rank` (int, optional): Set a manual rank. Use `null` to clear manual rank.
+
 ### **Upload Wizard DTOs (Projects Upload)**
 
 - **UploadDTO**
@@ -996,6 +1032,8 @@ Example:
   - `decisions` (object, required)  
     Allowed values: `"skip"`, `"new_project"`, `"new_version"`
 
+### **Skills DTOs**
+
 - **SkillEventDTO**
     - `skill_name` (string, required)
     - `level` (string, required)
@@ -1006,6 +1044,8 @@ Example:
 
 - **SkillsListDTO**
     - `skills` (List[SkillEventDTO], required)
+
+### **Resume DTOs**
 
 - **ResumeListItemDTO**
     - `id` (int, required)
@@ -1054,6 +1094,8 @@ Example:
     - `contribution_bullets` (List[string], optional): Custom contribution bullet points
     - `contribution_edit_mode` (string, optional): `"replace"` (default) or `"append"`
 
+### **Privacy Consent DTOs**
+
 - **ConsentRequestDTO**
     - `status` (string, required): Must be either "accepted" or "rejected"
 
@@ -1067,34 +1109,8 @@ Example:
     - `user_id` (int, required): User identifier
     - `internal_consent` (string, optional): Latest internal consent status, or null if not set
     - `external_consent` (string, optional): Latest external consent status, or null if not set
-- **ProjectDetailDTO** (used by `GET /projects/{project_id}`)
-    - `project_summary_id` (int, required)
-    - `project_name` (string, required)
-    - `project_type` (string, optional)
-    - `project_mode` (string, optional)
-    - `created_at` (string, optional)
-    - `summary_text` (string, optional)
-    - `languages` (array of strings, optional)
-    - `frameworks` (array of strings, optional)
-    - `skills` (array of strings, optional)
-    - `metrics` (object, optional)
-    - `contributions` (object, optional)
 
-- **ProjectRankingItemDTO** (used by `GET /projects/ranking`)
-    - `rank` (int, required): The 1-based position in the returned ranking list
-    - `project_summary_id` (int, required)
-    - `project_name` (string, required)
-    - `score` (float, required)
-    - `manual_rank` (int, optional): The stored manual rank override (if set)
-
-- **ProjectRankingDTO**
-    - `rankings` (List[ProjectRankingItemDTO], required)
-
-- **ReplaceProjectRankingRequestDTO** (used by `PUT /projects/ranking`)
-    - `project_ids` (List[int], required): Must include every `project_summary_id` for the user exactly once
-
-- **PatchProjectRankingRequestDTO** (used by `PATCH /projects/{project_id}/ranking`)
-    - `rank` (int, optional): Set a manual rank. Use `null` to clear manual rank.
+### **GitHub Integration DTOs**
 
 - **GitHubStartRequest**
     - `connect_now` (boolean, required)
