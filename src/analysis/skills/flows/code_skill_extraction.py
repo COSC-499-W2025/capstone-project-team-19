@@ -188,10 +188,41 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
         6. Save results in the DB
     """
 
-    
-
     if constants.VERBOSE:
         print(f"\n[SKILL EXTRACTION] Running CODE skill extraction for {project_name}")
+        
+    feedback_ctx: Optional[Dict[str, Any]] = None
+    if upsert_project_feedback is not None and conn is not None:
+        def _add_feedback(
+            skill_name: str,
+            file_name: str,
+            criterion_key: str,
+            criterion_label: str,
+            expected: str,
+            observed: Dict[str, Any],
+            suggestion: str,
+        ) -> None:
+            upsert_project_feedback(
+                conn=conn,
+                user_id=int(user_id),
+                project_name=str(project_name),
+                project_type="code",
+                skill_name=str(skill_name),
+                file_name=str(file_name or ""),
+                criterion_key=str(criterion_key),
+                criterion_label=str(criterion_label),
+                expected=str(expected),
+                observed=observed or {},
+                suggestion=str(suggestion),
+            )
+
+        feedback_ctx = {
+            "conn": conn,
+            "user_id": user_id,
+            "project_name": project_name,
+            "project_type": "code",
+            "add_feedback": _add_feedback,
+        }
 
     # Get zip_name to construct correct file paths
     zip_name = _get_zip_name(conn, user_id, project_name)
@@ -203,6 +234,20 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
     # Filter files before processing (skip non-code and very large files)
     code_exts = code_extensions()
     filtered_files = _filter_code_files(files, code_exts)
+    
+    # If no code files, emit a single “general” feedback row (mirrors text no-content feedback)
+    if not filtered_files:
+        _emit_feedback(
+            feedback_ctx,
+            skill_name="general",
+            file_name="",
+            criterion_key="code.no_code_files",
+            criterion_label="Include supported source code files",
+            expected="At least 1 recognized code file (supported extension)",
+            observed={"file_count": 0},
+            suggestion="Include source files with supported extensions (e.g., .py/.java/.js) so code skills can be detected.",
+        )
+        return
     
     # Run filename-only detectors first (don't need content)
     filename_detectors = ["detect_test_files", "detect_ci_workflows", "detect_mvc_folders"]
