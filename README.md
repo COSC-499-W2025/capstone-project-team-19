@@ -91,7 +91,7 @@ Runs the system as a web service using FastAPI. Use this mode when you want to c
 cd capstone-project-team-19
 
 # Start the API server
-uvicorn src.api.main:app --reload
+uvicorn src.api.main:app --reload --env-file .env
 ```
 
 The API will be available at `http://localhost:8000`. You can:
