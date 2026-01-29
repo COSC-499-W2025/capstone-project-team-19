@@ -22,6 +22,7 @@ from .helpers import (
     resolve_resume_display_name,
     resolve_resume_summary_text,
     resolve_resume_contribution_bullets,
+    resolve_resume_key_role,
     apply_resume_only_updates,
 )
 from src.export.resume_docx import export_resume_record_to_docx
@@ -302,6 +303,7 @@ def _prompt_edit_sections() -> set[str]:
     print("1. Summary text")
     print("2. Contribution bullets")
     print("3. Display name")
+    print("4. Key role")
     raw = input("Select one or more (e.g., 1,3) or press Enter to cancel: ").strip()
     if not raw:
         return set()
@@ -313,6 +315,8 @@ def _prompt_edit_sections() -> set[str]:
             selected.add("contribution_bullets")
         elif token == "3":
             selected.add("display_name")
+        elif token == "4":
+            selected.add("key_role")
     return selected
 
 
@@ -324,6 +328,12 @@ def _collect_section_updates(sections: set[str], project_entry: dict | None = No
     if "summary_text" in sections:
         summary_text = input("New summary text (leave blank to clear): ").strip()
         updates["summary_text"] = summary_text or None
+    if "key_role" in sections:
+        current_role = resolve_resume_key_role(project_entry) if project_entry else None
+        if current_role:
+            print(f"\nCurrent key role: {current_role}")
+        key_role = input("New key role (e.g., 'Backend Developer', leave blank to clear): ").strip()
+        updates["key_role"] = key_role or None
     if "contribution_bullets" in sections:
         current_bullets: list[str] = []
         if project_entry:

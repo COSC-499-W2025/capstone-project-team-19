@@ -114,6 +114,16 @@ def apply_manual_overrides_to_resumes(
                         entry.pop("manual_contribution_bullets", None)
                     changed = True
 
+            if "key_role" in field_set:
+                if "key_role" in resume_only_fields and not force_update:
+                    skipped_fields += 1
+                else:
+                    if overrides.get("key_role"):
+                        entry["manual_key_role"] = overrides["key_role"]
+                    else:
+                        entry.pop("manual_key_role", None)
+                    changed = True
+
         if changed:
             rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
             updated_json = json.dumps(snapshot, default=str)
