@@ -66,3 +66,27 @@ def delete_project_everywhere(
         )
 
     conn.commit()
+    
+def delete_dedup_records_for_project(conn, user_id: int, project_name: str) -> None:
+    row = conn.execute(
+        "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
+        (user_id, project_name),
+    ).fetchone()
+    if not row:
+        return
+
+    project_key = row[0]
+
+    # delete children first
+    conn.execute(
+        """
+        DELETE FROM version_files
+        WHERE version_key IN (
+            SELECT version_key FROM project_versions WHERE project_key = ?
+        )
+        """,
+        (project_key,),
+    )
+    conn.execute("DELETE FROM project_versions WHERE project_key = ?", (project_key,))
+    conn.execute("DELETE FROM projects WHERE project_key = ?", (project_key,))
+
