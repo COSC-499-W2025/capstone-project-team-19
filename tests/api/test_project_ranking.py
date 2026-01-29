@@ -71,6 +71,57 @@ def test_patch_project_ranking_sets_manual_rank(client, auth_headers, seed_conn)
     assert rankings[0]["manual_rank"] == 1
 
 
+def test_patch_project_ranking_move_down_reorders_properly(client, auth_headers, seed_conn):
+    user_id = 1
+    seed_conn.execute(
+        "INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)"
+    )
+    seed_conn.commit()
+
+    a_id = _seed_project(seed_conn, user_id, "ProjectA", 1.0)
+    b_id = _seed_project(seed_conn, user_id, "ProjectB", 0.9)
+    c_id = _seed_project(seed_conn, user_id, "ProjectC", 0.8)
+
+    # Set explicit initial order: A, B, C
+    res = client.put("/projects/ranking", json={"project_ids": [a_id, b_id, c_id]}, headers=auth_headers)
+    assert res.status_code == 200
+    assert [r["project_name"] for r in res.json()["data"]["rankings"]] == ["ProjectA", "ProjectB", "ProjectC"]
+
+    # Move A down to position 3 -> expected B, C, A
+    res2 = client.patch(f"/projects/{a_id}/ranking", json={"rank": 3}, headers=auth_headers)
+    assert res2.status_code == 200
+    assert [r["project_name"] for r in res2.json()["data"]["rankings"]] == ["ProjectB", "ProjectC", "ProjectA"]
+    assert [r["manual_rank"] for r in res2.json()["data"]["rankings"]] == [1, 2, 3]
+
+
+def test_patch_project_ranking_requires_rank_field(client, auth_headers, seed_conn):
+    user_id = 1
+    seed_conn.execute(
+        "INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)"
+    )
+    seed_conn.commit()
+
+    a_id = _seed_project(seed_conn, user_id, "ProjectA", 1.0)
+
+    # Missing "rank" should be a validation error (prevents accidental clearing)
+    res = client.patch(f"/projects/{a_id}/ranking", json={}, headers=auth_headers)
+    assert res.status_code == 422
+
+
+def test_put_projects_ranking_rejects_duplicate_ids(client, auth_headers, seed_conn):
+    user_id = 1
+    seed_conn.execute(
+        "INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)"
+    )
+    seed_conn.commit()
+
+    a_id = _seed_project(seed_conn, user_id, "ProjectA", 1.0)
+    b_id = _seed_project(seed_conn, user_id, "ProjectB", 0.1)
+
+    res = client.put("/projects/ranking", json={"project_ids": [a_id, a_id]}, headers=auth_headers)
+    assert res.status_code == 400
+
+
 def test_put_projects_ranking_replaces_entire_order(client, auth_headers, seed_conn):
     user_id = 1
     seed_conn.execute(

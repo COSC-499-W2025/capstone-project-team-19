@@ -268,6 +268,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
                 ```json
                 { "rank": null }
                 ```
+            - Note: `rank` is required (sending `{}` will return `422 Unprocessable Entity`)
         - **Response Status**: `200 OK`
         - **Response DTO**: `ProjectRankingDTO`
         - **Error Responses**:

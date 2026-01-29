@@ -159,6 +159,9 @@ def put_projects_ranking(
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
+    if len(body.project_ids) != len(set(body.project_ids)):
+        raise HTTPException(status_code=400, detail="Duplicate project_ids are not allowed.")
+
     # "replace entire ranking order" means caller must provide all projects for this user
     existing_ids = {p["project_summary_id"] for p in list_projects(conn, user_id)}
     provided_ids = set(body.project_ids)

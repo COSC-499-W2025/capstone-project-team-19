@@ -21,5 +21,6 @@ class ReplaceProjectRankingRequestDTO(BaseModel):
 
 
 class PatchProjectRankingRequestDTO(BaseModel):
-    rank: Optional[int] = None
+    # Required field: clients must explicitly send {"rank": <int>} or {"rank": null}
+    rank: Optional[int]
 

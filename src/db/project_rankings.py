@@ -17,16 +17,47 @@ def set_project_rank(
     if current_rank == manual_rank:
         # No change needed
         return
-    # Shift all projects at the target rank (and above) down by 1
-    # Exclude the current project to avoid self-shifting
-    conn.execute("""
-        UPDATE project_rankings
-        SET manual_rank = manual_rank + 1,
-            updated_at = datetime('now')
-        WHERE user_id = ?
-          AND manual_rank >= ?
-          AND project_name != ?
-    """, (user_id, manual_rank, project_name))
+    
+    if current_rank is None:
+        # Insert: shift everything at/after the target down
+        conn.execute(
+            """
+            UPDATE project_rankings
+            SET manual_rank = manual_rank + 1,
+                updated_at = datetime('now')
+            WHERE user_id = ?
+              AND manual_rank >= ?
+            """,
+            (user_id, manual_rank),
+        )
+    elif manual_rank < current_rank:
+        # Move up: shift ranks [manual_rank, current_rank-1] down (increase)
+        conn.execute(
+            """
+            UPDATE project_rankings
+            SET manual_rank = manual_rank + 1,
+                updated_at = datetime('now')
+            WHERE user_id = ?
+              AND manual_rank >= ?
+              AND manual_rank < ?
+              AND project_name != ?
+            """,
+            (user_id, manual_rank, current_rank, project_name),
+        )
+    else:
+        # Move down: shift ranks [current_rank+1, manual_rank] up (decrease)
+        conn.execute(
+            """
+            UPDATE project_rankings
+            SET manual_rank = manual_rank - 1,
+                updated_at = datetime('now')
+            WHERE user_id = ?
+              AND manual_rank > ?
+              AND manual_rank <= ?
+              AND project_name != ?
+            """,
+            (user_id, current_rank, manual_rank, project_name),
+        )
 
     # Now set the new rank for this project
     conn.execute("""
