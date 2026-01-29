@@ -264,6 +264,13 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
         detector_results[detector_name] = data
 
     bucket_results = aggregate_into_buckets(detector_results)
+    
+    _persist_code_feedback(
+        feedback_ctx=feedback_ctx,
+        detector_results=detector_results,
+        bucket_results=bucket_results,
+        files_scanned=len(filtered_files),
+    )
 
     # save the skills/buckets to the database
     for bucket_name, bucket_data in bucket_results.items():
@@ -282,6 +289,68 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
     if constants.VERBOSE:
         print(f"[SKILL EXTRACTION] Completed code skill extraction for: {project_name}")
 
+def _persist_code_feedback(
+    *,
+    feedback_ctx: Optional[Dict[str, Any]],
+    detector_results: Dict[str, Dict[str, Any]],
+    bucket_results: Dict[str, Dict[str, Any]],
+    files_scanned: int,
+) -> None:
+    """
+    Emit feedback rows similar to text: store *unmet* criteria for buckets.
+    Minimal-change version: treat each bucket's underlying detectors as criteria.
+    """
+    if not feedback_ctx:
+        return
+
+    # Only emit feedback for buckets that are meaningfully "not hit"
+    MIN_BUCKET_SCORE_FOR_NO_FEEDBACK = 0.60  # if bucket >= 0.60, we generally don't nag
+    MAX_MISSING_CRITERIA_PER_BUCKET = 3
+
+    for bucket in CODE_SKILL_BUCKETS:
+        bname = bucket.name
+        bdata = bucket_results.get(bname) or {}
+        score = float(bdata.get("score") or 0.0)
+
+        if score >= MIN_BUCKET_SCORE_FOR_NO_FEEDBACK:
+            continue
+
+        missing: List[str] = []
+        for det in bucket.detectors:
+            # Ignore detectors with non-positive weights (if your buckets ever use them)
+            if bucket.weights.get(det, 1) <= 0:
+                continue
+            hits = int((detector_results.get(det) or {}).get("hits") or 0)
+            if hits <= 0:
+                missing.append(det)
+
+        if not missing:
+            continue
+
+        # Prefer higher-weight criteria first
+        missing_sorted = sorted(missing, key=lambda d: abs(bucket.weights.get(d, 1)), reverse=True)
+        missing_sorted = missing_sorted[:MAX_MISSING_CRITERIA_PER_BUCKET]
+
+        for det in missing_sorted:
+            tpl = _DETECTOR_FEEDBACK.get(det) or {}
+            label = tpl.get("label") or det.replace("_", " ")
+            suggestion = tpl.get("suggestion") or f"Add code evidence that demonstrates: {det.replace('_', ' ')}."
+
+            _emit_feedback(
+                feedback_ctx,
+                skill_name=bname,
+                file_name="",  # bucket-level criterion across project
+                criterion_key=f"{bname}.{det}",
+                criterion_label=label,
+                expected="At least 1 relevant occurrence",
+                observed={
+                    "hits": 0,
+                    "bucket_score": round(score, 3),
+                    "files_scanned": int(files_scanned),
+                    "detector": det,
+                },
+                suggestion=suggestion,
+            )
 
 def _filter_code_files(files: List[Dict], code_extensions: set) -> List[Dict]:
     """Filter files to only include code files and exclude very large files."""
