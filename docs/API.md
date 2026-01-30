@@ -194,7 +194,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
             },
             "error": null
         }
-        ```          
+        ```
 
 - **Project Ranking**
     - **Description**: Returns/updates the ranked list of projects (with computed scores) and supports manual ranking overrides.
@@ -252,7 +252,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
             - `400 Bad Request` if `project_ids` contains duplicates OR does not include every project_summary_id for the user
             - `404 Not Found` if any `project_id` does not exist / does not belong to the user
 
-    - **Patch One Project’s Manual Rank**
+    - **Patch One Project's Manual Rank**
         - **Endpoint**: `PATCH /projects/{project_id}/ranking`
         - **Description**: Sets or clears the manual rank for one project.
         - **Path Parameters**:
@@ -272,7 +272,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
         - **Response Status**: `200 OK`
         - **Response DTO**: `ProjectRankingDTO`
         - **Error Responses**:
-            - `400 Bad Request` if `rank` is less than 1, or greater than the user’s project count
+            - `400 Bad Request` if `rank` is less than 1, or greater than the user's project count
             - `404 Not Found` if the project does not exist / does not belong to the user
 
     - **Reset Ranking to Automatic**
@@ -282,6 +282,39 @@ Handles project ingestion, analysis, classification, and metadata updates.
         - **Request Body**: None
         - **Response Status**: `200 OK`
         - **Response DTO**: `ProjectRankingDTO`
+
+- **Delete Project by ID**
+    - **Endpoint**: `DELETE /projects/{project_id}`
+    - **Description**: Permanently deletes a specific project and all its associated data (skills, metrics, files, etc.).
+    - **Path Parameters**:
+        - `{project_id}` (integer, required): The project_summary_id of the project to delete
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": null,
+            "error": null
+        }
+        ```
+
+- **Delete All Projects**
+    - **Endpoint**: `DELETE /projects`
+    - **Description**: Permanently deletes all projects belonging to the current user.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `DeleteResultDTO`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "deleted_count": 3
+            },
+            "error": null
+        }
+        ```
 ---
 
 ## **Uploads Wizard**
@@ -898,6 +931,39 @@ Manages résumé-specific representations of projects.
         }
         ```
 
+- **Delete Resume by ID**
+    - **Endpoint**: `DELETE /resume/{resume_id}`
+    - **Description**: Permanently deletes a specific résumé snapshot.
+    - **Path Parameters**:
+        - `{resume_id}` (integer, required): The ID of the résumé snapshot to delete
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Response Status**: `200 OK` on success, `404 Not Found` if résumé doesn't exist or belong to user
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": null,
+            "error": null
+        }
+        ```
+
+- **Delete All Resumes**
+    - **Endpoint**: `DELETE /resume`
+    - **Description**: Permanently deletes all résumé snapshots belonging to the current user.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `DeleteResultDTO`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "deleted_count": 2
+            },
+            "error": null
+        }
+        ```
+
 ---
 
 ## **Portfolio**
@@ -1127,6 +1193,9 @@ Example:
 
 - **GitHubLinkRequest**
     - `repo_full_name` (string, required)
+
+- **DeleteResultDTO** (used by `DELETE /projects` and `DELETE /resume`)
+    - `deleted_count` (int, required): Number of items deleted
 
 ---
 
