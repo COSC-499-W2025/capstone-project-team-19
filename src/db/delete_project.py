@@ -78,9 +78,9 @@ def delete_project_everywhere(
             "config_files",
             "project_summaries",
             "project_skills",
-            "project_feedback",     
-            "project_rankings",    
-            "project_thumbnails",   
+            "project_feedback",
+            "project_rankings",
+            "project_thumbnails",
             "text_contribution_summary",
             "project_repos",
             "project_drive_files",
@@ -121,3 +121,56 @@ def delete_project_everywhere(
             WHERE version_key NOT IN (SELECT version_key FROM project_versions)
             """
         )
+
+
+def delete_all_user_projects(conn: sqlite3.Connection, user_id: int) -> int:
+    """
+    Delete all projects for a user. Returns count of deleted projects.
+
+    Deletes projects from project_summaries AND cleans up orphaned entries
+    in the projects table (dedup data from uploads that never completed analysis).
+    """
+    from src.db.project_summaries import get_project_summaries_list
+
+    # Get all project names from project_summaries
+    projects = get_project_summaries_list(conn, user_id)
+    count = 0
+
+    for project in projects:
+        project_name = project["project_name"]
+        delete_project_everywhere(conn, user_id, project_name)
+        count += 1
+
+    # Also clean up orphaned entries in projects table
+    # (uploads that started but never completed analysis)
+    cur = conn.cursor()
+    orphan_keys = [
+        row[0]
+        for row in cur.execute(
+            """
+            SELECT project_key FROM projects
+            WHERE user_id = ?
+            AND display_name NOT IN (
+                SELECT project_name FROM project_summaries WHERE user_id = ?
+            )
+            """,
+            (user_id, user_id),
+        ).fetchall()
+    ]
+
+    for pk in orphan_keys:
+        cur.execute(
+            """
+            DELETE FROM version_files
+            WHERE version_key IN (
+                SELECT version_key FROM project_versions WHERE project_key = ?
+            )
+            """,
+            (pk,),
+        )
+        cur.execute("DELETE FROM project_versions WHERE project_key = ?", (pk,))
+        cur.execute("DELETE FROM projects WHERE project_key = ?", (pk,))
+        count += 1
+
+    conn.commit()
+    return count
