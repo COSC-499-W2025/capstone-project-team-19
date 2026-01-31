@@ -188,14 +188,10 @@ from .deduplication import (
     _lookup_existing_name
 )
 
-# project rankings
+# project rankings (query-only; mutation logic lives in src/services)
 from .project_rankings import (
-    set_project_rank,
     get_project_rank,
     get_all_project_ranks,
-    clear_project_rank,
-    clear_all_rankings,
-    bulk_set_rankings,
 )
 
 # uploads
@@ -297,12 +293,8 @@ __all__ = [
     "insert_project",
     "insert_project_version",
     "insert_version_files",
-    "set_project_rank",
     "get_project_rank",
     "get_all_project_ranks",
-    "clear_project_rank",
-    "clear_all_rankings",
-    "bulk_set_rankings",
     "get_user_by_id",
     "get_zip_name_for_project",
     "insert_resume_snapshot",

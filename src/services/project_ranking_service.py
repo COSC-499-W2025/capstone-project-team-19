@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from sqlite3 import Connection
 from typing import Any, Dict, List, Optional
 
-from src.db import (
-    set_project_rank,
-    clear_project_rank,
-    clear_all_rankings,
-    bulk_set_rankings,
-    get_project_summary_by_id
-)
+from src.db import get_project_summary_by_id
 from src.insights.rank_projects.rank_project_importance import collect_project_ranking_rows
+from src.services.project_rankings_write_service import (
+    bulk_set_rankings,
+    clear_all_rankings,
+    clear_project_rank,
+    set_project_rank,
+)
 
 
 def get_project_ranking(conn: Connection, user_id: int) -> List[Dict[str, Any]]:
@@ -39,9 +40,12 @@ def replace_project_ranking(conn: Connection, user_id: int, project_ids: List[in
             raise KeyError(f"Project not found: {pid}")
         names.append(row["project_name"])
 
-    clear_all_rankings(conn, user_id)
-    rankings = [(name, rank) for rank, name in enumerate(names, start=1)]
-    bulk_set_rankings(conn, user_id, rankings)
+    # "replace" performs multiple writes. Use a single transaction so callers
+    # never observe a partially-cleared/partially-inserted ranking set.
+    with (conn if not conn.in_transaction else nullcontext(conn)):
+        clear_all_rankings(conn, user_id)
+        rankings = [(name, rank) for rank, name in enumerate(names, start=1)]
+        bulk_set_rankings(conn, user_id, rankings)
 
 
 def set_project_manual_rank(conn: Connection, user_id: int, project_id: int, rank: Optional[int]) -> None:
