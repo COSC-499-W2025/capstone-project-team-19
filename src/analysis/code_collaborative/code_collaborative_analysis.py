@@ -403,6 +403,17 @@ def _apply_basic_summary_without_git(
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path) or set()
     summary.frameworks = sorted(frameworks) if frameworks else []
 
+    # Extract or prompt for key role (same logic as git path)
+    external_consent = get_latest_external_consent(conn, user_id)
+
+    if external_consent == "accepted" and clean_desc:
+        key_role = extract_key_role_llm(clean_desc)
+    else:
+        key_role = prompt_key_role(project_name)
+
+    if key_role:
+        summary.contributions["key_role"] = key_role
+
 def _build_db_payload_from_metrics(metrics: Mapping[str, Any], repo_path: str) -> dict[str, Any]:
     """
     Flatten the compute_metrics() output into a dict that matches the
