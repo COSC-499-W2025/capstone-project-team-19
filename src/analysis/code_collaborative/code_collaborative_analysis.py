@@ -15,6 +15,7 @@ from src.db import (
     insert_code_collaborative_summary,
     get_files_for_project,
 )
+from src.db.consent import get_latest_external_consent
 from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
 from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo, get_gh_repo_name_and_owner
@@ -165,14 +166,7 @@ def analyze_code_project(conn: sqlite3.Connection,
 
     # 5.1) attach manual description if it was collected up-front
     if not desc:
-        # Try to read external_consent; ignore errors if table/row doesn't exist.
-        try:
-            consent_row = conn.execute(
-                "SELECT status FROM external_consent WHERE user_id = ?", (user_id,)
-            ).fetchone()
-            external_consent = consent_row[0] if consent_row else None
-        except Exception:
-            external_consent = None
+        external_consent = get_latest_external_consent(conn, user_id)
 
         if external_consent != "accepted":
             try:
@@ -218,13 +212,7 @@ def analyze_code_project(conn: sqlite3.Connection,
                 summary.contributions["non_llm_contribution_summary"] = desc_clean
 
         # 7.3) Extract or prompt for key role
-        try:
-            consent_row = conn.execute(
-                "SELECT status FROM external_consent WHERE user_id = ?", (user_id,)
-            ).fetchone()
-            external_consent = consent_row[0] if consent_row else None
-        except Exception:
-            external_consent = None
+        external_consent = get_latest_external_consent(conn, user_id)
 
         if external_consent == "accepted" and desc_clean:
             key_role = extract_key_role_llm(desc_clean)
