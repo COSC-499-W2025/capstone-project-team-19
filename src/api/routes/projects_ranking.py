@@ -21,10 +21,8 @@ from src.services.project_ranking_service import (
 # Keep these endpoints clearly project-scoped by using the /projects prefix.
 router = APIRouter(prefix="/projects", tags=["projects"])
 
-@router.get("/ranking", response_model=ApiResponse[ProjectRankingDTO])
-def get_projects_ranking(user_id: int = Depends(get_current_user_id), conn: Connection = Depends(get_db)):
-    rows = get_project_ranking(conn, user_id)
-    dto = ProjectRankingDTO(
+def _build_project_ranking_dto(rows) -> ProjectRankingDTO:
+    return ProjectRankingDTO(
         rankings=[
             ProjectRankingItemDTO(
                 rank=i + 1,
@@ -36,6 +34,11 @@ def get_projects_ranking(user_id: int = Depends(get_current_user_id), conn: Conn
             for i, r in enumerate(rows)
         ]
     )
+
+@router.get("/ranking", response_model=ApiResponse[ProjectRankingDTO])
+def get_projects_ranking(user_id: int = Depends(get_current_user_id), conn: Connection = Depends(get_db)):
+    rows = get_project_ranking(conn, user_id)
+    dto = _build_project_ranking_dto(rows)
     return ApiResponse(success=True, data=dto, error=None)
 
 @router.put("/ranking", response_model=ApiResponse[ProjectRankingDTO])
@@ -60,18 +63,7 @@ def put_projects_ranking(body: ReplaceProjectRankingRequestDTO, user_id: int = D
         raise HTTPException(status_code=404, detail=str(e))
 
     rows = get_project_ranking(conn, user_id)
-    dto = ProjectRankingDTO(
-        rankings=[
-            ProjectRankingItemDTO(
-                rank=i + 1,
-                project_summary_id=r["project_summary_id"],
-                project_name=r["project_name"],
-                score=r["score"],
-                manual_rank=r["manual_rank"],
-            )
-            for i, r in enumerate(rows)
-        ]
-    )
+    dto = _build_project_ranking_dto(rows)
     return ApiResponse(success=True, data=dto, error=None)
 
 @router.patch("/{project_id}/ranking", response_model=ApiResponse[ProjectRankingDTO])
@@ -89,34 +81,12 @@ def patch_project_ranking(project_id: int, body: PatchProjectRankingRequestDTO, 
         raise HTTPException(status_code=404, detail=str(e))
 
     rows = get_project_ranking(conn, user_id)
-    dto = ProjectRankingDTO(
-        rankings=[
-            ProjectRankingItemDTO(
-                rank=i + 1,
-                project_summary_id=r["project_summary_id"],
-                project_name=r["project_name"],
-                score=r["score"],
-                manual_rank=r["manual_rank"],
-            )
-            for i, r in enumerate(rows)
-        ]
-    )
+    dto = _build_project_ranking_dto(rows)
     return ApiResponse(success=True, data=dto, error=None)
 
 @router.post("/ranking/reset", response_model=ApiResponse[ProjectRankingDTO])
 def post_projects_ranking_reset(user_id: int = Depends(get_current_user_id), conn: Connection = Depends(get_db)):
     reset_project_ranking(conn, user_id)
     rows = get_project_ranking(conn, user_id)
-    dto = ProjectRankingDTO(
-        rankings=[
-            ProjectRankingItemDTO(
-                rank=i + 1,
-                project_summary_id=r["project_summary_id"],
-                project_name=r["project_name"],
-                score=r["score"],
-                manual_rank=r["manual_rank"],
-            )
-            for i, r in enumerate(rows)
-        ]
-    )
+    dto = _build_project_ranking_dto(rows)
     return ApiResponse(success=True, data=dto, error=None)
