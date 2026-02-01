@@ -37,6 +37,10 @@ _DETECTOR_FEEDBACK: Dict[str, Dict[str, str]] = {
         "label": "Improve decomposition for large functions",
         "suggestion": "Split very large functions into smaller helpers (single responsibility) to improve readability, testability, and reuse.",
     },
+    "detect_duplicate_code": {
+        "label": "Reduce duplicated code",
+        "suggestion": "Refactor repeated logic into shared helpers/modules to avoid copy-paste and make future changes safer.",
+    },
     "detect_comments_docstrings": {
         "label": "Add documentation/comments",
         "suggestion": "Add docstrings/comments for non-obvious logic and public APIs; document inputs/outputs and tricky assumptions.",
