@@ -1013,7 +1013,8 @@ Manages résumé-specific representations of projects.
                 "Built feature X",
                 "Improved performance by 50%"
             ],
-            "contribution_edit_mode": "replace"
+            "contribution_edit_mode": "replace",
+            "key_role": "Backend Developer"
         }
         ```
         - `name` (string, optional): New name for the résumé (rename)
@@ -1027,6 +1028,7 @@ Manages résumé-specific representations of projects.
         - `contribution_edit_mode` (string, optional): How to apply contribution bullets. Defaults to `"replace"`.
             - `"replace"`: Replace all existing bullets with the provided list
             - `"append"`: Keep existing bullets and add the provided bullets to the end
+        - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead"). Follows the same `scope` rules as other fields.
     - **Response Status**: `200 OK` or `404 Not Found`
     - **Response Body**: Uses `ResumeDetailDTO`
         ```json
@@ -1291,6 +1293,7 @@ Example:
     - `summary_text` (string, optional): Updated summary text
     - `contribution_bullets` (List[string], optional): Custom contribution bullet points
     - `contribution_edit_mode` (string, optional): `"replace"` (default) or `"append"`
+    - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead")
 
 ### **Privacy Consent DTOs**
 
