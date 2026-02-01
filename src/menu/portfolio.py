@@ -195,11 +195,14 @@ def _collect_section_updates(
             conn,
             user_id,
             project_entry.get("project_name") or "",
-        )
+        ) or []
 
-        if current_bullets:
+        # If “current” is just the placeholder, treat as empty
+        cleaned_current = _strip_placeholder_contrib(current_bullets)
+
+        if cleaned_current:
             print("\nCurrent contributions:")
-            for bullet in current_bullets:
+            for bullet in cleaned_current:
                 print(f"  - {bullet}")
 
             print("\nHow would you like to edit?")
@@ -215,8 +218,10 @@ def _collect_section_updates(
                     if not line:
                         break
                     new_bullets.append(line)
+
                 if new_bullets:
-                    updates["contribution_bullets"] = current_bullets + new_bullets
+                    # append onto real bullets (placeholder already removed)
+                    updates["contribution_bullets"] = cleaned_current + new_bullets
             else:
                 print("\nEnter contribution bullets (one per line). Press Enter on a blank line to finish.")
                 bullets: list[str] = []
@@ -226,7 +231,9 @@ def _collect_section_updates(
                         break
                     bullets.append(line)
                 updates["contribution_bullets"] = bullets or None
+
         else:
+            # No real contributions yet (or only placeholder) → behave like empty
             print("Enter contribution bullets (one per line). Press Enter on a blank line to finish.")
             bullets: list[str] = []
             while True:
@@ -421,3 +428,16 @@ def _handle_export_portfolio_pdf(conn, user_id: int, username: str) -> bool:
     print(f"\nSaving portfolio to {out_file} ...")
     print("Export complete.\n")
     return True
+
+_PLACEHOLDER_CONTRIB = "[No manual contribution summary provided]"
+
+def _strip_placeholder_contrib(bullets: list[str]) -> list[str]:
+    out = []
+    for b in bullets or []:
+        t = (b or "").strip()
+        if not t:
+            continue
+        if t == _PLACEHOLDER_CONTRIB:
+            continue
+        out.append(t)
+    return out
