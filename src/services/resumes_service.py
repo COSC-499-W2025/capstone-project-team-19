@@ -84,6 +84,7 @@ def edit_resume(
     summary_text: Optional[str] = None,
     contribution_bullets: Optional[List[str]] = None,
     contribution_edit_mode: Literal["append", "replace"] = "replace",
+    key_role: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
 
     # Get the resume record
@@ -137,6 +138,8 @@ def edit_resume(
         else:
             # Replace mode: use provided bullets directly
             updates["contribution_bullets"] = contribution_bullets or None
+    if key_role is not None:
+        updates["key_role"] = key_role or None
 
     if not updates:
         # No field updates, just return existing
