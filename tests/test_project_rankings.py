@@ -13,13 +13,15 @@ from src.db import (
     connect,
     init_schema,
     get_or_create_user,
-    set_project_rank,
     get_project_rank,
     get_all_project_ranks,
-    clear_project_rank,
-    clear_all_rankings,
-    bulk_set_rankings,
     save_project_summary
+)
+from src.services.project_rankings_write_service import (
+    bulk_set_rankings,
+    clear_all_rankings,
+    clear_project_rank,
+    set_project_rank,
 )
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from src.models.project_summary import ProjectSummary
