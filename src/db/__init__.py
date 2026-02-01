@@ -216,6 +216,9 @@ from .project_thumbnails import (
     list_thumbnail_projects,
 )
 
+from src.db.project_feedback import (
+    upsert_project_feedback,
+)
 __all__ = [
     "connect",
     "init_schema",
@@ -323,4 +326,5 @@ __all__ = [
     "get_project_thumbnail_path",
     "delete_project_thumbnail",
     "list_thumbnail_projects",
+    "upsert_project_feedback",
 ]

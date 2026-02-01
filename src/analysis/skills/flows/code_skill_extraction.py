@@ -6,17 +6,9 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from src.analysis.skills.buckets.code_buckets import CODE_SKILL_BUCKETS
 from src.analysis.skills.detectors.code.code_detector_registry import CODE_DETECTOR_FUNCTIONS
 from src.analysis.skills.utils.skill_levels import score_to_level
-from src.db import insert_project_skill
+from src.db import insert_project_skill, upsert_project_feedback
 from src.utils.extension_catalog import code_extensions
 from src.utils.helpers import read_file_content
-
-try:
-    from src.db.project_feedback import upsert_project_feedback
-except Exception as e:
-    upsert_project_feedback = None
-    _UPSERT_IMPORT_ERROR = e
-else:
-    _UPSERT_IMPORT_ERROR = None
 
 try:
     from src import constants
