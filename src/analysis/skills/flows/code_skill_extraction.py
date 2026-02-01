@@ -541,7 +541,7 @@ def aggregate_into_buckets(detector_results: Dict[str, Dict[str, Any]]) -> Dict[
                 continue
             if int(det_data.get("hits") or 0) > 0:
                 weight = float(bucket.weights.get(detector_name, 1))
-                if weight > 0:
+                if weight != 0:
                     weighted_signals += weight
                 bucket_evidence.extend(det_data.get("evidence") or [])
 
