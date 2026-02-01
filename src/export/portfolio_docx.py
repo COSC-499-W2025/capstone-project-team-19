@@ -34,10 +34,7 @@ from src.insights.rank_projects.rank_project_importance import collect_project_d
 from src.db import get_project_summary_row, get_project_thumbnail_path
 from src.insights.portfolio import (
     format_duration,
-    format_languages,
-    format_frameworks,
     format_activity_line,
-    format_skills_block,
     resolve_portfolio_display_name,
     resolve_portfolio_summary_text,
     resolve_portfolio_contribution_bullets,
@@ -47,10 +44,9 @@ from src.insights.portfolio import (
 from src.export.shared_helpers import (
     format_date_range,
     strip_percent_tokens,
-    clean_languages_above_threshold,
 )
-from src.export.portfolio_helpers import reformat_duration_line
-
+from src.export.portfolio_helpers import reformat_duration_line, _skills_one_line,  _frameworks_clean, _languages_clean
+from src.insights.portfolio.formatters import _clean_bullets
 
 # -------------------------
 # DOCX helpers (local)
@@ -79,62 +75,6 @@ def _add_nested_bullet(doc: Document, text: str) -> None:
     p = doc.add_paragraph(text, style="List Bullet 3")
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY  # left-right justify
     p.paragraph_format.space_after = 0
-
-
-def _skills_one_line(summary: Dict[str, Any]) -> str:
-    lines = format_skills_block(summary) or []
-    if not lines:
-        return ""
-    if len(lines) == 1 and "N/A" in (lines[0] or ""):
-        return ""
-
-    out: List[str] = []
-    for line in lines:
-        t = (line or "").strip()
-        if not t:
-            continue
-        # skip "Skills:" header if present
-        if t.lower().startswith("skills"):
-            continue
-        if t.startswith(("-", "•")):
-            t = t.lstrip("-•").strip()
-        if t:
-            out.append(t)
-    return ", ".join(out)
-
-
-def _languages_clean(summary: Dict[str, Any], *, min_pct: int = 10) -> str:
-    langs = clean_languages_above_threshold(summary.get("languages"), min_pct=min_pct)
-    if langs:
-        return ", ".join(langs)
-
-    s = strip_percent_tokens(format_languages(summary) or "")
-    if s.lower().startswith("languages:"):
-        s = s.split(":", 1)[1].strip()
-    return s.strip() or "N/A"
-
-
-def _frameworks_clean(summary: Dict[str, Any]) -> str:
-    s = strip_percent_tokens(format_frameworks(summary) or "")
-    if s.lower().startswith("frameworks:"):
-        s = s.split(":", 1)[1].strip()
-    return s.strip() or "N/A"
-
-
-def _clean_bullets(values: Any) -> List[str]:
-    if not isinstance(values, list):
-        return []
-    out: List[str] = []
-    for item in values:
-        t = str(item).strip()
-        if not t:
-            continue
-        if t.startswith(("-", "•")):
-            t = t.lstrip("-•").strip()
-        if t:
-            out.append(t)
-    return out
-
 
 # -------------------------
 # Export
