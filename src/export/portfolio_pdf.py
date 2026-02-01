@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Tuple
 
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.units import inch
-from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.enums import TA_LEFT, TA_JUSTIFY
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.platypus.flowables import HRFlowable
@@ -226,6 +226,7 @@ def export_portfolio_to_pdf(
         fontName="Helvetica",
         fontSize=11,
         leading=14,
+        alignment=TA_JUSTIFY,
         spaceAfter=2,
     )
 
@@ -243,7 +244,7 @@ def export_portfolio_to_pdf(
     NestedBullet = ParagraphStyle(
         "NestedBullet",
         parent=Body,
-        alignment=TA_LEFT,
+        alignment=TA_JUSTIFY,
         bulletIndent=44,
         leftIndent=60,
         firstLineIndent=0,

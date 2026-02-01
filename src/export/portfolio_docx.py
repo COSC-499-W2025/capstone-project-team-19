@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Tuple
 
 from docx import Document
 from docx.shared import Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from src.db import get_project_summary_row, get_project_thumbnail_path
@@ -67,15 +68,16 @@ def _add_bullet(doc: Document, text: str) -> None:
     Add an OUTER bullet paragraph in Word.
     """
     p = doc.add_paragraph(text, style="List Bullet")
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY  # left-right justify
     p.paragraph_format.space_after = 0
 
 
 def _add_nested_bullet(doc: Document, text: str) -> None:
     """
-    Nested bullet using Word's level-2 list style (hollow circle 'o').
-    Keeps tight spacing and proper alignment.
+    Nested bullet using Word list style.
     """
     p = doc.add_paragraph(text, style="List Bullet 3")
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY  # left-right justify
     p.paragraph_format.space_after = 0
 
 
