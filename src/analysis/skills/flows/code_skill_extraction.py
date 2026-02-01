@@ -1,24 +1,25 @@
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 from src.analysis.skills.buckets.code_buckets import CODE_SKILL_BUCKETS
 from src.analysis.skills.detectors.code.code_detector_registry import CODE_DETECTOR_FUNCTIONS
+from src.analysis.skills.flows.code_feedback_templates import _DETECTOR_FEEDBACK
 from src.analysis.skills.utils.skill_levels import score_to_level
 from src.db import insert_project_skill, upsert_project_feedback
 from src.utils.extension_catalog import code_extensions
 from src.utils.helpers import read_file_content
-from src.analysis.skills.flows.code_feedback_templates import _DETECTOR_FEEDBACK
-
 
 try:
     from src import constants
 except ModuleNotFoundError:
     import constants
-    
-    
-# Feedback plumbing
+
+
+# ---------------------------------------------------------------------
+# Feedback plumbing (callback-only)
+# ---------------------------------------------------------------------
 def _emit_feedback(
     feedback_ctx: Optional[Dict[str, Any]],
     *,
@@ -34,41 +35,17 @@ def _emit_feedback(
         return
 
     cb = feedback_ctx.get("add_feedback")
-    if callable(cb):
-        cb(
-            skill_name,
-            file_name,
-            criterion_key,
-            criterion_label,
-            expected,
-            observed,
-            suggestion,
-        )
+    if not callable(cb):
         return
 
-    if upsert_project_feedback is None:
-        return
-
-    conn = feedback_ctx.get("conn")
-    user_id = feedback_ctx.get("user_id")
-    project_name = feedback_ctx.get("project_name")
-    project_type = feedback_ctx.get("project_type") or "code"
-
-    if conn is None or user_id is None or not project_name:
-        return
-
-    upsert_project_feedback(
-        conn=conn,
-        user_id=int(user_id),
-        project_name=str(project_name),
-        project_type=str(project_type),
-        skill_name=str(skill_name),
-        file_name=str(file_name or ""),
-        criterion_key=str(criterion_key),
-        criterion_label=str(criterion_label),
-        expected=str(expected),
-        observed=observed or {},
-        suggestion=str(suggestion),
+    cb(
+        skill_name,
+        file_name,
+        criterion_key,
+        criterion_label,
+        expected,
+        observed,
+        suggestion,
     )
 
 
@@ -78,14 +55,9 @@ def _emit_feedback(
 def extract_code_skills(conn, user_id, project_name, classification, files):
     if constants.VERBOSE:
         print(f"\n[SKILL EXTRACTION] Running CODE skill extraction for {project_name}")
-        if upsert_project_feedback is None and _UPSERT_IMPORT_ERROR is not None:
-            print(
-                "[SKILL EXTRACTION] Feedback disabled: failed to import upsert_project_feedback: "
-                f"{_UPSERT_IMPORT_ERROR}"
-            )
 
     feedback_ctx: Optional[Dict[str, Any]] = None
-    if upsert_project_feedback is not None and conn is not None:
+    if conn is not None:
 
         def _add_feedback(
             skill_name: str,
@@ -110,13 +82,8 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
                 suggestion=str(suggestion),
             )
 
-        feedback_ctx = {
-            "conn": conn,
-            "user_id": user_id,
-            "project_name": project_name,
-            "project_type": "code",
-            "add_feedback": _add_feedback,
-        }
+        # callback-only ctx (no dead fallback path)
+        feedback_ctx = {"add_feedback": _add_feedback}
 
     zip_name = _get_zip_name(conn, user_id, project_name)
     if not zip_name:
@@ -226,7 +193,10 @@ def _persist_code_feedback(
         for det in missing_sorted:
             tpl = _DETECTOR_FEEDBACK.get(det) or {}
             label = tpl.get("label") or det.replace("_", " ")
-            suggestion = tpl.get("suggestion") or f"Add code evidence that demonstrates: {det.replace('_', ' ')}."
+            suggestion = (
+                tpl.get("suggestion")
+                or f"Add code evidence that demonstrates: {det.replace('_', ' ')}."
+            )
 
             _emit_feedback(
                 feedback_ctx,
@@ -417,7 +387,11 @@ def aggregate_into_buckets(detector_results: Dict[str, Dict[str, Any]]) -> Dict[
 
         # IMPORTANT: max_score must reflect weights, otherwise one heavy-weight detector can saturate.
         # Minimal fix: sum of positive weights (fallback to count if weights missing)
-        pos_weights = [float(bucket.weights.get(d, 1)) for d in bucket.detectors if bucket.weights.get(d, 1) > 0]
+        pos_weights = [
+            float(bucket.weights.get(d, 1))
+            for d in bucket.detectors
+            if bucket.weights.get(d, 1) > 0
+        ]
         max_score = float(sum(pos_weights)) if pos_weights else float(bucket.total_signals or 1)
 
         for detector_name in bucket.detectors:
