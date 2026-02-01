@@ -8,8 +8,9 @@
 
 CREATE TABLE IF NOT EXISTS users (
     user_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    username  TEXT,
-    email     TEXT
+    username  TEXT UNIQUE,
+    email     TEXT,
+    hashed_password TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_nocase
@@ -72,6 +73,7 @@ CREATE TABLE IF NOT EXISTS files (
     created     TEXT,
     modified    TEXT,
     project_name TEXT,
+    version_key INTEGER,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
@@ -630,6 +632,22 @@ CREATE TABLE IF NOT EXISTS project_rankings (
 
 CREATE INDEX IF NOT EXISTS idx_project_rankings_user
     ON project_rankings(user_id, manual_rank);
+
+CREATE TABLE IF NOT EXISTS uploads (
+  upload_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL,
+  zip_name    TEXT,
+  zip_path    TEXT,
+  status      TEXT NOT NULL DEFAULT 'started'
+              CHECK(status IN ('started','parsed','needs_dedup','needs_classification','needs_project_types','needs_file_roles','needs_summaries','analyzing','done','failed')),
+  state_json  TEXT, 
+  created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_uploads_user_time
+  ON uploads(user_id, created_at);
 
 CREATE TABLE IF NOT EXISTS project_thumbnails (
     thumbnail_id INTEGER PRIMARY KEY AUTOINCREMENT,

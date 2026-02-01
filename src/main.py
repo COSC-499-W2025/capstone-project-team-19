@@ -1,6 +1,6 @@
 import os
 from src.utils.parsing import parse_zip_file, analyze_project_layout, ZIP_DATA_DIR
-from src.utils.deduplication.integration import run_deduplication_for_projects
+from src.utils.deduplication.integration import run_deduplication_for_projects, run_deduplication_for_projects_detailed
 from src.db import (
     connect,
     init_schema,
@@ -9,6 +9,7 @@ from src.db import (
     get_latest_consent,
     get_latest_external_consent,
     record_project_classifications,
+    store_parsed_files,
 )
 from src.menu import (
     show_start_menu,
@@ -228,6 +229,7 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
     unchecked_zip = True
     assignments = None
     processed_zip_path = None
+    version_keys: dict[str, int] = {}
 
     while unchecked_zip:
         zip_path = get_zip_path_from_user()
@@ -238,7 +240,7 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
         if constants.VERBOSE:
             print(f"\nReceived path: {zip_path}")
 
-        result = parse_zip_file(zip_path, user_id=user_id, conn=conn)
+        result = parse_zip_file(zip_path, user_id=user_id, conn=conn, persist_to_db=False)
         if not result:
             print("\nNo valid files were processed. Check logs for unsupported or corrupted files.")
             continue
@@ -248,12 +250,32 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
         zip_name = os.path.splitext(os.path.basename(zip_path))[0]
         target_dir = os.path.join(ZIP_DATA_DIR, zip_name)
         layout = analyze_project_layout(result)
-        skipped_projects = run_deduplication_for_projects(conn, user_id, target_dir, layout)
+        skipped_projects, decisions = run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout)
         # Filter out skipped projects from result
         if skipped_projects:
             result = [f for f in result if f.get("project_name") not in skipped_projects]
 
-        assignments = prompt_for_project_classifications(conn, user_id, zip_path, result)
+        # Apply dedup renames + attach version_key for storage
+        name_map: dict[str, str] = {}
+        version_keys = {}
+        for orig_name, decision in (decisions or {}).items():
+            final = decision.get("final_name")
+            vk = decision.get("version_key")
+            if final:
+                name_map[orig_name] = final
+                if isinstance(vk, int):
+                    version_keys[final] = vk
+
+        for f in result:
+            orig = f.get("project_name")
+            if orig in name_map:
+                f["project_name"] = name_map[orig]
+                f["version_key"] = version_keys.get(name_map[orig])
+
+        # Persist files once (after dedup tagging)
+        store_parsed_files(conn, result, user_id)
+
+        assignments = prompt_for_project_classifications(conn, user_id, zip_path, result, project_name_map=name_map)
         try:
             detect_project_type(conn, user_id, assignments)
             # if zip file is valid (has folders)
@@ -266,7 +288,14 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
             continue
         
     if assignments and processed_zip_path:
-        send_to_analysis(conn, user_id, assignments, external_consent_status, processed_zip_path)  # takes projects and sends them into the analysis flow
+        send_to_analysis(
+            conn,
+            user_id,
+            assignments,
+            external_consent_status,
+            processed_zip_path,
+            version_keys=version_keys,
+        )  # takes projects and sends them into the analysis flow
     else:
         if assignments:
             print("No valid project analysis to send.")
@@ -278,7 +307,7 @@ def get_zip_path_from_user():
     return path
 
 
-def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_info: list[dict]) -> dict:
+def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_info: list[dict], project_name_map: dict[str, str] | None = None) -> dict:
     """Ask the user to classify each detected project as individual or collaborative."""
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     layout = analyze_project_layout(files_info)
@@ -316,6 +345,10 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
             print("\nLet's classify each remaining project individually.")
             for name in pending_projects:
                 assignments[name] = ask_project_classification(name)
+
+    # If dedup decided a folder name maps to an existing project name, persist using the final name.
+    if project_name_map:
+        assignments = {project_name_map.get(k, k): v for k, v in assignments.items()}
 
     record_project_classifications(conn, user_id, zip_path, zip_name, assignments)
 

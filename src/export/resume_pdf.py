@@ -74,6 +74,24 @@ def _clean_list(values: Any) -> List[str]:
     return out
 
 
+def _clean_str(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    return text or None
+
+
+def _resume_key_role(p: Dict[str, Any]) -> str | None:
+    """Resolve key role with priority: resume override → manual override → base."""
+    resume_role = _clean_str(p.get("resume_key_role_override"))
+    if resume_role:
+        return resume_role
+    manual_role = _clean_str(p.get("manual_key_role"))
+    if manual_role:
+        return manual_role
+    return _clean_str(p.get("key_role"))
+
+
 def export_resume_record_to_pdf(
     *,
     username: str,
@@ -258,17 +276,19 @@ def export_resume_record_to_pdf(
             or p.get("project_name")
             or "Unnamed project"
         )
-        role = (p.get("role") or "[Role]").strip()
+        # Resolve key role with priority: resume override → manual override → base
+        role = _resume_key_role(p) or "[Role]"
         date_line = format_date_range(p.get("start_date"), p.get("end_date"))
         meta = f"{role} | {date_line}" if date_line else role
 
         story.append(Paragraph(str(title), ProjectTitleStyle))
         story.append(Paragraph(meta, MetaItalic))
 
+        # Priority: resume-specific override > global override > base field
         bullets = _clean_bullets(
-            p.get("contribution_bullets")
-            or p.get("resume_contributions_override")
+            p.get("resume_contributions_override")
             or p.get("manual_contribution_bullets")
+            or p.get("contribution_bullets")
             or []
         )
 

@@ -15,6 +15,7 @@ from src.db import (
     insert_code_collaborative_summary,
     get_files_for_project,
 )
+from src.db.consent import get_latest_external_consent
 from src.integrations.github.github_oauth import github_oauth
 from src.integrations.github.token_store import get_github_token
 from src.integrations.github.link_repo import ensure_repo_link, select_and_store_repo, get_gh_repo_name_and_owner
@@ -29,6 +30,7 @@ from src.analysis.code_collaborative.github_collaboration.print_collaboration_su
 from src.analysis.code_collaborative.no_git_contributions import (
     store_contributions_without_git,
 )
+from src.analysis.text_individual.llm_summary import extract_key_role_llm
 
 from .code_collaborative_analysis_helper import (
     DEBUG,
@@ -45,7 +47,8 @@ from .code_collaborative_analysis_helper import (
     compute_metrics,
     print_project_card,
     print_portfolio_summary,
-    prompt_collab_descriptions
+    prompt_collab_descriptions,
+    prompt_key_role,
 )
 try:
     from src import constants
@@ -163,14 +166,7 @@ def analyze_code_project(conn: sqlite3.Connection,
 
     # 5.1) attach manual description if it was collected up-front
     if not desc:
-        # Try to read external_consent; ignore errors if table/row doesn't exist.
-        try:
-            consent_row = conn.execute(
-                "SELECT status FROM external_consent WHERE user_id = ?", (user_id,)
-            ).fetchone()
-            external_consent = consent_row[0] if consent_row else None
-        except Exception:
-            external_consent = None
+        external_consent = get_latest_external_consent(conn, user_id)
 
         if external_consent != "accepted":
             try:
@@ -214,6 +210,17 @@ def analyze_code_project(conn: sqlite3.Connection,
             # store non llm contribution summary for non-LLM views
             if "llm_contribution_summary" not in summary.contributions:
                 summary.contributions["non_llm_contribution_summary"] = desc_clean
+
+        # 7.3) Extract or prompt for key role
+        external_consent = get_latest_external_consent(conn, user_id)
+
+        if external_consent == "accepted" and desc_clean:
+            key_role = extract_key_role_llm(desc_clean)
+        else:
+            key_role = prompt_key_role(project_name)
+
+        if key_role:
+            summary.contributions["key_role"] = key_role
 
     # 7.5) save file contributions to database for skill extraction filtering
     file_contributions_data = metrics.get("file_contributions", {})
@@ -395,6 +402,17 @@ def _apply_basic_summary_without_git(
     summary.languages = detect_languages(conn, project_name) or []
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path) or set()
     summary.frameworks = sorted(frameworks) if frameworks else []
+
+    # Extract or prompt for key role (same logic as git path)
+    external_consent = get_latest_external_consent(conn, user_id)
+
+    if external_consent == "accepted" and clean_desc:
+        key_role = extract_key_role_llm(clean_desc)
+    else:
+        key_role = prompt_key_role(project_name)
+
+    if key_role:
+        summary.contributions["key_role"] = key_role
 
 def _build_db_payload_from_metrics(metrics: Mapping[str, Any], repo_path: str) -> dict[str, Any]:
     """

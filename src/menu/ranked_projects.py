@@ -9,9 +9,11 @@ from src.insights.rank_projects.rank_project_importance import collect_project_d
 from src.db import (
     get_project_summary_by_name,
     get_all_project_ranks,
-    clear_project_rank,
+)
+from src.services.project_rankings_write_service import (
+    bulk_set_rankings,
     clear_all_rankings,
-    bulk_set_rankings
+    clear_project_rank,
 )
 
 
@@ -195,12 +197,11 @@ def interactive_reorder(conn, user_id):
     # Convert indices to project names
     new_order = [projects[idx][0] for idx in new_order_indices]
 
-    # Clear all existing rankings first
-    clear_all_rankings(conn, user_id)
-
-    # Apply new rankings
-    rankings = [(name, rank) for rank, name in enumerate(new_order, start=1)]
-    bulk_set_rankings(conn, user_id, rankings)
+    # Clear + apply in one transaction so we never commit a half-state.
+    with conn:
+        clear_all_rankings(conn, user_id)
+        rankings = [(name, rank) for rank, name in enumerate(new_order, start=1)]
+        bulk_set_rankings(conn, user_id, rankings)
 
     print(f"\nSuccessfully reordered {len(rankings)} projects!")
     if len(rankings) < len(projects):

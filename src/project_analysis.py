@@ -28,6 +28,8 @@ from src.db.code_metrics import (
 from src.db.code_metrics_helpers import extract_complexity_metrics
 import json
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
+from src.analysis.code_collaborative.code_collaborative_analysis_helper import prompt_key_role
+from src.analysis.text_individual.llm_summary import extract_key_role_llm
 from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.analysis.activity_type.code.summary import build_activity_summary
@@ -41,84 +43,130 @@ except ModuleNotFoundError:
     import constants
 
 
+def _prompt_contribution_and_key_role(
+    project_name: str,
+    current_ext_consent: str | None,
+    summary,
+    verb: str = "built",
+) -> None:
+    """
+    Prompt user for contribution description and extract/prompt for key role.
+
+    Used by both run_text_analysis and run_code_analysis for individual projects.
+
+    Args:
+        project_name: Name of the project
+        current_ext_consent: External consent status ("accepted", "rejected", or None)
+        summary: ProjectSummary object to populate
+        verb: Action verb for the prompt (e.g., "wrote" for text, "built" for code)
+    """
+    if summary is None:
+        return
+
+    # Prompt for contribution description
+    print(f"\nDescribe what you {verb}/accomplished in this project (1-3 sentences):")
+    try:
+        contribution_desc = input(f"Your work on '{project_name}': ").strip()
+    except EOFError:
+        contribution_desc = ""
+
+    if contribution_desc:
+        summary.contributions["manual_contribution_summary"] = contribution_desc
+    else:
+        summary.contributions["manual_contribution_summary"] = "[No description provided]"
+
+    # Extract or prompt for key role
+    if current_ext_consent == "accepted" and contribution_desc:
+        key_role = extract_key_role_llm(contribution_desc)
+    else:
+        key_role = prompt_key_role(project_name)
+
+    if key_role:
+        summary.contributions["key_role"] = key_role
+
+
 def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
+    result = detect_project_type_auto(conn, user_id, assignments)
+
+    # Only CLI prompts for mixed projects
+    for project_name in result["mixed_projects"]:
+        print(f"\nThe project '{project_name}' contains both code and text files.")
+        while True:
+            choice = input("Type 'c' if it's mainly a CODE project, or 't' if it's mainly a TEXT project: ").strip().lower()
+            if choice in {"c", "code"}:
+                project_type = "code"
+                break
+            if choice in {"t", "text"}:
+                project_type = "text"
+                break
+            print("Please enter 'c' or 't'.")
+
+        conn.execute("""
+            UPDATE project_classifications
+            SET project_type = ?
+            WHERE user_id = ? AND project_name = ?
+        """, (project_type, user_id, project_name))
+
+    conn.commit()
+
+    
+def detect_project_type_auto(
+    conn: sqlite3.Connection,
+    user_id: int,
+    assignments: dict[str, str],
+) -> dict:
     """
-    Determine if each project is code or text by examining files from the 'files' table
-    Updates the project_classifications table with the detected type.
-
-    The function:
-        1. Reads all files for the given user from the 'files' table
-        2. Counts how many files of type 'code' or 'text' belong to each project
-        3. Assigns a project type automatically if unambiguous
-        4. If a project contains both code and text files, the user is prompted to decide
-        5. Updates the 'project_classifications' table accordingly
-
-    Notes:
-        - Projects with no recognizable files (neither code nor text) are skipped and left with a NULL `project_type`
-        - Mixed projects require user input to classify manually
+    API-safe version:
+    - Auto-detects project_type when unambiguous (all code or all text)
+    - Returns mixed projects needing user choice
+    - NO input() calls
     """
-
-    # Grabs file project_name and file_type from 'files' table and creates a list
     files = conn.execute("""
         SELECT project_name, file_type
         FROM files
         WHERE user_id = ? AND project_name IS NOT NULL
     """, (user_id,)).fetchall()
 
-    project_counts = {}
-
-    # counts how many code files vs text files there are in a project
+    project_counts: dict[str, dict[str, int]] = {}
     for project_name, file_type in files:
-        if project_name not in project_counts:
-            project_counts[project_name] = {"code": 0, "text": 0}
+        project_counts.setdefault(project_name, {"code": 0, "text": 0})
         if file_type in {"code", "text"}:
             project_counts[project_name][file_type] += 1
 
-    # Decides which project is which type based on project_counts values
-    for project_name, classification in assignments.items():
+    auto_types: dict[str, str] = {}
+    mixed_projects: list[str] = []
+    unknown_projects: list[str] = []
+
+    for project_name in assignments.keys():
         counts = project_counts.get(project_name, {"code": 0, "text": 0})
 
         if counts["code"] > 0 and counts["text"] == 0:
-            project_type = "code"
+            auto_types[project_name] = "code"
         elif counts["text"] > 0 and counts["code"] == 0:
-            project_type = "text"
-        elif counts["code"] == 0 and counts["text"] == 0: # likely will not happen, rare case (still important to check)
-            # No recognizable files at all
-            print(f"No valid files found for project '{project_name}'. Project type left as NULL.")
-            project_type = None
+            auto_types[project_name] = "text"
+        elif counts["code"] == 0 and counts["text"] == 0:
+            unknown_projects.append(project_name)
         else:
-            # project type can not be decided, mixed files
-            # prompt user to state whether a project is code or text
-            print(f"\nThe project '{project_name}' contains both code and text files.")
-            while True:
-                choice = input("Type 'c' if it's mainly a CODE project, or 't' if it's mainly a TEXT project: ").strip().lower()
-                if choice in {"c", "code"}:
-                    project_type = "code"
-                    break
-                elif choice in {"t", "text"}:
-                    project_type = "text"
-                    break
-                else:
-                    print("Please enter 'c' or 't'.")
+            mixed_projects.append(project_name)
 
-        # skip update if the project type is still unknown
-        if project_type is None:
-            print(f"Detected UNKNOWN project type for: {project_name} (skipping update)")
-            continue  # skip database update if project is unknown
-        
-        if constants.VERBOSE:
-            print(f"Detected {project_type.upper()} project: {project_name}")
-
-        # Save detected project type into the database
+    # write auto-detected types to DB
+    for project_name, project_type in auto_types.items():
         conn.execute("""
             UPDATE project_classifications
-            SET project_type = ? 
+            SET project_type = ?
             WHERE user_id = ? AND project_name = ?
         """, (project_type, user_id, project_name))
 
     conn.commit()
 
-def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
+    return {
+        "auto_types": auto_types,
+        "mixed_projects": mixed_projects,
+        "unknown_projects": unknown_projects,
+    }
+
+
+def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, version_keys: dict[str, int] | None = None):
     """
     Routes each project to the appropriate analysis flow based on its classification and type.
     Collaborative projects trigger contribution analysis.
@@ -179,12 +227,13 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
             print("\n[INDIVIDUAL] Running individual projects...")
         for project_name, project_type in individual:
             print(f"  → {project_name} ({project_type})")
+            vk = (version_keys or {}).get(project_name)
             summary = ProjectSummary(
                 project_name=project_name,
                 project_type=project_type,
                 project_mode="individual"
             )
-            run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary)
+            run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary, version_key=vk)
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
             if project_type == "text":
@@ -225,6 +274,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
                 # 1) run all CODE collab
         for project_name, project_type in code_collab:
             print(f"  → {project_name} ({project_type})")
+            vk = (version_keys or {}).get(project_name)
             summary = ProjectSummary(
                 project_name=project_name,
                 project_type=project_type,
@@ -245,6 +295,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
                 current_ext_consent,
                 zip_path,
                 summary,
+                version_key=vk,
             )
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
@@ -267,12 +318,13 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
         # 2) run all TEXT collab
         for project_name, project_type in text_collab:
             print(f"  → {project_name} ({project_type})")
+            vk = (version_keys or {}).get(project_name)
             summary = ProjectSummary(
                 project_name=project_name,
                 project_type=project_type,
                 project_mode="collaborative"
             )
-            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary)
+            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary, version_key=vk)
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
             if project_type == "text":
@@ -333,7 +385,16 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path):
 
 
 
-def get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary=None):
+def get_individual_contributions(
+    conn,
+    user_id,
+    project_name,
+    project_type,
+    current_ext_consent,
+    zip_path,
+    summary=None,
+    version_key: int | None = None,
+):
     """
     Analyze collaborative projects to get specific user contributions in a collaborative project.
     The process used to get the individual contributions changes depending on the type of project (code/text).
@@ -342,27 +403,36 @@ def get_individual_contributions(conn, user_id, project_name, project_type, curr
         print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' ({project_type})")
 
     if project_type == "text":
-        analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path)
+        analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path, version_key=version_key)
     elif project_type == "code":
         analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary)
     else:
         print(f"[COLLABORATIVE] Unknown project type for '{project_name}', skipping.")
 
 
-def run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary=None):
+def run_individual_analysis(
+    conn,
+    user_id,
+    project_name,
+    project_type,
+    current_ext_consent,
+    zip_path,
+    summary=None,
+    version_key: int | None = None,
+):
     """
     Run full analysis on an individual project, depending on project_type.
     """
     
     if project_type == "text":
-        run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary)
+        run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key)
     elif project_type == "code":
-        run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary)
+        run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key)
     else:
         print(f"[INDIVIDUAL] Unknown project type for '{project_name}', skipping.")
 
 
-def analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path):
+def analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path, version_key: int | None = None):
     """
     Analyze collaborative text projects with optional Google Drive connection.
     If Google Drive is skipped or fails → fallback to collaborative manual text flow.
@@ -373,7 +443,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     # ------------------------------
     # ALWAYS FETCH PARSED FILES HERE
     # ------------------------------
-    parsed_files = _fetch_files(conn, user_id, project_name, only_text=True)
+    parsed_files = _fetch_files(conn, user_id, project_name, only_text=True, version_key=version_key)
 
     if not parsed_files:
         print(f"[TEXT-COLLAB] No text files found for '{project_name}'. Cannot analyze.")
@@ -407,7 +477,8 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
             parsed_files=parsed_files,
             zip_path=zip_path,
             external_consent=current_ext_consent,
-            summary_obj=summary
+            summary_obj=summary,
+            version_key=version_key,
         )
         return
 
@@ -417,7 +488,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     if not result['success']:
         print("\n[TEXT-COLLAB] Google Drive connection failed → falling back to manual mode.\n")
         analyze_collaborative_text_project(
-            conn, user_id, project_name, parsed_files, None, current_ext_consent, summary
+            conn, user_id, project_name, parsed_files, None, current_ext_consent, summary, version_key=version_key
         )
         return
 
@@ -428,7 +499,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     if not drive_service or not docs_service:
         print("\n[TEXT-COLLAB] Google Drive connected but incomplete services → fallback to manual.\n")
         analyze_collaborative_text_project(
-            conn, user_id, project_name, parsed_files, None, current_ext_consent, summary
+            conn, user_id, project_name, parsed_files, None, current_ext_consent, summary, version_key=version_key
         )
         return
 
@@ -494,7 +565,8 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
         parsed_files=parsed_files,
         zip_path=zip_path,
         external_consent=current_ext_consent,
-        summary_obj=summary
+        summary_obj=summary,
+        version_key=version_key,
     )
 
 
@@ -568,6 +640,8 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
                 zip_path,
                 project_name,
                 focus_file_paths=focus_file_paths,
+                conn=conn,
+                user_id=user_id
             )
 
             if llm_results:
@@ -603,15 +677,18 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
             summary.summary_text = prompt_manual_code_project_summary(project_name)
 
 
-def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary):
-    parsed_files = _fetch_files(conn, user_id, project_name, only_text=True)
+def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
+    parsed_files = _fetch_files(conn, user_id, project_name, only_text=True, version_key=version_key)
     if not parsed_files:
         print(f"[INDIVIDUAL-TEXT] No text files found for '{project_name}'.")
         return
-    analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=True, summary=summary)
+    analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=True, summary=summary, version_key=version_key)
+
+    # --- Individual text project contribution description and key role ---
+    _prompt_contribution_and_key_role(project_name, current_ext_consent, summary, verb="wrote")
 
 
-def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary):
+def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
     """Runs full analysis on individual code projects (static metrics + Git + optional LLM)."""
     languages = detect_languages(conn, project_name)
     print(f"Languages detected in {project_name}: {languages}")
@@ -623,13 +700,13 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
         summary.languages = languages or []
         summary.frameworks = frameworks or []
 
-    parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
+    parsed_files = _fetch_files(conn, user_id, project_name, only_text=False, version_key=version_key)
     if not parsed_files:
         print(f"[INDIVIDUAL-CODE] No code files found for '{project_name}'.")
         return
 
     # --- Run main code + Git analysis ---
-    analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=False)
+    analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=False, version_key=version_key)
 
     # --- Activity-type summary (individual) ---
     activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
@@ -648,20 +725,30 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     # --- Run LLM summary LAST, and only once ---
     if current_ext_consent == "accepted":
         print(f"\n[INDIVIDUAL-CODE] Running LLM-based summary for '{project_name}'...")
-        llm_results = run_code_llm_analysis(parsed_files, zip_path, project_name)
+        llm_results = run_code_llm_analysis(
+            parsed_files,
+            zip_path,
+            project_name,
+            conn=conn,
+            user_id=user_id,
+        )
+
         if summary and llm_results:
             summary.summary_text = llm_results.get("project_summary")
             summary.contributions["llm_contribution_summary"] = llm_results.get("contribution_summary")
     else:
         if constants.VERBOSE:
             print(f"[INDIVIDUAL-CODE] Skipping LLM summary (no external consent).")
-        
+
         # capture manual project summary
         if summary is not None and not getattr(summary, "summary_text", None):
             summary.summary_text = prompt_manual_code_project_summary(project_name)
-    
-        
-def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text, summary=None):
+
+    # --- Individual project contribution description and key role ---
+    _prompt_contribution_and_key_role(project_name, current_ext_consent, summary, verb="built")
+
+
+def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text, summary=None, version_key: int | None = None):
     classification_id = get_classification_id(conn, user_id, project_name)
 
     if only_text:
@@ -693,6 +780,7 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
             conn=conn,
             user_id=user_id,
             project_name=project_name,
+            version_key=version_key,
             consent=external_consent,
             csv_metadata=csv_metadata
         )

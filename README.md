@@ -49,7 +49,27 @@ pip install --upgrade pip           # Upgrade pip to avoid weird dependency erro
 pip install -r requirements.txt
 ```
 
-### 4. Run Tests
+### 4. Configure Environment Variables
+
+Copy the example environment file and update it with your configuration:
+
+```bash
+cp .env.example .env
+```
+
+**Important:** Make sure to add a secure `JWT_SECRET` value to your `.env` file. You can generate a secure random string using:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Then add it to your `.env`:
+
+```
+JWT_SECRET=<your_generated_secure_string>
+```
+
+### 5. Run Tests
 Ensure you are in the main directory `/capstone-project-team-19`.
 
 ```bash
@@ -72,6 +92,8 @@ cd capstone-project-team-19
 
 # Start the API server
 uvicorn src.api.main:app --reload
+
+> **Note:** If you are getting an error regarding `JWT_SECRET` missing from the .env file but it exists, try running `uvicorn src.api.main:app --reload --env-file .env` instead.
 ```
 
 The API will be available at `http://localhost:8000`. You can:
@@ -226,7 +248,9 @@ A template file (`.env.example`) is provided and should be copied directly.
     ```env
     GROQ_API_KEY=<your-api-key>
     GITHUB_CLIENT_ID=""
-
+    GITHUB_CLIENT_SECRET=<your-new-client-secret>
+    
+    GITHUB_REDIRECT_URI=http://localhost:8000/auth/github/callback
     DEVICE_CODE_URL="https://github.com/login/device/code"
     TOKEN_URL="https://github.com/login/oauth/access_token"
     ```
@@ -239,17 +263,20 @@ A template file (`.env.example`) is provided and should be copied directly.
 
 ### GitHub OAuth (optional)
 
-GitHub OAuth is used to analyze collaboration metrics such as commits, pull requests, reviews, and contribution frequency. This integration uses GitHub's **Device Flow OAuth**.
+GitHub OAuth is used to analyze collaboration metrics such as commits, pull requests, reviews, and contribution frequency. This integration uses GitHub's **Code Flow OAuth**.
 
 To enable GitHub analysis:
 1. Create a GitHub OAuth App:
    - Visit https://github.com/settings/developers
    - Select **OAuth Apps --> New OAuth App**
    - Application name: `Capstone Portfolio Analyzer`
-   - Homepage URL: `http://localhost`
-   - Authorization callback URL: `http://localhost`
+   - Homepage URL: `http://localhost:8000`
+   - Authorization callback URL: `http://localhost:8000/auth/github/callback`
 2. Copy the **Client ID** from the OAuth app.
-3. Add the following to your `.env` file (as shown in `.env.example`):
+3. Generate a client secret:
+   - Click "Generate a new client secret"
+   - Copy the client secret and add to your `.env` file 
+4. Add the following to your `.env` file (as shown in `.env.example`):
     ```env
     GITHUB_CLIENT_ID=<your-client-id>
     ```

@@ -132,6 +132,7 @@ from .project_summaries import (
     clear_all_project_dates,
     get_all_manual_dates,
     update_project_summary_json,
+    get_project_summary_by_id
 )
 
 # local git metrics for code collaborative projects
@@ -180,21 +181,31 @@ from .deduplication import (
     find_existing_version_by_loose_fp,
     get_latest_versions,
     get_hash_set_for_version,
+    get_relpath_set_for_version,
     insert_project,
     insert_project_version,
-    insert_version_files
+    insert_version_files,
+    _lookup_existing_name
 )
 
-# project rankings
+# project rankings (query-only; mutation logic lives in src/services)
 from .project_rankings import (
-    set_project_rank,
     get_project_rank,
     get_all_project_ranks,
-    clear_project_rank,
-    clear_all_rankings,
-    bulk_set_rankings,
 )
 
+# uploads
+from .uploads import (
+    create_upload,
+    get_upload_by_id,
+    list_uploads_for_user,
+    update_upload_status,
+    update_upload_zip_metadata,
+    set_upload_state,
+    patch_upload_state,
+    mark_upload_failed,
+    delete_upload,
+)
 from .project_thumbnails import (
     upsert_project_thumbnail,
     get_project_thumbnail_path,
@@ -278,19 +289,32 @@ __all__ = [
     "find_existing_version_by_loose_fp",
     "get_latest_versions",
     "get_hash_set_for_version",
+    "get_relpath_set_for_version",
     "insert_project",
     "insert_project_version",
     "insert_version_files",
-    "set_project_rank",
     "get_project_rank",
     "get_all_project_ranks",
-    "clear_project_rank",
-    "clear_all_rankings",
-    "bulk_set_rankings",
     "get_user_by_id",
+    "get_zip_name_for_project",
+    "insert_resume_snapshot",
+    "list_resumes",
+    "get_resume_snapshot",
+    "update_resume_snapshot",
+    "delete_resume_snapshot",
+    "delete_project_everywhere",
+    "create_upload",
+    "get_upload_by_id",
+    "list_uploads_for_user",
+    "update_upload_status",
+    "update_upload_zip_metadata",
+    "set_upload_state",
+    "patch_upload_state",
+    "mark_upload_failed",
+    "delete_upload",
     "upsert_project_thumbnail",
     "get_project_thumbnail_path",
     "delete_project_thumbnail",
     "list_thumbnail_projects",
-
+    "get_project_summary_by_id"
 ]

@@ -61,7 +61,22 @@ def resolve_resume_contribution_bullets(entry: Dict[str, Any]) -> List[str]:
     manual_bullets = _clean_bullets(entry.get("manual_contribution_bullets"))
     if manual_bullets:
         return manual_bullets
+    # Fallback to contribution_bullets (set when resume is first created)
+    base_bullets = _clean_bullets(entry.get("contribution_bullets"))
+    if base_bullets:
+        return base_bullets
     return []
+
+
+def resolve_resume_key_role(entry: Dict[str, Any]) -> str | None:
+    """Resolve key role with priority: resume override → manual override → base."""
+    resume_role = _clean_str(entry.get("resume_key_role_override"))
+    if resume_role:
+        return resume_role
+    manual_role = _clean_str(entry.get("manual_key_role"))
+    if manual_role:
+        return manual_role
+    return _clean_str(entry.get("key_role"))
 
 
 def resume_only_override_fields(entry: Dict[str, Any]) -> set[str]:
@@ -72,6 +87,8 @@ def resume_only_override_fields(entry: Dict[str, Any]) -> set[str]:
         fields.add("summary_text")
     if _clean_bullets(entry.get("resume_contributions_override")):
         fields.add("contribution_bullets")
+    if _clean_str(entry.get("resume_key_role_override")):
+        fields.add("key_role")
     return fields
 
 
@@ -101,6 +118,11 @@ def apply_resume_only_updates(entry: dict, updates: dict[str, Any]) -> None:
             entry["resume_contributions_override"] = updates["contribution_bullets"]
         else:
             entry.pop("resume_contributions_override", None)
+    if "key_role" in updates:
+        if updates["key_role"]:
+            entry["resume_key_role_override"] = updates["key_role"]
+        else:
+            entry.pop("resume_key_role_override", None)
 
 
 def apply_manual_overrides(entry: Dict[str, Any], overrides: Dict[str, Any]) -> None:
@@ -115,6 +137,9 @@ def apply_manual_overrides(entry: Dict[str, Any], overrides: Dict[str, Any]) -> 
     bullets = _clean_bullets(overrides.get("contribution_bullets"))
     if bullets:
         entry["manual_contribution_bullets"] = bullets
+    key_role = _clean_str(overrides.get("key_role"))
+    if key_role:
+        entry["manual_key_role"] = key_role
 
 
 
@@ -147,6 +172,9 @@ def build_resume_snapshot(summaries: List[ProjectSummary]) -> Dict[str, Any]:
             "summary_text": ps.summary_text,
             "skills": _extract_skills(ps, map_labels=True),
         }
+        # Extract key_role from contributions
+        if ps.contributions and ps.contributions.get("key_role"):
+            entry["key_role"] = ps.contributions["key_role"]
         if ps.manual_overrides:
             apply_manual_overrides(entry, ps.manual_overrides)
 
@@ -222,6 +250,11 @@ def render_snapshot(
 def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
     lines = [f"\n- {resolve_resume_display_name(p)}"]
 
+    # Display key role if available
+    key_role = resolve_resume_key_role(p)
+    if key_role:
+        lines.append(f"  Role: {key_role}")
+
     langs = p.get("languages") or []
     fws = p.get("frameworks") or []
     if langs:
@@ -235,30 +268,26 @@ def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
     if summary_text:
         lines.append(f"  Summary: {summary_text}")
 
-    # Contributions (single source of truth = stored bullets, else compute)
-    lines.append("  Contributions:")
-    # Contributions
+    # Contributions (single source of truth = stored/override bullets, else compute)
     custom_bullets = resolve_resume_contribution_bullets(p)
     if custom_bullets:
         lines.append("  Contributions:")
         for bullet in custom_bullets:
             lines.append(f"    • {bullet}")
-    elif p.get("project_type") == "code":
-        project_name = p.get("project_name") or ""
-        is_collab = bool(p.get("is_collaborative") or p.get("project_mode") == "collaborative")
-
-    bullets = p.get("contribution_bullets")
-    if not isinstance(bullets, list) or not bullets:
+    else:
+        # Fall back to computing bullets if no stored/override bullets exist
         if conn and user_id is not None:
             bullets = build_contribution_bullets(conn, user_id, p)
         else:
             bullets = []
 
-    if bullets:
-        for b in bullets:
-            lines.append(f"    • {str(b).strip()}")
-    else:
-        lines.append("    • (no contribution bullets available)")
+        if bullets:
+            lines.append("  Contributions:")
+            for b in bullets:
+                lines.append(f"    • {str(b).strip()}")
+        else:
+            lines.append("  Contributions:")
+            lines.append("    • (no contribution bullets available)")
 
     # Skills
     skills = p.get("skills") or []
