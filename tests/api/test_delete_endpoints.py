@@ -105,6 +105,199 @@ def test_delete_project_success(client, auth_headers, seed_conn):
     assert get_project_summary_by_name(seed_conn, 1, "TestProject") is None
 
 
+def test_delete_project_also_deletes_dedup_tables(client, auth_headers, seed_conn):
+    """Test that deleting a project also removes data from projects/project_versions/version_files tables."""
+    project_id = create_test_project(seed_conn, 1, "TestProjectDedup")
+
+    # Also insert into deduplication tables (projects, project_versions, version_files)
+    cur = seed_conn.execute(
+        "INSERT INTO projects(user_id, display_name) VALUES (?, ?)",
+        (1, "TestProjectDedup"),
+    )
+    project_key = cur.lastrowid
+    cur = seed_conn.execute(
+        "INSERT INTO project_versions(project_key, upload_id, fingerprint_strict, fingerprint_loose) "
+        "VALUES (?, ?, ?, ?)",
+        (project_key, None, "fp_strict_123", "fp_loose_123"),
+    )
+    version_key = cur.lastrowid
+    seed_conn.execute(
+        "INSERT INTO version_files(version_key, relpath, file_hash) VALUES (?, ?, ?)",
+        (version_key, "src/main.py", "abc123hash"),
+    )
+    seed_conn.commit()
+
+    # Verify dedup data exists before delete
+    row = seed_conn.execute(
+        "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
+        (1, "TestProjectDedup"),
+    ).fetchone()
+    assert row is not None
+
+    # Delete via API
+    res = client.delete(f"/projects/{project_id}", headers=auth_headers)
+    assert_delete_single_success(res)
+
+    # Verify project_summaries is gone
+    assert get_project_summary_by_name(seed_conn, 1, "TestProjectDedup") is None
+
+    # Verify projects table is also cleaned up
+    row = seed_conn.execute(
+        "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
+        (1, "TestProjectDedup"),
+    ).fetchone()
+    assert row is None
+
+    # Verify project_versions is also cleaned up
+    row = seed_conn.execute(
+        "SELECT version_key FROM project_versions WHERE project_key = ?",
+        (project_key,),
+    ).fetchone()
+    assert row is None
+
+    # Verify version_files is also cleaned up (via CASCADE)
+    row = seed_conn.execute(
+        "SELECT * FROM version_files WHERE version_key = ?",
+        (version_key,),
+    ).fetchone()
+    assert row is None
+
+
+def test_delete_project_cleans_up_rankings_and_thumbnails(client, auth_headers, seed_conn):
+    """Test that deleting a project also removes project_rankings and project_thumbnails."""
+    project_id = create_test_project(seed_conn, 1, "TestProjectRanked")
+
+    # Insert into project_rankings and project_thumbnails
+    seed_conn.execute(
+        "INSERT INTO project_rankings(user_id, project_name, manual_rank) VALUES (?, ?, ?)",
+        (1, "TestProjectRanked", 1),
+    )
+    seed_conn.execute(
+        "INSERT INTO project_thumbnails(user_id, project_name, image_path, added_at, updated_at) "
+        "VALUES (?, ?, ?, datetime('now'), datetime('now'))",
+        (1, "TestProjectRanked", "/path/to/thumb.png"),
+    )
+    seed_conn.commit()
+
+    # Verify data exists before delete
+    assert seed_conn.execute(
+        "SELECT 1 FROM project_rankings WHERE user_id = ? AND project_name = ?",
+        (1, "TestProjectRanked"),
+    ).fetchone() is not None
+    assert seed_conn.execute(
+        "SELECT 1 FROM project_thumbnails WHERE user_id = ? AND project_name = ?",
+        (1, "TestProjectRanked"),
+    ).fetchone() is not None
+
+    # Delete via API
+    res = client.delete(f"/projects/{project_id}", headers=auth_headers)
+    assert_delete_single_success(res)
+
+    # Verify project_rankings is cleaned up
+    assert seed_conn.execute(
+        "SELECT 1 FROM project_rankings WHERE user_id = ? AND project_name = ?",
+        (1, "TestProjectRanked"),
+    ).fetchone() is None
+
+    # Verify project_thumbnails is cleaned up
+    assert seed_conn.execute(
+        "SELECT 1 FROM project_thumbnails WHERE user_id = ? AND project_name = ?",
+        (1, "TestProjectRanked"),
+    ).fetchone() is None
+
+
+def test_delete_all_projects_cleans_dedup_tables(client, auth_headers, seed_conn):
+    """Test that delete all projects also cleans up deduplication tables."""
+    # Create multiple projects with dedup data
+    for i in range(2):
+        name = f"BulkProject{i}"
+        create_test_project(seed_conn, 1, name)
+        cur = seed_conn.execute(
+            "INSERT INTO projects(user_id, display_name) VALUES (?, ?)",
+            (1, name),
+        )
+        pk = cur.lastrowid
+        seed_conn.execute(
+            "INSERT INTO project_versions(project_key, upload_id, fingerprint_strict, fingerprint_loose) "
+            "VALUES (?, ?, ?, ?)",
+            (pk, None, f"fp_strict_{i}", f"fp_loose_{i}"),
+        )
+    seed_conn.commit()
+
+    # Verify dedup data exists
+    count = seed_conn.execute(
+        "SELECT COUNT(*) FROM projects WHERE user_id = ?", (1,)
+    ).fetchone()[0]
+    assert count == 2
+
+    # Delete all via API
+    res = client.delete("/projects", headers=auth_headers)
+    assert_delete_all_success(res, expected_count=2)
+
+    # Verify projects table is cleaned up for user 1
+    count = seed_conn.execute(
+        "SELECT COUNT(*) FROM projects WHERE user_id = ?", (1,)
+    ).fetchone()[0]
+    assert count == 0
+
+
+def test_delete_all_projects_cleans_orphaned_dedup_data(client, auth_headers, seed_conn):
+    """Test that delete all projects also cleans orphaned data in projects table.
+
+    Orphaned data occurs when uploads start but analysis never completes,
+    leaving data in projects/project_versions but not in project_summaries.
+    """
+    # Create a normal project (has both project_summaries and projects table entry)
+    create_test_project(seed_conn, 1, "NormalProject")
+    cur = seed_conn.execute(
+        "INSERT INTO projects(user_id, display_name) VALUES (?, ?)",
+        (1, "NormalProject"),
+    )
+    pk = cur.lastrowid
+    seed_conn.execute(
+        "INSERT INTO project_versions(project_key, upload_id, fingerprint_strict, fingerprint_loose) "
+        "VALUES (?, ?, ?, ?)",
+        (pk, None, "fp_normal", "fp_normal_loose"),
+    )
+
+    # Create orphaned project (only in projects table, no project_summaries)
+    cur = seed_conn.execute(
+        "INSERT INTO projects(user_id, display_name) VALUES (?, ?)",
+        (1, "OrphanedProject"),
+    )
+    orphan_pk = cur.lastrowid
+    seed_conn.execute(
+        "INSERT INTO project_versions(project_key, upload_id, fingerprint_strict, fingerprint_loose) "
+        "VALUES (?, ?, ?, ?)",
+        (orphan_pk, None, "fp_orphan", "fp_orphan_loose"),
+    )
+    seed_conn.commit()
+
+    # Verify: 1 in project_summaries, 2 in projects table
+    summary_count = seed_conn.execute(
+        "SELECT COUNT(*) FROM project_summaries WHERE user_id = ?", (1,)
+    ).fetchone()[0]
+    projects_count = seed_conn.execute(
+        "SELECT COUNT(*) FROM projects WHERE user_id = ?", (1,)
+    ).fetchone()[0]
+    assert summary_count == 1
+    assert projects_count == 2
+
+    # Delete all via API - should clean up both normal and orphaned
+    res = client.delete("/projects", headers=auth_headers)
+    assert_delete_all_success(res, expected_count=2)  # Both should be counted
+
+    # Verify both tables are cleaned up
+    summary_count = seed_conn.execute(
+        "SELECT COUNT(*) FROM project_summaries WHERE user_id = ?", (1,)
+    ).fetchone()[0]
+    projects_count = seed_conn.execute(
+        "SELECT COUNT(*) FROM projects WHERE user_id = ?", (1,)
+    ).fetchone()[0]
+    assert summary_count == 0
+    assert projects_count == 0
+
+
 def test_delete_project_wrong_user(client, auth_headers, seed_conn):
     """Test that a user cannot delete another user's project."""
     create_other_user(seed_conn)

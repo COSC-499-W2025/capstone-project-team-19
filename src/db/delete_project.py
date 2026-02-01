@@ -127,50 +127,30 @@ def delete_all_user_projects(conn: sqlite3.Connection, user_id: int) -> int:
     """
     Delete all projects for a user. Returns count of deleted projects.
 
-    Deletes projects from project_summaries AND cleans up orphaned entries
-    in the projects table (dedup data from uploads that never completed analysis).
+    Deletes from both project_summaries and orphaned entries in the projects
+    table (deduplication data from uploads that never completed analysis).
     """
     from src.db.project_summaries import get_project_summaries_list
 
-    # Get all project names from project_summaries
-    projects = get_project_summaries_list(conn, user_id)
-    count = 0
+    # Get project names from project_summaries
+    summaries = get_project_summaries_list(conn, user_id)
+    summary_names = {p["project_name"] for p in summaries}
 
-    for project in projects:
-        project_name = project["project_name"]
-        delete_project_everywhere(conn, user_id, project_name)
-        count += 1
-
-    # Also clean up orphaned entries in projects table
-    # (uploads that started but never completed analysis)
-    cur = conn.cursor()
-    orphan_keys = [
-        row[0]
-        for row in cur.execute(
-            """
-            SELECT project_key FROM projects
-            WHERE user_id = ?
-            AND display_name NOT IN (
-                SELECT project_name FROM project_summaries WHERE user_id = ?
-            )
-            """,
-            (user_id, user_id),
-        ).fetchall()
-    ]
-
-    for pk in orphan_keys:
-        cur.execute(
-            """
-            DELETE FROM version_files
-            WHERE version_key IN (
-                SELECT version_key FROM project_versions WHERE project_key = ?
-            )
-            """,
-            (pk,),
+    # Get orphaned project names from projects table (dedup data without summaries)
+    orphan_rows = conn.execute(
+        """
+        SELECT display_name FROM projects
+        WHERE user_id = ? AND display_name NOT IN (
+            SELECT project_name FROM project_summaries WHERE user_id = ?
         )
-        cur.execute("DELETE FROM project_versions WHERE project_key = ?", (pk,))
-        cur.execute("DELETE FROM projects WHERE project_key = ?", (pk,))
-        count += 1
+        """,
+        (user_id, user_id),
+    ).fetchall()
+    orphan_names = {row[0] for row in orphan_rows}
 
-    conn.commit()
-    return count
+    # Combine and delete all
+    all_names = summary_names | orphan_names
+    for project_name in all_names:
+        delete_project_everywhere(conn, user_id, project_name)
+
+    return len(all_names)
