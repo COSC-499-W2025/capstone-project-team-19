@@ -47,3 +47,4 @@ class ResumeEditRequestDTO(BaseModel):
     summary_text: Optional[str] = None
     contribution_bullets: Optional[List[str]] = None
     contribution_edit_mode: Optional[Literal["append", "replace"]] = "replace"
+    key_role: Optional[str] = None

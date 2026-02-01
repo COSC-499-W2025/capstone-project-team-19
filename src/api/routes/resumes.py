@@ -101,6 +101,7 @@ def post_resume_edit(
         summary_text=request.summary_text,
         contribution_bullets=request.contribution_bullets,
         contribution_edit_mode=request.contribution_edit_mode,
+        key_role=request.key_role,
     )
 
     if not resume:
