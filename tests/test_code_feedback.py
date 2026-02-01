@@ -43,7 +43,7 @@ def user_id(conn):
 def patch_detectors_and_buckets(monkeypatch):
     """
     Make tests deterministic:
-      - Define only the 3 detectors we care about
+      - Define only the detectors we care about
       - Define a single bucket that depends exactly on them
     """
 
@@ -59,6 +59,11 @@ def patch_detectors_and_buckets(monkeypatch):
         hit = any("@lru_cache" in line or "Redis(" in line or "cache.get" in line for line in lines)
         return (hit, [{"file": file_name, "line": 1}] if hit else [])
 
+    # Negative-weight detector: should emit feedback when PRESENT (hits > 0)
+    def detect_duplicate_code(lines, file_name):
+        hit = any("DUPLICATE" in line for line in lines)
+        return (hit, [{"file": file_name, "line": 1}] if hit else [])
+
     monkeypatch.setattr(
         cse,
         "CODE_DETECTOR_FUNCTIONS",
@@ -66,6 +71,7 @@ def patch_detectors_and_buckets(monkeypatch):
             "detect_hash_maps": detect_hash_maps,
             "detect_serialization": detect_serialization,
             "detect_caching": detect_caching,
+            "detect_duplicate_code": detect_duplicate_code,
         },
         raising=True,
     )
@@ -83,8 +89,18 @@ def patch_detectors_and_buckets(monkeypatch):
         [
             _Bucket(
                 name="backend",
-                detectors=["detect_hash_maps", "detect_serialization", "detect_caching"],
-                weights={"detect_hash_maps": 1, "detect_serialization": 1, "detect_caching": 1},
+                detectors=[
+                    "detect_hash_maps",
+                    "detect_serialization",
+                    "detect_caching",
+                    "detect_duplicate_code",
+                ],
+                weights={
+                    "detect_hash_maps": 1,
+                    "detect_serialization": 1,
+                    "detect_caching": 1,
+                    "detect_duplicate_code": -1,  # negative weight detector
+                },
             )
         ],
         raising=True,
@@ -129,7 +145,7 @@ def test_expected_feedback_when_unmet_criteria_for_caching_serialization_hashmap
 ):
     monkeypatch.setattr(cse, "code_extensions", lambda: {".py"}, raising=True)
 
-    # Feed one Python file with NONE of the patterns
+    # Feed one Python file with NONE of the positive patterns and NO duplicate trigger
     monkeypatch.setattr(
         cse,
         "_load_file_contents",
@@ -144,7 +160,8 @@ def test_expected_feedback_when_unmet_criteria_for_caching_serialization_hashmap
 
     fb = _fetch_feedback(conn, user_id, "proj")
 
-    # Should emit exactly 3 unmet criteria (caching, serialization, hash_maps) for bucket "backend"
+    # Should emit unmet positive criteria (hash_maps, serialization, caching).
+    # detect_duplicate_code is negative-weight, but it's not present, so no feedback for it.
     keys = {r["criterion_key"] for r in fb}
     assert keys == {
         "backend.detect_hash_maps",
@@ -158,7 +175,8 @@ def test_expected_feedback_when_project_score_is_100(
 ):
     monkeypatch.setattr(cse, "code_extensions", lambda: {".py"}, raising=True)
 
-    # Content hits all 3 detectors -> bucket score 1.0 -> no missing criteria -> no feedback
+    # Content hits all 3 positive detectors -> no missing positives.
+    # Also do NOT trigger duplicate detector so we expect no feedback.
     code = "\n".join(
         [
             "import json",
@@ -182,3 +200,38 @@ def test_expected_feedback_when_project_score_is_100(
 
     fb = _fetch_feedback(conn, user_id, "proj")
     assert fb == []
+
+
+def test_expected_feedback_when_negative_weight_detector_is_present(
+    conn, user_id, monkeypatch, patch_detectors_and_buckets
+):
+    monkeypatch.setattr(cse, "code_extensions", lambda: {".py"}, raising=True)
+
+    # Hits all positives AND triggers the negative detector ("DUPLICATE")
+    code = "\n".join(
+        [
+            "import json",
+            "from functools import lru_cache",
+            "@lru_cache(maxsize=128)",
+            "def f(x):",
+            "    d = {'a': 1}",
+            "    print('DUPLICATE')",
+            "    return json.dumps(d)",
+        ]
+    )
+
+    monkeypatch.setattr(
+        cse,
+        "_load_file_contents",
+        lambda files, zip_name: [{"file_name": "a.py", "file_path": "a.py", "content": code}],
+        raising=True,
+    )
+
+    files = [{"file_name": "a.py", "file_path": "a.py"}]
+    cse.extract_code_skills(conn, user_id, "proj", "individual", files)
+
+    fb = _fetch_feedback(conn, user_id, "proj")
+    keys = {r["criterion_key"] for r in fb}
+
+    # Negative detector should emit feedback when it hits
+    assert "backend.detect_duplicate_code" in keys
