@@ -153,10 +153,10 @@ def _persist_code_feedback(
     files_scanned: int,
 ) -> None:
     """
-    Text-like behavior:
-      - For each bucket, treat each detector as a criterion ("at least 1 hit").
-      - If the detector is missing, add a feedback row.
-      - Keep it readable: cap missing criteria per bucket and per project.
+    Feedback behavior:
+      - Positive-weight detectors: emit feedback when missing (hits == 0).
+      - Negative-weight detectors: emit feedback when present (hits > 0).
+      - Keep it readable: cap criteria per bucket and per project.
     """
     if not feedback_ctx:
         return
@@ -174,24 +174,31 @@ def _persist_code_feedback(
         bdata = bucket_results.get(bname) or {}
         score = float(bdata.get("score") or 0.0)
 
-        missing: List[str] = []
-        for det in bucket.detectors:
-            if bucket.weights.get(det, 1) <= 0:
-                continue
-            hits = int((detector_results.get(det) or {}).get("hits") or 0)
-            if hits <= 0:
-                missing.append(det)
+        # store (detector_name, weight, hits) so we can tailor "expected" and "observed"
+        flagged: List[tuple[str, float, int]] = []
 
-        if not missing:
+        for det in bucket.detectors:
+            weight = float(bucket.weights.get(det, 1))
+            hits = int((detector_results.get(det) or {}).get("hits") or 0)
+
+            if weight > 0 and hits <= 0:
+                # missing a positive signal
+                flagged.append((det, weight, hits))
+            elif weight < 0 and hits > 0:
+                # negative signal present (anti-pattern)
+                flagged.append((det, weight, hits))
+            else:
+                # weight == 0 or condition not met => no feedback
+                continue
+
+        if not flagged:
             continue
 
-        missing_sorted = sorted(
-            missing,
-            key=lambda d: abs(bucket.weights.get(d, 1)),
-            reverse=True,
-        )[:MAX_MISSING_CRITERIA_PER_BUCKET]
+        # Prefer higher-importance criteria first (abs(weight)), then cap per bucket
+        flagged_sorted = sorted(flagged, key=lambda t: abs(t[1]), reverse=True)
+        flagged_sorted = flagged_sorted[:MAX_MISSING_CRITERIA_PER_BUCKET]
 
-        for det in missing_sorted:
+        for det, weight, hits in flagged_sorted:
             if emitted >= MAX_MISSING_CRITERIA_PER_PROJECT:
                 break
 
@@ -199,18 +206,22 @@ def _persist_code_feedback(
             label = tpl.get("label") or det.replace("_", " ")
             suggestion = tpl.get("suggestion") or f"Add code evidence that demonstrates: {det.replace('_', ' ')}."
 
+            # Expected depends on detector sign
+            expected = "At least 1 relevant occurrence" if weight > 0 else "No occurrences (0 hits)"
+
             _emit_feedback(
                 feedback_ctx,
                 skill_name=bname,
-                file_name="",
+                file_name="",  # bucket-level across the project
                 criterion_key=f"{bname}.{det}",
                 criterion_label=label,
-                expected="At least 1 relevant occurrence",
+                expected=expected,
                 observed={
-                    "hits": 0,
+                    "hits": hits,
                     "bucket_score": round(score, 3),
                     "files_scanned": int(files_scanned),
                     "detector": det,
+                    "weight": weight,
                 },
                 suggestion=suggestion,
             )
