@@ -91,23 +91,24 @@ def test_export_portfolio_pdf_happy_path_includes_project_text_and_long_summary(
     # Make formatting deterministic (UPDATED for new exporter structure)
     monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda summary, project_name: "My Project")
 
-    # Force duration to go through reformat_duration_line()
-    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: 2025-01-01 — 2025-02-01")
+    # UPDATED: exporter now prefers format_date_range() first
+    monkeypatch.setattr(mod, "format_date_range", lambda *_args, **_kwargs: "Jan 2025 – Feb 2025")
 
-    # New exporter does its own cleaning; keep those deterministic.
-    monkeypatch.setattr(mod, "clean_languages_above_threshold", lambda values, min_pct=10: ["Python", "SQL"])
-    monkeypatch.setattr(mod, "format_frameworks", lambda _summary: "Frameworks: FastAPI 100%")
-    monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").replace(" 100%", "").strip())
+    # Languages/frameworks are now cleaned via portfolio_helpers functions
+    monkeypatch.setattr(mod, "_languages_clean", lambda _summary: "Python, SQL")
+    monkeypatch.setattr(mod, "_frameworks_clean", lambda _summary: "FastAPI")
 
     # Activity percent stripping still supported
     monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: Final 100%")
+    monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").replace(" 100%", "").strip())
 
-    monkeypatch.setattr(mod, "format_skills_block", lambda _summary: ["Skills:", "  - data analysis", "  - APIs"])
+    # Skills: exporter uses _skills_one_line(summary)
+    monkeypatch.setattr(mod, "_skills_one_line", lambda _summary: "data analysis, APIs")
 
     # Very long summary line to ensure it's not lost (wrapping shouldn't drop content)
     long_tail = " ".join(["verylongtext"] * 50)
 
-    # UPDATED: exporter no longer uses format_summary_block(); it uses resolvers
+    # UPDATED: exporter uses resolvers
     monkeypatch.setattr(mod, "resolve_portfolio_summary_text", lambda _summary: long_tail)
     monkeypatch.setattr(mod, "resolve_portfolio_contribution_bullets", lambda *_args, **_kwargs: ["Did X", "Did Y"])
 
@@ -130,7 +131,7 @@ def test_export_portfolio_pdf_happy_path_includes_project_text_and_long_summary(
     # UPDATED: Project title line no longer includes rank/score
     assert "My Project" in text
 
-    # UPDATED: Type/Score lines removed; Duration is reformatted to month/year
+    # UPDATED: Duration is now explicitly supplied by format_date_range()
     assert "Duration:" in text
     assert "Jan 2025" in text
     assert "Feb 2025" in text
@@ -142,10 +143,8 @@ def test_export_portfolio_pdf_happy_path_includes_project_text_and_long_summary(
     # Activity: percent stripped
     assert "Activity: Final" in text
 
-    # Skills
-    assert "Skills:" in text
-    assert "data analysis" in text
-    assert "APIs" in text
+    # Skills (one line now)
+    assert "Skills: data analysis, APIs" in text
 
     # UPDATED: Summary label is now "Project summary:"
     assert "Project summary:" in text
@@ -192,11 +191,12 @@ def test_export_portfolio_pdf_with_thumbnail_does_not_crash(monkeypatch, tmp_pat
 
     # Minimal formatter patches (UPDATED for new exporter structure)
     monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_args, **_kwargs: "Project With Thumb")
-    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: N/A")
+    monkeypatch.setattr(mod, "format_date_range", lambda *_args, **_kwargs: "N/A")
     monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: N/A")
-    monkeypatch.setattr(mod, "format_skills_block", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").strip())
+    monkeypatch.setattr(mod, "_skills_one_line", lambda *_args, **_kwargs: "")
 
-    # UPDATED: exporter uses resolvers, not format_summary_block()
+    # UPDATED: exporter uses resolvers
     monkeypatch.setattr(mod, "resolve_portfolio_summary_text", lambda *_args, **_kwargs: "ok")
     monkeypatch.setattr(mod, "resolve_portfolio_contribution_bullets", lambda *_args, **_kwargs: ["ok"])
 
@@ -209,7 +209,7 @@ def test_export_portfolio_pdf_with_thumbnail_does_not_crash(monkeypatch, tmp_pat
 
     assert pdf_path.exists()
     assert pdf_path.stat().st_size > 0
-    assert called["n"] == 1  # ✅ we attempted to include the thumbnail
+    assert called["n"] == 1  # we attempted to include the thumbnail
 
     text = _extract_pdf_text(pdf_path)
     assert "Project With Thumb" in text
@@ -234,9 +234,10 @@ def test_export_portfolio_pdf_thumbnail_removed_still_exports(monkeypatch, tmp_p
     monkeypatch.setattr(mod, "get_project_summary_row", lambda *_args, **_kwargs: fake_row)
 
     monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_args, **_kwargs: "Thumb Project")
-    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: N/A")
+    monkeypatch.setattr(mod, "format_date_range", lambda *_args, **_kwargs: "N/A")
     monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: N/A")
-    monkeypatch.setattr(mod, "format_skills_block", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").strip())
+    monkeypatch.setattr(mod, "_skills_one_line", lambda *_args, **_kwargs: "")
 
     # UPDATED: exporter uses resolvers
     monkeypatch.setattr(mod, "resolve_portfolio_summary_text", lambda *_args, **_kwargs: "ok")
@@ -265,7 +266,7 @@ def test_export_portfolio_pdf_thumbnail_removed_still_exports(monkeypatch, tmp_p
 
     pdf2 = mod.export_portfolio_to_pdf(conn=conn, user_id=1, username="Salma", out_dir=str(tmp_path))
     assert pdf2.exists() and pdf2.stat().st_size > 0
-    assert called["n"] == 1  # ✅ not called again
+    assert called["n"] == 1  # not called again
 
     text2 = _extract_pdf_text(pdf2)
     assert "Thumb Project" in text2
@@ -291,9 +292,10 @@ def test_export_portfolio_pdf_reflects_edited_summary_text(monkeypatch, tmp_path
     monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: None)
 
     monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_args, **_kwargs: "Edited Summary Project")
-    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: N/A")
+    monkeypatch.setattr(mod, "format_date_range", lambda *_args, **_kwargs: "N/A")
     monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: N/A")
-    monkeypatch.setattr(mod, "format_skills_block", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").strip())
+    monkeypatch.setattr(mod, "_skills_one_line", lambda *_args, **_kwargs: "")
 
     # UPDATED: exporter uses resolver for summary text
     monkeypatch.setattr(mod, "resolve_portfolio_summary_text", lambda summary: "NEW SUMMARY HERE")
@@ -325,14 +327,14 @@ def test_export_portfolio_pdf_reflects_edited_contribution_bullets(monkeypatch, 
     monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: None)
 
     monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_args, **_kwargs: "Edited Bullets Project")
-    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: N/A")
-
-    # New exporter uses internal language cleaning; keep deterministic
-    monkeypatch.setattr(mod, "clean_languages_above_threshold", lambda values, min_pct=10: ["Python"])
-    monkeypatch.setattr(mod, "format_frameworks", lambda *_args, **_kwargs: "Frameworks: None")
-
+    monkeypatch.setattr(mod, "format_date_range", lambda *_args, **_kwargs: "N/A")
     monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: N/A")
-    monkeypatch.setattr(mod, "format_skills_block", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").strip())
+    monkeypatch.setattr(mod, "_skills_one_line", lambda *_args, **_kwargs: "")
+
+    # New exporter uses portfolio_helpers for code metadata
+    monkeypatch.setattr(mod, "_languages_clean", lambda _summary: "Python")
+    monkeypatch.setattr(mod, "_frameworks_clean", lambda _summary: "None")
 
     # UPDATED: exporter uses resolver bullets
     monkeypatch.setattr(mod, "resolve_portfolio_summary_text", lambda *_args, **_kwargs: "Something")
@@ -373,12 +375,12 @@ def test_export_portfolio_pdf_before_after_edit_display_name_summary_and_contrib
     )
 
     # Deterministic non-test focus fields
-    monkeypatch.setattr(mod, "format_duration", lambda *_a, **_k: "Duration: 2025-01-01 — 2025-02-01")
-    monkeypatch.setattr(mod, "clean_languages_above_threshold", lambda values, min_pct=10: ["Python"])
-    monkeypatch.setattr(mod, "format_frameworks", lambda *_a, **_k: "Frameworks: None")
+    monkeypatch.setattr(mod, "format_date_range", lambda *_a, **_k: "Jan 2025 – Feb 2025")
+    monkeypatch.setattr(mod, "_languages_clean", lambda *_a, **_k: "Python")
+    monkeypatch.setattr(mod, "_frameworks_clean", lambda *_a, **_k: "None")
     monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").strip())
     monkeypatch.setattr(mod, "format_activity_line", lambda *_a, **_k: "Activity: N/A")
-    monkeypatch.setattr(mod, "format_skills_block", lambda *_a, **_k: [])
+    monkeypatch.setattr(mod, "_skills_one_line", lambda *_a, **_k: "")
 
     # --- BEFORE ---
     monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_a, **_k: "OLD NAME")

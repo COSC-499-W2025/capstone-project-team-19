@@ -67,13 +67,19 @@ def test_export_portfolio_docx_happy_path_includes_project_text_and_long_summary
     monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: None)
 
     monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda summary, project_name: "My Fiction Project")
-    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: 2025-01-01 — 2025-02-01")
 
-    monkeypatch.setattr(mod, "clean_languages_above_threshold", lambda values, min_pct=10: ["Python", "SQL"])
-    monkeypatch.setattr(mod, "format_frameworks", lambda _summary: "Frameworks: FastAPI 100%")
-    monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").replace(" 100%", "").strip())
+    # UPDATED: exporter now prefers format_date_range() first
+    monkeypatch.setattr(mod, "format_date_range", lambda *_args, **_kwargs: "Jan 2025 – Feb 2025")
+
+    # Languages/frameworks are now cleaned via portfolio_helpers functions
+    monkeypatch.setattr(mod, "_languages_clean", lambda _summary: "Python, SQL")
+    monkeypatch.setattr(mod, "_frameworks_clean", lambda _summary: "FastAPI")
+
     monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: Final 100%")
-    monkeypatch.setattr(mod, "format_skills_block", lambda _summary: ["Skills:", "  - data analysis", "  - APIs"])
+    monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").replace(" 100%", "").strip())
+
+    # Skills: exporter uses _skills_one_line(summary)
+    monkeypatch.setattr(mod, "_skills_one_line", lambda _summary: "data analysis, APIs")
 
     long_tail = " ".join(["verylongtext"] * 50)
     monkeypatch.setattr(mod, "resolve_portfolio_summary_text", lambda _summary: long_tail)
@@ -108,9 +114,8 @@ def test_export_portfolio_docx_happy_path_includes_project_text_and_long_summary
 
     assert "Activity: Final" in text
 
-    assert "Skills:" in text
-    assert "data analysis" in text
-    assert "APIs" in text
+    # Skills (one line now)
+    assert "Skills: data analysis, APIs" in text
 
     assert "Project summary:" in text
     assert "verylongtext" in text
@@ -118,6 +123,7 @@ def test_export_portfolio_docx_happy_path_includes_project_text_and_long_summary
     assert "My contribution:" in text
     assert "Did X" in text
     assert "Did Y" in text
+
 
 def test_export_portfolio_docx_with_thumbnail_does_not_crash(monkeypatch, tmp_path, conn):
     """
@@ -150,9 +156,10 @@ def test_export_portfolio_docx_with_thumbnail_does_not_crash(monkeypatch, tmp_pa
 
     # UPDATED: exporter uses resolvers
     monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_args, **_kwargs: "Project With Thumb")
-    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: N/A")
+    monkeypatch.setattr(mod, "format_date_range", lambda *_args, **_kwargs: "N/A")
     monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: N/A")
-    monkeypatch.setattr(mod, "format_skills_block", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").strip())
+    monkeypatch.setattr(mod, "_skills_one_line", lambda *_args, **_kwargs: "")
     monkeypatch.setattr(mod, "resolve_portfolio_summary_text", lambda *_args, **_kwargs: "ok")
     monkeypatch.setattr(mod, "resolve_portfolio_contribution_bullets", lambda *_args, **_kwargs: ["ok"])
 
@@ -193,9 +200,10 @@ def test_export_portfolio_docx_thumbnail_removed_still_exports(monkeypatch, tmp_
     monkeypatch.setattr(mod, "get_project_summary_row", lambda *_args, **_kwargs: fake_row)
 
     monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_args, **_kwargs: "Thumb Project")
-    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: N/A")
+    monkeypatch.setattr(mod, "format_date_range", lambda *_args, **_kwargs: "N/A")
     monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: N/A")
-    monkeypatch.setattr(mod, "format_skills_block", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").strip())
+    monkeypatch.setattr(mod, "_skills_one_line", lambda *_args, **_kwargs: "")
     monkeypatch.setattr(mod, "resolve_portfolio_summary_text", lambda *_args, **_kwargs: "ok")
     monkeypatch.setattr(mod, "resolve_portfolio_contribution_bullets", lambda *_args, **_kwargs: ["ok"])
 
@@ -243,9 +251,10 @@ def test_export_portfolio_docx_reflects_edited_summary_text(monkeypatch, tmp_pat
     monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: None)
 
     monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_args, **_kwargs: "Edited Summary Project")
-    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: N/A")
+    monkeypatch.setattr(mod, "format_date_range", lambda *_args, **_kwargs: "N/A")
     monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: N/A")
-    monkeypatch.setattr(mod, "format_skills_block", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").strip())
+    monkeypatch.setattr(mod, "_skills_one_line", lambda *_args, **_kwargs: "")
 
     # UPDATED: exporter uses resolver
     monkeypatch.setattr(mod, "resolve_portfolio_summary_text", lambda _summary: "NEW SUMMARY HERE")
@@ -277,14 +286,14 @@ def test_export_portfolio_docx_reflects_edited_contribution_bullets(monkeypatch,
     monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: None)
 
     monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_args, **_kwargs: "Edited Bullets Project")
-    monkeypatch.setattr(mod, "format_duration", lambda *_args, **_kwargs: "Duration: N/A")
-
-    # Keep code metadata deterministic
-    monkeypatch.setattr(mod, "clean_languages_above_threshold", lambda values, min_pct=10: ["Python"])
-    monkeypatch.setattr(mod, "format_frameworks", lambda *_args, **_kwargs: "Frameworks: None")
-
+    monkeypatch.setattr(mod, "format_date_range", lambda *_args, **_kwargs: "N/A")
     monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: N/A")
-    monkeypatch.setattr(mod, "format_skills_block", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").strip())
+    monkeypatch.setattr(mod, "_skills_one_line", lambda *_args, **_kwargs: "")
+
+    # Keep code metadata deterministic (new exporter functions)
+    monkeypatch.setattr(mod, "_languages_clean", lambda _summary: "Python")
+    monkeypatch.setattr(mod, "_frameworks_clean", lambda _summary: "None")
 
     # UPDATED: exporter uses resolvers
     monkeypatch.setattr(mod, "resolve_portfolio_summary_text", lambda *_args, **_kwargs: "Something")
@@ -325,12 +334,12 @@ def test_export_portfolio_docx_before_after_edit_display_name_summary_and_contri
     )
 
     # Deterministic non-test focus fields
-    monkeypatch.setattr(mod, "format_duration", lambda *_a, **_k: "Duration: 2025-01-01 — 2025-02-01")
-    monkeypatch.setattr(mod, "clean_languages_above_threshold", lambda values, min_pct=10: ["Python"])
-    monkeypatch.setattr(mod, "format_frameworks", lambda *_a, **_k: "Frameworks: None")
+    monkeypatch.setattr(mod, "format_date_range", lambda *_a, **_k: "Jan 2025 – Feb 2025")
+    monkeypatch.setattr(mod, "_languages_clean", lambda *_a, **_k: "Python")
+    monkeypatch.setattr(mod, "_frameworks_clean", lambda *_a, **_k: "None")
     monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").strip())
     monkeypatch.setattr(mod, "format_activity_line", lambda *_a, **_k: "Activity: N/A")
-    monkeypatch.setattr(mod, "format_skills_block", lambda *_a, **_k: [])
+    monkeypatch.setattr(mod, "_skills_one_line", lambda *_a, **_k: "")
 
     # --- BEFORE ---
     monkeypatch.setattr(mod, "resolve_portfolio_display_name", lambda *_a, **_k: "OLD NAME")
@@ -367,6 +376,8 @@ def test_export_portfolio_docx_before_after_edit_display_name_summary_and_contri
     monkeypatch.setattr(mod, "resolve_portfolio_contribution_bullets", lambda *_a, **_k: ["Did Y"])
 
     docx3 = mod.export_portfolio_to_docx(conn=conn, user_id=1, username="Jordan", out_dir=str(tmp_path))
+
+    # keep original comments etc everything just make necessary changes
     t3 = _extract_docx_text(docx3)
 
     assert "Did X" not in t3
