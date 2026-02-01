@@ -17,9 +17,7 @@ except ModuleNotFoundError:
     import constants
 
 
-# ---------------------------------------------------------------------
 # Feedback plumbing (callback-only)
-# ---------------------------------------------------------------------
 def _emit_feedback(
     feedback_ctx: Optional[Dict[str, Any]],
     *,
@@ -49,9 +47,7 @@ def _emit_feedback(
     )
 
 
-# ---------------------------------------------------------------------
 # Main entry
-# ---------------------------------------------------------------------
 def extract_code_skills(conn, user_id, project_name, classification, files):
     if constants.VERBOSE:
         print(f"\n[SKILL EXTRACTION] Running CODE skill extraction for {project_name}")
@@ -148,9 +144,7 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
         print(f"[SKILL EXTRACTION] Completed code skill extraction for: {project_name}")
 
 
-# ---------------------------------------------------------------------
-# Feedback emission (text-like: record unmet criteria)
-# ---------------------------------------------------------------------
+# Feedback emission 
 def _persist_code_feedback(
     *,
     feedback_ctx: Optional[Dict[str, Any]],
@@ -162,21 +156,26 @@ def _persist_code_feedback(
     Text-like behavior:
       - For each bucket, treat each detector as a criterion ("at least 1 hit").
       - If the detector is missing, add a feedback row.
-      - Keep it readable: limit missing criteria emitted per bucket.
+      - Keep it readable: cap missing criteria per bucket and per project.
     """
     if not feedback_ctx:
         return
 
     MAX_MISSING_CRITERIA_PER_BUCKET = 3
+    MAX_MISSING_CRITERIA_PER_PROJECT = 15  # prevents overwhelming rows per upload
+
+    emitted = 0
 
     for bucket in CODE_SKILL_BUCKETS:
+        if emitted >= MAX_MISSING_CRITERIA_PER_PROJECT:
+            break
+
         bname = bucket.name
         bdata = bucket_results.get(bname) or {}
         score = float(bdata.get("score") or 0.0)
 
         missing: List[str] = []
         for det in bucket.detectors:
-            # Ignore detectors with non-positive weights (if any)
             if bucket.weights.get(det, 1) <= 0:
                 continue
             hits = int((detector_results.get(det) or {}).get("hits") or 0)
@@ -186,22 +185,24 @@ def _persist_code_feedback(
         if not missing:
             continue
 
-        # Prefer higher-weight criteria first, then cap
-        missing_sorted = sorted(missing, key=lambda d: abs(bucket.weights.get(d, 1)), reverse=True)
-        missing_sorted = missing_sorted[:MAX_MISSING_CRITERIA_PER_BUCKET]
+        missing_sorted = sorted(
+            missing,
+            key=lambda d: abs(bucket.weights.get(d, 1)),
+            reverse=True,
+        )[:MAX_MISSING_CRITERIA_PER_BUCKET]
 
         for det in missing_sorted:
+            if emitted >= MAX_MISSING_CRITERIA_PER_PROJECT:
+                break
+
             tpl = _DETECTOR_FEEDBACK.get(det) or {}
             label = tpl.get("label") or det.replace("_", " ")
-            suggestion = (
-                tpl.get("suggestion")
-                or f"Add code evidence that demonstrates: {det.replace('_', ' ')}."
-            )
+            suggestion = tpl.get("suggestion") or f"Add code evidence that demonstrates: {det.replace('_', ' ')}."
 
             _emit_feedback(
                 feedback_ctx,
                 skill_name=bname,
-                file_name="",  # bucket-level across the project
+                file_name="",
                 criterion_key=f"{bname}.{det}",
                 criterion_label=label,
                 expected="At least 1 relevant occurrence",
@@ -213,11 +214,10 @@ def _persist_code_feedback(
                 },
                 suggestion=suggestion,
             )
+            emitted += 1
 
 
-# ---------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------
 def _filter_code_files(files: List[Dict[str, Any]], code_exts: Set[str]) -> List[Dict[str, Any]]:
     """
     Accept both shapes:
@@ -315,9 +315,7 @@ def _load_file_contents(files: List[Dict[str, Any]], zip_name: str) -> List[Dict
     return files_with_content
 
 
-# ---------------------------------------------------------------------
 # Detector runners
-# ---------------------------------------------------------------------
 def run_filename_detectors(
     files: List[Dict[str, Any]],
     detector_names: List[str],
@@ -375,9 +373,7 @@ def run_all_code_detectors(files: List[Dict[str, Any]]) -> Dict[str, Dict[str, A
     return results
 
 
-# ---------------------------------------------------------------------
 # Bucket aggregation
-# ---------------------------------------------------------------------
 def aggregate_into_buckets(detector_results: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     bucket_output: Dict[str, Dict[str, Any]] = {}
 
