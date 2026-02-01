@@ -819,11 +819,51 @@ Manages résumé-specific representations of projects.
 
 **Base URL:** `/portfolio`
 
-Manages portfolio showcase configuration.
+Manages portfolio showcase configuration. Portfolios are generated live from all of the user's analyzed projects, ranked by importance score. No data is persisted — the portfolio reflects the current state of project summaries and overrides.
 
 ### **Endpoints**
 
-
+- **Generate Portfolio**
+    - **Endpoint**: `POST /portfolio/generate`
+    - **Description**: Generates a portfolio view from all of the user's analyzed projects, ranked by importance. Returns structured project data and a rendered plain-text version. The portfolio is not persisted — it is built on demand from existing project summaries.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: Uses `PortfolioGenerateRequestDTO`
+        ```json
+        {
+            "name": "My Portfolio"
+        }
+        ```
+        - `name` (string, required): Label for the portfolio (used in rendered text header)
+    - **Response Status**: `200 OK` or `400 Bad Request`
+    - **Response Body**: Uses `PortfolioDetailDTO`
+        ```json
+        {
+            "success": true,
+            "data": {
+                "projects": [
+                    {
+                        "project_name": "MyProject",
+                        "display_name": "My Project",
+                        "project_type": "code",
+                        "project_mode": "collaborative",
+                        "score": 0.875,
+                        "duration": "Duration: 2024-01-15 – 2024-06-30",
+                        "languages": ["Python", "JavaScript"],
+                        "frameworks": ["FastAPI", "React"],
+                        "activity": "Activity: feature_coding 85%, testing 15%",
+                        "skills": ["Backend Development", "API Design"],
+                        "summary_text": "A web application for...",
+                        "contribution_bullets": ["Built the REST API layer"]
+                    }
+                ],
+                "rendered_text": "Portfolio — My Portfolio\n..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `400 Bad Request`: No projects found for this user
+        - `401 Unauthorized`: Missing or invalid Bearer token
 
 ---
 
@@ -970,6 +1010,27 @@ Example:
     - `contribution_bullets` (List[string], optional): Custom contribution bullet points
     - `contribution_edit_mode` (string, optional): `"replace"` (default) or `"append"`
     - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead")
+
+- **PortfolioGenerateRequestDTO**
+    - `name` (string, required): Label for the portfolio
+
+- **PortfolioProjectDTO**
+    - `project_name` (string, required)
+    - `display_name` (string, required)
+    - `project_type` (string, optional)
+    - `project_mode` (string, optional)
+    - `score` (float, required): Importance ranking score
+    - `duration` (string, optional): Formatted duration string (e.g. "Duration: 2024-01-15 – 2024-06-30")
+    - `languages` (List[string], optional): Top 3 languages (code projects only)
+    - `frameworks` (List[string], optional): Frameworks used (code projects only)
+    - `activity` (string, optional): Formatted activity line (e.g. "Activity: feature_coding 85%, testing 15%")
+    - `skills` (List[string], optional): Top 4 skills
+    - `summary_text` (string, optional): Project summary text
+    - `contribution_bullets` (List[string], optional): Contribution bullet points
+
+- **PortfolioDetailDTO**
+    - `projects` (List[PortfolioProjectDTO], optional)
+    - `rendered_text` (string, optional): Plain-text formatted portfolio
 
 - **ConsentRequestDTO**
     - `status` (string, required): Must be either "accepted" or "rejected"

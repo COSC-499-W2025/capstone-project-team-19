@@ -6,6 +6,7 @@ from src.api.routes.github import router as github_router
 
 
 from src.api.routes.consent import router as consent_router
+from src.api.routes.portfolio import router as portfolio_router
 from src.api.auth.routes import router as auth_router
 
 app = FastAPI(title="Capstone API")
@@ -20,3 +21,4 @@ app.include_router(skills_router)
 app.include_router(resumes_router)
 app.include_router(consent_router)
 app.include_router(github_router)
+app.include_router(portfolio_router)
