@@ -24,7 +24,7 @@ from src.insights.portfolio import (
 )
 from src.export.portfolio_docx import export_portfolio_to_docx
 from src.services import resume_overrides
-
+from src.export.portfolio_pdf import export_portfolio_to_pdf
 
 def view_portfolio_menu(conn, user_id: int, username: str) -> None:
     """
@@ -36,8 +36,9 @@ def view_portfolio_menu(conn, user_id: int, username: str) -> None:
         print("1. View portfolio")
         print("2. Edit wording")
         print("3. Export to Word (.docx)")
-        print("4. Back to main menu")
-        choice = input("Select an option (1-4): ").strip()
+        print("4. Export to PDF (.pdf)")
+        print("5. Back to main menu")
+        choice = input("Select an option (1-5): ").strip()
 
         if choice == "1":
             _display_portfolio(conn, user_id, username)
@@ -54,10 +55,15 @@ def view_portfolio_menu(conn, user_id: int, username: str) -> None:
                 print("")
                 continue
         elif choice == "4":
+            handled = _handle_export_portfolio_pdf(conn, user_id, username)
+            if handled:
+                print("")
+                continue
+        elif choice == "5":
             print("")
             return
         else:
-            print("Invalid choice, please enter 1, 2, 3, or 4.")
+            print("Invalid choice, please enter 1, 2, 3, 4, or 5.")
 
 
 # Keep old function name as alias for backwards compatibility
@@ -400,4 +406,18 @@ def _handle_edit_portfolio_wording(conn, user_id: int, username: str) -> bool:
         log_summary=True,
     )
     print("[Portfolio] Updated wording across resumes and portfolio.")
+    return True
+
+def _handle_export_portfolio_pdf(conn, user_id: int, username: str) -> bool:
+    """
+    Export the portfolio to a PDF document.
+    """
+    project_scores = collect_project_data(conn, user_id)
+    if not project_scores:
+        print("No projects found. Please analyze some projects first.")
+        return False
+
+    out_file = export_portfolio_to_pdf(conn, user_id, username, out_dir="./out")
+    print(f"\nSaving portfolio to {out_file} ...")
+    print("Export complete.\n")
     return True
