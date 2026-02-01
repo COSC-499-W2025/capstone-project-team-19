@@ -12,17 +12,15 @@ from typing import Any, Dict, List, Tuple
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from src.db import get_project_summary_by_name, get_project_summary_row, update_project_summary_json
 from src.insights.portfolio import (
-    format_duration,
     format_languages,
     format_frameworks,
-    format_activity_line,
-    format_skills_block,
     format_summary_block,
     resolve_portfolio_contribution_bullets,
     resolve_portfolio_display_name,
     resolve_portfolio_summary_text,
 )
 from src.export.portfolio_docx import export_portfolio_to_docx
+from src.services.portfolio_service import build_portfolio_data
 from src.services import resume_overrides
 from src.export.portfolio_pdf import export_portfolio_to_pdf
 
@@ -80,9 +78,9 @@ def _display_portfolio(conn, user_id: int, username: str) -> bool:
     Returns True if portfolio was displayed, False if no projects.
     """
     try:
-        project_scores = collect_project_data(conn, user_id)
+        projects = build_portfolio_data(conn, user_id)
 
-        if not project_scores:
+        if not projects:
             print(f"\n{'=' * 80}")
             print("No projects found. Please analyze some projects first.")
             print(f"{'=' * 80}\n")
@@ -92,38 +90,34 @@ def _display_portfolio(conn, user_id: int, username: str) -> bool:
         print(f"Portfolio view for {username}")
         print(f"{'=' * 80}\n")
 
-        for rank, (project_name, score) in enumerate(project_scores, start=1):
-            row = get_project_summary_row(conn, user_id, project_name)
-            if row is None:
-                continue
+        for rank, project in enumerate(projects, start=1):
+            project_name = project["project_name"]
+            project_type = project["project_type"]
+            project_mode = project["project_mode"]
 
-            summary = row["summary"]
-            project_type = row.get("project_type") or summary.get("project_type") or "unknown"
-            project_mode = row.get("project_mode") or summary.get("project_mode") or "individual"
-            created_at = row.get("created_at") or ""
-
-            display_name = resolve_portfolio_display_name(summary, project_name)
-            print(f"[{rank}] {display_name} — Score {score:.3f}")
+            print(f"[{rank}] {project['display_name']} — Score {project['score']:.3f}")
             print(f"  Type: {project_type} ({project_mode})")
-            print(
-                f"  {format_duration(project_type, project_mode, created_at, user_id, project_name, conn)}"
-            )
+            print(f"  {project['duration']}")
 
-            # Code: show languages + frameworks.
             if project_type == "code":
+                row = get_project_summary_row(conn, user_id, project_name)
+                summary = (row["summary"] or {}) if row else {}
                 print(f"  {format_languages(summary)}")
                 print(f"  {format_frameworks(summary)}")
 
-            # Activity (same for code/text)
-            print(
-                f"  {format_activity_line(project_type, project_mode, conn, user_id, project_name, summary)}"
-            )
+            print(f"  {project['activity']}")
 
             # Skills block (bullets)
-            for line in format_skills_block(summary):
-                print(f"  {line}")
+            if project["skills"]:
+                print("  Skills:")
+                for skill in project["skills"]:
+                    print(f"    - {skill}")
+            else:
+                print("  Skills: N/A")
 
             # Summary block (LLM vs non-LLM)
+            row = get_project_summary_row(conn, user_id, project_name)
+            summary = (row["summary"] or {}) if row else {}
             for line in format_summary_block(
                 project_type, project_mode, summary, conn, user_id, project_name
             ):
