@@ -127,11 +127,12 @@ def post_upload_project_main_file(
 
 @router.delete("", response_model=ApiResponse[DeleteResultDTO])
 def delete_all_user_projects(
+    refresh_resumes: bool = Query(False, description="If true, remove deleted projects from resume snapshots"),
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
     """Delete all projects for the current user."""
-    count = delete_all_projects(conn, user_id)
+    count = delete_all_projects(conn, user_id, refresh_resumes=refresh_resumes)
     return ApiResponse(success=True, data=DeleteResultDTO(deleted_count=count), error=None)
 
 
@@ -152,11 +153,12 @@ def get_project(
 @router.delete("/{project_id:int}", response_model=ApiResponse[None])
 def delete_single_project(
     project_id: int,
+    refresh_resumes: bool = Query(False, description="If true, remove deleted project from resume snapshots"),
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
     """Delete a single project by ID."""
-    deleted = delete_project(conn, user_id, project_id)
+    deleted = delete_project(conn, user_id, project_id, refresh_resumes=refresh_resumes)
     if not deleted:
         raise HTTPException(status_code=404, detail="Project not found")
     return ApiResponse(success=True, data=None, error=None)
