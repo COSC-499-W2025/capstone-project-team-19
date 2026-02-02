@@ -78,9 +78,9 @@ def delete_project_everywhere(
             "config_files",
             "project_summaries",
             "project_skills",
-            "project_feedback",     
-            "project_rankings",    
-            "project_thumbnails",   
+            "project_feedback",
+            "project_rankings",
+            "project_thumbnails",
             "text_contribution_summary",
             "project_repos",
             "project_drive_files",
@@ -121,3 +121,36 @@ def delete_project_everywhere(
             WHERE version_key NOT IN (SELECT version_key FROM project_versions)
             """
         )
+
+
+def delete_all_user_projects(conn: sqlite3.Connection, user_id: int) -> int:
+    """
+    Delete all projects for a user. Returns count of deleted projects.
+
+    Deletes from both project_summaries and orphaned entries in the projects
+    table (deduplication data from uploads that never completed analysis).
+    """
+    from src.db.project_summaries import get_project_summaries_list
+
+    # Get project names from project_summaries
+    summaries = get_project_summaries_list(conn, user_id)
+    summary_names = {p["project_name"] for p in summaries}
+
+    # Get orphaned project names from projects table (dedup data without summaries)
+    orphan_rows = conn.execute(
+        """
+        SELECT display_name FROM projects
+        WHERE user_id = ? AND display_name NOT IN (
+            SELECT project_name FROM project_summaries WHERE user_id = ?
+        )
+        """,
+        (user_id, user_id),
+    ).fetchall()
+    orphan_names = {row[0] for row in orphan_rows}
+
+    # Combine and delete all
+    all_names = summary_names | orphan_names
+    for project_name in all_names:
+        delete_project_everywhere(conn, user_id, project_name)
+
+    return len(all_names)
