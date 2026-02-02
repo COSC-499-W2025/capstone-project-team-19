@@ -150,3 +150,82 @@ def test_resume_export_pdf_cancel_invalid_selection(monkeypatch, capsys):
 
     assert ok is False
     assert "Invalid selection" in out
+
+
+@pytest.mark.pdf_text
+def test_resume_pdf_export_uses_key_role(monkeypatch, tmp_path):
+    """Test that PDF export uses resolved key_role instead of [Role] placeholder."""
+    import src.export.resume_pdf as exp
+
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {},
+        "projects": [
+            {
+                "project_name": "test_project",
+                "key_role": "Backend Developer",
+                "start_date": "2025-01-01",
+                "end_date": "2025-06-01",
+                "contribution_bullets": ["Built API endpoints"],
+            },
+        ],
+    }
+
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
+    out_dir = tmp_path / "out"
+    path = exp.export_resume_record_to_pdf(username="jane", record=record, out_dir=str(out_dir))
+
+    text = _pdf_text(path)
+    assert "Backend Developer" in text
+    assert "[Role]" not in text
+
+
+@pytest.mark.pdf_text
+def test_resume_pdf_export_key_role_override_priority(monkeypatch, tmp_path):
+    """Test that resume_key_role_override takes priority over base key_role in PDF."""
+    import src.export.resume_pdf as exp
+
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {},
+        "projects": [
+            {
+                "project_name": "test_project",
+                "key_role": "Developer",
+                "manual_key_role": "Senior Developer",
+                "resume_key_role_override": "Lead Developer",
+                "start_date": "2025-01-01",
+                "end_date": "2025-06-01",
+                "contribution_bullets": ["Led team"],
+            },
+        ],
+    }
+
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
+    out_dir = tmp_path / "out"
+    path = exp.export_resume_record_to_pdf(username="jane", record=record, out_dir=str(out_dir))
+
+    text = _pdf_text(path)
+    # Should use the resume override (highest priority)
+    assert "Lead Developer" in text
+    # The actual role used should be "Lead Developer", others should not appear
+    # (though they might if they overlap in text - just ensure override is present)
+    assert "[Role]" not in text

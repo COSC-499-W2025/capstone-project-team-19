@@ -218,3 +218,113 @@ def test_resume_export_fallback_to_rendered_text(monkeypatch, tmp_path):
     path2 = exp.export_resume_record_to_docx(username="john", record=record2, out_dir=str(out_dir))
     txt2 = _doc_text(path2)
     assert "Resume data is missing or unreadable" in txt2
+
+
+def test_resume_export_uses_key_role(monkeypatch, tmp_path):
+    """Test that export uses resolved key_role instead of [Role] placeholder."""
+    import src.export.resume_docx as exp
+    from docx import Document
+
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {},
+        "projects": [
+            {
+                "project_name": "test_project",
+                "key_role": "Backend Developer",
+                "start_date": "2025-01-01",
+                "end_date": "2025-06-01",
+                "contribution_bullets": ["Built API endpoints"],
+            },
+        ],
+    }
+
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
+    out_dir = tmp_path / "out"
+    path = exp.export_resume_record_to_docx(username="jane", record=record, out_dir=str(out_dir))
+
+    txt = _doc_text(path)
+    assert "Backend Developer" in txt
+    assert "[Role]" not in txt
+
+
+def test_resume_export_key_role_override_priority(monkeypatch, tmp_path):
+    """Test that resume_key_role_override takes priority over base key_role."""
+    import src.export.resume_docx as exp
+    from docx import Document
+
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {},
+        "projects": [
+            {
+                "project_name": "test_project",
+                "key_role": "Developer",
+                "manual_key_role": "Senior Developer",
+                "resume_key_role_override": "Lead Developer",
+                "contribution_bullets": ["Led team"],
+            },
+        ],
+    }
+
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
+    out_dir = tmp_path / "out"
+    path = exp.export_resume_record_to_docx(username="jane", record=record, out_dir=str(out_dir))
+
+    txt = _doc_text(path)
+    # Should use the resume override (highest priority)
+    assert "Lead Developer" in txt
+    assert "Senior Developer" not in txt
+    assert "[Role]" not in txt
+
+
+def test_resume_export_fallback_to_role_placeholder(monkeypatch, tmp_path):
+    """Test that export falls back to [Role] when no key_role is set."""
+    import src.export.resume_docx as exp
+    from docx import Document
+
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {},
+        "projects": [
+            {
+                "project_name": "test_project",
+                # No key_role set
+                "contribution_bullets": ["Did stuff"],
+            },
+        ],
+    }
+
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
+    out_dir = tmp_path / "out"
+    path = exp.export_resume_record_to_docx(username="jane", record=record, out_dir=str(out_dir))
+
+    txt = _doc_text(path)
+    assert "[Role]" in txt
