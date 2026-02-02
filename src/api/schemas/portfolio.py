@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 
 class PortfolioProjectDTO(BaseModel):
@@ -24,3 +24,11 @@ class PortfolioDetailDTO(BaseModel):
 
 class PortfolioGenerateRequestDTO(BaseModel):
     name: str
+
+
+class PortfolioEditRequestDTO(BaseModel):
+    project_name: str
+    scope: Optional[Literal["portfolio_only", "global"]] = "portfolio_only"
+    display_name: Optional[str] = None
+    summary_text: Optional[str] = None
+    contribution_bullets: Optional[List[str]] = None

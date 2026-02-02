@@ -1149,6 +1149,43 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
         - `400 Bad Request`: No projects found for this user
         - `401 Unauthorized`: Missing or invalid Bearer token
 
+- **Edit Portfolio**
+    - **Endpoint**: `POST /portfolio/edit`
+    - **Description**: Edits portfolio wording for a specific project. Changes can be scoped to the portfolio only or applied globally (affecting all resumes and the portfolio). Edits are stored as overrides in `project_summaries.summary_json` — no portfolio snapshot table is needed. Returns the updated portfolio view.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: Uses `PortfolioEditRequestDTO`
+        ```json
+        {
+            "project_name": "MyProject",
+            "scope": "portfolio_only",
+            "display_name": "Custom Project Name",
+            "summary_text": "Updated summary...",
+            "contribution_bullets": ["Built feature X", "Improved performance by 50%"]
+        }
+        ```
+        - `project_name` (string, required): The text name of the project to edit
+        - `scope` (string, optional): Either `"portfolio_only"` (default) or `"global"`
+            - `portfolio_only`: Changes apply only to the portfolio view (stored as `portfolio_overrides`)
+            - `global`: Changes apply to all resumes and the portfolio (stored as `manual_overrides` in `project_summaries`, fanned out to all `resume_snapshots`)
+        - `display_name` (string, optional): Custom display name for the project
+        - `summary_text` (string, optional): Updated summary text
+        - `contribution_bullets` (array of strings, optional): Custom contribution bullet points
+    - **Response Status**: `200 OK` or `404 Not Found`
+    - **Response Body**: Uses `PortfolioDetailDTO` (returns the full updated portfolio)
+        ```json
+        {
+            "success": true,
+            "data": {
+                "projects": [...],
+                "rendered_text": "..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Project not found
+
 ---
 
 ### Path Variables
@@ -1337,6 +1374,13 @@ Example:
 
 - **PortfolioGenerateRequestDTO**
     - `name` (string, required): Label for the portfolio
+
+- **PortfolioEditRequestDTO**
+    - `project_name` (string, required): Text name of the project to edit
+    - `scope` (string, optional): `"portfolio_only"` (default) or `"global"`
+    - `display_name` (string, optional): Custom display name for the project
+    - `summary_text` (string, optional): Updated summary text
+    - `contribution_bullets` (List[string], optional): Custom contribution bullet points
 
 - **PortfolioProjectDTO**
     - `project_name` (string, required)
