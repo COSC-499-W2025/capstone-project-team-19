@@ -6,11 +6,10 @@ Menu option for viewing portfolio items.
 
 from __future__ import annotations
 
-import json
 from typing import Any, Dict, List, Tuple
 
 from src.insights.rank_projects.rank_project_importance import collect_project_data
-from src.db import get_project_summary_by_name, get_project_summary_row, update_project_summary_json
+from src.db import get_project_summary_row
 from src.insights.portfolio import (
     format_languages,
     format_frameworks,
@@ -20,7 +19,11 @@ from src.insights.portfolio import (
     resolve_portfolio_summary_text,
 )
 from src.export.portfolio_docx import export_portfolio_to_docx
-from src.services.portfolio_service import build_portfolio_data
+from src.services.portfolio_service import (
+    build_portfolio_data,
+    update_portfolio_overrides,
+    clear_portfolio_overrides_for_fields,
+)
 from src.services import resume_overrides
 
 
@@ -227,82 +230,6 @@ def _collect_section_updates(
     return updates
 
 
-def _clear_portfolio_overrides_for_fields(
-    conn,
-    user_id: int,
-    project_name: str,
-    fields: set[str],
-) -> None:
-    """
-    Clear specific fields from portfolio_overrides so that manual_overrides take effect.
-    Called when user makes a global edit from the portfolio flow.
-    """
-    summary_row = get_project_summary_by_name(conn, user_id, project_name)
-    if not summary_row:
-        return
-
-    try:
-        summary_dict = json.loads(summary_row["summary_json"])
-    except Exception:
-        return
-
-    overrides = summary_dict.get("portfolio_overrides")
-    if not overrides or not isinstance(overrides, dict):
-        return
-
-    changed = False
-    for field in fields:
-        if field in overrides:
-            del overrides[field]
-            changed = True
-
-    if not changed:
-        return
-
-    if overrides:
-        summary_dict["portfolio_overrides"] = overrides
-    else:
-        summary_dict.pop("portfolio_overrides", None)
-
-    update_project_summary_json(conn, user_id, project_name, json.dumps(summary_dict))
-
-
-def _update_project_portfolio_overrides(
-    conn,
-    user_id: int,
-    project_name: str,
-    updates: dict[str, Any],
-) -> dict[str, Any] | None:
-    summary_row = get_project_summary_by_name(conn, user_id, project_name)
-    if not summary_row:
-        return None
-
-    try:
-        summary_dict = json.loads(summary_row["summary_json"])
-    except Exception:
-        return None
-
-    overrides = summary_dict.get("portfolio_overrides") or {}
-    if not isinstance(overrides, dict):
-        overrides = {}
-
-    for key, value in updates.items():
-        if value:
-            overrides[key] = value
-        else:
-            overrides.pop(key, None)
-
-    if overrides:
-        summary_dict["portfolio_overrides"] = overrides
-    else:
-        summary_dict.pop("portfolio_overrides", None)
-
-    updated = update_project_summary_json(conn, user_id, project_name, json.dumps(summary_dict))
-    if not updated:
-        return None
-    return overrides
-
-
 def _handle_edit_portfolio_wording(conn, user_id: int, username: str) -> bool:
     project_scores = collect_project_data(conn, user_id)
     if not project_scores:
@@ -369,7 +296,7 @@ def _handle_edit_portfolio_wording(conn, user_id: int, username: str) -> bool:
         return False
 
     if scope_choice == "1":
-        overrides = _update_project_portfolio_overrides(conn, user_id, project_name, updates)
+        overrides = update_portfolio_overrides(conn, user_id, project_name, updates)
         if overrides is None:
             print("Unable to update portfolio overrides.")
             return False
@@ -383,7 +310,7 @@ def _handle_edit_portfolio_wording(conn, user_id: int, username: str) -> bool:
 
     # Clear portfolio-specific overrides for fields being updated globally,
     # so the global manual_overrides take effect (they have lower priority).
-    _clear_portfolio_overrides_for_fields(conn, user_id, project_name, set(updates.keys()))
+    clear_portfolio_overrides_for_fields(conn, user_id, project_name, set(updates.keys()))
 
     resume_overrides.apply_manual_overrides_to_resumes(
         conn,

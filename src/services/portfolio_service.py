@@ -1,7 +1,12 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
+import json
 
 from src.insights.rank_projects.rank_project_importance import collect_project_data
-from src.db import get_project_summary_row
+from src.db import get_project_summary_by_name, get_project_summary_row, update_project_summary_json
+from src.services.resume_overrides import (
+    update_project_manual_overrides,
+    apply_manual_overrides_to_resumes,
+)
 from src.insights.portfolio import (
     format_duration,
     format_languages,
@@ -145,3 +150,139 @@ def generate_portfolio(
         "projects": projects,
         "rendered_text": rendered_text,
     }
+
+
+def update_portfolio_overrides(
+    conn,
+    user_id: int,
+    project_name: str,
+    updates: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """
+    Update portfolio-only overrides in project_summaries.summary_json.
+    Shared by the API route and the CLI menu.
+    """
+    summary_row = get_project_summary_by_name(conn, user_id, project_name)
+    if not summary_row:
+        return None
+
+    try:
+        summary_dict = json.loads(summary_row["summary_json"])
+    except Exception:
+        return None
+
+    overrides = summary_dict.get("portfolio_overrides") or {}
+    if not isinstance(overrides, dict):
+        overrides = {}
+
+    for key, value in updates.items():
+        if value:
+            overrides[key] = value
+        else:
+            overrides.pop(key, None)
+
+    if overrides:
+        summary_dict["portfolio_overrides"] = overrides
+    else:
+        summary_dict.pop("portfolio_overrides", None)
+
+    updated = update_project_summary_json(conn, user_id, project_name, json.dumps(summary_dict))
+    if not updated:
+        return None
+    return overrides
+
+
+def clear_portfolio_overrides_for_fields(
+    conn,
+    user_id: int,
+    project_name: str,
+    fields: Set[str],
+) -> None:
+    """
+    Clear specific fields from portfolio_overrides so that manual_overrides take effect.
+    Called when user makes a global edit from the portfolio flow.
+    Shared by the API route and the CLI menu.
+    """
+    summary_row = get_project_summary_by_name(conn, user_id, project_name)
+    if not summary_row:
+        return
+
+    try:
+        summary_dict = json.loads(summary_row["summary_json"])
+    except Exception:
+        return
+
+    overrides = summary_dict.get("portfolio_overrides")
+    if not overrides or not isinstance(overrides, dict):
+        return
+
+    changed = False
+    for field in fields:
+        if field in overrides:
+            del overrides[field]
+            changed = True
+
+    if not changed:
+        return
+
+    if overrides:
+        summary_dict["portfolio_overrides"] = overrides
+    else:
+        summary_dict.pop("portfolio_overrides", None)
+
+    update_project_summary_json(conn, user_id, project_name, json.dumps(summary_dict))
+
+
+def edit_portfolio(
+    conn,
+    user_id: int,
+    project_name: str,
+    scope: str = "portfolio_only",
+    display_name: Optional[str] = None,
+    summary_text: Optional[str] = None,
+    contribution_bullets: Optional[List[str]] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    Edit portfolio wording for a project.
+    Returns the updated portfolio data, or None if project not found.
+    """
+    # Verify project exists
+    summary_row = get_project_summary_by_name(conn, user_id, project_name)
+    if not summary_row:
+        return None
+
+    # Build updates dict
+    updates: Dict[str, Any] = {}
+    if display_name is not None:
+        updates["display_name"] = display_name or None
+    if summary_text is not None:
+        updates["summary_text"] = summary_text or None
+    if contribution_bullets is not None:
+        updates["contribution_bullets"] = contribution_bullets or None
+
+    if not updates:
+        # No field updates, return current portfolio
+        return generate_portfolio(conn, user_id, name="Portfolio")
+
+    if scope == "portfolio_only":
+        result = update_portfolio_overrides(conn, user_id, project_name, updates)
+        if result is None:
+            return None
+    else:
+        # Global: update manual_overrides and fan out to resumes
+        manual_overrides = update_project_manual_overrides(conn, user_id, project_name, updates)
+        if manual_overrides is None:
+            return None
+
+        # Clear portfolio-specific overrides for these fields so global takes effect
+        clear_portfolio_overrides_for_fields(conn, user_id, project_name, set(updates.keys()))
+
+        apply_manual_overrides_to_resumes(
+            conn,
+            user_id,
+            project_name,
+            manual_overrides,
+            set(updates.keys()),
+        )
+
+    return generate_portfolio(conn, user_id, name="Portfolio")
