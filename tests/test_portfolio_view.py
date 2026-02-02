@@ -77,7 +77,7 @@ def stub_portfolio_db_helpers(monkeypatch):
 
 def test_portfolio_no_projects(conn, capsys, monkeypatch):
     monkeypatch.setattr(
-        "src.menu.portfolio.collect_project_data",
+        "src.services.portfolio_service.collect_project_data",
         lambda *_: [],
         raising=False,
     )
@@ -94,7 +94,7 @@ def test_portfolio_single_basic_project(conn, capsys, monkeypatch):
     save_project_summary(conn, user_id, "proj1", _make_portfolio_summary("proj1"))
 
     monkeypatch.setattr(
-        "src.menu.portfolio.collect_project_data",
+        "src.services.portfolio_service.collect_project_data",
         lambda c, uid: [("proj1", 0.8)],
         raising=False,
     )
@@ -123,7 +123,7 @@ def test_portfolio_multiple_projects_order(conn, capsys, monkeypatch):
 
     # Ranking: C > B > A
     monkeypatch.setattr(
-        "src.menu.portfolio.collect_project_data",
+        "src.services.portfolio_service.collect_project_data",
         lambda c, uid: [("C", 0.9), ("B", 0.8), ("A", 0.7)],
         raising=False,
     )
@@ -140,7 +140,7 @@ def test_portfolio_missing_fields(conn, capsys, monkeypatch):
     save_project_summary(conn, 1, "Bare", json.dumps({}))   # totally empty summary JSON
 
     monkeypatch.setattr(
-        "src.menu.portfolio.collect_project_data",
+        "src.services.portfolio_service.collect_project_data",
         lambda *_: [("Bare", 0.5)],
         raising=False,
     )
@@ -173,7 +173,7 @@ def test_portfolio_prefers_manual_contribution_for_collab_code(conn, capsys, mon
     save_project_summary(conn, user_id, "proj1", json.dumps(summary))
 
     monkeypatch.setattr(
-        "src.menu.portfolio.collect_project_data",
+        "src.services.portfolio_service.collect_project_data",
         lambda c, uid: [("proj1", 0.8)],
         raising=False,
     )
@@ -209,7 +209,7 @@ def test_portfolio_uses_manual_overrides(conn, capsys, monkeypatch):
     save_project_summary(conn, user_id, "proj1", json.dumps(summary))
 
     monkeypatch.setattr(
-        "src.menu.portfolio.collect_project_data",
+        "src.services.portfolio_service.collect_project_data",
         lambda c, uid: [("proj1", 0.8)],
         raising=False,
     )
@@ -252,7 +252,7 @@ def test_portfolio_portfolio_overrides_take_priority(conn, capsys, monkeypatch):
     save_project_summary(conn, user_id, "proj1", json.dumps(summary))
 
     monkeypatch.setattr(
-        "src.menu.portfolio.collect_project_data",
+        "src.services.portfolio_service.collect_project_data",
         lambda c, uid: [("proj1", 0.8)],
         raising=False,
     )
@@ -282,7 +282,7 @@ def test_portfolio_edit_portfolio_only_updates_overrides(conn, monkeypatch):
     save_project_summary(conn, user_id, "proj1", json.dumps(summary))
 
     monkeypatch.setattr(
-        "src.menu.portfolio.collect_project_data",
+        "src.services.portfolio_service.collect_project_data",
         lambda c, uid: [("proj1", 0.8)],
         raising=False,
     )
@@ -311,7 +311,7 @@ def test_portfolio_edit_global_updates_manual_overrides(conn, monkeypatch):
     save_project_summary(conn, user_id, "proj1", json.dumps(summary))
 
     monkeypatch.setattr(
-        "src.menu.portfolio.collect_project_data",
+        "src.services.portfolio_service.collect_project_data",
         lambda c, uid: [("proj1", 0.8)],
         raising=False,
     )
@@ -348,7 +348,7 @@ def test_portfolio_edit_cancel_selection_is_noop(conn, monkeypatch):
     save_project_summary(conn, user_id, "proj1", json.dumps(summary))
 
     monkeypatch.setattr(
-        "src.menu.portfolio.collect_project_data",
+        "src.services.portfolio_service.collect_project_data",
         lambda c, uid: [("proj1", 0.8)],
         raising=False,
     )
@@ -384,7 +384,7 @@ def test_portfolio_global_edit_clears_portfolio_override(conn, capsys, monkeypat
     save_project_summary(conn, user_id, "proj1", json.dumps(summary))
 
     monkeypatch.setattr(
-        "src.menu.portfolio.collect_project_data",
+        "src.services.portfolio_service.collect_project_data",
         lambda c, uid: [("proj1", 0.8)],
         raising=False,
     )
