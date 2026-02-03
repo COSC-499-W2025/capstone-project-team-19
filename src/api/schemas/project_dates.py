@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import List, Literal, Optional
-from pydantic import BaseModel, Field, field_validator
-from src.services.project_dates_service import validate_manual_date_range
+from pydantic import BaseModel, Field
 
 ProjectDateSource = Literal["AUTO", "MANUAL"]
 
@@ -34,15 +33,6 @@ class PatchProjectDatesRequestDTO(BaseModel):
         default=None,
         description="Manual end date (YYYY-MM-DD). Omit to keep current. Use null to clear.",
     )
-
-    @field_validator("end_date")
-    @classmethod
-    def _validate_range(cls, v, info):
-        # NOTE: This validator only triggers if end_date is present in input.
-        # We'll validate again in the route based on which fields were provided.
-        start_date = info.data.get("start_date")
-        validate_manual_date_range(start_date, v)
-        return v
 
 class ResetProjectDatesResultDTO(BaseModel):
     cleared_count: int
