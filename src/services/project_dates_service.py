@@ -47,6 +47,12 @@ def validate_manual_date(date_str: str) -> None:
 
     Raises ValueError with a human-friendly message on invalid input.
     """
+    if not isinstance(date_str, str) or date_str.strip() == "":
+        raise ValueError(
+            "Date cannot be empty. Omit the field to keep the current value, or use null to clear it."
+        )
+
+    date_str = date_str.strip()
     if not _is_valid_yyyy_mm_dd(date_str):
         raise ValueError("Invalid date. Use YYYY-MM-DD with valid month (1-12) and day.")
 
@@ -55,9 +61,9 @@ def validate_manual_date(date_str: str) -> None:
         raise ValueError("Date cannot be in the future.")
 
 def validate_manual_date_range(start_date: Optional[str], end_date: Optional[str]) -> None:
-    if start_date:
+    if start_date is not None:
         validate_manual_date(start_date)
-    if end_date:
+    if end_date is not None:
         validate_manual_date(end_date)
 
     if start_date and end_date:
@@ -151,6 +157,20 @@ def set_project_manual_dates(conn: Connection, user_id: int, project_id: int, *,
     current = get_project_dates(conn, user_id, project_name)
     current_start = current[0] if current else None
     current_end = current[1] if current else None
+
+    # Normalize string inputs (trim whitespace). Reject empty strings.
+    if isinstance(start_date, str):
+        start_date = start_date.strip()
+        if start_date == "":
+            raise ValueError(
+                "start_date cannot be an empty string. Omit the field to keep the current value, or use null to clear it."
+            )
+    if isinstance(end_date, str):
+        end_date = end_date.strip()
+        if end_date == "":
+            raise ValueError(
+                "end_date cannot be an empty string. Omit the field to keep the current value, or use null to clear it."
+            )
 
     new_start = current_start if start_date is UNSET else start_date
     new_end = current_end if end_date is UNSET else end_date
