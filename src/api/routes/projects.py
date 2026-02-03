@@ -11,8 +11,7 @@ from src.api.schemas.uploads import (
     DedupResolveRequestDTO,
     UploadProjectFilesDTO,
     MainFileRequestDTO,
-    MainFileSectionsDTO,
-    MainFileContributionDTO,
+    MainFileSectionsResponseDTO,
     ContributedSectionsRequestDTO,
 )
 from src.services.projects_service import (
@@ -133,7 +132,7 @@ def post_upload_project_main_file(
 
 @router.get(
     "/upload/{upload_id}/projects/{project_name}/text/sections",
-    response_model=ApiResponse[MainFileSectionsDTO]
+    response_model=ApiResponse[MainFileSectionsResponseDTO],
 )
 def get_main_file_sections(
     upload_id: int,
@@ -144,11 +143,11 @@ def get_main_file_sections(
     data = list_main_file_sections(conn, user_id, upload_id, project_name)
     if not data:
         raise HTTPException(status_code=404, detail="Main file sections not found")
-    return ApiResponse(success=True, data=MainFileSectionsDTO(**data), error=None)
+    return ApiResponse(success=True, data=MainFileSectionsResponseDTO(**data), error=None)
 
 @router.post(
     "/upload/{upload_id}/projects/{project_name}/text/contributions",
-    response_model=ApiResponse[UploadDTO]
+    response_model=ApiResponse[UploadDTO],
 )
 def post_main_file_contributed_sections(
     upload_id: int,
@@ -157,7 +156,7 @@ def post_main_file_contributed_sections(
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
-    data = set_main_file_contributed_sections(conn, user_id, upload_id, project_name, body.contributed_sections)
+    data = set_main_file_contributed_sections(conn, user_id, upload_id, project_name, body.selected_section_ids)
     return ApiResponse(success=True, data=UploadDTO(**data), error=None)
 
 

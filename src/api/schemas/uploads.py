@@ -47,10 +47,18 @@ class UploadProjectFilesDTO(BaseModel):
 class MainFileRequestDTO(BaseModel):
     relpath: str
     
-class MainFileSectionsDTO(BaseModel):
-    project_name: str
-    section_number: int
+
+class MainFileSectionDTO(BaseModel):
+    id: int
+    title: str
+    preview: str
     content: str
-    
+    is_truncated: bool = False
+
+class MainFileSectionsResponseDTO(BaseModel):
+    project_name: str
+    main_file: str
+    sections: List[MainFileSectionDTO]
+
 class ContributedSectionsRequestDTO(BaseModel):
-    contributed_sections: Dict[str, str]
+    selected_section_ids: List[int]
