@@ -46,4 +46,11 @@ class UploadProjectFilesDTO(BaseModel):
 
 class MainFileRequestDTO(BaseModel):
     relpath: str
-
+    
+class MainFileSectionsDTO(BaseModel):
+    project_name: str
+    section_number: int
+    content: str
+    
+class ContributedSectionsRequestDTO(BaseModel):
+    contributed_sections: Dict[str, str]

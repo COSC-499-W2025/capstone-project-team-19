@@ -11,6 +11,9 @@ from src.api.schemas.uploads import (
     DedupResolveRequestDTO,
     UploadProjectFilesDTO,
     MainFileRequestDTO,
+    MainFileSectionsDTO,
+    MainFileContributionDTO,
+    ContributedSectionsRequestDTO,
 )
 from src.services.projects_service import (
     list_projects,
@@ -26,6 +29,10 @@ from src.services.uploads_service import (
     submit_project_types,
     list_project_files,
     set_project_main_file,
+)
+from src.services.uploads_contribution_service import (
+    list_main_file_sections,
+    set_main_file_contributed_sections,
 )
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -141,7 +148,7 @@ def get_main_file_sections(
 
 @router.post(
     "/upload/{upload_id}/projects/{project_name}/text/contributions",
-    response_model=ApiResponse[MainFileContributionDTO]
+    response_model=ApiResponse[UploadDTO]
 )
 def post_main_file_contributed_sections(
     upload_id: int,
@@ -150,8 +157,8 @@ def post_main_file_contributed_sections(
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
-    data = set_main_file_contributed_sections(conn, user_id, upload_id, project_name, body.relpath)
-    return ApiResponse(success=True, data=MainFileContributionDTO(**data), error=None)
+    data = set_main_file_contributed_sections(conn, user_id, upload_id, project_name, body.contributed_sections)
+    return ApiResponse(success=True, data=UploadDTO(**data), error=None)
 
 
 @router.delete("", response_model=ApiResponse[DeleteResultDTO])
