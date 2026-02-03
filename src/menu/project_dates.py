@@ -7,15 +7,16 @@ Menu for editing project dates (affects chronological skills and portfolio items
 from datetime import datetime
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from src.db import (
-    get_project_dates,
-    set_project_dates,
-    clear_project_dates,
-    clear_all_project_dates,
     get_all_manual_dates,
     get_project_summary_by_name,
     get_text_duration,
     get_code_individual_duration,
     get_code_collaborative_duration,
+)
+from src.services.project_dates_service import (
+    clear_all_manual_project_dates,
+    clear_project_manual_dates_by_name,
+    set_project_manual_dates_by_name,
 )
 
 def is_valid_date(date_str: str) -> bool:
@@ -169,7 +170,9 @@ def set_project_date(conn, user_id):
 
     for idx, (project_name, _) in enumerate(projects, start=1):
         # Get current dates
-        manual_dates = get_project_dates(conn, user_id, project_name)
+        manual_dates = get_all_manual_dates(conn, user_id)
+        manual_dates_dict = {name: (start, end) for name, start, end in manual_dates}
+        manual_dates = manual_dates_dict.get(project_name)
         if manual_dates:
             start, end = manual_dates
             status = f"[Manual: {start or 'N/A'} to {end or 'N/A'}]"
@@ -193,9 +196,11 @@ def set_project_date(conn, user_id):
         print("Enter dates in YYYY-MM-DD format, or press Enter to skip/keep current.")
 
         # Get current manual dates
-        current_dates = get_project_dates(conn, user_id, project_name)
-        current_start = current_dates[0] if current_dates else None
-        current_end = current_dates[1] if current_dates else None
+        current_dates = get_all_manual_dates(conn, user_id)
+        manual_dates_dict = {name: (start, end) for name, start, end in current_dates}
+        current = manual_dates_dict.get(project_name)
+        current_start = current[0] if current else None
+        current_end = current[1] if current else None
 
         start_date = prompt_for_date("Start date (YYYY-MM-DD or Enter to skip): ", current_start)
         end_date = prompt_for_date("End date (YYYY-MM-DD or Enter to skip): ", current_end)
@@ -213,7 +218,13 @@ def set_project_date(conn, user_id):
                 return
 
         # Save dates
-        set_project_dates(conn, user_id, project_name, start_date, end_date)
+        set_project_manual_dates_by_name(
+            conn,
+            user_id,
+            project_name,
+            start_date=start_date,
+            end_date=end_date,
+        )
 
         print(f"\nDates updated for '{project_name}'.")
         if start_date:
@@ -255,7 +266,7 @@ def clear_specific_project_dates(conn, user_id):
         confirm = input(f"\nClear manual dates for '{project_name}'? (y/n): ").strip().lower()
 
         if confirm in ['yes', 'y']:
-            clear_project_dates(conn, user_id, project_name)
+            clear_project_manual_dates_by_name(conn, user_id, project_name)
             print(f"\nManual dates cleared for '{project_name}'. Using automatic dates.")
         else:
             print("Cancelled.")
@@ -269,7 +280,7 @@ def reset_all_dates_to_auto(conn, user_id):
     confirm = input("\nAre you sure you want to reset all dates to automatic? (y/n): ").strip().lower()
 
     if confirm in ['yes', 'y']:
-        clear_all_project_dates(conn, user_id)
+        clear_all_manual_project_dates(conn, user_id)
         print("\nAll manual dates cleared. Using automatic dates.")
     elif confirm in ['no', 'n']:
         print("Cancelled.")
