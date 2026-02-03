@@ -81,6 +81,20 @@ def test_patch_project_dates_rejects_invalid_range(client, auth_headers, seed_co
     assert res.status_code == 400
 
 
+def test_patch_project_dates_rejects_empty_string(client, auth_headers, seed_conn):
+    user_id = 1
+    seed_conn.execute("INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)")
+    seed_conn.commit()
+
+    project_id = _seed_project(seed_conn, user_id, "ProjectA")
+    res = client.patch(
+        f"/projects/{project_id}/dates",
+        json={"start_date": ""},
+        headers=auth_headers,
+    )
+    assert res.status_code == 400
+
+
 def test_delete_project_dates_clears_manual_overrides(client, auth_headers, seed_conn):
     user_id = 1
     seed_conn.execute("INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)")
