@@ -283,6 +283,137 @@ Handles project ingestion, analysis, classification, and metadata updates.
         - **Response Status**: `200 OK`
         - **Response DTO**: `ProjectRankingDTO`
 
+- **Project Dates**
+    - **Description**: View and manage **manual date overrides** for projects.
+        - If a project has manual dates, the API will report `source: "MANUAL"` and return those dates.
+        - If a project has no manual dates, the API will report `source: "AUTO"` and return the best available automatic date (if any).
+        - Manual dates affect any features that depend on project chronology (e.g., chronological skills, portfolio ordering).
+
+    - **List Project Dates**
+        - **Endpoint**: `GET /projects/dates`
+        - **Description**: Returns all projects with their effective dates and whether they come from manual overrides or automatic computation.
+        - **Auth**:`Authorization: Bearer <access_token>`
+        - **Request Body**: None
+        - **Response Status**: `200 OK`
+        - **Response Body**:
+            ```json
+            {
+                "success": true,
+                "data": {
+                    "projects": [
+                    {
+                        "project_summary_id": 9,
+                        "project_name": "My Project",
+                        "start_date": "2024-01-01",
+                        "end_date": "2024-12-31",
+                        "source": "MANUAL",
+                        "manual_start_date": "2024-01-01",
+                        "manual_end_date": "2024-12-31"
+                    },
+                    {
+                        "project_summary_id": 10,
+                        "project_name": "Another Project",
+                        "start_date": "2025-02-10",
+                        "end_date": "2025-03-05",
+                        "source": "AUTO",
+                        "manual_start_date": null,
+                        "manual_end_date": null
+                    }
+                    ]
+                },
+                "error": null
+            }
+            ```
+
+    - **Set / Patch Manual Project Dates**
+        - **Endpoint**: `PATCH /projects/{project_id}/dates`
+        - **Description**: Sets or clears the manual start/end dates for a single project.
+        - **Path Parameters**:
+            - `{project_id}` (integer, required): The `project_summary_id` of the project to update
+        - **Auth** : `Authorization: Bearer <access_token>`
+        - **Request Body**:
+            - Set both:
+                ```json
+                { "start_date": "2024-01-01", "end_date": "2024-12-31" }
+                ```
+            - Set one side only (leave the other unchanged by omitting it):
+                ```json
+                { "start_date": "2024-01-01" }
+                ```
+            - Clear one side only (send `null`):
+                ```json
+                { "end_date": null }
+                ```
+        - **Notes**:
+            - At least one of `start_date` or `end_date` must be present (sending `{}` returns `422 Unprocessable Entity`)
+            - Date format must be `YYYY-MM-DD`
+            - Dates cannot be in the future
+            - If both are present, `start_date` must be <= `end_date`
+        - **Response Status**: `200 OK`
+        - **Response Body**:
+            ```json
+            {
+              "success": true,
+              "data": {
+                    "project_summary_id": 9,
+                    "project_name": "My Project",
+                    "start_date": "2024-01-01",
+                    "end_date": "2024-12-31",
+                    "source": "MANUAL",
+                    "manual_start_date": "2024-01-01",
+                    "manual_end_date": "2024-12-31"
+              },
+              "error": null
+            }
+            ```
+        - **Error Responses**:
+            - `400 Bad Request` if date format is invalid, date is in the future, or start_date > end_date
+            - `404 Not Found` if the project does not exist / does not belong to the user
+
+    - **Clear Manual Dates for One Project (Revert to Automatic)**
+        - **Endpoint**: `DELETE /projects/{project_id}/dates`
+        - **Description**: Clears manual date overrides for a project (sets them back to automatic behavior).
+        - **Path Parameters**:
+            - `{project_id}` (integer, required): The `project_summary_id` of the project to clear
+        - **Auth**: `Authorization: Bearer <access_token>`
+        - **Request Body**: None
+        - **Response Status**: `200 OK`
+        - **Response Body**:
+            ```json
+            {
+                "success": true,
+                "data": {
+                    "project_summary_id": 9,
+                    "project_name": "My Project",
+                    "start_date": "2025-02-10",
+                    "end_date": "2025-03-05",
+                    "source": "AUTO",
+                    "manual_start_date": null,
+                    "manual_end_date": null
+                },
+                "error": null
+            }
+            ```
+        - **Error Responses**:
+            - `404 Not Found` if the project does not exist / does not belong to the user
+
+    - **Reset All Project Dates to Automatic**
+        - **Endpoint**: `POST /projects/dates/reset`
+        - **Description**: Clears all manual date overrides for the current user.
+        - **Auth**: `Authorization: Bearer <access_token>`
+        - **Request Body**: None
+        - **Response Status**: `200 OK`
+        - **Response Body**:
+            ```json
+            {
+                "success": true,
+                "data": {
+                    "cleared_count": 2
+                },
+                "error": null
+            }
+            ```
+
 - **Delete Project by ID**
     - **Endpoint**: `DELETE /projects/{project_id}`
     - **Description**: Permanently deletes a specific project and all its associated data (skills, metrics, files, etc.).
