@@ -124,6 +124,35 @@ def post_upload_project_main_file(
     upload = set_project_main_file(conn, user_id, upload_id, project_name, body.relpath)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
 
+@router.get(
+    "/upload/{upload_id}/projects/{project_name}/text/sections",
+    response_model=ApiResponse[MainFileSectionsDTO]
+)
+def get_main_file_sections(
+    upload_id: int,
+    project_name: str,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    data = list_main_file_sections(conn, user_id, upload_id, project_name)
+    if not data:
+        raise HTTPException(status_code=404, detail="Main file sections not found")
+    return ApiResponse(success=True, data=MainFileSectionsDTO(**data), error=None)
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_name}/text/contributions",
+    response_model=ApiResponse[MainFileContributionDTO]
+)
+def post_main_file_contributed_sections(
+    upload_id: int,
+    project_name: str,
+    body: ContributedSectionsRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    data = set_main_file_contributed_sections(conn, user_id, upload_id, project_name, body.relpath)
+    return ApiResponse(success=True, data=MainFileContributionDTO(**data), error=None)
+
 
 @router.delete("", response_model=ApiResponse[DeleteResultDTO])
 def delete_all_user_projects(
