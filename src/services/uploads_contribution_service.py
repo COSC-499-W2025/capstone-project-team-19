@@ -32,7 +32,11 @@ def list_main_file_sections(
     state = upload.get("state") or {}
     main_file_relpath = _get_main_file_relpath_or_409(state, project_name)
 
-    abs_path = _resolve_main_file_abs_path(main_file_relpath)
+    zip_path = upload.get("zip_path") or (upload.get("state") or {}).get("zip_path")
+    if not zip_path:
+        raise HTTPException(status_code=400, detail="Upload missing zip_path")
+    
+    abs_path = _resolve_main_file_abs_path(zip_path, main_file_relpath)
     if not abs_path.exists():
         raise HTTPException(
             status_code=404,
@@ -95,7 +99,11 @@ def set_main_file_contributed_sections(
     state = upload.get("state") or {}
     main_file_relpath = _get_main_file_relpath_or_409(state, project_name)
 
-    abs_path = _resolve_main_file_abs_path(main_file_relpath)
+    zip_path = upload.get("zip_path") or (upload.get("state") or {}).get("zip_path")
+    if not zip_path:
+        raise HTTPException(status_code=400, detail="Upload missing zip_path")
+
+    abs_path = _resolve_main_file_abs_path(zip_path, main_file_relpath)
     if not abs_path.exists():
         raise HTTPException(
             status_code=404,
@@ -178,10 +186,26 @@ def _get_main_file_relpath_or_409(state: dict, project_name: str) -> str:
         raise HTTPException(status_code=422, detail=str(e))
 
 
-def _resolve_main_file_abs_path(relpath: str) -> Path:
-    # relpath is ZIP_DATA_DIR-relative (posix style)
+def _resolve_main_file_abs_path(zip_path: str, relpath: str) -> Path:
+    """
+    relpath is upload-extract-dir-relative (POSIX), not ZIP_DATA_DIR-relative.
+
+    Real file lives at:
+      ZIP_DATA_DIR / <zip_stem> / relpath
+
+    where zip_stem == Path(zip_path).stem (e.g. "1_text_projects_og")
+    """
     base = Path(ZIP_DATA_DIR).resolve()
-    p = (base / Path(relpath)).resolve()
+    extract_dir = (base / Path(zip_path).stem).resolve()
+
+    rel = Path(relpath)
+
+    # If someone already stored "1_text_projects_og/..." as relpath, avoid double-prefixing
+    if rel.parts and rel.parts[0] == Path(zip_path).stem:
+        p = (base / rel).resolve()
+    else:
+        p = (extract_dir / rel).resolve()
+
     # hard safety: ensure under ZIP_DATA_DIR
     if base not in p.parents and p != base:
         raise HTTPException(status_code=422, detail="Invalid relpath (escapes ZIP_DATA_DIR)")
