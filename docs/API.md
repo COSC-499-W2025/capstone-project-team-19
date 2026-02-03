@@ -315,6 +315,52 @@ Handles project ingestion, analysis, classification, and metadata updates.
             "error": null
         }
         ```
+
+- **Retrieve Project Feedback**
+    - **Endpoint**: `GET /{project_id}/feedback`
+    - **Description**: Returns all feedback for one project.
+    - **Auth**: `Authorization: Bearer <access_token>`
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `ProjectFeedbackDTO`
+    - **Request Body**: None.
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "project_id": 9,
+                "project_name": "My Project",
+                "feedback": [
+                    {
+                        "feedback_id": null,
+                        "project_type": "code",
+                        "skill_name": "code_quality",
+                        "file_name": "main.py",
+                        "criterion_key": "complexity",
+                        "criterion_label": "Code Complexity",
+                        "expected": "Cyclomatic complexity < 10",
+                        "observed": {"max_complexity": 12},
+                        "suggestion": "Refactor main() to reduce nested conditions",
+                        "generated_at": "2026-01-12 02:15:30"
+                    },
+                    {
+                        "feedback_id": null,
+                        "project_type": "code",
+                        "skill_name": "documentation",
+                        "file_name": "utils.py",
+                        "criterion_key": "docstrings",
+                        "criterion_label": "Function Documentation",
+                        "expected": "All public functions documented",
+                        "observed": {"coverage": 0.75},
+                        "suggestion": "Add docstrings to helper_validate() and helper_process()",
+                        "generated_at": "2026-01-12 02:15:30"
+                    }
+                ]
+            },
+            "error": null
+        }
+        ```
+
 ---
 
 ## **Uploads Wizard**
