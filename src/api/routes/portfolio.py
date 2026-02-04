@@ -4,7 +4,7 @@ from sqlite3 import Connection
 from src.api.dependencies import get_db, get_current_user_id
 from src.api.schemas.common import ApiResponse
 from src.api.schemas.portfolio import PortfolioDetailDTO, PortfolioGenerateRequestDTO, PortfolioEditRequestDTO
-from src.services.portfolio_service import generate_portfolio, edit_portfolio
+from src.services.portfolio_service import generate_portfolio, edit_portfolio, CorruptProjectDataError
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
@@ -30,16 +30,19 @@ def post_portfolio_edit(
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
-    result = edit_portfolio(
-        conn,
-        user_id,
-        project_name=request.project_name,
-        scope=request.scope,
-        display_name=request.display_name,
-        summary_text=request.summary_text,
-        contribution_bullets=request.contribution_bullets,
-        name=request.name,
-    )
+    try:
+        result = edit_portfolio(
+            conn,
+            user_id,
+            project_name=request.project_name,
+            scope=request.scope,
+            display_name=request.display_name,
+            summary_text=request.summary_text,
+            contribution_bullets=request.contribution_bullets,
+            name=request.name,
+        )
+    except CorruptProjectDataError:
+        raise HTTPException(status_code=500, detail="Project data is corrupted")
 
     if not result:
         raise HTTPException(status_code=404, detail="Project not found")
