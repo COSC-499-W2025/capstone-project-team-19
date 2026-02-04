@@ -241,6 +241,7 @@ def edit_portfolio(
     display_name: Optional[str] = None,
     summary_text: Optional[str] = None,
     contribution_bullets: Optional[List[str]] = None,
+    name: str = "Portfolio",
 ) -> Optional[Dict[str, Any]]:
     """
     Edit portfolio wording for a project.
@@ -262,7 +263,7 @@ def edit_portfolio(
 
     if not updates:
         # No field updates, return current portfolio
-        return generate_portfolio(conn, user_id, name="Portfolio")
+        return generate_portfolio(conn, user_id, name=name)
 
     if scope == "portfolio_only":
         result = update_portfolio_overrides(conn, user_id, project_name, updates)
@@ -285,4 +286,4 @@ def edit_portfolio(
             set(updates.keys()),
         )
 
-    return generate_portfolio(conn, user_id, name="Portfolio")
+    return generate_portfolio(conn, user_id, name=name)
