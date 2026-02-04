@@ -32,3 +32,4 @@ class PortfolioEditRequestDTO(BaseModel):
     display_name: Optional[str] = None
     summary_text: Optional[str] = None
     contribution_bullets: Optional[List[str]] = None
+    name: Optional[str] = "Portfolio" 
