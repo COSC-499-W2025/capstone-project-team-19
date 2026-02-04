@@ -291,6 +291,15 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **Query Parameters**:
         - `refresh_resumes` (boolean, optional): If `true`, also removes the deleted project from any résumé snapshots. Résumés that become empty are deleted. Defaults to `false`.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Example Requests**:
+        ```bash
+        # Delete project (default, resumes unchanged)
+        DELETE /projects/9
+
+        # Delete project and update resumes
+        DELETE /projects/9?refresh_resumes=true
+        ```
     - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
     - **Response Body**:
         ```json
@@ -307,6 +316,15 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **Query Parameters**:
         - `refresh_resumes` (boolean, optional): If `true`, also removes deleted projects from any résumé snapshots. Résumés that become empty are deleted. Defaults to `false`.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Example Requests**:
+        ```bash
+        # Delete all projects (default, resumes unchanged)
+        DELETE /projects
+
+        # Delete all projects and update resumes
+        DELETE /projects?refresh_resumes=true
+        ```
     - **Response Status**: `200 OK`
     - **Response DTO**: `DeleteResultDTO`
     - **Response Body**:
