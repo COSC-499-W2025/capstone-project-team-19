@@ -38,6 +38,7 @@ def post_portfolio_edit(
         display_name=request.display_name,
         summary_text=request.summary_text,
         contribution_bullets=request.contribution_bullets,
+        name=request.name,
     )
 
     if not result:
