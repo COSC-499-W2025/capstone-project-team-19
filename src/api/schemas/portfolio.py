@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
 
 
@@ -23,13 +23,13 @@ class PortfolioDetailDTO(BaseModel):
 
 
 class PortfolioGenerateRequestDTO(BaseModel):
-    name: str
+    name: str = Field(..., max_length=200)
 
 
 class PortfolioEditRequestDTO(BaseModel):
-    project_name: str
+    project_name: str = Field(..., max_length=200)
     scope: Optional[Literal["portfolio_only", "global"]] = "portfolio_only"
-    display_name: Optional[str] = None
-    summary_text: Optional[str] = None
+    display_name: Optional[str] = Field(None, max_length=200)
+    summary_text: Optional[str] = Field(None, max_length=5000)
     contribution_bullets: Optional[List[str]] = None
-    name: Optional[str] = "Portfolio" 
+    name: Optional[str] = Field(default="Portfolio", max_length=200)
