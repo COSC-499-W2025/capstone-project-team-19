@@ -1,7 +1,13 @@
 from typing import Any, Dict, List, Optional, Set
 import json
+import logging
 
 from src.insights.rank_projects.rank_project_importance import collect_project_data
+
+logger = logging.getLogger(__name__)
+
+class CorruptProjectDataError(Exception):
+    pass
 from src.db import get_project_summary_by_name, get_project_summary_row, update_project_summary_json
 from src.services.resume_overrides import (
     update_project_manual_overrides,
@@ -168,8 +174,9 @@ def update_portfolio_overrides(
 
     try:
         summary_dict = json.loads(summary_row["summary_json"])
-    except Exception:
-        return None
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.error(f"Corrupt summary_json for project '{project_name}': {e}")
+        raise CorruptProjectDataError(f"Project '{project_name}' has corrupt data")
 
     overrides = summary_dict.get("portfolio_overrides") or {}
     if not isinstance(overrides, dict):
@@ -209,8 +216,9 @@ def clear_portfolio_overrides_for_fields(
 
     try:
         summary_dict = json.loads(summary_row["summary_json"])
-    except Exception:
-        return
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.error(f"Corrupt summary_json for project '{project_name}': {e}")
+        raise CorruptProjectDataError(f"Project '{project_name}' has corrupt data")
 
     overrides = summary_dict.get("portfolio_overrides")
     if not overrides or not isinstance(overrides, dict):
