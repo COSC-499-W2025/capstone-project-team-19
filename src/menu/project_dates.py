@@ -164,17 +164,20 @@ def set_project_date(conn, user_id):
         print("\nNo projects found.")
         return
 
+    manual_dates_list = get_all_manual_dates(conn, user_id)
+    manual_dates_dict = {
+        name: (start, end)
+        for name, start, end in manual_dates_list
+    }
+
     print(f"\n{'='*90}")
     print("Available Projects:")
     print(f"{'='*90}")
 
     for idx, (project_name, _) in enumerate(projects, start=1):
-        # Get current dates
-        manual_dates = get_all_manual_dates(conn, user_id)
-        manual_dates_dict = {name: (start, end) for name, start, end in manual_dates}
-        manual_dates = manual_dates_dict.get(project_name)
-        if manual_dates:
-            start, end = manual_dates
+        current = manual_dates_dict.get(project_name)
+        if current:
+            start, end = current
             status = f"[Manual: {start or 'N/A'} to {end or 'N/A'}]"
         else:
             status = "[Auto]"
@@ -195,9 +198,6 @@ def set_project_date(conn, user_id):
         print(f"\nSetting dates for: {project_name}")
         print("Enter dates in YYYY-MM-DD format, or press Enter to skip/keep current.")
 
-        # Get current manual dates
-        current_dates = get_all_manual_dates(conn, user_id)
-        manual_dates_dict = {name: (start, end) for name, start, end in current_dates}
         current = manual_dates_dict.get(project_name)
         current_start = current[0] if current else None
         current_end = current[1] if current else None
