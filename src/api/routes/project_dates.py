@@ -1,6 +1,6 @@
 from __future__ import annotations
 from sqlite3 import Connection
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 
 from src.api.dependencies import get_current_user_id, get_db
 from src.api.schemas.common import ApiResponse
@@ -29,7 +29,7 @@ def get_project_dates(user_id: int = Depends(get_current_user_id), conn: Connect
     return ApiResponse(success=True, data=dto, error=None)
 
 @router.patch("/{project_id:int}/dates", response_model=ApiResponse[ProjectDatesItemDTO])
-def patch_project_dates(project_id: int, body: PatchProjectDatesRequestDTO, request: Request, user_id: int = Depends(get_current_user_id), conn: Connection = Depends(get_db)):
+def patch_project_dates(project_id: int, body: PatchProjectDatesRequestDTO, user_id: int = Depends(get_current_user_id), conn: Connection = Depends(get_db)):
     # Distinguish "field omitted" vs "explicit null"
     start_provided = "start_date" in body.model_fields_set
     end_provided = "end_date" in body.model_fields_set
