@@ -17,7 +17,6 @@ from src.utils.parsing import ZIP_DATA_DIR, parse_zip_file, analyze_project_layo
 from src.db.projects import (
     store_parsed_files,
     update_project_metadata,
-    record_project_classifications,
 )
 
 from src.utils.deduplication.api_integration import (
@@ -127,6 +126,16 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
 
     # Persist parsed files once (after dedup tagging)
     store_parsed_files(conn, files_info, user_id)
+
+    # Persist extraction root for these versions (used by skills/text pipelines to locate files on disk)
+    zip_root = Path(str(zip_path)).stem
+    for vk in version_keys.values():
+        if isinstance(vk, int):
+            conn.execute(
+                "UPDATE project_versions SET extraction_root = COALESCE(extraction_root, ?) WHERE version_key = ?",
+                (zip_root, vk),
+            )
+    conn.commit()
 
     project_filetype_index: dict = build_project_filetype_index(files_info)
 
@@ -308,7 +317,12 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
     pending_projects = layout.get("pending_projects") or []
 
     if auto_assignments and not pending_projects:
-        record_project_classifications(conn, user_id, zip_path, zip_name, auto_assignments)
+        # Persist classifications on canonical `projects` rows.
+        project_keys = (state.get("dedup_project_keys") or {})
+        for project_name, classification in auto_assignments.items():
+            pk = project_keys.get(project_name)
+            if isinstance(pk, int):
+                update_project_metadata(conn, pk, classification=classification)
 
         projects = set(auto_assignments.keys())
         type_result = infer_project_types_from_index(projects, index)
@@ -368,7 +382,12 @@ def submit_classifications(conn: sqlite3.Connection, user_id: int, upload_id: in
         raise HTTPException(status_code=400, detail="Upload missing zip_path")
     zip_name = upload.get("zip_name") or Path(zip_path).stem
 
-    record_project_classifications(conn, user_id, zip_path, zip_name, assignments)
+    # Persist chosen classifications on canonical `projects` rows.
+    project_keys = (state.get("dedup_project_keys") or {})
+    for project_name, classification in assignments.items():
+        pk = project_keys.get(project_name)
+        if isinstance(pk, int):
+            update_project_metadata(conn, pk, classification=classification)
 
     projects = set(assignments.keys())
     type_result = infer_project_types_from_index(projects, index)

@@ -8,7 +8,7 @@ from src.db import insert_project_skill
 
 from src.db.text_metrics import store_text_offline_metrics
 from src.analysis.text_individual.alt_analyze import analyze_linguistic_complexity
-from src.db import get_classification_id
+from src.db import get_latest_version_key
 
 
 def extract_text_skills(
@@ -125,9 +125,9 @@ def extract_text_skills(
     # ------------------------------
     overall_score = sum(b["score"] for b in bucket_output.values()) / len(bucket_output)
 
-    classification_id = get_classification_id(conn, user_id, project_name)
+    version_key = get_latest_version_key(conn, user_id, project_name)
 
-    if classification_id:
+    if version_key:
         ling = analyze_linguistic_complexity(main_text)
 
         project_metrics = {
@@ -142,7 +142,7 @@ def extract_text_skills(
 
         store_text_offline_metrics(
             conn,
-            classification_id,
+            version_key,
             project_metrics,
             csv_metadata=csv_metadata,
         )

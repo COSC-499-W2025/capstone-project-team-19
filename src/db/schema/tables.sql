@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS project_versions (
     version_key INTEGER PRIMARY KEY AUTOINCREMENT,
     project_key INTEGER NOT NULL,
     upload_id INTEGER,
+    extraction_root TEXT,
     fingerprint_strict TEXT NOT NULL,
     fingerprint_loose TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,

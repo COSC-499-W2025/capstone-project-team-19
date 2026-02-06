@@ -24,14 +24,10 @@ def sanitize_for_json(obj):
 
 def store_text_offline_metrics(
     conn: sqlite3.Connection,
-    classification_id: int,
+    version_key: int,
     project_metrics: dict | None,
     csv_metadata: dict | list | None = None
 ) -> None:
-
-    # Back-compat: historically this arg was `classification_id`.
-    # Schema now keys text metrics by `version_key` (see tables.sql).
-    version_key = classification_id
 
     if not version_key or not project_metrics:
         return
@@ -152,12 +148,10 @@ def store_text_offline_metrics(
 
 
 
-def get_text_non_llm_metrics(conn: sqlite3.Connection, classification_id: int) -> Optional[dict]:
+def get_text_non_llm_metrics(conn: sqlite3.Connection, version_key: int) -> Optional[dict]:
     """
     Retrieve non-LLM metrics for a project.
     """
-    version_key = classification_id
-
     row = conn.execute("""
         SELECT 
             doc_count,

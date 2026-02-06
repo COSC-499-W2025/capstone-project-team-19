@@ -12,7 +12,7 @@ from datetime import datetime
 
 def store_text_activity_contribution(
     conn: sqlite3.Connection,
-    classification_id: int,
+    version_key: int,
     activity_data: Dict[str, Any]
 ) -> None:
     """
@@ -25,8 +25,6 @@ def store_text_activity_contribution(
                       containing timestamp_analysis, activity_classification,
                       timeline, and summary
     """
-    version_key = classification_id
-
     if not version_key or not activity_data:
         return
 
@@ -132,7 +130,7 @@ def store_text_activity_contribution(
 
 def get_text_activity_contribution(
     conn: sqlite3.Connection,
-    classification_id: int
+    version_key: int
 ) -> Optional[Dict[str, Any]]:
     """
     Retrieve activity type contribution data for a text project.
@@ -144,8 +142,6 @@ def get_text_activity_contribution(
     Returns:
         Dictionary with activity contribution data or None if not found
     """
-    version_key = classification_id
-
     row = conn.execute(
         """
         SELECT
@@ -177,6 +173,7 @@ def get_text_activity_contribution(
     return {
         'activity_id': row[0],
         'version_key': row[1],
+        # Back-compat: callers/tests historically expected `classification_id`
         'classification_id': row[1],
         'timestamp_analysis': {
             'start_date': row[2],

@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any
 
 def update_code_complexity_metrics(
     conn: sqlite3.Connection,
-    classification_id: int,
+    version_key: int,
     total_files: int,
     total_lines: int,
     total_code_lines: int,
@@ -20,7 +20,6 @@ def update_code_complexity_metrics(
     radon_details_json: str,
     lizard_details_json: str        
 )-> None:
-        version_key = classification_id
         conn.execute(
             """
             UPDATE non_llm_code_individual
@@ -61,7 +60,7 @@ def update_code_complexity_metrics(
 
 def insert_code_complexity_metrics(
     conn: sqlite3.Connection,
-    classification_id: int,
+    version_key: int,
     total_files: int,
     total_lines: int,
     total_code_lines: int,
@@ -76,7 +75,6 @@ def insert_code_complexity_metrics(
     radon_details_json: str,
     lizard_details_json: str        
 )-> None:
-        version_key = classification_id
         conn.execute(
             """
             INSERT INTO non_llm_code_individual (
@@ -119,10 +117,8 @@ def insert_code_complexity_metrics(
 
 def get_code_complexity_metrics(
     conn: sqlite3.Connection,
-    classification_id: int
+    version_key: int
 ) -> Optional[Dict[str, Any]]:
-    # Back-compat: parameter is named `classification_id` but is now a `version_key`.
-    version_key = classification_id
     row = conn.execute(
         """
         SELECT metrics_id,
@@ -157,7 +153,6 @@ def get_code_complexity_metrics(
     return {
         "metrics_id": row[0],
         "version_key": row[1],
-        "classification_id": row[1],
         "total_files": row[2],
         "total_lines": row[3],
         "total_code_lines": row[4],
@@ -177,9 +172,8 @@ def get_code_complexity_metrics(
 
 def code_complexity_metrics_exists(
     conn: sqlite3.Connection,
-    classification_id: int
+    version_key: int
 ) -> bool:
-    version_key = classification_id
     result = conn.execute(
         """
         SELECT 1

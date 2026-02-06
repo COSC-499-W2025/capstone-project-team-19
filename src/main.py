@@ -8,7 +8,7 @@ from src.db import (
     get_or_create_user,
     get_latest_consent,
     get_latest_external_consent,
-    record_project_classifications,
+    record_project_classification,
     store_parsed_files,
 )
 from src.menu import (
@@ -350,7 +350,17 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
     if project_name_map:
         assignments = {project_name_map.get(k, k): v for k, v in assignments.items()}
 
-    record_project_classifications(conn, user_id, zip_path, zip_name, assignments)
+    # Persist classification in the new schema (projects + versions).
+    # This helper is backwards-compatible and will ensure the project exists.
+    for proj, cls in assignments.items():
+        record_project_classification(
+            conn,
+            user_id=user_id,
+            zip_path=zip_path,
+            zip_name=zip_name,
+            project_name=proj,
+            classification=cls,
+        )
 
     print("\nProject classifications saved:")
     for name, classification in sorted(assignments.items()):
