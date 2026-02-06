@@ -32,6 +32,16 @@ def setup_in_memory_db():
         );
     """)
     conn.execute("""
+        CREATE TABLE project_versions (
+            version_key INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_key INTEGER NOT NULL,
+            upload_id INTEGER,
+            fingerprint_strict TEXT NOT NULL,
+            fingerprint_loose TEXT,
+            created_at TEXT
+        );
+    """)
+    conn.execute("""
         CREATE TABLE project_summaries (
             user_id INTEGER NOT NULL,
             project_name TEXT NOT NULL,
@@ -54,7 +64,36 @@ def setup_in_memory_db():
             UNIQUE(user_id, project_name, skill_name)
         );
     """)
-    # Remaining tables are not needed for detect_project_type tests.
+    # Minimal tables needed by send_to_analysis() loaders
+    conn.execute("""
+        CREATE TABLE non_llm_text (
+            metrics_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            version_key INTEGER UNIQUE NOT NULL,
+            doc_count INTEGER,
+            total_words INTEGER,
+            reading_level_avg REAL,
+            reading_level_label TEXT,
+            keywords_json TEXT,
+            summary_json TEXT,
+            csv_metadata TEXT,
+            generated_at TEXT
+        );
+    """)
+    conn.execute("""
+        CREATE TABLE text_activity_contribution (
+            activity_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            version_key INTEGER UNIQUE NOT NULL,
+            start_date TEXT,
+            end_date TEXT,
+            duration_days INTEGER,
+            total_files INTEGER,
+            classified_files INTEGER,
+            activity_classification_json TEXT,
+            timeline_json TEXT,
+            activity_counts_json TEXT,
+            generated_at TEXT
+        );
+    """)
     return conn
 
 
@@ -66,13 +105,23 @@ def insert_file(conn, user_id, project_name, file_type):
 
 
 def insert_classification(conn, user_id, project_name, classification, project_type=None):
-    conn.execute(
+    cur = conn.execute(
         """
         INSERT INTO projects (user_id, display_name, classification, project_type)
         VALUES (?, ?, ?, ?)
         """,
         (user_id, project_name, classification, project_type),
     )
+    project_key = cur.lastrowid
+    # Seed a "latest version" so get_classification_id() (now version_key) works.
+    conn.execute(
+        """
+        INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose, created_at)
+        VALUES (?, NULL, ?, ?, ?)
+        """,
+        (project_key, f"{project_name}_strict_fp", f"{project_name}_loose_fp", datetime.now().isoformat()),
+    )
+    conn.commit()
 
 def test_detect_project_type_auto_code_only_writes_and_returns():
     conn = setup_in_memory_db()

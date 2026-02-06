@@ -14,7 +14,11 @@ from src.db.uploads import (
 )
 
 from src.utils.parsing import ZIP_DATA_DIR, parse_zip_file, analyze_project_layout
-from src.db.projects import store_parsed_files, update_project_metadata
+from src.db.projects import (
+    store_parsed_files,
+    update_project_metadata,
+    record_project_classifications,
+)
 
 from src.utils.deduplication.api_integration import (
     run_deduplication_for_projects_api,
