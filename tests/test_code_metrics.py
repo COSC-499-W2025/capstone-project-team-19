@@ -33,7 +33,7 @@ def _fetch_complexity_metrics(conn, classification_id):
                radon_details_json,
                lizard_details_json
         FROM non_llm_code_individual
-        WHERE classification_id = ?
+        WHERE version_key = ?
         """,
         (classification_id,),
     ).fetchone()

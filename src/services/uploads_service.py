@@ -412,9 +412,9 @@ def submit_project_types(conn: sqlite3.Connection, user_id: int, upload_id: int,
     for project_name, ptype in project_types.items():
         conn.execute(
             """
-            UPDATE project_classifications
+            UPDATE projects
             SET project_type = ?
-            WHERE user_id = ? AND project_name = ?
+            WHERE user_id = ? AND display_name = ?
             """,
             (ptype, user_id, project_name),
         )

@@ -29,7 +29,11 @@ def store_text_offline_metrics(
     csv_metadata: dict | list | None = None
 ) -> None:
 
-    if not classification_id or not project_metrics:
+    # Back-compat: historically this arg was `classification_id`.
+    # Schema now keys text metrics by `version_key` (see tables.sql).
+    version_key = classification_id
+
+    if not version_key or not project_metrics:
         return
 
     # Extract summary values
@@ -65,9 +69,9 @@ def store_text_offline_metrics(
             summary_json,
             csv_metadata
         FROM non_llm_text
-        WHERE classification_id = ?
+        WHERE version_key = ?
         """,
-        (classification_id,)
+        (version_key,)
     ).fetchone()
 
     # ---------- UPDATE ----------
@@ -101,7 +105,7 @@ def store_text_offline_metrics(
                 summary_json = ?,
                 csv_metadata = ?,
                 generated_at = datetime('now')
-            WHERE classification_id = ?
+            WHERE version_key = ?
             """,
             (
                 doc_count if doc_count is not None else existing_doc_count,
@@ -111,7 +115,7 @@ def store_text_offline_metrics(
                 keywords_json,
                 summary_json,
                 csv_metadata_json,
-                classification_id,
+                version_key,
             ),
         )
 
@@ -120,7 +124,7 @@ def store_text_offline_metrics(
         conn.execute(
             """
             INSERT INTO non_llm_text (
-                classification_id,
+                version_key,
                 doc_count,
                 total_words,
                 reading_level_avg,
@@ -133,7 +137,7 @@ def store_text_offline_metrics(
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             """,
             (
-                classification_id,
+                version_key,
                 doc_count,
                 total_words,
                 reading_level_avg,
@@ -149,7 +153,10 @@ def store_text_offline_metrics(
 
 
 def get_text_non_llm_metrics(conn: sqlite3.Connection, classification_id: int) -> Optional[dict]:
-    """Retrieve non-LLM metrics for a project classification."""
+    """
+    Retrieve non-LLM metrics for a project.
+    """
+    version_key = classification_id
 
     row = conn.execute("""
         SELECT 
@@ -161,8 +168,8 @@ def get_text_non_llm_metrics(conn: sqlite3.Connection, classification_id: int) -
             summary_json,
             csv_metadata
         FROM non_llm_text
-        WHERE classification_id = ?
-    """, (classification_id,)).fetchone()
+        WHERE version_key = ?
+    """, (version_key,)).fetchone()
 
     if not row:
         return None

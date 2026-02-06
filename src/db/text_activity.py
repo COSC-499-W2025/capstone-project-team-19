@@ -25,7 +25,9 @@ def store_text_activity_contribution(
                       containing timestamp_analysis, activity_classification,
                       timeline, and summary
     """
-    if not classification_id or not activity_data:
+    version_key = classification_id
+
+    if not version_key or not activity_data:
         return
 
     # Extract data from activity_data structure
@@ -64,8 +66,8 @@ def store_text_activity_contribution(
 
     # Check if record exists
     existing = conn.execute(
-        "SELECT activity_id FROM text_activity_contribution WHERE classification_id = ?",
-        (classification_id,)
+        "SELECT activity_id FROM text_activity_contribution WHERE version_key = ?",
+        (version_key,)
     ).fetchone()
 
     if existing:
@@ -82,7 +84,7 @@ def store_text_activity_contribution(
                 timeline_json = ?,
                 activity_counts_json = ?,
                 generated_at = datetime('now')
-            WHERE classification_id = ?
+            WHERE version_key = ?
             """,
             (
                 start_date,
@@ -93,7 +95,7 @@ def store_text_activity_contribution(
                 activity_classification_json,
                 timeline_json,
                 activity_counts_json,
-                classification_id
+                version_key
             )
         )
     else:
@@ -101,7 +103,7 @@ def store_text_activity_contribution(
         conn.execute(
             """
             INSERT INTO text_activity_contribution (
-                classification_id,
+                version_key,
                 start_date,
                 end_date,
                 duration_days,
@@ -113,7 +115,7 @@ def store_text_activity_contribution(
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                classification_id,
+                version_key,
                 start_date,
                 end_date,
                 timestamp.get('duration_days'),
@@ -142,11 +144,13 @@ def get_text_activity_contribution(
     Returns:
         Dictionary with activity contribution data or None if not found
     """
+    version_key = classification_id
+
     row = conn.execute(
         """
         SELECT
             activity_id,
-            classification_id,
+            version_key,
             start_date,
             end_date,
             duration_days,
@@ -157,9 +161,9 @@ def get_text_activity_contribution(
             activity_counts_json,
             generated_at
         FROM text_activity_contribution
-        WHERE classification_id = ?
+        WHERE version_key = ?
         """,
-        (classification_id,)
+        (version_key,)
     ).fetchone()
 
     if not row:
@@ -172,6 +176,7 @@ def get_text_activity_contribution(
 
     return {
         'activity_id': row[0],
+        'version_key': row[1],
         'classification_id': row[1],
         'timestamp_analysis': {
             'start_date': row[2],

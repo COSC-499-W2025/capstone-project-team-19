@@ -254,9 +254,12 @@ def _get_zip_name(conn, user_id: int, project_name: str) -> Optional[str]:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT zip_name
-            FROM project_classifications
-            WHERE user_id = ? AND project_name = ?
+            SELECT u.zip_name
+            FROM project_versions pv
+            JOIN projects p ON p.project_key = pv.project_key
+            LEFT JOIN uploads u ON u.upload_id = pv.upload_id
+            WHERE p.user_id = ? AND p.display_name = ?
+            ORDER BY pv.version_key DESC
             LIMIT 1
             """,
             (user_id, project_name),

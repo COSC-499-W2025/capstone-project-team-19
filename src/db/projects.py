@@ -11,6 +11,10 @@ import sqlite3
 from datetime import datetime
 from typing import Optional, Dict
 import json
+import hashlib
+
+from .deduplication import insert_project, insert_project_version
+from .uploads import create_upload
 
 def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id: int) -> None:
     """
@@ -161,3 +165,102 @@ def get_zip_name_for_project(conn: sqlite3.Connection, user_id: int, project_nam
         (user_id, project_name),
     ).fetchone()
     return row[0] if row else None
+
+
+def record_project_classification(
+    conn: sqlite3.Connection,
+    user_id: int,
+    zip_path: str,
+    zip_name: str,
+    project_name: str,
+    classification: str,
+    project_type: str | None = None,
+    when: str | datetime | None = None,
+) -> int:
+    """
+    Backwards-compatible helper (legacy name) to persist a project's classification.
+
+    Historical schema used a `project_classifications` table and returned a `classification_id`.
+    The schema now stores metadata on `projects` and keys metrics by `project_versions.version_key`.
+
+    Returns:
+        int: a `version_key` associated with this project (best-effort).
+    """
+    if classification is not None:
+        _validate_classification(classification)
+    if project_type is not None:
+        _validate_project_type(project_type)
+
+    # Ensure project exists
+    project_key = get_project_key(conn, user_id, project_name)
+    if project_key is None:
+        project_key = insert_project(conn, user_id, project_name)
+
+    # Persist canonical metadata
+    update_project_metadata(conn, project_key, classification=classification, project_type=project_type)
+
+    # Prefer an existing version (normal CLI flow creates versions during dedup tagging)
+    latest_vk = get_latest_version_key(conn, user_id, project_name)
+    if latest_vk is not None:
+        return latest_vk
+
+    # Fallback for unit tests / isolated callers: create an upload + version row.
+    upload_id = create_upload(conn, user_id, zip_name=zip_name, zip_path=zip_path, status="needs_classification")
+    fp_seed = f"{user_id}|{project_key}|{zip_name}|{zip_path}"
+    fp_strict = hashlib.sha256(fp_seed.encode("utf-8")).hexdigest()
+    version_key = insert_project_version(
+        conn,
+        project_key=project_key,
+        upload_id=upload_id,
+        fingerprint_strict=fp_strict,
+        fingerprint_loose=fp_strict,
+    )
+
+    # Optional: allow tests/callers to pin the version timestamp.
+    if when is not None:
+        if isinstance(when, datetime):
+            when_val = when.isoformat()
+        else:
+            when_val = str(when)
+        conn.execute(
+            "UPDATE project_versions SET created_at = ? WHERE version_key = ?",
+            (when_val, version_key),
+        )
+
+    conn.commit()
+    return version_key
+
+
+def record_project_classifications(
+    conn: sqlite3.Connection,
+    user_id: int,
+    zip_path: str,
+    zip_name: str,
+    assignments: dict[str, str],
+) -> dict[str, int]:
+    """
+    Persist multiple project classifications for a single upload.
+
+    Returns:
+        Mapping of project_name -> version_key (best-effort).
+    """
+    version_keys: dict[str, int] = {}
+    for project_name, classification in (assignments or {}).items():
+        vk = record_project_classification(
+            conn,
+            user_id=user_id,
+            zip_path=zip_path,
+            zip_name=zip_name,
+            project_name=project_name,
+            classification=classification,
+        )
+        version_keys[project_name] = vk
+    return version_keys
+
+
+def get_classification_id(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[int]:
+    """
+    Backwards-compatible name.
+    Returns the latest `version_key` for this (user_id, project_name), or None.
+    """
+    return get_latest_version_key(conn, user_id, project_name)

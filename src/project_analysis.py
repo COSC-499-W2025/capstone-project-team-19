@@ -101,11 +101,14 @@ def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dic
                 break
             print("Please enter 'c' or 't'.")
 
-        conn.execute("""
-            UPDATE project_classifications
+        conn.execute(
+            """
+            UPDATE projects
             SET project_type = ?
-            WHERE user_id = ? AND project_name = ?
-        """, (project_type, user_id, project_name))
+            WHERE user_id = ? AND display_name = ?
+            """,
+            (project_type, user_id, project_name),
+        )
 
     conn.commit()
 
@@ -151,11 +154,14 @@ def detect_project_type_auto(
 
     # write auto-detected types to DB
     for project_name, project_type in auto_types.items():
-        conn.execute("""
-            UPDATE project_classifications
+        conn.execute(
+            """
+            UPDATE projects
             SET project_type = ?
-            WHERE user_id = ? AND project_name = ?
-        """, (project_type, user_id, project_name))
+            WHERE user_id = ? AND display_name = ?
+            """,
+            (project_type, user_id, project_name),
+        )
 
     conn.commit()
 
@@ -196,8 +202,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
         row = conn.execute(
             """
             SELECT project_type
-            FROM project_classifications
-            WHERE user_id = ? AND project_name = ?
+            FROM projects
+            WHERE user_id = ? AND display_name = ?
             """,
             (user_id, project_name),
         ).fetchone()

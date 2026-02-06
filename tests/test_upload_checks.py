@@ -29,11 +29,14 @@ def test_check_existing_zip_duplicate_overwrite(monkeypatch, setup_db):
     user_id = 1
     zip_path = "C:/fake/path/project.zip"
 
-    # Insert dummy project_classifications entry
-    conn.execute("""
-        INSERT INTO project_classifications (user_id, zip_path, zip_name, project_name, classification, recorded_at)
-        VALUES (?, ?, ?, ?, ?, '2025-10-23T00:00:00')
-    """, (user_id, zip_path, "project", "proj1", "individual"))
+    # Insert dummy upload entry
+    conn.execute(
+        """
+        INSERT INTO uploads (user_id, zip_name, zip_path, status, state_json, created_at, updated_at)
+        VALUES (?, ?, ?, 'done', '{}', '2025-10-23T00:00:00', '2025-10-23T00:00:00')
+        """,
+        (user_id, "project", zip_path),
+    )
     conn.commit()
 
     # Mock user input to choose overwrite
@@ -43,7 +46,7 @@ def test_check_existing_zip_duplicate_overwrite(monkeypatch, setup_db):
     assert result == zip_path
 
     # Ensure the old project is deleted
-    rows = conn.execute("SELECT * FROM project_classifications WHERE user_id = ?", (user_id,)).fetchall()
+    rows = conn.execute("SELECT * FROM uploads WHERE user_id = ?", (user_id,)).fetchall()
     assert len(rows) == 0
 
 
@@ -53,11 +56,14 @@ def test_check_existing_zip_duplicate_reuse(monkeypatch, setup_db):
     user_id = 1
     zip_path = "C:/fake/path/project.zip"
 
-    # Insert dummy duplicate
-    conn.execute("""
-        INSERT INTO project_classifications (user_id, zip_path, zip_name, project_name, classification, recorded_at)
-        VALUES (?, ?, ?, ?, ?, '2025-10-23T00:00:00')
-    """, (user_id, zip_path, "project", "proj1", "individual"))
+    # Insert dummy duplicate upload
+    conn.execute(
+        """
+        INSERT INTO uploads (user_id, zip_name, zip_path, status, state_json, created_at, updated_at)
+        VALUES (?, ?, ?, 'done', '{}', '2025-10-23T00:00:00', '2025-10-23T00:00:00')
+        """,
+        (user_id, "project", zip_path),
+    )
     conn.commit()
 
     monkeypatch.setattr("builtins.input", lambda _: "r")

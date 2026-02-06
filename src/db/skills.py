@@ -74,6 +74,28 @@ def get_skill_events(conn, user_id):
     """
 
     query = """
+        WITH latest_version AS (
+            SELECT
+                p.user_id,
+                p.display_name AS project_name,
+                p.project_type,
+                (
+                    SELECT pv2.version_key
+                    FROM project_versions pv2
+                    WHERE pv2.project_key = p.project_key
+                    ORDER BY pv2.version_key DESC
+                    LIMIT 1
+                ) AS version_key,
+                (
+                    SELECT pv3.created_at
+                    FROM project_versions pv3
+                    WHERE pv3.project_key = p.project_key
+                    ORDER BY pv3.version_key DESC
+                    LIMIT 1
+                ) AS recorded_at
+            FROM projects p
+            WHERE p.user_id = ?
+        )
         SELECT
             ps.skill_name,
             ps.level,
@@ -82,8 +104,8 @@ def get_skill_events(conn, user_id):
             COALESCE(
                 ps_summary.manual_end_date,
                 CASE
-                    WHEN pc.project_type = 'text' THEN tac.end_date
-                    WHEN pc.project_type = 'code' THEN
+                    WHEN lv.project_type = 'text' THEN tac.end_date
+                    WHEN lv.project_type = 'code' THEN
                         COALESCE(
                             gim.last_commit_date,
                             ccm.last_commit_at,
@@ -94,13 +116,13 @@ def get_skill_events(conn, user_id):
                     ELSE NULL
                 END
             ) AS actual_activity_date,
-            pc.recorded_at
+            lv.recorded_at
         FROM project_skills ps
-        INNER JOIN project_classifications pc
-            ON ps.user_id = pc.user_id
-            AND ps.project_name = pc.project_name
+        INNER JOIN latest_version lv
+            ON ps.user_id = lv.user_id
+            AND ps.project_name = lv.project_name
         LEFT JOIN text_activity_contribution tac
-            ON pc.classification_id = tac.classification_id
+            ON lv.version_key = tac.version_key
         LEFT JOIN git_individual_metrics gim
             ON ps.user_id = gim.user_id
             AND ps.project_name = gim.project_name
@@ -118,9 +140,10 @@ def get_skill_events(conn, user_id):
             AND ps.score > 0
         ORDER BY
             actual_activity_date ASC NULLS LAST,
-            pc.recorded_at ASC,
+            lv.recorded_at ASC,
             ps.project_name,
             ps.score DESC;
     """
 
-    return conn.execute(query, (user_id,)).fetchall()
+    # user_id is used twice: once in the CTE, once in the main WHERE.
+    return conn.execute(query, (user_id, user_id)).fetchall()
