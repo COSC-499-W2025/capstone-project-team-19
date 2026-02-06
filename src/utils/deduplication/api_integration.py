@@ -48,6 +48,8 @@ def force_register_new_project(
     Always creates a NEW project + version (even if similar to another project).
     Useful when user chooses "new_project" for an 'ask' case.
     """
+    if upload_id is None:
+        raise ValueError("upload_id is required for API version registration")
     fp_strict, fp_loose, entries = project_fingerprints(project_dir)
     with conn:
         pk = insert_project(conn, user_id, display_name)
@@ -67,6 +69,8 @@ def force_register_new_version(
     Note: if it's an exact strict-duplicate of an existing version for this project_key,
     your UNIQUE(project_key, fingerprint_strict) constraint will block it (which is fine).
     """
+    if upload_id is None:
+        raise ValueError("upload_id is required for API version registration")
     fp_strict, fp_loose, entries = project_fingerprints(project_dir)
     with conn:
         vk = insert_project_version(conn, project_key, upload_id, fp_strict, fp_loose)
@@ -87,12 +91,14 @@ def run_deduplication_for_projects_api(
     - 'new_version' -> record suggestion (and register_project already inserts the version)
     - 'ask' -> record ask info for UI (no prompting)
     """
+    if upload_id is None:
+        raise ValueError("upload_id is required for API dedup/version registration")
     root_name = layout.get("root_name")
     all_projects = set(layout.get("auto_assignments", {}).keys())
     all_projects.update(layout.get("pending_projects", []))
 
     if not all_projects:
-        return {"skipped": set(), "asks": {}, "new_versions": {}}
+        return {"skipped": set(), "asks": {}, "new_versions": {}, "decisions": {}}
 
     base_path = os.path.join(target_dir, root_name) if root_name else target_dir
 

@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Set
 
@@ -250,11 +251,18 @@ def _filter_code_files(files: List[Dict[str, Any]], code_exts: Set[str]) -> List
 
 
 def _get_zip_name(conn, user_id: int, project_name: str) -> Optional[str]:
+    """
+    Return the extraction folder name under `src/analysis/zip_data/` for a project.
+
+    Important:
+    - `parse_zip_file()` extracts under: `analysis/zip_data/<Path(zip_path).stem>/...` where zip_path is the stored upload path (often prefixed with upload_id).
+    - `uploads.zip_name` is usually the original filename (e.g. "test-data.zip") and is NOT a reliable extraction folder name.
+    """
     try:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT u.zip_name
+            SELECT u.zip_path
             FROM project_versions pv
             JOIN projects p ON p.project_key = pv.project_key
             LEFT JOIN uploads u ON u.upload_id = pv.upload_id
@@ -265,7 +273,44 @@ def _get_zip_name(conn, user_id: int, project_name: str) -> Optional[str]:
             (user_id, project_name),
         )
         row = cursor.fetchone()
-        return row[0] if row else None
+        zip_path = row[0] if row else None
+        if zip_path:
+            return Path(str(zip_path)).stem
+
+        # Fallback (no uploads linkage): infer extraction folder by finding one file on disk.
+        # This supports flows that created versions without an uploads row / upload_id.
+        sample = cursor.execute(
+            """
+            SELECT file_path
+            FROM files
+            WHERE user_id = ? AND project_name = ? AND file_path IS NOT NULL
+            ORDER BY file_id DESC
+            LIMIT 1
+            """,
+            (user_id, project_name),
+        ).fetchone()
+        if not sample or not sample[0]:
+            return None
+
+        sample_rel = os.path.normpath(str(sample[0]).replace("/", os.sep).replace("\\", os.sep))
+
+        current_file = os.path.abspath(__file__)
+        src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+        base = os.path.join(src_dir, "analysis", "zip_data")
+
+        try:
+            for entry in os.listdir(base):
+                cand_dir = os.path.join(base, entry)
+                if not os.path.isdir(cand_dir):
+                    continue
+                # file_path in DB is stored relative to the extraction root (e.g. "<zip_stem>/project/...").
+                if os.path.isfile(os.path.join(cand_dir, sample_rel)):
+                    return entry
+        except OSError:
+            return None
+
+        return None
+
     except Exception as e:
         if constants.VERBOSE:
             print(f"[SKILL EXTRACTION] Error querying zip_name: {e}")
