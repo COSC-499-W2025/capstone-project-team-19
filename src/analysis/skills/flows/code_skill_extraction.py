@@ -255,8 +255,9 @@ def _get_zip_name(conn, user_id: int, project_name: str) -> Optional[str]:
     Return the extraction folder name under `src/analysis/zip_data/` for a project.
 
     Important:
-    - `parse_zip_file()` extracts under: `analysis/zip_data/<Path(zip_path).stem>/...` where zip_path is the stored upload path (often prefixed with upload_id).
-    - `uploads.zip_name` is usually the original filename (e.g. "test-data.zip") and is NOT a reliable extraction folder name.
+    - The extraction folder is based on the stored upload path stem:
+        analysis/zip_data/<Path(zip_path).stem>/
+    - `uploads.zip_name` is just the original filename and is NOT reliable.
     """
     try:
         cursor = conn.cursor()
@@ -267,53 +268,30 @@ def _get_zip_name(conn, user_id: int, project_name: str) -> Optional[str]:
             JOIN projects p ON p.project_key = pv.project_key
             LEFT JOIN uploads u ON u.upload_id = pv.upload_id
             WHERE p.user_id = ? AND p.display_name = ?
-            ORDER BY pv.version_key DESC
+            ORDER BY (u.zip_path IS NOT NULL) DESC,
+                     pv.version_key DESC
             LIMIT 1
             """,
             (user_id, project_name),
         )
+
         row = cursor.fetchone()
         zip_path = row[0] if row else None
-        if zip_path:
-            return Path(str(zip_path)).stem
 
-        # Fallback (no uploads linkage): infer extraction folder by finding one file on disk.
-        # This supports flows that created versions without an uploads row / upload_id.
-        sample = cursor.execute(
-            """
-            SELECT file_path
-            FROM files
-            WHERE user_id = ? AND project_name = ? AND file_path IS NOT NULL
-            ORDER BY file_id DESC
-            LIMIT 1
-            """,
-            (user_id, project_name),
-        ).fetchone()
-        if not sample or not sample[0]:
+        if not zip_path:
+            if constants.VERBOSE:
+                print(
+                    f"[SKILL EXTRACTION] Warning: No upload zip_path found for "
+                    f"{project_name} (latest version may not be linked to an upload)."
+                )
             return None
 
-        sample_rel = os.path.normpath(str(sample[0]).replace("/", os.sep).replace("\\", os.sep))
-
-        current_file = os.path.abspath(__file__)
-        src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
-        base = os.path.join(src_dir, "analysis", "zip_data")
-
-        try:
-            for entry in os.listdir(base):
-                cand_dir = os.path.join(base, entry)
-                if not os.path.isdir(cand_dir):
-                    continue
-                # file_path in DB is stored relative to the extraction root (e.g. "<zip_stem>/project/...").
-                if os.path.isfile(os.path.join(cand_dir, sample_rel)):
-                    return entry
-        except OSError:
-            return None
-
-        return None
+        # Extraction folder name is the stem of the stored zip path
+        return Path(str(zip_path)).stem
 
     except Exception as e:
         if constants.VERBOSE:
-            print(f"[SKILL EXTRACTION] Error querying zip_name: {e}")
+            print(f"[SKILL EXTRACTION] Error querying zip_path: {e}")
         return None
 
 
