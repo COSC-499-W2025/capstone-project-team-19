@@ -14,7 +14,7 @@ from src.db.uploads import (
 )
 
 from src.utils.parsing import ZIP_DATA_DIR, parse_zip_file, analyze_project_layout
-from src.db.projects import record_project_classifications, store_parsed_files
+from src.db.projects import store_parsed_files, update_project_metadata
 
 from src.utils.deduplication.api_integration import (
     run_deduplication_for_projects_api,
@@ -42,12 +42,6 @@ from src.services.uploads_file_roles_util import (
 
 UPLOAD_DIR = Path(ZIP_DATA_DIR) / "_uploads"
 
-# defaults if dedup logic is not executed or returns nothing
-skipped_set: set[str] = set()
-asks: dict = {}
-new_versions: dict = {}
-project_filetype_index: dict = {}
-
 
 def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> dict:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -62,7 +56,8 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
 
     update_upload_zip_metadata(conn, upload_id, zip_name=zip_name, zip_path=str(zip_path))
 
-    files_info = parse_zip_file(str(zip_path), user_id=user_id, conn=conn)
+    # Parse/extract ZIP, but do NOT persist files yet: we want to attach version_key after dedup.
+    files_info = parse_zip_file(str(zip_path), user_id=user_id, conn=conn, persist_to_db=False)
     if not files_info:
         set_upload_state(
             conn,
@@ -79,6 +74,58 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
 
     layout = analyze_project_layout(files_info)
 
+    # Dedup + version registration (creates `projects` + `project_versions` rows)
+    extract_dir = extract_dir_from_upload_zip(ZIP_DATA_DIR, str(zip_path))
+    dedup = run_deduplication_for_projects_api(
+        conn,
+        user_id,
+        target_dir=str(extract_dir),
+        layout=layout,
+        upload_id=upload_id,
+    )
+
+    skipped_set: set[str] = set(dedup.get("skipped") or set())
+    asks: dict = dedup.get("asks") or {}
+    new_versions: dict = dedup.get("new_versions") or {}
+    decisions: dict = dedup.get("decisions") or {}
+
+    # Apply dedup renames to layout + files_info (so later steps operate on final project names)
+    for old_name, existing_name in (new_versions or {}).items():
+        if old_name and existing_name and old_name != existing_name:
+            rename_project_in_layout(layout, old_name, existing_name)
+            apply_project_rename_to_files_info(files_info, old_name, existing_name)
+
+    # Remove skipped projects from layout + files_info
+    if skipped_set:
+        for name in sorted(skipped_set):
+            remove_project_from_layout(layout, name)
+        files_info = [f for f in files_info if f.get("project_name") not in skipped_set]
+
+    # Attach version_key to parsed files (per final project name)
+    version_keys: dict[str, int] = {}
+    project_keys: dict[str, int] = {}
+    for orig_name, d in (decisions or {}).items():
+        kind = (d or {}).get("kind")
+        if kind in {"new_project", "new_version"}:
+            vk = d.get("version_key")
+            pk = d.get("project_key")
+            existing_name = d.get("existing_name")
+            final_name = existing_name or orig_name
+            if isinstance(vk, int) and final_name:
+                version_keys[final_name] = vk
+            if isinstance(pk, int) and final_name:
+                project_keys[final_name] = pk
+
+    for f in files_info:
+        pname = f.get("project_name")
+        if pname in version_keys:
+            f["version_key"] = version_keys[pname]
+
+    # Persist parsed files once (after dedup tagging)
+    store_parsed_files(conn, files_info, user_id)
+
+    project_filetype_index: dict = build_project_filetype_index(files_info)
+
     state = {
         "zip_name": zip_name,
         "zip_path": str(zip_path),
@@ -87,6 +134,8 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
         "dedup_skipped_projects": sorted(list(skipped_set)),
         "dedup_asks": asks,
         "dedup_new_versions": new_versions,
+        "dedup_version_keys": version_keys,
+        "dedup_project_keys": project_keys,
         "project_filetype_index": project_filetype_index,
     }
 
@@ -100,10 +149,20 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
 
     # If everything is auto-classified, commit and infer project types (upload-scoped)
     if auto_assignments and not pending_projects:
-        record_project_classifications(conn, user_id, str(zip_path), zip_name, auto_assignments)
+        # Persist classification on canonical `projects` rows.
+        for project_name, classification in auto_assignments.items():
+            pk = project_keys.get(project_name)
+            if isinstance(pk, int):
+                update_project_metadata(conn, pk, classification=classification)
 
         projects = set(auto_assignments.keys())
         type_result = infer_project_types_from_index(projects, project_filetype_index)
+
+        # Persist auto-detected types on `projects`
+        for project_name, ptype in (type_result.get("auto_types") or {}).items():
+            pk = project_keys.get(project_name)
+            if isinstance(pk, int):
+                update_project_metadata(conn, pk, project_type=ptype)
 
         patch = {
             **state,

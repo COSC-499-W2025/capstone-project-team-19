@@ -30,10 +30,9 @@ from .users import (
 # Project operations
 from .projects import (
     store_parsed_files,
-    record_project_classification,
-    record_project_classifications,
-    get_project_classifications,
-    get_classification_id,
+    update_project_metadata,
+    get_project_key,
+    get_latest_version_key,
     get_project_metadata,
     get_zip_name_for_project,
 )
@@ -222,10 +221,9 @@ __all__ = [
     "get_user_by_username",
     "get_or_create_user",
     "store_parsed_files",
-    "record_project_classification",
-    "record_project_classifications",
-    "get_project_classifications",
-    "get_classification_id",
+    "update_project_metadata",
+    "get_project_key",
+    "get_latest_version_key",
     "get_project_metadata",
     "save_project_repo",
     "get_project_repo",

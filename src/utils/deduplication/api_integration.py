@@ -99,6 +99,7 @@ def run_deduplication_for_projects_api(
     skipped: Set[str] = set()
     asks: Dict[str, Any] = {}
     new_versions: Dict[str, str] = {}
+    decisions: Dict[str, Any] = {}
 
     for project_name in all_projects:
         project_dir = find_project_dir(target_dir, root_name, project_name)
@@ -110,12 +111,23 @@ def run_deduplication_for_projects_api(
 
         if kind == "duplicate":
             skipped.add(project_name)
+            decisions[project_name] = {
+                "kind": kind,
+                "project_key": result.get("project_key"),
+                "version_key": result.get("version_key"),
+            }
 
         elif kind == "new_version":
             pk = result.get("project_key")
             existing = _lookup_existing_name(conn, int(pk)) if pk is not None else None
             if existing:
                 new_versions[project_name] = existing
+            decisions[project_name] = {
+                "kind": kind,
+                "project_key": pk,
+                "version_key": result.get("version_key"),
+                "existing_name": existing,
+            }
 
         elif kind == "ask":
             best_pk = result.get("best_match_project_key")
@@ -126,7 +138,19 @@ def run_deduplication_for_projects_api(
                 "similarity": result.get("similarity"),
                 "file_count": result.get("file_count"),
             }
+            decisions[project_name] = {
+                "kind": kind,
+                "best_match_project_key": best_pk,
+                "existing_name": existing,
+            }
 
-    return {"skipped": skipped, "asks": asks, "new_versions": new_versions}
+        elif kind == "new_project":
+            decisions[project_name] = {
+                "kind": kind,
+                "project_key": result.get("project_key"),
+                "version_key": result.get("version_key"),
+            }
+
+    return {"skipped": skipped, "asks": asks, "new_versions": new_versions, "decisions": decisions}
 
 

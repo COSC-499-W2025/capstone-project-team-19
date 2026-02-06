@@ -58,120 +58,104 @@ def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id
     conn.commit()
 
 
-def record_project_classification(
-    conn: sqlite3.Connection,
-    user_id: int,
-    zip_path: str,
-    zip_name: str,
-    project_name: str,
-    classification: str,
-    when: datetime | None = None
-) -> None:
-    """Persist a single project classification selection."""
+def _validate_classification(classification: str) -> None:
     if classification not in {"individual", "collaborative"}:
         raise ValueError("classification must be 'individual' or 'collaborative'")
 
-    timestamp = (when or datetime.now()).isoformat()
-    conn.execute(
-        """
-        INSERT INTO project_classifications (
-            user_id, zip_path, zip_name, project_name, classification, recorded_at
+
+def _validate_project_type(project_type: str) -> None:
+    if project_type not in {"code", "text"}:
+        raise ValueError("project_type must be 'code' or 'text'")
+
+
+def update_project_metadata(
+    conn: sqlite3.Connection,
+    project_key: int,
+    *,
+    classification: str | None = None,
+    project_type: str | None = None,
+) -> None:
+    """
+    Update canonical project metadata in `projects`.
+    Both fields are nullable (chosen later in the upload/analysis flow).
+    """
+    if classification is not None:
+        _validate_classification(classification)
+        conn.execute(
+            "UPDATE projects SET classification = ? WHERE project_key = ?",
+            (classification, project_key),
         )
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(user_id, zip_name, project_name) DO UPDATE SET
-            classification=excluded.classification,
-            recorded_at=excluded.recorded_at
-        """,
-        (user_id, zip_path, zip_name, project_name, classification, timestamp),
-    )
+
+    if project_type is not None:
+        _validate_project_type(project_type)
+        conn.execute(
+            "UPDATE projects SET project_type = ? WHERE project_key = ?",
+            (project_type, project_key),
+        )
+
     conn.commit()
 
 
-def record_project_classifications(
-    conn: sqlite3.Connection,
-    user_id: int,
-    zip_path: str,
-    zip_name: str,
-    assignments: Dict[str, str],
-    when: datetime | None = None,
-) -> None:
-    """Bulk helper that stores classifications for multiple project names."""
-    for project_name, classification in assignments.items():
-        record_project_classification(
-            conn,
-            user_id,
-            zip_path,
-            zip_name,
-            project_name,
-            classification,
-            when=when,
-        )
-
-
-def get_project_classifications(
-    conn: sqlite3.Connection,
-    user_id: int,
-    zip_name: str,
-) -> dict[str, str]:
-    """Fetch saved classifications for a given user + uploaded ZIP."""
-    rows = conn.execute(
-        """
-        SELECT project_name, classification
-        FROM project_classifications
-        WHERE user_id=? AND zip_name=?
-        """,
-        (user_id, zip_name),
-    ).fetchall()
-    return {project_name: classification for project_name, classification in rows}
-
-
-def get_classification_id(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[int]:
+def get_project_key(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[int]:
+    """Best-effort lookup by display name (used by CLI paths)."""
     row = conn.execute(
         """
-        SELECT classification_id
-        FROM project_classifications
-        WHERE user_id = ? AND project_name = ?
-        ORDER BY recorded_at DESC
+        SELECT project_key
+        FROM projects
+        WHERE user_id = ? AND display_name = ?
+        ORDER BY project_key DESC
         LIMIT 1
         """,
         (user_id, project_name),
     ).fetchone()
-    return row[0] if row else None
+    return int(row[0]) if row else None
 
-def get_project_metadata(conn, user_id, project_name):
-    """
-    Returns (classification, project_type) for a project.
-    If nothing is found, returns (None, None).
-    Reads the most recent entry from project_classifications.
-    """
+
+def get_project_metadata(conn: sqlite3.Connection, user_id: int, project_name: str):
+    """Returns (classification, project_type) from `projects` for the given display name."""
     row = conn.execute(
         """
         SELECT classification, project_type
-        FROM project_classifications
-        WHERE user_id = ? AND project_name = ?
-        ORDER BY recorded_at DESC
-        LIMIT 1;
+        FROM projects
+        WHERE user_id = ? AND display_name = ?
+        ORDER BY project_key DESC
+        LIMIT 1
         """,
-        (user_id, project_name)
+        (user_id, project_name),
     ).fetchone()
 
     if not row:
         return None, None
-
     return row[0], row[1]
 
+def get_latest_version_key(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[int]:
+    """Return the most recent version_key for a project (by display_name)."""
+    row = conn.execute(
+        """
+        SELECT pv.version_key
+        FROM project_versions pv
+        JOIN projects p ON p.project_key = pv.project_key
+        WHERE p.user_id = ? AND p.display_name = ?
+        ORDER BY pv.version_key DESC
+        LIMIT 1
+        """,
+        (user_id, project_name),
+    ).fetchone()
+    return int(row[0]) if row else None
 
 def get_zip_name_for_project(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[str]:
     """
-    Return the zip_name associated with a project for a given user.
-    Uses the most recent classification record.
+    Return the zip_name associated with the *latest* version of a project.
+    (zip metadata lives in `uploads`, linked via `project_versions.upload_id`.)
     """
     row = conn.execute(
         """
-        SELECT zip_name
-        FROM project_classifications
-        WHERE user_id = ? AND project_name = ?
-        ORDER BY recorded_at DESC
+        SELECT u.zip_name
+        FROM project_versions pv
+        JOIN projects p ON p.project_key = pv.project_key
+        JOIN uploads u ON u.upload_id = pv.upload_id
+        WHERE p.user_id = ? AND p.display_name = ?
+        ORDER BY pv.version_key DESC
         LIMIT 1
         """,
         (user_id, project_name),
