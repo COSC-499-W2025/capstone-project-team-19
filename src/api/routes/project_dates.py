@@ -1,6 +1,6 @@
 from __future__ import annotations
 from sqlite3 import Connection
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 
 from src.api.dependencies import get_current_user_id, get_db
 from src.api.schemas.common import ApiResponse
@@ -29,7 +29,7 @@ def get_project_dates(user_id: int = Depends(get_current_user_id), conn: Connect
     return ApiResponse(success=True, data=dto, error=None)
 
 @router.patch("/{project_id:int}/dates", response_model=ApiResponse[ProjectDatesItemDTO])
-def patch_project_dates(project_id: int, body: PatchProjectDatesRequestDTO, request: Request, user_id: int = Depends(get_current_user_id), conn: Connection = Depends(get_db)):
+def patch_project_dates(project_id: int, body: PatchProjectDatesRequestDTO, user_id: int = Depends(get_current_user_id), conn: Connection = Depends(get_db)):
     # Distinguish "field omitted" vs "explicit null"
     start_provided = "start_date" in body.model_fields_set
     end_provided = "end_date" in body.model_fields_set
@@ -46,7 +46,7 @@ def patch_project_dates(project_id: int, body: PatchProjectDatesRequestDTO, requ
     try:
         validate_manual_date_range(start_for_validation, end_for_validation)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=e.args[0])
 
     try:
         item = set_project_manual_dates(
@@ -57,9 +57,9 @@ def patch_project_dates(project_id: int, body: PatchProjectDatesRequestDTO, requ
             end_date=end_value,
         )
     except KeyError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=e.args[0])
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=e.args[0])
 
     return ApiResponse(success=True, data=ProjectDatesItemDTO(**item.__dict__), error=None)
 
@@ -68,7 +68,7 @@ def delete_project_dates(project_id: int, user_id: int = Depends(get_current_use
     try:
         item = clear_project_manual_dates(conn, user_id, project_id)
     except KeyError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=e.args[0])
 
     return ApiResponse(success=True, data=ProjectDatesItemDTO(**item.__dict__), error=None)
 
