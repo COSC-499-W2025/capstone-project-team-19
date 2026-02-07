@@ -12,6 +12,18 @@ from src.api.schemas.uploads import (
     UploadProjectFilesDTO,
     MainFileRequestDTO,
 )
+from src.api.schemas.git_identities import (
+    GitIdentitiesResponse,
+    GitIdentitiesSelectRequest,
+    GitIdentityOptionDTO,
+)
+from src.analysis.code_collaborative.code_collaborative_analysis_helper import (
+    collect_repo_authors,
+    load_user_github,
+    save_user_github,
+    resolve_repo_for_project,
+)
+from src.db.uploads import get_upload_by_id
 from src.services.projects_service import (
     list_projects,
     get_project_by_id,
@@ -27,8 +39,29 @@ from src.services.uploads_service import (
     list_project_files,
     set_project_main_file,
 )
+from src.utils.helpers import zip_paths
 
 router = APIRouter(prefix="/projects", tags=["projects"])
+
+
+def _get_git_identity_options(conn: Connection, user_id: int, project: str, upload: dict) -> list[GitIdentityOptionDTO]:
+    zip_path = upload.get("zip_path")
+    if not zip_path:
+        raise HTTPException(status_code=400, detail="Upload missing zip_path")
+
+    zip_data_dir, zip_name, _base_path = zip_paths(zip_path)
+    repo_dir = resolve_repo_for_project(conn, zip_data_dir, zip_name, project, user_id)
+    if not repo_dir:
+        raise HTTPException(status_code=404, detail="No local Git repo found for this project")
+
+    authors = collect_repo_authors(repo_dir)
+    if not authors:
+        return []
+
+    return [
+        GitIdentityOptionDTO(index=i, name=an or None, email=ae or None, commit_count=c)
+        for i, (an, ae, c) in enumerate(authors, start=1)
+    ]
 
 
 @router.get("", response_model=ApiResponse[ProjectListDTO])
@@ -123,6 +156,93 @@ def post_upload_project_main_file(
 ):
     upload = set_project_main_file(conn, user_id, upload_id, project_name, body.relpath)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.get(
+    "/upload/{upload_id}/projects/{project}/git/identities",
+    response_model=ApiResponse[GitIdentitiesResponse],
+)
+def get_git_identities(
+    upload_id: int,
+    project: str,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    options = _get_git_identity_options(conn, user_id, project, upload)
+    aliases = load_user_github(conn, user_id)
+
+    selected_indices: list[int] = []
+    for opt in options:
+        if opt.email and opt.email.lower() in aliases["emails"]:
+            selected_indices.append(opt.index)
+        elif opt.name and opt.name.strip().lower() in aliases["names"]:
+            selected_indices.append(opt.index)
+
+    return ApiResponse(
+        success=True,
+        data=GitIdentitiesResponse(options=options, selected_indices=selected_indices),
+        error=None,
+    )
+
+
+@router.post(
+    "/upload/{upload_id}/projects/{project}/git/identities",
+    response_model=ApiResponse[GitIdentitiesResponse],
+)
+def post_git_identities(
+    upload_id: int,
+    project: str,
+    body: GitIdentitiesSelectRequest,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    options = _get_git_identity_options(conn, user_id, project, upload)
+    if not options:
+        raise HTTPException(status_code=404, detail="No git identities found for this project")
+
+    max_idx = len(options)
+    bad = [i for i in body.selected_indices if i < 1 or i > max_idx]
+    if bad:
+        raise HTTPException(
+            status_code=422,
+            detail={"invalid_indices": bad, "valid_range": [1, max_idx]},
+        )
+
+    emails: list[str] = []
+    names: list[str] = []
+    for opt in options:
+        if opt.index in body.selected_indices:
+            if opt.email:
+                emails.append(opt.email)
+            if opt.name:
+                names.append(opt.name)
+
+    if body.extra_emails:
+        emails.extend(body.extra_emails)
+
+    save_user_github(conn, user_id, emails, names)
+
+    aliases = load_user_github(conn, user_id)
+    selected_indices: list[int] = []
+    for opt in options:
+        if opt.email and opt.email.lower() in aliases["emails"]:
+            selected_indices.append(opt.index)
+        elif opt.name and opt.name.strip().lower() in aliases["names"]:
+            selected_indices.append(opt.index)
+
+    return ApiResponse(
+        success=True,
+        data=GitIdentitiesResponse(options=options, selected_indices=selected_indices),
+        error=None,
+    )
 
 
 @router.delete("", response_model=ApiResponse[DeleteResultDTO])
