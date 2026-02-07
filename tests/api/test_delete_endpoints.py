@@ -121,12 +121,14 @@ def test_delete_project_also_deletes_dedup_tables(client, auth_headers, seed_con
     """Test that deleting a project also removes data from projects/project_versions/version_files tables."""
     project_id = create_test_project(seed_conn, 1, "TestProjectDedup")
 
-    # Also insert into deduplication tables (projects, project_versions, version_files)
-    cur = seed_conn.execute(
-        "INSERT INTO projects(user_id, display_name) VALUES (?, ?)",
+    # Also insert into deduplication tables (project_versions, version_files).
+    # `create_test_project()` already ensures a `projects` row exists (canonical).
+    row = seed_conn.execute(
+        "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
         (1, "TestProjectDedup"),
-    )
-    project_key = cur.lastrowid
+    ).fetchone()
+    assert row is not None
+    project_key = row[0]
     cur = seed_conn.execute(
         "INSERT INTO project_versions(project_key, upload_id, fingerprint_strict, fingerprint_loose) "
         "VALUES (?, ?, ?, ?)",
@@ -224,11 +226,12 @@ def test_delete_all_projects_cleans_dedup_tables(client, auth_headers, seed_conn
     for i in range(2):
         name = f"BulkProject{i}"
         create_test_project(seed_conn, 1, name)
-        cur = seed_conn.execute(
-            "INSERT INTO projects(user_id, display_name) VALUES (?, ?)",
+        row = seed_conn.execute(
+            "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
             (1, name),
-        )
-        pk = cur.lastrowid
+        ).fetchone()
+        assert row is not None
+        pk = row[0]
         seed_conn.execute(
             "INSERT INTO project_versions(project_key, upload_id, fingerprint_strict, fingerprint_loose) "
             "VALUES (?, ?, ?, ?)",
@@ -261,11 +264,12 @@ def test_delete_all_projects_cleans_orphaned_dedup_data(client, auth_headers, se
     """
     # Create a normal project (has both project_summaries and projects table entry)
     create_test_project(seed_conn, 1, "NormalProject")
-    cur = seed_conn.execute(
-        "INSERT INTO projects(user_id, display_name) VALUES (?, ?)",
+    row = seed_conn.execute(
+        "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
         (1, "NormalProject"),
-    )
-    pk = cur.lastrowid
+    ).fetchone()
+    assert row is not None
+    pk = row[0]
     seed_conn.execute(
         "INSERT INTO project_versions(project_key, upload_id, fingerprint_strict, fingerprint_loose) "
         "VALUES (?, ?, ?, ?)",

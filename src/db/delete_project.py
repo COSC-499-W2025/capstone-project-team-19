@@ -45,6 +45,17 @@ def delete_project_everywhere(
         ]
 
         for pk in project_keys:
+            # 0a) Tables keyed by (user_id, project_key) (new canonical identity)
+            # Keep these explicit deletes so deletion works even if SQLite FK cascades are disabled on the connection.
+            cur.execute(
+                "DELETE FROM project_skills WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_summaries WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+
             # Delete version_files first (depends on project_versions)
             cur.execute(
                 """
@@ -65,8 +76,6 @@ def delete_project_everywhere(
         tables_user_project = [
             "files",
             "config_files",
-            "project_summaries",
-            "project_skills",
             "project_feedback",
             "project_rankings",
             "project_thumbnails",
@@ -128,12 +137,17 @@ def delete_all_user_projects(conn: sqlite3.Connection, user_id: int) -> int:
     # Get orphaned project names from projects table (dedup data without summaries)
     orphan_rows = conn.execute(
         """
-        SELECT display_name FROM projects
-        WHERE user_id = ? AND display_name NOT IN (
-            SELECT project_name FROM project_summaries WHERE user_id = ?
-        )
+        SELECT p.display_name
+        FROM projects p
+        WHERE p.user_id = ?
+        AND NOT EXISTS (
+            SELECT 1
+            FROM project_summaries ps
+            WHERE ps.user_id = p.user_id
+                AND ps.project_key = p.project_key
+        );
         """,
-        (user_id, user_id),
+            (user_id,),
     ).fetchall()
     orphan_names = {row[0] for row in orphan_rows}
 

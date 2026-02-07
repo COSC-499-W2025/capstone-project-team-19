@@ -85,8 +85,12 @@ CREATE TABLE IF NOT EXISTS projects (
     user_id INTEGER NOT NULL,
     display_name TEXT NOT NULL,
     classification TEXT CHECK (classification IN ('individual','collaborative')),
-    project_type TEXT CHECK (project_type IN ('code', 'text'))
+    project_type TEXT CHECK (project_type IN ('code', 'text')),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_user_display_name
+ON projects(user_id, display_name);
 
 CREATE TABLE IF NOT EXISTS project_versions (
     version_key INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -323,27 +327,29 @@ CREATE TABLE IF NOT EXISTS git_individual_metrics (
 CREATE TABLE IF NOT EXISTS project_summaries (
     project_summary_id  INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id             INTEGER NOT NULL,
-    project_name        TEXT NOT NULL,
+    project_key         INTEGER NOT NULL,
     project_type        TEXT,
     project_mode        TEXT,
     summary_json        TEXT NOT NULL,
     created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     manual_start_date   TEXT,  -- Manual override for start date (ISO format YYYY-MM-DD)
     manual_end_date     TEXT,  -- Manual override for end date (ISO format YYYY-MM-DD)
-    UNIQUE(user_id, project_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS project_skills (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     skill_name TEXT NOT NULL,
     level TEXT NOT NULL,
     score REAL NOT NULL,
     evidence_json TEXT,
-    UNIQUE(user_id, project_name, skill_name),
-    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key, skill_name),
+    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 -- USER FILE CONTRIBUTIONS (for collaborative projects)

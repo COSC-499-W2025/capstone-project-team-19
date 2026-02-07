@@ -24,7 +24,7 @@ def user_id():
     return 1
 
 
-def seed_dedup_registry(conn: sqlite3.Connection, user_id: int, display_name: str) -> None:
+def seed_dedup_registry(conn: sqlite3.Connection, user_id: int, display_name: str) -> int:
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO projects (user_id, display_name) VALUES (?, ?)",
@@ -51,11 +51,12 @@ def seed_dedup_registry(conn: sqlite3.Connection, user_id: int, display_name: st
     )
 
     conn.commit()
+    return int(pk)
 
 
 def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
     # dedup tables
-    seed_dedup_registry(conn, user_id, name)
+    project_key = seed_dedup_registry(conn, user_id, name)
 
     # canonical project metadata now lives on `projects`
     conn.execute(
@@ -77,10 +78,10 @@ def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
     # project_summaries
     conn.execute(
         """
-        INSERT INTO project_summaries (user_id, project_name, project_type, project_mode, summary_json)
+        INSERT INTO project_summaries (user_id, project_key, project_type, project_mode, summary_json)
         VALUES (?, ?, ?, ?, ?)
         """,
-        (user_id, name, "code", "individual", json.dumps({"summary": name})),
+        (user_id, int(project_key), "code", "individual", json.dumps({"summary": name})),
     )
 
     # github_issues
@@ -102,6 +103,17 @@ def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
 
 
 def count_user_project(conn: sqlite3.Connection, user_id: int, table: str, project_name: str) -> int:
+    if table in {"project_summaries", "project_skills"}:
+        # migrated tables use project_key; join through projects for name-based assertions
+        return conn.execute(
+            f"""
+            SELECT COUNT(*)
+            FROM {table} t
+            JOIN projects p ON p.project_key = t.project_key
+            WHERE t.user_id = ? AND p.display_name = ?
+            """,
+            (user_id, project_name),
+        ).fetchone()[0]
     return conn.execute(
         f"SELECT COUNT(*) FROM {table} WHERE user_id=? AND project_name=?",
         (user_id, project_name),
