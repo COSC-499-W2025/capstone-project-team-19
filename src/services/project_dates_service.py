@@ -175,9 +175,6 @@ def set_project_manual_dates(conn: Connection, user_id: int, project_id: int, *,
     new_start = current_start if start_date is UNSET else start_date
     new_end = current_end if end_date is UNSET else end_date
 
-    # If caller sent only null-equivalents after merge, treat as no-op.
-    if new_start is None and new_end is None:
-        raise ValueError("No dates provided. No changes made.")
 
     validate_manual_date_range(new_start, new_end)
     set_project_dates(conn, user_id, project_name, new_start, new_end)
