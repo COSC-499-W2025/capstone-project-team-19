@@ -9,6 +9,7 @@ from src.api.routes.consent import router as consent_router
 from src.api.routes.portfolio import router as portfolio_router
 from src.api.auth.routes import router as auth_router
 
+
 app = FastAPI(title="Capstone API")
 
 @app.get("/health")
@@ -16,6 +17,7 @@ def health():
     return {"status": "ok"}
 
 app.include_router(auth_router)
+app.include_router(projects_ranking_router)
 app.include_router(projects_router)
 app.include_router(skills_router)
 app.include_router(resumes_router)

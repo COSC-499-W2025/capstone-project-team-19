@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
 from sqlite3 import Connection
 
 from src.api.dependencies import get_db, get_current_user_id
-from src.api.schemas.common import ApiResponse
+from src.api.schemas.common import ApiResponse, DeleteResultDTO
 from src.api.schemas.projects import ProjectListDTO, ProjectListItemDTO, ProjectDetailDTO
 from src.api.schemas.uploads import (
     UploadDTO,
@@ -12,7 +12,12 @@ from src.api.schemas.uploads import (
     UploadProjectFilesDTO,
     MainFileRequestDTO,
 )
-from src.services.projects_service import list_projects, get_project_by_id
+from src.services.projects_service import (
+    list_projects,
+    get_project_by_id,
+    delete_project,
+    delete_all_projects,
+)
 from src.services.uploads_service import (
     start_upload,
     get_upload_status,
@@ -120,7 +125,18 @@ def post_upload_project_main_file(
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
 
 
-@router.get("/{project_id}", response_model=ApiResponse[ProjectDetailDTO])
+@router.delete("", response_model=ApiResponse[DeleteResultDTO])
+def delete_all_user_projects(
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    """Delete all projects for the current user."""
+    count = delete_all_projects(conn, user_id)
+    return ApiResponse(success=True, data=DeleteResultDTO(deleted_count=count), error=None)
+
+
+# Use `:int` so non-integers like "ranking" never match this route.
+@router.get("/{project_id:int}", response_model=ApiResponse[ProjectDetailDTO])
 def get_project(
     project_id: int,
     user_id: int = Depends(get_current_user_id),
@@ -131,3 +147,16 @@ def get_project(
         raise HTTPException(status_code=404, detail="Project not found")
     dto = ProjectDetailDTO(**project)
     return ApiResponse(success=True, data=dto, error=None)
+
+
+@router.delete("/{project_id:int}", response_model=ApiResponse[None])
+def delete_single_project(
+    project_id: int,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    """Delete a single project by ID."""
+    deleted = delete_project(conn, user_id, project_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return ApiResponse(success=True, data=None, error=None)

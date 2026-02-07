@@ -11,3 +11,7 @@ class ApiResponse(BaseModel, Generic[T]):
     success: bool
     data: Optional[T] = None
     error: Optional[ErrorDTO] = None
+
+
+class DeleteResultDTO(BaseModel):
+    deleted_count: int

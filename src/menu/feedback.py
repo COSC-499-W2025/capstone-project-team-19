@@ -3,10 +3,35 @@ from typing import List, Dict, Any, Optional
 
 
 NO_FEEDBACK_MSG = (
-    "Feedbacks for Code-based projects coming soon. "
-    "This system currently only gives feedback for Text-based projects."
+    "No feedback found for this project yet. "
 )
 
+_ACRONYMS = {"ci", "api", "db", "ui", "ml", "ai", "sql", "jwt"}
+
+def _format_category(name: str) -> str:
+    """
+    Format DB category keys into user-friendly headings.
+    Examples:
+      "object_oriented_programming" -> "Object Oriented Programming"
+      "ci_workflows" -> "CI Workflows"
+      "" -> "General"
+    """
+    if not name or not name.strip():
+        return "General"
+
+    cleaned = name.strip().replace("_", " ").replace("-", " ")
+    cleaned = " ".join(cleaned.split())  # collapse extra whitespace
+
+    words = []
+    for w in cleaned.split(" "):
+        wl = w.lower()
+        if wl in _ACRONYMS:
+            words.append(w.upper())
+        else:
+            # capitalize first letter, keep rest lowercase
+            words.append(w.capitalize())
+
+    return " ".join(words)
 
 # --------------------------------------------------------------------
 # DB helpers (inline so this script works even if you don't have these yet)
@@ -167,17 +192,17 @@ def display_project_feedback(conn, user_id: int, project_name: str):
             print(textwrap.fill(f"• {suggestion}", width=80, subsequent_indent="  "))
         return
 
-    current_skill = None
+    current_group = None
     for r in rows:
         skill_name = (r.get("skill_name") or "").strip()
         suggestion = (r.get("suggestion") or "").strip()
-
         if not suggestion:
             continue
 
-        if skill_name != current_skill:
-            current_skill = skill_name
-            print(f"\n{current_skill if current_skill else 'General'}:")
+        group_header = _format_category(skill_name)
+
+        if group_header != current_group:
+            current_group = group_header
+            print(f"\n{current_group}:")
 
         print(textwrap.fill(f"• {suggestion}", width=80, subsequent_indent="  "))
-

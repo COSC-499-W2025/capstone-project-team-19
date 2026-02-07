@@ -1,5 +1,11 @@
 from typing import List, Dict, Any, Optional, Literal
-from src.db.resumes import list_resumes, get_resume_snapshot, update_resume_snapshot
+from src.db.resumes import (
+    list_resumes,
+    get_resume_snapshot,
+    update_resume_snapshot,
+    delete_resume_snapshot,
+    delete_all_user_resumes,
+)
 from src.menu.resume.helpers import (
     render_snapshot,
     apply_resume_only_updates,
@@ -166,3 +172,19 @@ def edit_resume(
             )
 
     return get_resume_by_id(conn, user_id, resume_id)
+
+
+def delete_resume(conn, user_id: int, resume_id: int) -> bool:
+    """
+    Delete a single resume by ID.
+    Returns True if deleted, False if not found.
+    """
+    return delete_resume_snapshot(conn, user_id, resume_id)
+
+
+def delete_all_resumes(conn, user_id: int) -> int:
+    """
+    Delete all resumes for a user.
+    Returns the count of deleted resumes.
+    """
+    return delete_all_user_resumes(conn, user_id)
