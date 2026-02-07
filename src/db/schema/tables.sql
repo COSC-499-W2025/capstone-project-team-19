@@ -189,14 +189,15 @@ CREATE TABLE IF NOT EXISTS text_contribution_revisions (
 CREATE TABLE IF NOT EXISTS text_contribution_summary (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     drive_file_id TEXT NOT NULL,
     user_revision_count INTEGER NOT NULL DEFAULT 0,
     total_word_count INTEGER NOT NULL DEFAULT 0,
     total_revision_count INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES users(user_id),
-    UNIQUE(user_id, project_name, drive_file_id)
-);
+    UNIQUE(user_id, project_key, drive_file_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
+);  
 
 
 -- INTEGRATIONS (TOKENS, GITHUB, DRIVE)
