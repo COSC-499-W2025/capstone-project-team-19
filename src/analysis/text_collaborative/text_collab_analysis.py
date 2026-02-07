@@ -6,7 +6,7 @@ from src.analysis.code_collaborative.code_collaborative_analysis_helper import p
 from src.analysis.text_individual.alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.utils.helpers import normalize_pdf_paragraphs
-from src.db import get_files_with_timestamps, get_latest_version_key, store_text_activity_contribution
+from src.db import get_files_with_timestamps, get_files_with_timestamps_for_version, get_latest_version_key, store_text_activity_contribution
 from src.analysis.activity_type.text.activity_type import print_activity, get_activity_contribution_data
 try:
     from src import constants
@@ -284,8 +284,11 @@ def analyze_collaborative_text_project(
             for csv_file in user_csv_metadata['files']
         ])
 
-    # Fetch timestamp data for ALL project files
-    all_project_files = get_files_with_timestamps(conn, user_id, project_name, version_key=version_key)
+    # Fetch timestamp data for ALL project files (use version_key when available to avoid re-resolution)
+    if version_key is not None:
+        all_project_files = get_files_with_timestamps_for_version(conn, user_id, version_key)
+    else:
+        all_project_files = get_files_with_timestamps(conn, user_id, project_name)
 
     # Filter to only files the user contributed to
     user_contributed_files = [
