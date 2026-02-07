@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
+import os
 from sqlite3 import Connection
 
 from src.api.dependencies import get_db, get_current_user_id
@@ -17,11 +18,9 @@ from src.api.schemas.git_identities import (
     GitIdentitiesSelectRequest,
     GitIdentityOptionDTO,
 )
-from src.analysis.code_collaborative.code_collaborative_analysis_helper import (
-    collect_repo_authors,
-    load_user_github,
-    save_user_github,
-    resolve_repo_for_project,
+from src.services.git_identities_service import (
+    get_git_identities as get_git_identities_service,
+    save_git_identities as save_git_identities_service,
 )
 from src.db.uploads import get_upload_by_id
 from src.services.projects_service import (
@@ -39,29 +38,7 @@ from src.services.uploads_service import (
     list_project_files,
     set_project_main_file,
 )
-from src.utils.helpers import zip_paths
-
 router = APIRouter(prefix="/projects", tags=["projects"])
-
-
-def _get_git_identity_options(conn: Connection, user_id: int, project: str, upload: dict) -> list[GitIdentityOptionDTO]:
-    zip_path = upload.get("zip_path")
-    if not zip_path:
-        raise HTTPException(status_code=400, detail="Upload missing zip_path")
-
-    zip_data_dir, zip_name, _base_path = zip_paths(zip_path)
-    repo_dir = resolve_repo_for_project(conn, zip_data_dir, zip_name, project, user_id)
-    if not repo_dir:
-        raise HTTPException(status_code=404, detail="No local Git repo found for this project")
-
-    authors = collect_repo_authors(repo_dir)
-    if not authors:
-        return []
-
-    return [
-        GitIdentityOptionDTO(index=i, name=an or None, email=ae or None, commit_count=c)
-        for i, (an, ae, c) in enumerate(authors, start=1)
-    ]
 
 
 @router.get("", response_model=ApiResponse[ProjectListDTO])
@@ -159,28 +136,19 @@ def post_upload_project_main_file(
 
 
 @router.get(
-    "/upload/{upload_id}/projects/{project}/git/identities",
+    "/upload/{upload_id}/projects/{project_id}/git/identities",
     response_model=ApiResponse[GitIdentitiesResponse],
 )
-def get_git_identities(
+def get_git_identities_route(
     upload_id: int,
-    project: str,
+    project_id: int,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
     upload = get_upload_by_id(conn, upload_id)
     if not upload or upload["user_id"] != user_id:
         raise HTTPException(status_code=404, detail="Upload not found")
-
-    options = _get_git_identity_options(conn, user_id, project, upload)
-    aliases = load_user_github(conn, user_id)
-
-    selected_indices: list[int] = []
-    for opt in options:
-        if opt.email and opt.email.lower() in aliases["emails"]:
-            selected_indices.append(opt.index)
-        elif opt.name and opt.name.strip().lower() in aliases["names"]:
-            selected_indices.append(opt.index)
+    options, selected_indices = get_git_identities_service(conn, user_id, upload, project_id)
 
     return ApiResponse(
         success=True,
@@ -190,12 +158,12 @@ def get_git_identities(
 
 
 @router.post(
-    "/upload/{upload_id}/projects/{project}/git/identities",
+    "/upload/{upload_id}/projects/{project_id}/git/identities",
     response_model=ApiResponse[GitIdentitiesResponse],
 )
-def post_git_identities(
+def post_git_identities_route(
     upload_id: int,
-    project: str,
+    project_id: int,
     body: GitIdentitiesSelectRequest,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
@@ -203,40 +171,14 @@ def post_git_identities(
     upload = get_upload_by_id(conn, upload_id)
     if not upload or upload["user_id"] != user_id:
         raise HTTPException(status_code=404, detail="Upload not found")
-
-    options = _get_git_identity_options(conn, user_id, project, upload)
-    if not options:
-        raise HTTPException(status_code=404, detail="No git identities found for this project")
-
-    max_idx = len(options)
-    bad = [i for i in body.selected_indices if i < 1 or i > max_idx]
-    if bad:
-        raise HTTPException(
-            status_code=422,
-            detail={"invalid_indices": bad, "valid_range": [1, max_idx]},
-        )
-
-    emails: list[str] = []
-    names: list[str] = []
-    for opt in options:
-        if opt.index in body.selected_indices:
-            if opt.email:
-                emails.append(opt.email)
-            if opt.name:
-                names.append(opt.name)
-
-    if body.extra_emails:
-        emails.extend(body.extra_emails)
-
-    save_user_github(conn, user_id, emails, names)
-
-    aliases = load_user_github(conn, user_id)
-    selected_indices: list[int] = []
-    for opt in options:
-        if opt.email and opt.email.lower() in aliases["emails"]:
-            selected_indices.append(opt.index)
-        elif opt.name and opt.name.strip().lower() in aliases["names"]:
-            selected_indices.append(opt.index)
+    options, selected_indices = save_git_identities_service(
+        conn,
+        user_id,
+        upload,
+        project_id,
+        body.selected_indices,
+        body.extra_emails,
+    )
 
     return ApiResponse(
         success=True,
