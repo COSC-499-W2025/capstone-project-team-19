@@ -24,6 +24,10 @@ from src.analysis.code_collaborative.code_collaborative_analysis_helper import (
     resolve_repo_for_project,
 )
 from src.db.uploads import get_upload_by_id
+from src.db.projects import get_project_classifications
+from src.db.consent import get_latest_external_consent
+from src.db.uploads import update_upload_status, mark_upload_failed
+from src.project_analysis import send_to_analysis
 from src.services.projects_service import (
     list_projects,
     get_project_by_id,
@@ -156,6 +160,45 @@ def post_upload_project_main_file(
 ):
     upload = set_project_main_file(conn, user_id, upload_id, project_name, body.relpath)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.post("/upload/{upload_id}/run", response_model=ApiResponse[UploadDTO])
+def post_upload_run(
+    upload_id: int,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    if upload["status"] not in {"needs_file_roles", "needs_summaries"}:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Upload not ready to run (status={upload['status']})",
+        )
+
+    zip_name = upload.get("zip_name")
+    zip_path = upload.get("zip_path")
+    if not zip_name or not zip_path:
+        raise HTTPException(status_code=400, detail="Upload missing zip_name or zip_path")
+
+    assignments = get_project_classifications(conn, user_id, zip_name)
+    if not assignments:
+        raise HTTPException(status_code=409, detail="No project classifications found for this upload")
+
+    external_consent = get_latest_external_consent(conn, user_id)
+
+    try:
+        update_upload_status(conn, upload_id, "analyzing")
+        send_to_analysis(conn, user_id, assignments, external_consent, zip_path)
+        update_upload_status(conn, upload_id, "done")
+    except Exception as exc:
+        mark_upload_failed(conn, upload_id, str(exc))
+        raise HTTPException(status_code=500, detail="Analysis failed")
+
+    final_upload = get_upload_status(conn, user_id, upload_id)
+    return ApiResponse(success=True, data=UploadDTO(**final_upload), error=None)
 
 
 @router.get(
