@@ -26,6 +26,19 @@ from src.services.portfolio_service import (
 )
 from src.services import resume_overrides
 
+_PLACEHOLDER_CONTRIB = "[No manual contribution summary provided]"
+
+def _strip_placeholder_contrib(bullets: list[str]) -> list[str]:
+    """Remove empty strings and the placeholder contribution text."""
+    out = []
+    for b in bullets or []:
+        t = (b or "").strip()
+        if not t:
+            continue
+        if t == _PLACEHOLDER_CONTRIB:
+            continue
+        out.append(t)
+    return out
 
 def view_portfolio_menu(conn, user_id: int, username: str) -> None:
     """
@@ -187,10 +200,11 @@ def _collect_section_updates(
             user_id,
             project_entry.get("project_name") or "",
         )
+        cleaned_current = _strip_placeholder_contrib(current_bullets)
 
-        if current_bullets:
+        if cleaned_current:
             print("\nCurrent contributions:")
-            for bullet in current_bullets:
+            for bullet in cleaned_current:
                 print(f"  - {bullet}")
 
             print("\nHow would you like to edit?")
@@ -207,7 +221,7 @@ def _collect_section_updates(
                         break
                     new_bullets.append(line)
                 if new_bullets:
-                    updates["contribution_bullets"] = current_bullets + new_bullets
+                    updates["contribution_bullets"] = cleaned_current + new_bullets
             else:
                 print("\nEnter contribution bullets (one per line). Press Enter on a blank line to finish.")
                 bullets: list[str] = []
