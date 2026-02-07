@@ -9,7 +9,7 @@ Manages project-level database operations:
 
 import sqlite3
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 import json
 import hashlib
 
@@ -52,13 +52,17 @@ def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id
                 f.get("file_path"),
             ))
         else:
-            #Store regular files in files table
+            # Store regular files in files table (versioned only; version_key required)
+            vk = f.get("version_key")
+            if vk is None:
+                continue  # skip rows without version_key
             cur.execute("""
                 INSERT INTO files (
-                    user_id, file_name, file_path, extension, file_type, size_bytes, created, modified, project_name, version_key
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    user_id, version_key, file_name, file_path, extension, file_type, size_bytes, created, modified
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 user_id,
+                int(vk),
                 f.get("file_name"),
                 f.get("file_path"),
                 f.get("extension"),
@@ -66,8 +70,6 @@ def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id
                 f.get("size_bytes"),
                 f.get("created"),
                 f.get("modified"),
-                f.get("project_name"),
-                f.get("version_key"),
             ))
     
     conn.commit()
@@ -124,6 +126,52 @@ def get_project_key(conn: sqlite3.Connection, user_id: int, project_name: str) -
         (user_id, project_name),
     ).fetchone()
     return int(row[0]) if row else None
+
+
+def get_latest_version_key(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[int]:
+    """Return the latest version_key for the given (user_id, project_name), or None."""
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return None
+    row = conn.execute(
+        """
+        SELECT version_key
+        FROM project_versions
+        WHERE project_key = ?
+        ORDER BY version_key DESC
+        LIMIT 1
+        """,
+        (pk,),
+    ).fetchone()
+    return int(row[0]) if row else None
+
+
+def get_version_keys_for_project(conn: sqlite3.Connection, user_id: int, project_name: str) -> List[int]:
+    """Return all version_key values for the given (user_id, project_name)."""
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return []
+    rows = conn.execute(
+        "SELECT version_key FROM project_versions WHERE project_key = ? ORDER BY version_key DESC",
+        (pk,),
+    ).fetchall()
+    return [int(r[0]) for r in rows]
+
+
+def get_or_create_version_key_for_project(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[int]:
+    """
+    Return the latest version_key for (user_id, project_name), or create project + one version if missing.
+    Used by parse_zip_file when persisting without an upload flow (no version_key on files_info).
+    """
+    vk = get_latest_version_key(conn, user_id, project_name)
+    if vk is not None:
+        return vk
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        pk = insert_project(conn, user_id, project_name)
+    vk = insert_project_version(conn, pk, None, f"{project_name}_parse_fp", f"{project_name}_parse_loose")
+    conn.commit()
+    return vk
 
 
 def get_project_metadata(conn: sqlite3.Connection, user_id: int, project_name: str):

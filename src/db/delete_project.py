@@ -152,9 +152,8 @@ def delete_project_everywhere(
         # ---------------------------------------------------------------------
         # 1) Tables keyed directly by (user_id, project_name)
         # ---------------------------------------------------------------------
-        tables_user_project = [
-            "files",
-        ]
+        # files table is versioned-only; deleted via CASCADE when project_versions are removed above.
+        tables_user_project: list[str] = []
 
         for table in tables_user_project:
             cur.execute(
