@@ -467,15 +467,20 @@ A typical flow for the first six endpoints:
       - GET returns empty `options` for individual code projects (no collaborator list).
       - POST is allowed only for collaborative code projects.
       - Selection matching uses email or name, so aliases may map to multiple indices.
-  - **List Git Identities**
-    - **Endpoint**: `GET /{upload_id}/projects/{project_id}/git/identities`
-    - **Description**: Returns a ranked list of identities found in the local git history for this project, plus `selected_indices` based on the user’s saved identities.
-    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-    - **Path Params**:
-      - `{upload_id}` (integer, required): The upload session ID
-      - `{project_id}` (integer, required): The project classification ID
-    - **Response Status**: `200 OK`
-    - **Response Body**:
+    - **List Git Identities**
+      - **Endpoint**: `GET /{upload_id}/projects/{project_id}/git/identities`
+      - **Description**: Returns a ranked list of identities found in the local git history for this project, plus `selected_indices` based on the user’s saved identities.
+      - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+      - **Path Params**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project_id}` (integer, required): The project classification ID
+      - **Error Responses**:
+        - `401 Unauthorized` if missing or invalid Bearer token
+        - `404 Not Found` if the project does not belong to this upload
+        - `404 Not Found` if no local Git repo is found for the project
+        - `409 Conflict` if the project is not a code project
+      - **Response Status**: `200 OK`
+      - **Response Body**:
       ```json
       {
         "success": true,
@@ -499,38 +504,48 @@ A typical flow for the first six endpoints:
         "error": null
       }
       ```
-  - **Save Git Identity Selection**
-    - **Endpoint**: `POST /{upload_id}/projects/{project_id}/git/identities`
-    - **Description**: Saves the user’s selected git identities (by index) and optional extra commit emails for future runs.
-    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-    - **Path Params**:
-      - `{upload_id}` (integer, required): The upload session ID
-      - `{project_id}` (integer, required): The project classification ID
-    - **Request Body**:
-      ```json
-      {
-        "selected_indices": [1, 3],
-        "extra_emails": ["test.extra@example.com"]
-      }
-      ```
-    - **Response Status**: `200 OK`
-    - **Response Body**:
-      ```json
-      {
+    - **Save Git Identity Selection**
+      - **Endpoint**: `POST /{upload_id}/projects/{project_id}/git/identities`
+      - **Description**: Saves the user’s selected git identities (by index) and optional extra commit emails for future runs.
+      - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+      - **Path Params**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project_id}` (integer, required): The project classification ID
+      - **Request Body**:
+        ```json
+        {
+          "selected_indices": [1, 3],
+          "extra_emails": ["test.extra@example.com"]
+        }
+        ```
+      - **Error Responses**:
+        - `401 Unauthorized` if missing or invalid Bearer token
+        - `404 Not Found` if the project does not belong to this upload
+        - `404 Not Found` if no local Git repo is found for the project
+        - `404 Not Found` if no git identities are found for the project
+        - `409 Conflict` if the project is not a code project
+        - `409 Conflict` if the project is not collaborative
+        - `422 Unprocessable Entity` if any selected index is out of range
+      - **Response Status**: `200 OK`
+      - **Response Body**:
+        ```json
+        {
         "success": true,
         "data": {
-          "options": [
-            {
-              "index": 1,
-              "name": "Test User",
-              "email": "test1@example.com",
-              "commit_count": 36
-            }
-          ],
-          "selected_indices": [1]
+        "options": [
+        {
+        "index": 1,
+        "name": "Test User",
+        "email": "test1@example.com",
+        "commit_count": 36
+        }
+        ],
+        "selected_indices": [1]
         },
         "error": null
-      }
+        }
+      ```
+
       ```
 
 ## **GitHub Integration**

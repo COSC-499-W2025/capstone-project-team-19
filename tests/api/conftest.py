@@ -4,6 +4,11 @@ import sqlite3
 import pytest
 from fastapi.testclient import TestClient
 from pathlib import Path
+import io
+import shutil
+import subprocess
+import zipfile
+from datetime import datetime, timezone
 
 import src.db as db
 from src.api.main import app
@@ -103,3 +108,102 @@ def auth_headers_nonexistent_user():
         expires_minutes=60,
     )
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def git_repo_zip(tmp_path):
+    if not shutil.which("git"):
+        pytest.skip("git not installed")
+
+    root_name = "test"
+    project_name = "ProjectA"
+    root_dir = tmp_path / root_name
+    project_dir = root_dir / project_name
+    project_dir.mkdir(parents=True)
+
+    subprocess.check_call(["git", "init"], cwd=project_dir)
+
+    file1 = project_dir / "file1.txt"
+    file1.write_text("hello", encoding="utf-8")
+    subprocess.check_call(["git", "add", "file1.txt"], cwd=project_dir)
+    env1 = os.environ.copy()
+    env1.update(
+        {
+            "GIT_AUTHOR_NAME": "Alice",
+            "GIT_AUTHOR_EMAIL": "alice@example.com",
+            "GIT_COMMITTER_NAME": "Alice",
+            "GIT_COMMITTER_EMAIL": "alice@example.com",
+        }
+    )
+    subprocess.check_call(["git", "commit", "-m", "commit 1"], cwd=project_dir, env=env1)
+
+    file2 = project_dir / "file2.txt"
+    file2.write_text("hi", encoding="utf-8")
+    subprocess.check_call(["git", "add", "file2.txt"], cwd=project_dir)
+    env2 = os.environ.copy()
+    env2.update(
+        {
+            "GIT_AUTHOR_NAME": "Bob",
+            "GIT_AUTHOR_EMAIL": "bob@example.com",
+            "GIT_COMMITTER_NAME": "Bob",
+            "GIT_COMMITTER_EMAIL": "bob@example.com",
+        }
+    )
+    subprocess.check_call(["git", "commit", "-m", "commit 2"], cwd=project_dir, env=env2)
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for path in root_dir.rglob("*"):
+            if path.is_file():
+                z.write(path, path.relative_to(root_dir.parent))
+    return buf.getvalue()
+
+
+@pytest.fixture
+def uploaded_git_zip(client, auth_headers, git_repo_zip):
+    res = client.post(
+        "/projects/upload",
+        headers=auth_headers,
+        files={"file": ("test.zip", git_repo_zip, "application/zip")},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+    return body["data"]
+
+
+@pytest.fixture
+def insert_classification(seed_conn):
+    def _insert(
+        *,
+        user_id: int,
+        upload: dict,
+        project_name: str,
+        classification: str,
+        project_type: str,
+    ) -> int:
+        zip_path = upload.get("zip_path")
+        if not zip_path:
+            zip_path = (upload.get("state") or {}).get("zip_path")
+        if not zip_path:
+            raise KeyError("zip_path")
+        cur = seed_conn.execute(
+            """
+            INSERT INTO project_classifications(
+                user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                zip_path,
+                upload["zip_name"],
+                project_name,
+                classification,
+                project_type,
+            datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        seed_conn.commit()
+        return cur.lastrowid
+
+    return _insert
