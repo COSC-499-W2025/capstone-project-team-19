@@ -1,7 +1,7 @@
 """Tests for DELETE API endpoints for projects and resumes."""
 import json
-from src.db.project_summaries import save_project_summary, get_project_summary_by_name, get_project_summary_by_id
 from src.db.resumes import insert_resume_snapshot, list_resumes, get_resume_snapshot
+from src.db.project_summaries import save_project_summary, get_project_summary_by_name, get_project_summary_by_id
 
 
 # ============================================================================
