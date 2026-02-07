@@ -43,25 +43,26 @@ def setup_in_memory_db():
     """)
     conn.execute("""
         CREATE TABLE project_summaries (
+            project_summary_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            project_name TEXT NOT NULL,
+            project_key INTEGER NOT NULL,
             project_type TEXT,
             project_mode TEXT,
             summary_json TEXT,
             created_at TEXT,
-            PRIMARY KEY (user_id, project_name)
+            UNIQUE (user_id, project_key)
         );
     """)
     conn.execute("""
         CREATE TABLE project_skills (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            project_name TEXT NOT NULL,
+            project_key INTEGER NOT NULL,
             skill_name TEXT NOT NULL,
             level TEXT NOT NULL,
             score REAL NOT NULL,
             evidence_json TEXT,
-            UNIQUE(user_id, project_name, skill_name)
+            UNIQUE(user_id, project_key, skill_name)
         );
     """)
     # Minimal tables needed by send_to_analysis() loaders

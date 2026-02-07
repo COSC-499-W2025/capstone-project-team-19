@@ -44,14 +44,15 @@ def get_projects_list_for_feedback(conn, user_id: int) -> List[Dict[str, Any]]:
     """
     rows = conn.execute(
         """
-        SELECT
-            project_name,
-            project_type,
-            project_mode,
-            created_at
-        FROM project_summaries
-        WHERE user_id = ?
-        ORDER BY datetime(created_at) DESC
+        SELECT 
+            p.display_name AS project_name, 
+            ps.project_type,
+            ps.project_mode,
+            ps.created_at
+        FROM project_summaries ps
+        JOIN projects p ON ps.project_key = p.project_key
+        WHERE ps.user_id = ?
+        ORDER BY datetime(ps.created_at) DESC;
         """,
         (user_id,),
     ).fetchall()

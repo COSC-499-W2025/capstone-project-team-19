@@ -44,10 +44,12 @@ def create_project_classification(test_db, user_id, project_name, project_type="
 
 def insert_skill(test_db, user_id, project_name, skill_name, level, score):
     """Helper: Insert a skill into project_skills."""
+    project_key = db.get_project_key(test_db, user_id, project_name)
+    assert project_key is not None
     test_db.execute("""
-        INSERT INTO project_skills (user_id, project_name, skill_name, level, score, evidence_json)
+        INSERT INTO project_skills (user_id, project_key, skill_name, level, score, evidence_json)
         VALUES (?, ?, ?, ?, ?, '[]')
-    """, (user_id, project_name, skill_name, level, score))
+    """, (user_id, int(project_key), skill_name, level, score))
     test_db.commit()
 
 
