@@ -27,6 +27,20 @@ from src.services.portfolio_service import (
 from src.services import resume_overrides
 from src.export.portfolio_pdf import export_portfolio_to_pdf
 
+_PLACEHOLDER_CONTRIB = "[No manual contribution summary provided]"
+
+def _strip_placeholder_contrib(bullets: list[str]) -> list[str]:
+    """Remove empty strings and the placeholder contribution text."""
+    out = []
+    for b in bullets or []:
+        t = (b or "").strip()
+        if not t:
+            continue
+        if t == _PLACEHOLDER_CONTRIB:
+            continue
+        out.append(t)
+    return out
+
 def view_portfolio_menu(conn, user_id: int, username: str) -> None:
     """
     Portfolio submenu with options to view, edit, and export.
