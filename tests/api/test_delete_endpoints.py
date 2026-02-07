@@ -1,7 +1,7 @@
 """Tests for DELETE API endpoints for projects and resumes."""
 import json
-from src.db.project_summaries import save_project_summary, get_project_summary_by_name
 from src.db.resumes import insert_resume_snapshot, list_resumes, get_resume_snapshot
+from src.db.project_summaries import save_project_summary, get_project_summary_by_name, get_project_summary_by_id
 
 
 # ============================================================================
@@ -180,27 +180,29 @@ def test_delete_project_also_deletes_dedup_tables(client, auth_headers, seed_con
 def test_delete_project_cleans_up_rankings_and_thumbnails(client, auth_headers, seed_conn):
     """Test that deleting a project also removes project_rankings and project_thumbnails."""
     project_id = create_test_project(seed_conn, 1, "TestProjectRanked")
+    project = get_project_summary_by_id(seed_conn, 1, project_id)
+    project_key = project["project_key"]
 
-    # Insert into project_rankings and project_thumbnails
+    # Insert into project_rankings and project_thumbnails (by project_key)
     seed_conn.execute(
-        "INSERT INTO project_rankings(user_id, project_name, manual_rank) VALUES (?, ?, ?)",
-        (1, "TestProjectRanked", 1),
+        "INSERT INTO project_rankings(user_id, project_key, manual_rank) VALUES (?, ?, ?)",
+        (1, project_key, 1),
     )
     seed_conn.execute(
-        "INSERT INTO project_thumbnails(user_id, project_name, image_path, added_at, updated_at) "
+        "INSERT INTO project_thumbnails(user_id, project_key, image_path, added_at, updated_at) "
         "VALUES (?, ?, ?, datetime('now'), datetime('now'))",
-        (1, "TestProjectRanked", "/path/to/thumb.png"),
+        (1, project_key, "/path/to/thumb.png"),
     )
     seed_conn.commit()
 
     # Verify data exists before delete
     assert seed_conn.execute(
-        "SELECT 1 FROM project_rankings WHERE user_id = ? AND project_name = ?",
-        (1, "TestProjectRanked"),
+        "SELECT 1 FROM project_rankings WHERE user_id = ? AND project_key = ?",
+        (1, project_key),
     ).fetchone() is not None
     assert seed_conn.execute(
-        "SELECT 1 FROM project_thumbnails WHERE user_id = ? AND project_name = ?",
-        (1, "TestProjectRanked"),
+        "SELECT 1 FROM project_thumbnails WHERE user_id = ? AND project_key = ?",
+        (1, project_key),
     ).fetchone() is not None
 
     # Delete via API
@@ -209,14 +211,14 @@ def test_delete_project_cleans_up_rankings_and_thumbnails(client, auth_headers, 
 
     # Verify project_rankings is cleaned up
     assert seed_conn.execute(
-        "SELECT 1 FROM project_rankings WHERE user_id = ? AND project_name = ?",
-        (1, "TestProjectRanked"),
+        "SELECT 1 FROM project_rankings WHERE user_id = ? AND project_key = ?",
+        (1, project_key),
     ).fetchone() is None
 
     # Verify project_thumbnails is cleaned up
     assert seed_conn.execute(
-        "SELECT 1 FROM project_thumbnails WHERE user_id = ? AND project_name = ?",
-        (1, "TestProjectRanked"),
+        "SELECT 1 FROM project_thumbnails WHERE user_id = ? AND project_key = ?",
+        (1, project_key),
     ).fetchone() is None
 
 

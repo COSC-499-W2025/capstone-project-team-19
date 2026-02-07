@@ -592,7 +592,7 @@ CREATE INDEX IF NOT EXISTS idx_resume_snapshots_user
 CREATE TABLE IF NOT EXISTS project_feedback (
     feedback_id     INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL,
-    project_name    TEXT NOT NULL,
+    project_key     INTEGER NOT NULL,
     project_type    TEXT CHECK (project_type IN ('code','text')),
     skill_name      TEXT NOT NULL,           -- e.g., clarity, structure, OOP, testing_and_ci
     file_name       TEXT NOT NULL DEFAULT '', -- optional: store per-file misses; '' = project-level
@@ -603,28 +603,31 @@ CREATE TABLE IF NOT EXISTS project_feedback (
     suggestion      TEXT,                    -- how to improve
     generated_at    TEXT NOT NULL DEFAULT (datetime('now')),
 
-    UNIQUE(user_id, project_name, skill_name, file_name, criterion_key),
-    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key, skill_name, file_name, criterion_key),
+    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY(project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_project_feedback_lookup
-    ON project_feedback(user_id, project_name);
+    ON project_feedback(user_id, project_key);
 
 CREATE INDEX IF NOT EXISTS idx_project_feedback_skill
-    ON project_feedback(user_id, project_name, skill_name);
+    ON project_feedback(user_id, project_key, skill_name);
+
 CREATE TABLE IF NOT EXISTS project_rankings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     manual_rank INTEGER, 
     updated_at TEXT DEFAULT (datetime('now')),
 
-    UNIQUE(user_id, project_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_project_rankings_user
-    ON project_rankings(user_id, manual_rank);
+    ON project_rankings(user_id, project_key, manual_rank);
 
 CREATE TABLE IF NOT EXISTS uploads (
   upload_id   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -645,10 +648,12 @@ CREATE INDEX IF NOT EXISTS idx_uploads_user_time
 CREATE TABLE IF NOT EXISTS project_thumbnails (
     thumbnail_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id      INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key  INTEGER NOT NULL,
     image_path   TEXT NOT NULL,
     added_at     TEXT NOT NULL,
     updated_at   TEXT NOT NULL,
-    UNIQUE(user_id, project_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
+
 );
