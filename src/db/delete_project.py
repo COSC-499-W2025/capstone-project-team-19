@@ -103,6 +103,38 @@ def delete_project_everywhere(
                 "DELETE FROM code_activity_metrics WHERE user_id = ? AND project_key = ?",
                 (user_id, pk),
             )
+            cur.execute(
+                "DELETE FROM github_repo_metrics WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_collaboration_profiles WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_issues WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_issue_comments WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_pull_requests WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_commit_timestamps WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_pr_reviews WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_pr_review_comments WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
 
             # Delete version_files first (depends on project_versions), then versions, then project row
             cur.execute(
@@ -122,14 +154,6 @@ def delete_project_everywhere(
         # ---------------------------------------------------------------------
         tables_user_project = [
             "files",
-            "github_repo_metrics",
-            "github_collaboration_profiles",
-            "github_issues",
-            "github_issue_comments",
-            "github_pull_requests",
-            "github_commit_timestamps",
-            "github_pr_reviews",
-            "github_pr_review_comments",
         ]
 
         for table in tables_user_project:

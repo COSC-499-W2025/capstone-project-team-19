@@ -80,13 +80,14 @@ def test_get_skill_events_with_code_commit_date(test_db):
     """Test that code projects use last_commit_date from github_repo_metrics."""
     user_id = create_test_user(test_db)
     create_project_classification(test_db, user_id, "CodeProject", "code")
-    
+    project_key = db.get_project_key(test_db, user_id, "CodeProject")
+    assert project_key is not None
     # Insert GitHub repo metrics with last_commit_date
     test_db.execute("""
         INSERT INTO github_repo_metrics 
-        (user_id, project_name, repo_owner, repo_name, last_commit_date)
-        VALUES (?, 'CodeProject', 'owner', 'repo', '2024-02-20')
-    """, (user_id,))
+        (user_id, project_key, repo_owner, repo_name, last_commit_date)
+        VALUES (?, ?, 'owner', 'repo', '2024-02-20')
+    """, (user_id, project_key))
     test_db.commit()
     
     insert_skill(test_db, user_id, "CodeProject", "python", "Intermediate", 0.7)
@@ -132,12 +133,14 @@ def test_get_skill_events_sorts_by_date(test_db):
     # Create projects with different dates
     create_project_classification(test_db, user_id, "ProjectA", "code")
     create_project_classification(test_db, user_id, "ProjectB", "code")
-    
+    pk_a = db.get_project_key(test_db, user_id, "ProjectA")
+    pk_b = db.get_project_key(test_db, user_id, "ProjectB")
+    assert pk_a is not None and pk_b is not None
     test_db.execute("""
-        INSERT INTO github_repo_metrics (user_id, project_name, repo_owner, repo_name, last_commit_date)
-        VALUES (?, 'ProjectA', 'owner', 'repo', '2024-01-10'),
-               (?, 'ProjectB', 'owner', 'repo', '2024-01-05')
-    """, (user_id, user_id))
+        INSERT INTO github_repo_metrics (user_id, project_key, repo_owner, repo_name, last_commit_date)
+        VALUES (?, ?, 'owner', 'repo', '2024-01-10'),
+               (?, ?, 'owner', 'repo', '2024-01-05')
+    """, (user_id, pk_a, user_id, pk_b))
     test_db.commit()
     
     insert_skill(test_db, user_id, "ProjectA", "skill1", "Advanced", 0.9)

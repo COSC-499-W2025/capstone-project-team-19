@@ -53,17 +53,20 @@ def get_project_repo(conn: sqlite3.Connection, user_id: int, project_name: str, 
     return row[0] if row else None
 
 def store_collaboration_profile(conn, user_id, project_name, owner, repo, profile):
+    project_key = get_project_key(conn, user_id, project_name)
+    if project_key is None:
+        project_key = insert_project(conn, user_id, project_name)
     conn.execute("""
         INSERT INTO github_collaboration_profiles (
-            user_id, project_name, repo_owner, repo_name, profile_json
+            user_id, project_key, repo_owner, repo_name, profile_json
         )
         VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(user_id, project_name, repo_owner, repo_name)
+        ON CONFLICT(user_id, project_key, repo_owner, repo_name)
         DO UPDATE SET
             profile_json = excluded.profile_json,
             updated_at = datetime('now')
     """, (
-        user_id, project_name, owner, repo, json.dumps(profile)
+        user_id, project_key, owner, repo, json.dumps(profile)
     ))
 
     conn.commit()
