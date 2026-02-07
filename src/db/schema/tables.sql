@@ -124,10 +124,11 @@ CREATE INDEX IF NOT EXISTS idx_version_files_version
 CREATE TABLE IF NOT EXISTS config_files (
     config_id     INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id       INTEGER NOT NULL,
-    project_name  TEXT,
+    project_key   INTEGER NOT NULL,
     file_name     TEXT NOT NULL,
     file_path     TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 

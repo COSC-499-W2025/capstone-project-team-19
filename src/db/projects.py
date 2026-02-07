@@ -16,6 +16,16 @@ import hashlib
 from .deduplication import insert_project, insert_project_version
 from .uploads import create_upload
 
+
+def _get_or_create_project_key(conn: sqlite3.Connection, user_id: int, project_name: str | None) -> int:
+    """Resolve project_key for display name; create project row if missing (e.g. config-only uploads)."""
+    name = project_name or "default"
+    pk = get_project_key(conn, user_id, name)
+    if pk is not None:
+        return int(pk)
+    return insert_project(conn, user_id, name)
+
+
 def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id: int) -> None:
     """
     Insert parsed metadata into the 'files' table.
@@ -28,15 +38,16 @@ def store_parsed_files(conn: sqlite3.Connection, files_info: list[dict], user_id
     
     cur = conn.cursor()
     for f in files_info:
-        # Store config files in config_files table
+        # Store config files in config_files table (keyed by project_key)
         if f.get("file_type") == "config":
+            project_key = _get_or_create_project_key(conn, user_id, f.get("project_name"))
             cur.execute("""
                 INSERT INTO config_files (
-                    user_id, project_name, file_name, file_path
+                    user_id, project_key, file_name, file_path
                 ) VALUES (?, ?, ?, ?)
             """, (
                 user_id,
-                f.get("project_name"),
+                project_key,
                 f.get("file_name"),
                 f.get("file_path"),
             ))
