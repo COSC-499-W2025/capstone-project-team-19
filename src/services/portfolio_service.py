@@ -3,11 +3,6 @@ import json
 import logging
 
 from src.insights.rank_projects.rank_project_importance import collect_project_data
-
-logger = logging.getLogger(__name__)
-
-class CorruptProjectDataError(Exception):
-    pass
 from src.db import get_project_summary_by_name, get_project_summary_row, update_project_summary_json
 from src.services.resume_overrides import (
     update_project_manual_overrides,
@@ -24,6 +19,12 @@ from src.insights.portfolio import (
     resolve_portfolio_summary_text,
     resolve_portfolio_contribution_bullets,
 )
+
+logger = logging.getLogger(__name__)
+
+
+class CorruptProjectDataError(Exception):
+    pass
 
 
 def build_portfolio_data(
