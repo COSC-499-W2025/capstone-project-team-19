@@ -65,30 +65,8 @@ def _backfill_extraction_root(conn: sqlite3.Connection) -> None:
         """
     ).fetchall()
 
-    for (version_key,) in missing:
-        sample = conn.execute(
-            """
-            SELECT file_path
-            FROM files
-            WHERE version_key = ? AND file_path IS NOT NULL AND file_path != ''
-            ORDER BY file_id DESC
-            LIMIT 1
-            """,
-            (int(version_key),),
-        ).fetchone()
-
-        if not sample or not sample[0]:
-            continue
-
-        raw = str(sample[0]).replace("\\", "/")
-        root = raw.split("/", 1)[0].strip()
-        if not root:
-            continue
-
-        conn.execute(
-            "UPDATE project_versions SET extraction_root = ? WHERE version_key = ?",
-            (root, int(version_key)),
-        )
+    # Do not infer extraction_root from file_path first segment: that segment is inside the zip (e.g. "code_collaborative"), not the zip folder name under zip_data. 
+    # Skill extraction resolves the folder by scanning zip_data when extraction_root and zip_path are missing.
 
 
 def init_schema(conn: sqlite3.Connection) -> None:

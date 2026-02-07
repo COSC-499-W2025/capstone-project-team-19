@@ -287,41 +287,48 @@ def _get_zip_name(conn, user_id: int, project_name: str) -> Optional[str]:
             # Extraction folder name is the stem of the stored zip path
             return Path(str(zip_path)).stem
 
-        if extraction_root:
-            return str(extraction_root)
-
-        # Last resort (legacy rows): infer extraction_root from one file on disk
+        # When zip_path is missing, extraction_root may be wrong (e.g. set from
+        # file_path first segment). Try scanning zip_data for a subdir that contains our files.
         if constants.VERBOSE:
             print(
-                f"[SKILL EXTRACTION] Warning: No upload zip_path found for {project_name} "
-                f"(latest version may not be linked to an upload)."
+                f"[SKILL EXTRACTION] Warning: No upload zip_path found for {project_name}, "
+                "scanning zip_data for extraction folder."
             )
 
         if version_key is not None:
-            sample = cursor.execute(
+            paths = cursor.execute(
                 """
-                SELECT file_path
-                FROM files
+                SELECT file_path FROM files
                 WHERE version_key = ? AND file_path IS NOT NULL AND file_path != ''
-                ORDER BY file_id DESC
-                LIMIT 1
+                LIMIT 50
                 """,
                 (int(version_key),),
-            ).fetchone()
-            if sample and sample[0]:
-                raw = str(sample[0]).replace("\\", "/")
-                root = raw.split("/", 1)[0].strip()
-                if root:
-                    # Persist for future runs
-                    try:
-                        cursor.execute(
-                            "UPDATE project_versions SET extraction_root = ? WHERE version_key = ?",
-                            (root, int(version_key)),
-                        )
-                        conn.commit()
-                    except Exception:
-                        pass
-                    return root
+            ).fetchall()
+            file_paths = [str(r[0]).replace("\\", "/") for r in paths if r and r[0]]
+            if file_paths:
+                current_file = os.path.abspath(__file__)
+                src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+                zip_data_base = os.path.join(src_dir, "analysis", "zip_data")
+                if os.path.isdir(zip_data_base):
+                    for candidate in os.listdir(zip_data_base):
+                        subdir = os.path.join(zip_data_base, candidate)
+                        if not os.path.isdir(subdir):
+                            continue
+                        for rel in file_paths:
+                            full = os.path.join(subdir, rel)
+                            if os.path.isfile(full):
+                                try:
+                                    cursor.execute(
+                                        "UPDATE project_versions SET extraction_root = ? WHERE version_key = ?",
+                                        (candidate, int(version_key)),
+                                    )
+                                    conn.commit()
+                                except Exception:
+                                    pass
+                                return candidate
+
+        if extraction_root:
+            return str(extraction_root)
 
         return None
 
