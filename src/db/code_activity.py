@@ -3,6 +3,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any, Dict, Optional
 
+from .projects import get_project_key
+
 
 def delete_code_activity_metrics_for_project(
     conn: sqlite3.Connection,
@@ -204,13 +206,16 @@ def get_normalized_code_metrics(
         }
 
     # individual
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return None
     row = conn.execute(
         """
         SELECT total_commits, total_lines_added, total_lines_deleted, net_lines_changed
         FROM git_individual_metrics
-        WHERE user_id = ? AND project_name = ?
+        WHERE user_id = ? AND project_key = ?
         """,
-        (user_id, project_name),
+        (user_id, pk),
     ).fetchone()
 
     if not row:

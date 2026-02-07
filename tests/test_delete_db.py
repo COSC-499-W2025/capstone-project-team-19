@@ -56,7 +56,8 @@ def seed_dedup_registry(conn: sqlite3.Connection, user_id: int, display_name: st
 
 def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
     # dedup tables
-    project_key = seed_dedup_registry(conn, user_id, name)
+    pk = seed_dedup_registry(conn, user_id, name)
+    project_key = int(pk)
 
     # canonical project metadata now lives on `projects`
     conn.execute(
@@ -95,15 +96,15 @@ def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
 
     # git_individual_metrics (minimal insert works since other cols are nullable)
     conn.execute(
-        "INSERT INTO git_individual_metrics (user_id, project_name) VALUES (?, ?)",
-        (user_id, name),
+        "INSERT INTO git_individual_metrics (user_id, project_key) VALUES (?, ?)",
+        (user_id, project_key),
     )
 
     conn.commit()
 
 
 def count_user_project(conn: sqlite3.Connection, user_id: int, table: str, project_name: str) -> int:
-    if table in {"project_summaries", "project_skills"}:
+    if table in {"project_summaries", "project_skills", "git_individual_metrics", "user_code_contributions"}:
         # migrated tables use project_key; join through projects for name-based assertions
         return conn.execute(
             f"""
