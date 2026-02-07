@@ -287,6 +287,17 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
             # Remove this upload's stored parsed files so later steps don't see it.
             delete_upload_files_for_project(conn, user_id=user_id, project_name=project_name, zip_stem=zip_stem)
 
+            # Remove files for this project's version(s) in this upload (versioned-only files table)
+            pk = get_project_key(conn, user_id, project_name)
+            if pk is not None:
+                vrows = conn.execute(
+                    "SELECT version_key FROM project_versions WHERE project_key = ? AND upload_id = ?",
+                    (pk, upload_id),
+                ).fetchall()
+                for (vk,) in vrows:
+                    conn.execute("DELETE FROM files WHERE user_id = ? AND version_key = ?", (user_id, vk))
+            conn.commit()
+
             dedup_version_keys.pop(project_name, None)
             dedup_project_keys.pop(project_name, None)
             continue
@@ -315,9 +326,28 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
             if best_pk is None or not existing:
                 raise HTTPException(status_code=409, detail=f"Missing best-match info for '{project_name}'")
 
-            created = force_register_new_version(conn, int(best_pk), project_dir, upload_id=upload_id)
-            pk = created.get("project_key")
-            vk = created.get("version_key")
+            # Decide between creating a new version or reassigning existing version to best project
+            pk = None
+            vk = None
+
+            pk_old = get_project_key(conn, user_id, project_name)
+            if pk_old is not None:
+                vrow = conn.execute(
+                    "SELECT version_key FROM project_versions WHERE project_key = ? AND upload_id = ? ORDER BY version_key DESC LIMIT 1",
+                    (pk_old, upload_id),
+                ).fetchone()
+                if vrow:
+                    conn.execute(
+                        "UPDATE project_versions SET project_key = ? WHERE version_key = ?",
+                        (int(best_pk), vrow[0]),
+                    )
+                    conn.commit()
+                    pk = int(best_pk)
+                    vk = vrow[0]
+            if pk is None or vk is None:
+                created = force_register_new_version(conn, int(best_pk), project_dir, upload_id=upload_id)
+                pk = created.get("project_key")
+                vk = created.get("version_key")
 
             if project_name != existing:
                 rename_upload_files_project(

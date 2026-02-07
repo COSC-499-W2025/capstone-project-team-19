@@ -56,6 +56,7 @@ def get_code_files_for_project(conn, user_id: int, project_name: str):
     return get_code_files_for_version(conn, user_id, vk) if vk else []
 
 
+
 def get_files_for_project(conn, user_id: int, project_name: str, only_text: bool = False):
     """Latest version only; resolve then get_files_for_version."""
     vk = get_latest_version_key(conn, user_id, project_name)
@@ -139,6 +140,26 @@ def get_files_with_timestamps(conn, user_id: int, project_name: str, version_key
     if version_key is None:
         version_key = get_latest_version_key(conn, user_id, project_name)
     return get_files_with_timestamps_for_version(conn, user_id, version_key) if version_key is not None else []
+
+
+def get_files_for_version(conn, user_id: int, version_key: int, only_text: bool = False):
+    """
+    Return file metadata for a specific version_key.
+    [{'file_name', 'file_type', 'file_path'}, ...]
+    """
+    query = """
+        SELECT file_name, file_type, file_path
+        FROM files
+        WHERE user_id = ? AND version_key = ?
+    """
+    params: list = [user_id, version_key]
+    if only_text:
+        query += " AND file_type = 'text'"
+    rows = conn.execute(query, params).fetchall()
+    return [
+        {"file_name": r[0], "file_type": r[1], "file_path": r[2]}
+        for r in rows
+    ]
 
 
 def get_files_for_version(conn, user_id: int, version_key: int, only_text: bool = False):
