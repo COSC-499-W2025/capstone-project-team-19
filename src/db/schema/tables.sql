@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS user_tokens (
 CREATE TABLE IF NOT EXISTS project_repos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     provider TEXT NOT NULL,
     repo_url TEXT NOT NULL,
     repo_full_name TEXT,
@@ -225,22 +225,24 @@ CREATE TABLE IF NOT EXISTS project_repos (
     repo_id INTEGER,
     default_branch TEXT,
     linked_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(user_id, project_name, provider),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key, provider),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS project_drive_files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     local_file_name TEXT NOT NULL,
     drive_file_id TEXT NOT NULL,
     drive_file_name TEXT,
     mime_type TEXT,
     status TEXT NOT NULL CHECK (status IN ('auto_matched', 'manual_selected', 'not_found')),
     linked_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(user_id, project_name, local_file_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key, local_file_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS github_accounts (

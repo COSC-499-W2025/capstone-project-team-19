@@ -51,9 +51,17 @@ def conn():
     """)
 
     conn.execute("""
+        CREATE TABLE projects (
+            project_key INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            display_name TEXT NOT NULL
+        )
+    """)
+    conn.execute("INSERT INTO projects (user_id, display_name) VALUES (?, ?)", (USER, PROJ))
+    conn.execute("""
         CREATE TABLE project_repos (
             user_id TEXT,
-            project_name TEXT,
+            project_key INTEGER NOT NULL,
             provider TEXT,
             repo_owner TEXT,
             repo_name TEXT,
@@ -62,11 +70,18 @@ def conn():
     """)
     return conn
 
+
 # Helpers
 def insert_repo(conn, user=USER, proj=PROJ, owner=OWNER, repo=REPO):
-    conn.execute("""
-        INSERT INTO project_repos VALUES (?, ?, 'github', ?, ?, ?)
-    """, (user, proj, owner, repo, f"{owner}/{repo}"))
+    row = conn.execute(
+        "SELECT project_key FROM projects WHERE user_id=? AND display_name=?",
+        (user, proj),
+    ).fetchone()
+    pk = row[0] if row else 1
+    conn.execute(
+        "INSERT INTO project_repos (user_id, project_key, provider, repo_owner, repo_name, repo_url) VALUES (?, ?, 'github', ?, ?, ?)",
+        (user, pk, owner, repo, f"{owner}/{repo}"),
+    )
 
 def mock_metrics(monkeypatch, commits=2, issues=3, prs=1, contrib=5):
     monkeypatch.setattr(

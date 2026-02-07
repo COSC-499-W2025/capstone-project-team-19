@@ -75,6 +75,14 @@ def delete_project_everywhere(
                 "DELETE FROM text_contribution_summary WHERE user_id = ? AND project_key = ?",
                 (user_id, pk),
             )
+            cur.execute(
+                "DELETE FROM project_repos WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_drive_files WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
 
             # Delete version_files first (depends on project_versions), then versions, then project row
             cur.execute(
@@ -94,8 +102,6 @@ def delete_project_everywhere(
         # ---------------------------------------------------------------------
         tables_user_project = [
             "files",
-            "project_repos",
-            "project_drive_files",
             "user_code_contributions",
             "code_activity_metrics",
             "code_collaborative_metrics",
