@@ -123,15 +123,23 @@ def patch_detectors_and_buckets(monkeypatch):
     )
 
 
-def _fetch_feedback(conn, user_id, project_name):
+def _proj_key(conn, user_id):
+    row = conn.execute(
+        "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
+        (user_id, "proj"),
+    ).fetchone()
+    return row[0] if row else None
+
+
+def _fetch_feedback(conn, user_id, project_key):
     rows = conn.execute(
         """
         SELECT skill_name, criterion_key, criterion_label, expected, observed_json, suggestion
         FROM project_feedback
-        WHERE user_id=? AND project_name=?
+        WHERE user_id=? AND project_key=?
         ORDER BY skill_name, criterion_key
         """,
-        (user_id, project_name),
+        (user_id, project_key),
     ).fetchall()
     return [dict(r) for r in rows]
 
@@ -150,7 +158,7 @@ def test_expected_feedback_when_no_code_file(conn, user_id, monkeypatch):
 
     cse.extract_code_skills(conn, user_id, "proj", "individual", files)
 
-    fb = _fetch_feedback(conn, user_id, "proj")
+    fb = _fetch_feedback(conn, user_id, _proj_key(conn, user_id))
     assert len(fb) == 1
     assert fb[0]["criterion_key"] == "code.no_code_files"
     assert fb[0]["skill_name"] == "general"
@@ -174,7 +182,7 @@ def test_expected_feedback_when_unmet_criteria_for_caching_serialization_hashmap
     files = [{"file_name": "a.py", "file_path": "a.py"}]
     cse.extract_code_skills(conn, user_id, "proj", "individual", files)
 
-    fb = _fetch_feedback(conn, user_id, "proj")
+    fb = _fetch_feedback(conn, user_id, _proj_key(conn, user_id))
 
     # Should emit unmet positive criteria (hash_maps, serialization, caching).
     # detect_duplicate_code is negative-weight, but it's not present, so no feedback for it.
@@ -214,7 +222,7 @@ def test_expected_feedback_when_project_score_is_100(
     files = [{"file_name": "a.py", "file_path": "a.py"}]
     cse.extract_code_skills(conn, user_id, "proj", "individual", files)
 
-    fb = _fetch_feedback(conn, user_id, "proj")
+    fb = _fetch_feedback(conn, user_id, _proj_key(conn, user_id))
     assert fb == []
 
 
@@ -246,7 +254,7 @@ def test_expected_feedback_when_negative_weight_detector_is_present(
     files = [{"file_name": "a.py", "file_path": "a.py"}]
     cse.extract_code_skills(conn, user_id, "proj", "individual", files)
 
-    fb = _fetch_feedback(conn, user_id, "proj")
+    fb = _fetch_feedback(conn, user_id, _proj_key(conn, user_id))
     keys = {r["criterion_key"] for r in fb}
 
     # Negative detector should emit feedback when it hits

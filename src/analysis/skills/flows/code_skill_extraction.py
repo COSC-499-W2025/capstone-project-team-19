@@ -8,7 +8,7 @@ from src.analysis.skills.buckets.code_buckets import CODE_SKILL_BUCKETS
 from src.analysis.skills.detectors.code.code_detector_registry import CODE_DETECTOR_FUNCTIONS
 from src.analysis.skills.flows.code_feedback_templates import _DETECTOR_FEEDBACK
 from src.analysis.skills.utils.skill_levels import score_to_level
-from src.db import insert_project_skill, upsert_project_feedback
+from src.db import get_project_key, insert_project_skill, upsert_project_feedback
 from src.utils.extension_catalog import code_extensions
 from src.utils.helpers import read_file_content
 
@@ -55,32 +55,34 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
 
     feedback_ctx: Optional[Dict[str, Any]] = None
     if conn is not None:
+        project_key = get_project_key(conn, int(user_id), str(project_name))
+        if project_key is not None:
 
-        def _add_feedback(
-            skill_name: str,
-            file_name: str,
-            criterion_key: str,
-            criterion_label: str,
-            expected: str,
-            observed: Dict[str, Any],
-            suggestion: str,
-        ) -> None:
-            upsert_project_feedback(
-                conn=conn,
-                user_id=int(user_id),
-                project_name=str(project_name),
-                project_type="code",
-                skill_name=str(skill_name),
-                file_name=str(file_name or ""),
-                criterion_key=str(criterion_key),
-                criterion_label=str(criterion_label),
-                expected=str(expected),
-                observed=observed or {},
-                suggestion=str(suggestion),
-            )
+            def _add_feedback(
+                skill_name: str,
+                file_name: str,
+                criterion_key: str,
+                criterion_label: str,
+                expected: str,
+                observed: Dict[str, Any],
+                suggestion: str,
+            ) -> None:
+                upsert_project_feedback(
+                    conn=conn,
+                    user_id=int(user_id),
+                    project_key=int(project_key),
+                    project_type="code",
+                    skill_name=str(skill_name),
+                    file_name=str(file_name or ""),
+                    criterion_key=str(criterion_key),
+                    criterion_label=str(criterion_label),
+                    expected=str(expected),
+                    observed=observed or {},
+                    suggestion=str(suggestion),
+                )
 
-        # callback-only ctx (no dead fallback path)
-        feedback_ctx = {"add_feedback": _add_feedback}
+            # callback-only ctx (no dead fallback path)
+            feedback_ctx = {"add_feedback": _add_feedback}
 
     zip_name = _get_zip_name(conn, user_id, project_name)
     if not zip_name:

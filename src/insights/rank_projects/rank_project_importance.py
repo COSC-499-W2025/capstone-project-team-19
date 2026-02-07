@@ -47,7 +47,9 @@ def collect_project_ranking_rows(conn, user_id, respect_manual_ranking: bool = T
         # Get manual rank if exists
         manual_rank = None
         if respect_manual_ranking:
-            manual_rank = get_project_rank(conn, user_id, project_name)
+            project_key = row.get("project_key")
+            if project_key is not None:
+                manual_rank = get_project_rank(conn, user_id, project_key)
 
         project_scores.append({
             "project_summary_id": row.get("project_summary_id"),

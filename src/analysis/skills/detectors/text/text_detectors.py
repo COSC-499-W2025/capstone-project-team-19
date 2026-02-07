@@ -40,22 +40,22 @@ def _emit_feedback(
         )
         return
 
-    # Fallback: write directly if helper exists and ctx has conn/user/project.
+    # Fallback: write directly if helper exists and ctx has conn/user/project_key.
     if upsert_project_feedback is None:
         return
 
     conn = feedback_ctx.get("conn")
     user_id = feedback_ctx.get("user_id")
-    project_name = feedback_ctx.get("project_name")
+    project_key = feedback_ctx.get("project_key")
     project_type = feedback_ctx.get("project_type") or "text"
 
-    if conn is None or user_id is None or not project_name:
+    if conn is None or user_id is None or project_key is None:
         return
 
     upsert_project_feedback(
         conn=conn,
         user_id=int(user_id),
-        project_name=str(project_name),
+        project_key=int(project_key),
         project_type=str(project_type),
         skill_name=str(skill_name),
         file_name=str(file_name or ""),
