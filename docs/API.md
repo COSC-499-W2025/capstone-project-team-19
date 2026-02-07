@@ -332,7 +332,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
                 "project_name": "My Project",
                 "feedback": [
                     {
-                        "feedback_id": null,
+                        "feedback_id": 1,
                         "project_type": "code",
                         "skill_name": "code_quality",
                         "file_name": "main.py",
@@ -344,7 +344,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
                         "generated_at": "2026-01-12 02:15:30"
                     },
                     {
-                        "feedback_id": null,
+                        "feedback_id": 2,
                         "project_type": "code",
                         "skill_name": "documentation",
                         "file_name": "utils.py",
