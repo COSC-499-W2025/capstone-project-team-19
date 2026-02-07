@@ -7,6 +7,7 @@ from src.db import (
     get_metrics_id,
     insert_code_collaborative_summary,
 )
+from src.db.projects import get_project_key
 
 
 # -------------------------------------------------------------------
@@ -67,10 +68,12 @@ def test_insert_code_collaborative_metrics_inserts_row():
 
     insert_code_collaborative_metrics(conn, user_id, project_name, payload)
 
+    pk = get_project_key(conn, user_id, project_name)
+    assert pk is not None
     row = conn.execute(
         """
         SELECT
-            project_name,
+            project_key,
             repo_path,
             commits_all,
             loc_added,
@@ -78,15 +81,15 @@ def test_insert_code_collaborative_metrics_inserts_row():
             folders_json,
             top_files_json
         FROM code_collaborative_metrics
-        WHERE user_id = ? AND project_name = ?
+        WHERE user_id = ? AND project_key = ?
         """,
-        (user_id, project_name),
+        (user_id, pk),
     ).fetchone()
 
     assert row is not None, "Row should be inserted"
 
     (
-        pname,
+        pkey,
         repo_path,
         commits_all,
         loc_added,
@@ -95,7 +98,7 @@ def test_insert_code_collaborative_metrics_inserts_row():
         top_files_json,
     ) = row
 
-    assert pname == project_name
+    assert pkey == pk
     assert repo_path == payload["repo_path"]
     assert commits_all == payload["commits_all"]
     assert loc_added == payload["loc_added"]
@@ -130,16 +133,18 @@ def test_insert_code_collaborative_metrics_updates_on_conflict():
     payload2["loc_added"] = 999
     insert_code_collaborative_metrics(conn, user_id, project_name, payload2)
 
+    pk = get_project_key(conn, user_id, project_name)
+    assert pk is not None
     rows = conn.execute(
         """
         SELECT repo_path, commits_all, loc_added
         FROM code_collaborative_metrics
-        WHERE user_id = ? AND project_name = ?
+        WHERE user_id = ? AND project_key = ?
         """,
-        (user_id, project_name),
+        (user_id, pk),
     ).fetchall()
 
-    assert len(rows) == 1, "UNIQUE(user_id, project_name) should prevent duplicates"
+    assert len(rows) == 1, "UNIQUE(user_id, project_key) should prevent duplicates"
 
     repo_path, commits_all, loc_added = rows[0]
     assert repo_path == "/tmp/second_path"
@@ -168,6 +173,8 @@ def test_insert_code_collaborative_metrics_handles_empty_focus_lists():
 
     insert_code_collaborative_metrics(conn, user_id, project_name, payload)
 
+    pk = get_project_key(conn, user_id, project_name)
+    assert pk is not None
     row = conn.execute(
         """
         SELECT
@@ -175,9 +182,9 @@ def test_insert_code_collaborative_metrics_handles_empty_focus_lists():
             folders_json,
             top_files_json
         FROM code_collaborative_metrics
-        WHERE user_id = ? AND project_name = ?
+        WHERE user_id = ? AND project_key = ?
         """,
-        (user_id, project_name),
+        (user_id, pk),
     ).fetchone()
 
     assert row is not None

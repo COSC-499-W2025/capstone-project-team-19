@@ -91,17 +91,20 @@ def get_code_activity_percentages(
     Returns a list of (activity_type, percent) sorted by percent DESC,
     excluding entries where percent == 0.
     """
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return []
     cur = conn.execute(
         """
         SELECT activity_type, percent
         FROM code_activity_metrics
         WHERE user_id = ?
-          AND project_name = ?
+          AND project_key = ?
           AND scope = ?
           AND source = ?
         ORDER BY percent DESC
         """,
-        (user_id, project_name, scope, source),
+        (user_id, pk, scope, source),
     )
     rows = cur.fetchall()
     return [
@@ -126,23 +129,23 @@ def get_code_collaborative_duration(
     Returns:
       (first_commit_at, last_commit_at) as strings, or None if no row found.
     """
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return None
     cur = conn.execute(
         """
         SELECT
             COALESCE(ps.manual_start_date, ccm.first_commit_at) AS first_commit,
             COALESCE(ps.manual_end_date, ccm.last_commit_at) AS last_commit
         FROM code_collaborative_metrics ccm
-        LEFT JOIN projects p
-            ON p.user_id = ccm.user_id
-        AND p.display_name = ccm.project_name
         LEFT JOIN project_summaries ps
             ON ps.user_id = ccm.user_id
-        AND ps.project_key = p.project_key
+            AND ps.project_key = ccm.project_key
         WHERE ccm.user_id = ?
-        AND ccm.project_name = ?
+        AND ccm.project_key = ?
         LIMIT 1;
         """,
-        (user_id, project_name),
+        (user_id, pk),
     )
     row = cur.fetchone()
     if row is None:
@@ -161,17 +164,20 @@ def get_code_collaborative_non_llm_summary(
     Uses code_collaborative_summary where summary_type = 'non-llm'.
     Returns the content string, or None if not available.
     """
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return None
     cur = conn.execute(
         """
         SELECT content
         FROM code_collaborative_summary
         WHERE user_id = ?
-          AND project_name = ?
+          AND project_key = ?
           AND summary_type = 'non-llm'
         ORDER BY created_at DESC
         LIMIT 1
         """,
-        (user_id, project_name),
+        (user_id, pk),
     )
     row = cur.fetchone()
     return row[0] if row is not None else None
