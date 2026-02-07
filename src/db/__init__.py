@@ -119,6 +119,14 @@ from .code_activity import (
 # github prs
 from .github_pull_requests import get_pull_requests_for_project
 
+# git identities
+from .git_identities import (
+    ensure_user_github_table,
+    load_user_github,
+    save_user_github,
+    get_project_classification_by_id,
+)
+
 # project summaries
 from .project_summaries import (
     save_project_summary,
