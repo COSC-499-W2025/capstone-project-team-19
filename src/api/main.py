@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from src.api.routes.projects import router as projects_router
+from src.api.routes.projects_ranking import router as projects_ranking_router
 from src.api.routes.skills import router as skills_router
 from src.api.routes.resumes import router as resumes_router
 from src.api.routes.github import router as github_router
