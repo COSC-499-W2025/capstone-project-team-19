@@ -77,15 +77,15 @@ def delete_existing_zip_data(conn, user_id, zip_path) -> None:
         tuple(upload_ids),
     )
 
-    # Delete file rows for impacted project display names.
-    for _project_key, display_name in impacted:
+    # Delete file rows for impacted project display names; config_files by project_key.
+    for project_key, display_name in impacted:
         cursor.execute(
             "DELETE FROM files WHERE user_id = ? AND project_name = ?",
             (user_id, display_name),
         )
         cursor.execute(
-            "DELETE FROM config_files WHERE user_id = ? AND project_name = ?",
-            (user_id, display_name),
+            "DELETE FROM config_files WHERE user_id = ? AND project_key = ?",
+            (user_id, project_key),
         )
 
     # Remove project rows that now have zero versions.

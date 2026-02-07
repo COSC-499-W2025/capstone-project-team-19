@@ -67,6 +67,10 @@ def delete_project_everywhere(
                 "DELETE FROM project_thumbnails WHERE user_id = ? AND project_key = ?",
                 (user_id, pk),
             )
+            cur.execute(
+                "DELETE FROM config_files WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
 
             # Delete version_files first (depends on project_versions)
             cur.execute(
@@ -87,7 +91,6 @@ def delete_project_everywhere(
         # ---------------------------------------------------------------------
         tables_user_project = [
             "files",
-            "config_files",
             "text_contribution_summary",
             "project_repos",
             "project_drive_files",

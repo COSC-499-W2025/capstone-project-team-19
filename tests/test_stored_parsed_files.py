@@ -70,11 +70,11 @@ def test_config_files_inserted_into_config_table(conn, tmp_path):
     ).fetchall()
     assert len(file_rows) == 0
 
-    # Ensure config file is in config_files table
+    # Ensure config file is in config_files table (keyed by project_key; project created as "default" if none)
     cfg_row = conn.execute(
-        "SELECT file_name, user_id, project_name FROM config_files WHERE file_name = ?", ("requirements.txt",)
+        "SELECT file_name, user_id, project_key FROM config_files WHERE file_name = ?", ("requirements.txt",)
     ).fetchone()
     assert cfg_row is not None
     assert cfg_row[0] == "requirements.txt"
     assert cfg_row[1] == user_id
-    assert cfg_row[2] is None
+    assert cfg_row[2] is not None  # project_key set (default project created when project_name was None)
