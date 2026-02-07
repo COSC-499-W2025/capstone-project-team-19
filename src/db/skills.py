@@ -151,7 +151,7 @@ def get_skill_events(conn, user_id):
             AND lv.project_key = ccm.project_key
         LEFT JOIN github_repo_metrics grm
             ON ps.user_id = grm.user_id
-            AND lv.project_name = grm.project_name
+            AND lv.project_key = grm.project_key
         LEFT JOIN project_summaries ps_summary
             ON ps.user_id = ps_summary.user_id
             AND ps.project_key = ps_summary.project_key

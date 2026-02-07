@@ -228,7 +228,7 @@ def get_all_projects_with_dates(conn, user_id):
                 ON lv.version_key = tac.version_key
             LEFT JOIN github_repo_metrics grm
                 ON grm.user_id = lv.user_id
-                AND grm.project_name = lv.project_name
+                AND grm.project_key = lv.project_key
             WHERE lv.user_id = ?
         )
         SELECT

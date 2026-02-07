@@ -21,10 +21,10 @@ def conn():
         CREATE TABLE github_repo_metrics (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
-            project_name TEXT NOT NULL,
+            project_key INTEGER NOT NULL,
             repo_owner TEXT NOT NULL,
             repo_name TEXT NOT NULL,
-            
+
             total_commits INTEGER,
             commit_days INTEGER,
             first_commit_date TEXT,
@@ -45,8 +45,8 @@ def conn():
             team_total_deletions INTEGER,
 
             last_synced TEXT DEFAULT (datetime('now')),
-            
-            UNIQUE(user_id, project_name, repo_owner, repo_name)
+
+            UNIQUE(user_id, project_key, repo_owner, repo_name)
         );
     """)
 

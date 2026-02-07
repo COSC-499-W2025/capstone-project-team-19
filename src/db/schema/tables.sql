@@ -261,7 +261,7 @@ CREATE TABLE IF NOT EXISTS github_repo_metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
 
@@ -286,8 +286,13 @@ CREATE TABLE IF NOT EXISTS github_repo_metrics (
 
     last_synced TEXT DEFAULT (datetime('now')),
 
-    UNIQUE (user_id, project_name, repo_owner, repo_name)
+    UNIQUE (user_id, project_key, repo_owner, repo_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_github_repo_metrics_lookup
+    ON github_repo_metrics (user_id, project_key, repo_owner, repo_name);
 
 -- GIT INDIVIDUAL METRICS (for local git repository analysis)
 CREATE TABLE IF NOT EXISTS git_individual_metrics (
@@ -382,20 +387,25 @@ CREATE INDEX IF NOT EXISTS idx_user_code_contributions_user_project
 CREATE TABLE IF NOT EXISTS github_collaboration_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     profile_json TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
 
-    UNIQUE (user_id, project_name, repo_owner, repo_name)
+    UNIQUE (user_id, project_key, repo_owner, repo_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_github_collaboration_profiles_lookup
+    ON github_collaboration_profiles (user_id, project_key, repo_owner, repo_name);
 
 CREATE TABLE IF NOT EXISTS github_issues (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     issue_title TEXT,
@@ -404,32 +414,34 @@ CREATE TABLE IF NOT EXISTS github_issues (
     created_at TEXT,
     closed_at TEXT,
     synced_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_issues_lookup
-    ON github_issues(user_id, project_name, repo_owner, repo_name);
+    ON github_issues(user_id, project_key, repo_owner, repo_name);
 
 CREATE TABLE IF NOT EXISTS github_issue_comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     issue_number INTEGER NOT NULL,
     comment_body TEXT,
     created_at TEXT,
     synced_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_issue_comments_lookup
-    ON github_issue_comments(user_id, project_name, repo_owner, repo_name);
+    ON github_issue_comments(user_id, project_key, repo_owner, repo_name);
 
 CREATE TABLE IF NOT EXISTS github_pull_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     pr_number INTEGER,
@@ -441,55 +453,59 @@ CREATE TABLE IF NOT EXISTS github_pull_requests (
     state TEXT,
     merged INTEGER DEFAULT 0,
     synced_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_prs_lookup
-    ON github_pull_requests(user_id, project_name, repo_owner, repo_name);
+    ON github_pull_requests(user_id, project_key, repo_owner, repo_name);
 
 CREATE TABLE IF NOT EXISTS github_commit_timestamps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     commit_timestamp TEXT NOT NULL,
     synced_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_commit_timestamps_lookup
-    ON github_commit_timestamps(user_id, project_name, repo_owner, repo_name);
+    ON github_commit_timestamps(user_id, project_key, repo_owner, repo_name);
 
 CREATE TABLE IF NOT EXISTS github_pr_reviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     pr_number INTEGER NOT NULL,
     review_json TEXT NOT NULL,
     synced_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_pr_reviews_lookup
-    ON github_pr_reviews(user_id, project_name, repo_owner, repo_name);
+    ON github_pr_reviews(user_id, project_key, repo_owner, repo_name);
 
 CREATE TABLE IF NOT EXISTS github_pr_review_comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     pr_number INTEGER NOT NULL,
     comment_json TEXT NOT NULL,
     synced_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_pr_review_comments_lookup
-    ON github_pr_review_comments(user_id, project_name, repo_owner, repo_name);
+    ON github_pr_review_comments(user_id, project_key, repo_owner, repo_name);
 
 
 -- TEXT ACTIVITY TYPE CONTRIBUTION DATA

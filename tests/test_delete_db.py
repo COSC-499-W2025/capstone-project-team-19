@@ -88,10 +88,10 @@ def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
     # github_issues
     conn.execute(
         """
-        INSERT INTO github_issues (user_id, project_name, repo_owner, repo_name, issue_title)
+        INSERT INTO github_issues (user_id, project_key, repo_owner, repo_name, issue_title)
         VALUES (?, ?, ?, ?, ?)
         """,
-        (user_id, name, "owner", "repo", f"issue {name}"),
+        (user_id, project_key, "owner", "repo", f"issue {name}"),
     )
 
     # git_individual_metrics (minimal insert works since other cols are nullable)
@@ -104,7 +104,11 @@ def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
 
 
 def count_user_project(conn: sqlite3.Connection, user_id: int, table: str, project_name: str) -> int:
-    if table in {"project_summaries", "project_skills", "git_individual_metrics", "user_code_contributions"}:
+    if table in {
+        "project_summaries", "project_skills", "git_individual_metrics", "user_code_contributions",
+        "github_repo_metrics", "github_collaboration_profiles", "github_issues", "github_issue_comments",
+        "github_pull_requests", "github_commit_timestamps", "github_pr_reviews", "github_pr_review_comments",
+    }:
         # migrated tables use project_key; join through projects for name-based assertions
         return conn.execute(
             f"""
