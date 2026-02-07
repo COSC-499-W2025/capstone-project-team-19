@@ -516,7 +516,7 @@ CREATE INDEX IF NOT EXISTS idx_text_activity_contribution_lookup
 CREATE TABLE IF NOT EXISTS code_activity_metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id      INTEGER NOT NULL,     -- who + which project
-    project_name TEXT    NOT NULL,
+    project_key  INTEGER NOT NULL,
     scope        TEXT    NOT NULL,  -- 'individual' or 'collaborative'
     source       TEXT    NOT NULL,  -- where this metric comes from: 'files', 'prs', or 'combined'
     activity_type TEXT   NOT NULL,  -- 'feature_coding', 'refactoring', 'debugging', 'testing', 'documentation'
@@ -524,16 +524,17 @@ CREATE TABLE IF NOT EXISTS code_activity_metrics (
     total_events INTEGER NOT NULL,
     percent      REAL    NOT NULL,  -- 0–100
     recorded_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_code_activity_metrics_lookup
-ON code_activity_metrics (user_id, project_name, scope, source);
+    ON code_activity_metrics (user_id, project_key, scope, source);
 
 -- Code Collaborative Metrics (pure numeric metrics)
 CREATE TABLE IF NOT EXISTS code_collaborative_metrics (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL,
-    project_name    TEXT    NOT NULL,
+    project_key     INTEGER NOT NULL,
     repo_path       TEXT    NOT NULL,
     -- totals
     commits_all     INTEGER,
@@ -564,27 +565,30 @@ CREATE TABLE IF NOT EXISTS code_collaborative_metrics (
     frameworks_json TEXT,
     -- others
     created_at      TEXT DEFAULT (datetime('now')),
-    UNIQUE(user_id, project_name)
+    UNIQUE(user_id, project_key),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_code_collab_metrics_user_project
-    ON code_collaborative_metrics (user_id, project_name);
+    ON code_collaborative_metrics (user_id, project_key);
 
 -- Summaries for collaborative code contributions (non-llm or llm)
 CREATE TABLE IF NOT EXISTS code_collaborative_summary (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     metrics_id      INTEGER NOT NULL,    -- FK to code_collaborative_metrics.id
     user_id         INTEGER NOT NULL,
-    project_name    TEXT    NOT NULL,
+    project_key     INTEGER NOT NULL,
     summary_type    TEXT    NOT NULL,    -- 'llm' or 'non-llm'
     content         TEXT    NOT NULL,    -- full manually-written or LLM summaries (project+contribution)
     created_at      TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (metrics_id) REFERENCES code_collaborative_metrics(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_code_collab_summary_user_project
-    ON code_collaborative_summary (user_id, project_name);
+    ON code_collaborative_summary (user_id, project_key);
 
 -- Resume snapshots (frozen resume outputs)
 CREATE TABLE IF NOT EXISTS resume_snapshots (

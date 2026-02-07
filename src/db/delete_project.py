@@ -91,6 +91,18 @@ def delete_project_everywhere(
                 "DELETE FROM git_individual_metrics WHERE user_id = ? AND project_key = ?",
                 (user_id, pk),
             )
+            cur.execute(
+                "DELETE FROM code_collaborative_summary WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM code_collaborative_metrics WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM code_activity_metrics WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
 
             # Delete version_files first (depends on project_versions), then versions, then project row
             cur.execute(
@@ -110,9 +122,6 @@ def delete_project_everywhere(
         # ---------------------------------------------------------------------
         tables_user_project = [
             "files",
-            "code_activity_metrics",
-            "code_collaborative_metrics",
-            "code_collaborative_summary",
             "github_repo_metrics",
             "github_collaboration_profiles",
             "github_issues",

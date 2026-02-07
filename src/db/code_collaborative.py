@@ -2,6 +2,10 @@ from __future__ import annotations
 import sqlite3
 from typing import Any, Mapping, Optional
 
+from .projects import get_project_key
+from .deduplication import insert_project
+
+
 def insert_code_collaborative_metrics(
     conn: sqlite3.Connection,
     user_id: int,
@@ -16,11 +20,14 @@ def insert_code_collaborative_metrics(
     - list fields → JSON strings
     - missing fields handled by caller
     """
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        pk = insert_project(conn, user_id, project_name)
     conn.execute(
         """
         INSERT INTO code_collaborative_metrics (
             user_id,
-            project_name,
+            project_key,
             repo_path,
 
             commits_all,
@@ -51,7 +58,7 @@ def insert_code_collaborative_metrics(
             frameworks_json
         )
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ON CONFLICT(user_id, project_name) DO UPDATE SET
+        ON CONFLICT(user_id, project_key) DO UPDATE SET
             repo_path       = excluded.repo_path,
             commits_all     = excluded.commits_all,
             commits_yours   = excluded.commits_yours,
@@ -79,7 +86,7 @@ def insert_code_collaborative_metrics(
         """,
         (
             user_id,
-            project_name,
+            pk,
             payload["repo_path"],
             payload["commits_all"],
             payload["commits_yours"],
@@ -118,13 +125,16 @@ def get_metrics_id(
     Return the id from code_collaborative_metrics for this (user_id, project_name),
     or None if no row exists.
     """
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return None
     row = conn.execute(
         """
         SELECT id
         FROM code_collaborative_metrics
-        WHERE user_id = ? AND project_name = ?
+        WHERE user_id = ? AND project_key = ?
         """,
-        (user_id, project_name),
+        (user_id, pk),
     ).fetchone()
     return row[0] if row else None
 
@@ -144,12 +154,15 @@ def insert_code_collaborative_summary(
       - 'non-llm' for manual user input
       - 'llm' for LLM-generated summary (project + contribution text in one blob)
     """
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        pk = insert_project(conn, user_id, project_name)
     conn.execute(
         """
         INSERT INTO code_collaborative_summary (
             metrics_id,
             user_id,
-            project_name,
+            project_key,
             summary_type,
             content
         )
@@ -158,7 +171,7 @@ def insert_code_collaborative_summary(
         (
             metrics_id,
             user_id,
-            project_name,
+            pk,
             summary_type,
             content,
         ),
