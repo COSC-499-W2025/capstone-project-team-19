@@ -19,6 +19,12 @@ from src.db.projects import (
     update_project_metadata,
 )
 
+from src.db.upload_files import (
+    attach_version_key_to_upload_files,
+    delete_upload_files_for_project,
+    rename_upload_files_project,
+)
+
 from src.utils.deduplication.api_integration import (
     run_deduplication_for_projects_api,
     find_project_dir,
@@ -220,6 +226,10 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
     layout = state.get("layout") or {}
     asks: dict = state.get("dedup_asks") or {}
     index: dict = state.get("project_filetype_index") or {}
+    # Key maps created during start_upload for auto-handled projects (new_project/new_version).
+    # For 'ask' cases, these are missing until we resolve dedup and must be backfilled.
+    dedup_version_keys: dict[str, int] = dict(state.get("dedup_version_keys") or {})
+    dedup_project_keys: dict[str, int] = dict(state.get("dedup_project_keys") or {})
 
     if not asks:
         raise HTTPException(status_code=409, detail="No dedup ask cases to resolve")
@@ -249,6 +259,8 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
 
     extract_dir = extract_dir_from_upload_zip(ZIP_DATA_DIR, zip_path)
     root_name = layout.get("root_name")
+    zip_stem = Path(zip_path).stem
+    zip_root = zip_stem  # used by analysis to locate extracted content on disk
 
     skipped_now: set[str] = set()
     renames: dict[str, str] = {}
@@ -264,16 +276,29 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
             remove_project_from_layout(layout, project_name)
             remove_project_key_in_index(index, project_name)
 
-            # remove this project's stored parsed files so later steps don't see it
-            conn.execute(
-                "DELETE FROM files WHERE user_id = ? AND project_name = ?",
-                (user_id, project_name),
-            )
-            conn.commit()
+            # Remove this upload's stored parsed files so later steps don't see it.
+            delete_upload_files_for_project(conn, user_id=user_id, project_name=project_name, zip_stem=zip_stem)
+
+            dedup_version_keys.pop(project_name, None)
+            dedup_project_keys.pop(project_name, None)
             continue
 
         if decision == "new_project":
-            force_register_new_project(conn, user_id, project_name, project_dir, upload_id=upload_id)
+            created = force_register_new_project(conn, user_id, project_name, project_dir, upload_id=upload_id)
+            pk = created.get("project_key")
+            vk = created.get("version_key")
+
+            if isinstance(pk, int):
+                dedup_project_keys[project_name] = pk
+            if isinstance(vk, int):
+                dedup_version_keys[project_name] = vk
+                attach_version_key_to_upload_files(
+                    conn, user_id=user_id, project_name=project_name, version_key=vk, zip_stem=zip_stem
+                )
+                conn.execute(
+                    "UPDATE project_versions SET extraction_root = COALESCE(extraction_root, ?) WHERE version_key = ?",
+                    (zip_root, int(vk)),
+                )
             continue
 
         if decision == "new_version":
@@ -282,19 +307,40 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
             if best_pk is None or not existing:
                 raise HTTPException(status_code=409, detail=f"Missing best-match info for '{project_name}'")
 
-            force_register_new_version(conn, int(best_pk), project_dir, upload_id=upload_id)
+            created = force_register_new_version(conn, int(best_pk), project_dir, upload_id=upload_id)
+            pk = created.get("project_key")
+            vk = created.get("version_key")
 
             if project_name != existing:
-                conn.execute(
-                    "UPDATE files SET project_name = ? WHERE user_id = ? AND project_name = ?",
-                    (existing, user_id, project_name),
+                rename_upload_files_project(
+                    conn,
+                    user_id=user_id,
+                    old_project_name=project_name,
+                    new_project_name=existing,
+                    zip_stem=zip_stem,
                 )
-                conn.commit()
 
                 rename_project_in_layout(layout, project_name, existing)
                 rename_project_key_in_index(index, project_name, existing)
 
                 renames[project_name] = existing
+
+                # Remove old key entries so later steps use the canonical name.
+                dedup_version_keys.pop(project_name, None)
+                dedup_project_keys.pop(project_name, None)
+
+            final_name = existing
+            if isinstance(pk, int):
+                dedup_project_keys[final_name] = pk
+            if isinstance(vk, int):
+                dedup_version_keys[final_name] = vk
+                attach_version_key_to_upload_files(
+                    conn, user_id=user_id, project_name=final_name, version_key=vk, zip_stem=zip_stem
+                )
+                conn.execute(
+                    "UPDATE project_versions SET extraction_root = COALESCE(extraction_root, ?) WHERE version_key = ?",
+                    (zip_root, int(vk)),
+                )
 
     prev_skipped = set(state.get("dedup_skipped_projects") or [])
     merged_skipped = sorted(list(prev_skipped | skipped_now))
@@ -306,7 +352,11 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
         "dedup_resolved": decisions,
         "dedup_renames": renames,
         "project_filetype_index": index,
+        "dedup_version_keys": dedup_version_keys,
+        "dedup_project_keys": dedup_project_keys,
     }
+
+    conn.commit()
 
     remaining_projects = set((layout.get("auto_assignments") or {}).keys()) | set(layout.get("pending_projects") or [])
     if not remaining_projects:
