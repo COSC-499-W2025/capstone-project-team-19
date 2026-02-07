@@ -294,7 +294,7 @@ CREATE TABLE IF NOT EXISTS git_individual_metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
 
     -- Commit statistics
     total_commits INTEGER,
@@ -322,9 +322,13 @@ CREATE TABLE IF NOT EXISTS git_individual_metrics (
 
     last_analyzed TEXT DEFAULT (datetime('now')),
 
-    UNIQUE (user_id, project_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE (user_id, project_key),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_git_individual_metrics_user_project
+    ON git_individual_metrics (user_id, project_key);
 
 -- PROJECT SUMMARIES
 
@@ -362,14 +366,18 @@ CREATE TABLE IF NOT EXISTS project_skills (
 CREATE TABLE IF NOT EXISTS user_code_contributions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     file_path TEXT NOT NULL,
     lines_changed INTEGER DEFAULT 0,  -- additions + deletions
     commits_count INTEGER DEFAULT 0,
     recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, project_name, file_path),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key, file_path),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_user_code_contributions_user_project
+    ON user_code_contributions (user_id, project_key);
 
 CREATE TABLE IF NOT EXISTS github_collaboration_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

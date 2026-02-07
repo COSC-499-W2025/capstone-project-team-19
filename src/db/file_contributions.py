@@ -9,6 +9,9 @@ try:
 except ModuleNotFoundError:
     import constants
 
+from .projects import get_project_key
+from .deduplication import insert_project
+
 
 def store_file_contributions(
     conn: sqlite3.Connection,
@@ -32,6 +35,9 @@ def store_file_contributions(
         }
     """
     cursor = conn.cursor()
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        pk = insert_project(conn, user_id, project_name)
 
     for file_path, stats in file_contributions.items():
         lines_changed = stats.get("lines_changed", 0)
@@ -40,13 +46,13 @@ def store_file_contributions(
         cursor.execute("""
             INSERT OR REPLACE INTO user_code_contributions (
                 user_id,
-                project_name,
+                project_key,
                 file_path,
                 lines_changed,
                 commits_count,
                 recorded_at
             ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        """, (user_id, project_name, file_path, lines_changed, commits_count))
+        """, (user_id, pk, file_path, lines_changed, commits_count))
 
     conn.commit()
 
@@ -73,13 +79,16 @@ def get_user_contributed_files(
         List of file paths (e.g., ["src/main.py", "src/utils.py"])
     """
     cursor = conn.cursor()
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return []
 
     cursor.execute("""
         SELECT file_path
         FROM user_code_contributions
-        WHERE user_id = ? AND project_name = ? AND lines_changed >= ?
+        WHERE user_id = ? AND project_key = ? AND lines_changed >= ?
         ORDER BY lines_changed DESC
-    """, (user_id, project_name, min_lines))
+    """, (user_id, pk, min_lines))
 
     return [row[0] for row in cursor.fetchall()]
 
@@ -96,12 +105,15 @@ def get_file_contribution_stats(
         Dict mapping file_path -> {"lines_changed": int, "commits_count": int}
     """
     cursor = conn.cursor()
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return {}
 
     cursor.execute("""
         SELECT file_path, lines_changed, commits_count
         FROM user_code_contributions
-        WHERE user_id = ? AND project_name = ?
-    """, (user_id, project_name))
+        WHERE user_id = ? AND project_key = ?
+    """, (user_id, pk))
 
     stats = {}
     for file_path, lines_changed, commits_count in cursor.fetchall():
@@ -125,11 +137,14 @@ def has_contribution_data(
         True if contribution data exists, False otherwise
     """
     cursor = conn.cursor()
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return False
 
     cursor.execute("""
         SELECT COUNT(*) FROM user_code_contributions
-        WHERE user_id = ? AND project_name = ?
-    """, (user_id, project_name))
+        WHERE user_id = ? AND project_key = ?
+    """, (user_id, pk))
 
     count = cursor.fetchone()[0]
     return count > 0
@@ -145,11 +160,14 @@ def delete_file_contributions_for_project(
     Useful when re-scoping collaborative analysis to a smaller file subset.
     """
     cursor = conn.cursor()
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return
     cursor.execute(
         """
         DELETE FROM user_code_contributions
-        WHERE user_id = ? AND project_name = ?
+        WHERE user_id = ? AND project_key = ?
         """,
-        (user_id, project_name),
+        (user_id, pk),
     )
     conn.commit()

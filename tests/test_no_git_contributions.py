@@ -5,6 +5,7 @@ from src.analysis.code_collaborative.no_git_contributions import (
     store_contributions_without_git,
 )
 from src.db import init_schema
+from src.db.projects import get_project_key
 
 
 def test_rank_files_by_description_uses_name_and_path(tmp_path):
@@ -49,9 +50,11 @@ def test_store_contributions_without_git_falls_back_to_all(tmp_sqlite_conn):
     # Empty desc => no keyword hits => fallback to all code files
     store_contributions_without_git(tmp_sqlite_conn, user_id=1, project_name="demo", desc="", debug=False)
 
+    pk = get_project_key(tmp_sqlite_conn, 1, "demo")
+    assert pk is not None
     rows = tmp_sqlite_conn.execute(
-        "SELECT file_path FROM user_code_contributions WHERE user_id=? AND project_name=? ORDER BY file_path",
-        (1, "demo"),
+        "SELECT file_path FROM user_code_contributions WHERE user_id=? AND project_key=? ORDER BY file_path",
+        (1, pk),
     ).fetchall()
     assert [r[0] for r in rows] == ["proj/a.py", "proj/b.py"]
 

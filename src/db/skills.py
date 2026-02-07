@@ -145,7 +145,7 @@ def get_skill_events(conn, user_id):
             ON lv.version_key = tac.version_key
         LEFT JOIN git_individual_metrics gim
             ON ps.user_id = gim.user_id
-            AND lv.project_name = gim.project_name
+            AND lv.project_key = gim.project_key
         LEFT JOIN code_collaborative_metrics ccm
             ON ps.user_id = ccm.user_id
             AND lv.project_name = ccm.project_name

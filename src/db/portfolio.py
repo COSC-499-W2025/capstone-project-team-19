@@ -237,22 +237,22 @@ def get_code_individual_duration(
 
     Returns None if there is no row or both dates are missing.
     """
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return None
     cur = conn.execute(
         """
         SELECT
             COALESCE(ps.manual_start_date, gim.first_commit_date) AS first_commit,
             COALESCE(ps.manual_end_date, gim.last_commit_date) AS last_commit
         FROM git_individual_metrics gim
-        LEFT JOIN projects p
-            ON p.user_id = gim.user_id
-        AND p.display_name = gim.project_name
         LEFT JOIN project_summaries ps
             ON ps.user_id = gim.user_id
-        AND ps.project_key = p.project_key
+            AND ps.project_key = gim.project_key
         WHERE gim.user_id = ?
-        AND gim.project_name = ?;
+        AND gim.project_key = ?;
         """,
-        (user_id, project_name),
+        (user_id, pk),
     )
     row = cur.fetchone()
     if row is None:
