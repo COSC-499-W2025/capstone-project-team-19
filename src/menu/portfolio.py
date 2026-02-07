@@ -112,13 +112,14 @@ def _display_portfolio(conn, user_id: int, username: str) -> bool:
             project_type = project["project_type"]
             project_mode = project["project_mode"]
 
+            row = get_project_summary_row(conn, user_id, project_name)
+            summary = (row["summary"] or {}) if row else {}
+
             print(f"[{rank}] {project['display_name']} — Score {project['score']:.3f}")
             print(f"  Type: {project_type} ({project_mode})")
             print(f"  {project['duration']}")
 
             if project_type == "code":
-                row = get_project_summary_row(conn, user_id, project_name)
-                summary = (row["summary"] or {}) if row else {}
                 print(f"  {format_languages(summary)}")
                 print(f"  {format_frameworks(summary)}")
 
@@ -133,8 +134,6 @@ def _display_portfolio(conn, user_id: int, username: str) -> bool:
                 print("  Skills: N/A")
 
             # Summary block (LLM vs non-LLM)
-            row = get_project_summary_row(conn, user_id, project_name)
-            summary = (row["summary"] or {}) if row else {}
             for line in format_summary_block(
                 project_type, project_mode, summary, conn, user_id, project_name
             ):
