@@ -128,24 +128,6 @@ def get_project_key(conn: sqlite3.Connection, user_id: int, project_name: str) -
     return int(row[0]) if row else None
 
 
-def get_latest_version_key(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[int]:
-    """Return the latest version_key for the given (user_id, project_name), or None."""
-    pk = get_project_key(conn, user_id, project_name)
-    if pk is None:
-        return None
-    row = conn.execute(
-        """
-        SELECT version_key
-        FROM project_versions
-        WHERE project_key = ?
-        ORDER BY version_key DESC
-        LIMIT 1
-        """,
-        (pk,),
-    ).fetchone()
-    return int(row[0]) if row else None
-
-
 def get_version_keys_for_project(conn: sqlite3.Connection, user_id: int, project_name: str) -> List[int]:
     """Return all version_key values for the given (user_id, project_name)."""
     pk = get_project_key(conn, user_id, project_name)
