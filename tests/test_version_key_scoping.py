@@ -1,87 +1,82 @@
 import sqlite3
 
+from src.db import init_schema
+
 
 def test_get_files_with_timestamps_can_scope_by_version_key():
     from src.db.files import get_files_with_timestamps
 
     conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    conn.execute("INSERT INTO projects (user_id, display_name) VALUES (1, 'P')")
+    pk = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.execute(
-        """
-        CREATE TABLE files (
-            file_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            file_name TEXT NOT NULL,
-            file_path TEXT,
-            created TEXT,
-            modified TEXT,
-            file_type TEXT,
-            project_name TEXT,
-            version_key INTEGER
-        );
-        """
+        "INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose) VALUES (?, 1, 'fp1', 'fp1')",
+        (pk,),
     )
-
-    rows = [
-        (1, "a.txt", "P/a.txt", "t0", "t1", "text", "P", 10),
-        (1, "b.txt", "P/b.txt", "t0", "t2", "text", "P", 10),
-        (1, "a.txt", "P/a.txt", "t0", "t3", "text", "P", 11),
-    ]
+    vk1 = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose) VALUES (?, 1, 'fp2', 'fp2')",
+        (pk,),
+    )
+    vk2 = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.executemany(
         """
-        INSERT INTO files (user_id, file_name, file_path, created, modified, file_type, project_name, version_key)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO files (user_id, version_key, file_name, file_path, created, modified, file_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        rows,
+        [
+            (1, vk1, "a.txt", "P/a.txt", "t0", "t1", "text"),
+            (1, vk1, "b.txt", "P/b.txt", "t0", "t2", "text"),
+            (1, vk2, "a.txt", "P/a.txt", "t0", "t3", "text"),
+        ],
     )
+    conn.commit()
 
+    # Latest version (vk2) only
     all_files = get_files_with_timestamps(conn, user_id=1, project_name="P")
-    assert {f["modified"] for f in all_files} == {"t1", "t2", "t3"}
+    assert len(all_files) == 1 and all_files[0]["modified"] == "t3"
 
-    v10 = get_files_with_timestamps(conn, user_id=1, project_name="P", version_key=10)
-    assert [f["file_name"] for f in v10] == ["a.txt", "b.txt"]
-    assert {f["modified"] for f in v10} == {"t1", "t2"}
+    v1 = get_files_with_timestamps(conn, user_id=1, project_name="P", version_key=vk1)
+    assert [f["file_name"] for f in v1] == ["a.txt", "b.txt"]
+    assert {f["modified"] for f in v1} == {"t1", "t2"}
 
-    v11 = get_files_with_timestamps(conn, user_id=1, project_name="P", version_key=11)
-    assert [f["file_name"] for f in v11] == ["a.txt"]
-    assert v11[0]["modified"] == "t3"
+    v2 = get_files_with_timestamps(conn, user_id=1, project_name="P", version_key=vk2)
+    assert [f["file_name"] for f in v2] == ["a.txt"]
+    assert v2[0]["modified"] == "t3"
 
 
 def test_fetch_files_can_scope_by_version_key():
     from src.utils.helpers import _fetch_files
 
     conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    conn.execute("INSERT INTO projects (user_id, display_name) VALUES (1, 'P')")
+    pk = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.execute(
-        """
-        CREATE TABLE files (
-            file_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            file_name TEXT NOT NULL,
-            file_type TEXT,
-            file_path TEXT,
-            project_name TEXT,
-            version_key INTEGER
-        );
-        """
+        "INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose) VALUES (?, 1, 'fp1', 'fp1')",
+        (pk,),
     )
-
-    rows = [
-        (1, "a.txt", "text", "P/a.txt", "P", 10),
-        (1, "b.txt", "text", "P/b.txt", "P", 10),
-        (1, "c.txt", "text", "P/c.txt", "P", 11),
-    ]
+    vk1 = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose) VALUES (?, 1, 'fp2', 'fp2')",
+        (pk,),
+    )
+    vk2 = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.executemany(
         """
-        INSERT INTO files (user_id, file_name, file_type, file_path, project_name, version_key)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO files (user_id, version_key, file_name, file_type, file_path)
+        VALUES (?, ?, ?, ?, ?)
         """,
-        rows,
+        [(1, vk1, "a.txt", "text", "P/a.txt"), (1, vk1, "b.txt", "text", "P/b.txt"), (1, vk2, "c.txt", "text", "P/c.txt")],
     )
+    conn.commit()
 
-    v10 = _fetch_files(conn, user_id=1, project_name="P", only_text=True, version_key=10)
-    assert [f["file_name"] for f in v10] == ["a.txt", "b.txt"]
+    v1 = _fetch_files(conn, user_id=1, project_name="P", only_text=True, version_key=vk1)
+    assert [f["file_name"] for f in v1] == ["a.txt", "b.txt"]
 
-    v11 = _fetch_files(conn, user_id=1, project_name="P", only_text=True, version_key=11)
-    assert [f["file_name"] for f in v11] == ["c.txt"]
+    v2 = _fetch_files(conn, user_id=1, project_name="P", only_text=True, version_key=vk2)
+    assert [f["file_name"] for f in v2] == ["c.txt"]
 
 
 def test_run_text_pipeline_threads_version_key_to_timestamp_query(monkeypatch):

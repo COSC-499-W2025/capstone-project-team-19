@@ -183,15 +183,9 @@ def analyze_code_complexity(conn, user_id: int, project_name: str, zip_path: str
     - project_summary: Aggregated metrics
     """
 
-    # Get all code files from the database
-    cursor = conn.cursor()
-    query = """
-        SELECT file_name, file_path
-        FROM files
-        WHERE user_id = ? AND project_name = ? AND file_type = 'code'
-    """
-    cursor.execute(query, (user_id, project_name))
-    files = cursor.fetchall()
+    # Get all code files from the database (latest version for project)
+    from src.db.files import get_code_files_for_project
+    files = get_code_files_for_project(conn, user_id, project_name)
 
     if not files:
         print(f"No code files found for project '{project_name}'")

@@ -17,6 +17,7 @@ from src.utils.parsing import ZIP_DATA_DIR, parse_zip_file, analyze_project_layo
 from src.db.projects import (
     store_parsed_files,
     update_project_metadata,
+    get_project_key,
 )
 
 from src.utils.deduplication.api_integration import (
@@ -264,11 +265,15 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
             remove_project_from_layout(layout, project_name)
             remove_project_key_in_index(index, project_name)
 
-            # remove this project's stored parsed files so later steps don't see it
-            conn.execute(
-                "DELETE FROM files WHERE user_id = ? AND project_name = ?",
-                (user_id, project_name),
-            )
+            # Remove files for this project's version(s) in this upload (versioned-only files table)
+            pk = get_project_key(conn, user_id, project_name)
+            if pk is not None:
+                vrows = conn.execute(
+                    "SELECT version_key FROM project_versions WHERE project_key = ? AND upload_id = ?",
+                    (pk, upload_id),
+                ).fetchall()
+                for (vk,) in vrows:
+                    conn.execute("DELETE FROM files WHERE user_id = ? AND version_key = ?", (user_id, vk))
             conn.commit()
             continue
 
@@ -282,15 +287,21 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
             if best_pk is None or not existing:
                 raise HTTPException(status_code=409, detail=f"Missing best-match info for '{project_name}'")
 
-            force_register_new_version(conn, int(best_pk), project_dir, upload_id=upload_id)
+            # Reassign this upload's version for project_name to the existing project (no new version)
+            pk_old = get_project_key(conn, user_id, project_name)
+            if pk_old is not None:
+                vrow = conn.execute(
+                    "SELECT version_key FROM project_versions WHERE project_key = ? AND upload_id = ? ORDER BY version_key DESC LIMIT 1",
+                    (pk_old, upload_id),
+                ).fetchone()
+                if vrow:
+                    conn.execute(
+                        "UPDATE project_versions SET project_key = ? WHERE version_key = ?",
+                        (int(best_pk), vrow[0]),
+                    )
+                    conn.commit()
 
             if project_name != existing:
-                conn.execute(
-                    "UPDATE files SET project_name = ? WHERE user_id = ? AND project_name = ?",
-                    (existing, user_id, project_name),
-                )
-                conn.commit()
-
                 rename_project_in_layout(layout, project_name, existing)
                 rename_project_key_in_index(index, project_name, existing)
 
@@ -461,39 +472,49 @@ def _rows_for_project_scoped_to_upload(
     user_id: int,
     project_name: str,
     zip_path: str,
+    upload_id: int,
 ):
     """
-    Try to scope file listing to the current upload by matching the zip stem in file_path.
-    Falls back to unscoped query if the scoped one returns nothing (to avoid breaking if
-    file_path storage is inconsistent).
+    Return file rows for this project in this upload (versioned-only files table).
+    Scopes by version_key(s) for (project, upload_id), optionally by zip stem in file_path.
+    Returns rows as (file_name, file_path, extension, file_type, size_bytes, created, modified);
+    callers append project_name when building file items. project_name when building file items.
     """
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return []
+    vrows = conn.execute(
+        "SELECT version_key FROM project_versions WHERE project_key = ? AND upload_id = ?",
+        (pk, upload_id),
+    ).fetchall()
+    version_keys = [r[0] for r in vrows]
+    if not version_keys:
+        return []
     zip_stem = Path(zip_path).stem
+    placeholders = ",".join("?" * len(version_keys))
 
     scoped = conn.execute(
-        """
-        SELECT file_name, file_path, extension, file_type, size_bytes, created, modified, project_name
+        f"""
+        SELECT file_name, file_path, extension, file_type, size_bytes, created, modified
         FROM files
-        WHERE user_id = ? AND project_name = ?
-          AND (
-            file_path LIKE ? OR file_path LIKE ?
-          )
+        WHERE user_id = ? AND version_key IN ({placeholders})
+          AND (file_path LIKE ? OR file_path LIKE ?)
         ORDER BY file_path ASC
         """,
-        (user_id, project_name, f"%/{zip_stem}/%", f"{zip_stem}/%"),
+        (user_id, *version_keys, f"%/{zip_stem}/%", f"{zip_stem}/%"),
     ).fetchall()
 
     if scoped:
         return scoped
 
-    # fallback (older DB rows might not include zip_stem)
     return conn.execute(
-        """
-        SELECT file_name, file_path, extension, file_type, size_bytes, created, modified, project_name
+        f"""
+        SELECT file_name, file_path, extension, file_type, size_bytes, created, modified
         FROM files
-        WHERE user_id = ? AND project_name = ?
+        WHERE user_id = ? AND version_key IN ({placeholders})
         ORDER BY file_path ASC
         """,
-        (user_id, project_name),
+        (user_id, *version_keys),
     ).fetchall()
 
 
@@ -515,9 +536,10 @@ def list_project_files(conn: sqlite3.Connection, user_id: int, upload_id: int, p
     if not zip_path:
         raise HTTPException(status_code=400, detail="Upload missing zip_path")
 
-    rows = _rows_for_project_scoped_to_upload(conn, user_id, project_name, zip_path)
+    rows = _rows_for_project_scoped_to_upload(conn, user_id, project_name, zip_path, upload_id)
 
-    items = [build_file_item_from_row(Path(ZIP_DATA_DIR), r) for r in rows]
+    # build_file_item_from_row expects (..., project_name); files table no longer has project_name
+    items = [build_file_item_from_row(Path(ZIP_DATA_DIR), (*r, project_name)) for r in rows]
     buckets = categorize_project_files(items)
 
     return {
@@ -550,9 +572,9 @@ def set_project_main_file(conn: sqlite3.Connection, user_id: int, upload_id: int
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    rows = _rows_for_project_scoped_to_upload(conn, user_id, project_name, zip_path)
+    rows = _rows_for_project_scoped_to_upload(conn, user_id, project_name, zip_path, upload_id)
     valid_relpaths = {
-        build_file_item_from_row(Path(ZIP_DATA_DIR), r).get("relpath") for r in rows
+        build_file_item_from_row(Path(ZIP_DATA_DIR), (*r, project_name)).get("relpath") for r in rows
     }
 
     if relpath_norm not in valid_relpaths:

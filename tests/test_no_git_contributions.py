@@ -37,13 +37,21 @@ def test_rank_files_by_description_uses_content_slice(tmp_path):
 
 def test_store_contributions_without_git_falls_back_to_all(tmp_sqlite_conn):
     init_schema(tmp_sqlite_conn)
-    # Insert minimal files rows
+    # Create project + version so files can reference version_key
+    tmp_sqlite_conn.execute("INSERT INTO projects (user_id, display_name) VALUES (1, 'demo')")
+    pk = tmp_sqlite_conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    tmp_sqlite_conn.execute(
+        "INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose) VALUES (?, 1, 'fp', 'fp')",
+        (pk,),
+    )
+    vk = tmp_sqlite_conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     tmp_sqlite_conn.execute(
         """
-        INSERT INTO files (user_id, file_name, file_type, file_path, project_name)
-        VALUES (1, 'a.py', 'code', 'proj/a.py', 'demo'),
-               (1, 'b.py', 'code', 'proj/b.py', 'demo')
-        """
+        INSERT INTO files (user_id, version_key, file_name, file_type, file_path)
+        VALUES (1, ?, 'a.py', 'code', 'proj/a.py'),
+               (1, ?, 'b.py', 'code', 'proj/b.py')
+        """,
+        (vk, vk),
     )
     tmp_sqlite_conn.commit()
 

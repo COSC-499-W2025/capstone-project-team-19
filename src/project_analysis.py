@@ -124,11 +124,8 @@ def detect_project_type_auto(
     - Returns mixed projects needing user choice
     - NO input() calls
     """
-    files = conn.execute("""
-        SELECT project_name, file_type
-        FROM files
-        WHERE user_id = ? AND project_name IS NOT NULL
-    """, (user_id,)).fetchall()
+    from src.db.files import get_files_for_user
+    files = get_files_for_user(conn, user_id)
 
     project_counts: dict[str, dict[str, int]] = {}
     for project_name, file_type in files:
@@ -696,7 +693,7 @@ def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path
 
 def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
     """Runs full analysis on individual code projects (static metrics + Git + optional LLM)."""
-    languages = detect_languages(conn, project_name)
+    languages = detect_languages(conn, user_id, project_name)
     print(f"Languages detected in {project_name}: {languages}")
 
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path)

@@ -51,13 +51,13 @@ def seed_dedup_registry(conn: sqlite3.Connection, user_id: int, display_name: st
     )
 
     conn.commit()
-    return int(pk)
+    return int(pk), int(vk)
 
 
 def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
     # dedup tables
-    pk = seed_dedup_registry(conn, user_id, name)
-    project_key = int(pk)
+    pk, vk = seed_dedup_registry(conn, user_id, name)
+    project_key = pk
 
     # canonical project metadata now lives on `projects`
     conn.execute(
@@ -65,15 +65,15 @@ def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
         ("individual", "code", user_id, name),
     )
 
-    # files
+    # files (versioned only: version_key required)
     conn.execute(
         """
         INSERT INTO files (
-            user_id, file_name, file_path, extension, file_type,
-            size_bytes, created, modified, project_name
-        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?)
+            user_id, version_key, file_name, file_path, extension, file_type,
+            size_bytes, created, modified
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
         """,
-        (user_id, f"{name}.py", f"src/{name}.py", ".py", "code", 10, name),
+        (user_id, vk, f"{name}.py", f"src/{name}.py", ".py", "code", 10),
     )
 
     # project_summaries
@@ -104,6 +104,18 @@ def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
 
 
 def count_user_project(conn: sqlite3.Connection, user_id: int, table: str, project_name: str) -> int:
+    if table == "files":
+        # files is versioned only; count via project_versions -> projects
+        return conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM files f
+            JOIN project_versions pv ON f.version_key = pv.version_key
+            JOIN projects p ON pv.project_key = p.project_key
+            WHERE f.user_id = ? AND p.display_name = ?
+            """,
+            (user_id, project_name),
+        ).fetchone()[0]
     if table in {
         "project_summaries", "project_skills", "git_individual_metrics", "user_code_contributions",
         "github_repo_metrics", "github_collaboration_profiles", "github_issues", "github_issue_comments",

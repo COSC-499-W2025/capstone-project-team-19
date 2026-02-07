@@ -21,31 +21,49 @@ def test_files_table_created(conn):
     assert "files" in tables
 
 def test_stored_parsed_files_inserts_rows(conn, tmp_path):
-    # Ensures parsed files are inserted into the database correctly
-
-    # creating test parsed file info
+    # Ensures parsed files are inserted into the database correctly (versioned-only files table)
     tmp_file = tmp_path / "example.py"
     tmp_file.write_text("print('The Wall was released in 1979')")
 
     files_info = collect_file_info(tmp_path)
     user_id = get_or_create_user(conn, "PinkFloyd")
+    # Create project + version so files can be stored with version_key
+    conn.execute("INSERT INTO projects (user_id, display_name) VALUES (?, ?)", (user_id, "default"))
+    pk = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose) VALUES (?, 1, 'fp', 'fp')",
+        (pk,),
+    )
+    vk = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    for f in files_info:
+        if f.get("file_type") != "config":
+            f["version_key"] = vk
+    conn.commit()
 
-    # insert parsed metadata into the DB
     store_parsed_files(conn, files_info, user_id)
 
-    # verify result
-    result = conn.execute("SELECT file_name, user_id, project_name FROM files").fetchone()
-    assert result == ("example.py", user_id, None)
+    result = conn.execute("SELECT file_name, user_id, version_key FROM files").fetchone()
+    assert result == ("example.py", user_id, vk)
 
 def test_files_linked_to_correct_user(conn, tmp_path):
-    # Checks that inserted files are linked to the right user
-
+    # Checks that inserted files are linked to the right user (versioned-only files table)
     user1 = get_or_create_user(conn, "PinkFloyd")
     user2 = get_or_create_user(conn, "Staind")
 
     tmp_file = tmp_path / "main.py"
     tmp_file.write_text("print('Break the Cycle was released in 2001')")
     files_info = collect_file_info(tmp_path)
+    conn.execute("INSERT INTO projects (user_id, display_name) VALUES (?, ?)", (user2, "default"))
+    pk = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose) VALUES (?, 1, 'fp', 'fp')",
+        (pk,),
+    )
+    vk = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    for f in files_info:
+        if f.get("file_type") != "config":
+            f["version_key"] = vk
+    conn.commit()
 
     store_parsed_files(conn, files_info, user2)
     db_user_id = conn.execute("SELECT user_id FROM files").fetchone()[0]

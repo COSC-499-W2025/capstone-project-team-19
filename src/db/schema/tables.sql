@@ -61,10 +61,12 @@ ORDER BY u.user_id;
 
 
 -- FILES & PROJECT CLASSIFICATIONS
+-- Files are versioned only: each row belongs to one project_version (no project_name).
 
 CREATE TABLE IF NOT EXISTS files (
     file_id     INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id     INTEGER NOT NULL,
+    version_key INTEGER NOT NULL,
     file_name   TEXT NOT NULL,
     file_path   TEXT,
     extension   TEXT,
@@ -72,13 +74,15 @@ CREATE TABLE IF NOT EXISTS files (
     size_bytes  INTEGER,
     created     TEXT,
     modified    TEXT,
-    project_name TEXT,
-    version_key INTEGER,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_files_user 
+CREATE INDEX IF NOT EXISTS idx_files_user
     ON files(user_id, file_name);
+
+CREATE INDEX IF NOT EXISTS idx_files_user_version
+    ON files(user_id, version_key);
 
 CREATE TABLE IF NOT EXISTS projects (
     project_key INTEGER PRIMARY KEY AUTOINCREMENT,

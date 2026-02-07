@@ -183,7 +183,7 @@ def analyze_code_project(conn: sqlite3.Connection,
 
     # 6) fill langs from DB if empty
     if not metrics.get("focus", {}).get("languages"):
-        langs_from_db = detect_languages(conn, project_name) or []
+        langs_from_db = detect_languages(conn, user_id, project_name) or []
         if langs_from_db:
             metrics["focus"]["languages"] = [f"{lang} (from DB)" for lang in langs_from_db]
 
@@ -399,7 +399,7 @@ def _apply_basic_summary_without_git(
             summary.summary_text = clean_desc
 
     # Basic language/framework detection still works from parsed files/configs
-    summary.languages = detect_languages(conn, project_name) or []
+    summary.languages = detect_languages(conn, user_id, project_name) or []
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path) or set()
     summary.frameworks = sorted(frameworks) if frameworks else []
 

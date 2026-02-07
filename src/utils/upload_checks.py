@@ -71,18 +71,14 @@ def delete_existing_zip_data(conn, user_id, zip_path) -> None:
         (user_id, *upload_ids),
     ).fetchall()
 
-    # Delete versions for those uploads (cascades into version_files + version_key-keyed metrics).
+    # Delete versions for those uploads (cascades into version_files, files, and version_key-keyed metrics).
     cursor.execute(
         f"DELETE FROM project_versions WHERE upload_id IN ({','.join(['?'] * len(upload_ids))})",
         tuple(upload_ids),
     )
 
-    # Delete file rows for impacted project display names; config_files by project_key.
+    # config_files by project_key (files are removed by CASCADE from project_versions).
     for project_key, display_name in impacted:
-        cursor.execute(
-            "DELETE FROM files WHERE user_id = ? AND project_name = ?",
-            (user_id, display_name),
-        )
         cursor.execute(
             "DELETE FROM config_files WHERE user_id = ? AND project_key = ?",
             (user_id, project_key),

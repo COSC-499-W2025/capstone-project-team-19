@@ -99,16 +99,11 @@ def init_schema(conn: sqlite3.Connection) -> None:
 
     conn.executescript(schema_sql)
 
-    # Version-scoping for project versions/deduplication flows
+    # Legacy migration: ensure version_key exists on files (schema now has version_key, no project_name)
     _ensure_column(conn, "files", "version_key", "INTEGER")
 
     # Store extraction folder name for legacy versions (no upload_id linkage)
     _backfill_extraction_root(conn)
-
-    # Indexes that reference migrated columns should be created after migrations.
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_files_user_project_version ON files(user_id, project_name, version_key)"
-    )
 
     conn.commit()
     print(f"Initialized database schema from {schema_path}")
