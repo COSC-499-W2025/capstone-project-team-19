@@ -45,8 +45,8 @@ def delete_project_everywhere(
         ]
 
         for pk in project_keys:
-            # 0a) Tables keyed by (user_id, project_key) (new canonical identity)
-            # Keep these explicit deletes so deletion works even if SQLite FK cascades are disabled on the connection.
+            # Tables keyed by (user_id, project_key). Explicit deletes so deletion works even when
+            # PRAGMA foreign_keys is OFF (e.g. some test connections). When FK is ON, CASCADE would also remove these, redundant but safe.
             cur.execute(
                 "DELETE FROM project_skills WHERE user_id = ? AND project_key = ?",
                 (user_id, pk),
@@ -71,8 +71,12 @@ def delete_project_everywhere(
                 "DELETE FROM config_files WHERE user_id = ? AND project_key = ?",
                 (user_id, pk),
             )
+            cur.execute(
+                "DELETE FROM text_contribution_summary WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
 
-            # Delete version_files first (depends on project_versions)
+            # Delete version_files first (depends on project_versions), then versions, then project row
             cur.execute(
                 """
                 DELETE FROM version_files
@@ -82,7 +86,6 @@ def delete_project_everywhere(
                 """,
                 (pk,),
             )
-            # Then versions, then the project row
             cur.execute("DELETE FROM project_versions WHERE project_key = ?", (pk,))
             cur.execute("DELETE FROM projects WHERE project_key = ?", (pk,))
 
@@ -91,7 +94,6 @@ def delete_project_everywhere(
         # ---------------------------------------------------------------------
         tables_user_project = [
             "files",
-            "text_contribution_summary",
             "project_repos",
             "project_drive_files",
             "user_code_contributions",

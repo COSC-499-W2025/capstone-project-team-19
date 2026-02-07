@@ -30,6 +30,12 @@ def sqlite_conn():
     conn = sqlite3.connect(":memory:")
     cur = conn.cursor()
     cur.execute("""
+    CREATE TABLE projects (
+        project_key INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        display_name TEXT NOT NULL
+    );""")
+    cur.execute("""
     CREATE TABLE text_contribution_revisions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -43,13 +49,14 @@ def sqlite_conn():
     CREATE TABLE text_contribution_summary (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
-        project_name TEXT NOT NULL,
+        project_key INTEGER NOT NULL,
         drive_file_id TEXT NOT NULL,
         user_revision_count INTEGER NOT NULL DEFAULT 0,
         total_word_count INTEGER NOT NULL DEFAULT 0,
         total_revision_count INTEGER NOT NULL DEFAULT 0,
-        UNIQUE(user_id, project_name, drive_file_id)
+        UNIQUE(user_id, project_key, drive_file_id)
     );""")
+    cur.execute("INSERT INTO projects (user_id, display_name) VALUES (1, 'proj')")
     conn.commit()
     yield conn
     conn.close()
