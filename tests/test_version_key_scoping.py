@@ -82,17 +82,17 @@ def test_fetch_files_can_scope_by_version_key():
 def test_run_text_pipeline_threads_version_key_to_timestamp_query(monkeypatch):
     """
     This ensures the "activity type analysis" timestamp query is version-scoped.
-    We avoid touching the filesystem by monkeypatching helpers.
+    When version_key is passed, run_text_pipeline uses get_files_with_timestamps_for_version.
     """
     from src.analysis.text_individual import text_analyze as ta
 
     captured = {"version_key": None}
 
-    def fake_get_files_with_timestamps(conn, user_id, project_name, version_key=None):
+    def fake_get_files_with_timestamps_for_version(conn, user_id, version_key):
         captured["version_key"] = version_key
         return []
 
-    monkeypatch.setattr(ta, "get_files_with_timestamps", fake_get_files_with_timestamps)
+    monkeypatch.setattr(ta, "get_files_with_timestamps_for_version", fake_get_files_with_timestamps_for_version)
     monkeypatch.setattr(ta, "analyze_all_csv", lambda *a, **k: {})
     monkeypatch.setattr(ta, "print_activity", lambda *a, **k: None)
     monkeypatch.setattr(ta, "_select_main_file", lambda files_sorted, base_path: files_sorted[0])
