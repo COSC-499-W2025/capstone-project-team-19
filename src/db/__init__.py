@@ -93,10 +93,8 @@ from .skills import insert_project_skill, get_skill_events
 
 from .skill_preferences import (
     get_user_skill_preferences,
-    get_highlighted_skill_names,
     upsert_skill_preference,
     bulk_upsert_skill_preferences,
-    delete_skill_preference,
     clear_skill_preferences,
     get_all_user_skills,
     has_skill_preferences,
@@ -333,10 +331,8 @@ __all__ = [
     "upsert_project_feedback",
     "get_project_summary_by_id",
     "get_user_skill_preferences",
-    "get_highlighted_skill_names",
     "upsert_skill_preference",
     "bulk_upsert_skill_preferences",
-    "delete_skill_preference",
     "clear_skill_preferences",
     "get_all_user_skills",
     "has_skill_preferences",

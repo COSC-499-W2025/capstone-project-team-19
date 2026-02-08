@@ -3,10 +3,7 @@ from typing import List, Dict, Any, Optional, Literal
 
 from src.db.skill_preferences import (
     get_user_skill_preferences,
-    get_highlighted_skill_names,
-    upsert_skill_preference,
     bulk_upsert_skill_preferences,
-    delete_skill_preference,
     clear_skill_preferences,
     get_all_user_skills,
     has_skill_preferences,
@@ -98,7 +95,7 @@ def get_highlighted_skills_for_display(
     context_id: Optional[int] = None,
     all_skills: Optional[List[str]] = None,
 ) -> List[str]:
-    # Check if user has any preferences
+    # Check if user has any preferences at all
     if not has_skill_preferences(conn, user_id, context, context_id):
         # Also check global fallback
         if context != "global" and not has_skill_preferences(conn, user_id, "global"):
@@ -107,12 +104,37 @@ def get_highlighted_skills_for_display(
                 return all_skills
             return get_all_user_skills(conn, user_id)
 
-    # Get highlighted skill names in order
-    highlighted = get_highlighted_skill_names(conn, user_id, context, context_id)
+    # Get all preferences (includes both highlighted and hidden skills)
+    preferences = get_user_skill_preferences(conn, user_id, context, context_id)
+    pref_map = {p["skill_name"]: p for p in preferences}
+
+    # Get all user's skills from projects
+    all_user_skills = get_all_user_skills(conn, user_id)
+
+    # Build result: skills are highlighted unless explicitly hidden in DB
+    highlighted: List[str] = []
+
+    # First add skills with explicit display_order (in order)
+    ordered_prefs = sorted(
+        [p for p in preferences if p["is_highlighted"] and p["display_order"] is not None],
+        key=lambda p: p["display_order"]
+    )
+    for p in ordered_prefs:
+        highlighted.append(p["skill_name"])
+
+    # Then add highlighted skills without explicit order
+    for p in preferences:
+        if p["is_highlighted"] and p["display_order"] is None:
+            if p["skill_name"] not in highlighted:
+                highlighted.append(p["skill_name"])
+
+    # Finally add skills NOT in preferences (default to highlighted)
+    for skill_name in all_user_skills:
+        if skill_name not in pref_map and skill_name not in highlighted:
+            highlighted.append(skill_name)
 
     if all_skills is not None:
         # Filter to only include skills that exist in all_skills
-        # Maintain the order from preferences
         return [s for s in highlighted if s in all_skills]
 
     return highlighted

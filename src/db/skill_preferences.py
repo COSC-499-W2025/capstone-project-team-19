@@ -54,20 +54,6 @@ def get_user_skill_preferences(
     ]
 
 
-def get_highlighted_skill_names(
-    conn: sqlite3.Connection,
-    user_id: int,
-    context: Literal["global", "portfolio", "resume"] = "global",
-    context_id: Optional[int] = None,
-) -> List[str]:
-    prefs = get_user_skill_preferences(conn, user_id, context, context_id)
-    return [
-        p["skill_name"]
-        for p in prefs
-        if p["is_highlighted"]
-    ]
-
-
 def upsert_skill_preference(
     conn: sqlite3.Connection,
     user_id: int,
@@ -125,33 +111,6 @@ def bulk_upsert_skill_preferences(
             is_highlighted=pref.get("is_highlighted", True),
             display_order=pref.get("display_order"),
         )
-
-
-def delete_skill_preference(
-    conn: sqlite3.Connection,
-    user_id: int,
-    skill_name: str,
-    context: Literal["global", "portfolio", "resume"] = "global",
-    context_id: Optional[int] = None,
-) -> bool:
-    if context_id is not None:
-        cursor = conn.execute(
-            """
-            DELETE FROM user_skill_preferences
-            WHERE user_id = ? AND context = ? AND context_id = ? AND skill_name = ?
-            """,
-            (user_id, context, context_id, skill_name)
-        )
-    else:
-        cursor = conn.execute(
-            """
-            DELETE FROM user_skill_preferences
-            WHERE user_id = ? AND context = ? AND context_id IS NULL AND skill_name = ?
-            """,
-            (user_id, context, skill_name)
-        )
-    conn.commit()
-    return cursor.rowcount > 0
 
 
 def clear_skill_preferences(
