@@ -1,7 +1,7 @@
 """Deduplication helpers, checking for duplication, etc."""
 
 from pathlib import Path
-from .rules import IGNORE_DIRS, IGNORE_FILE_SUFFIXES
+from .rules import IGNORE_DIRS, IGNORE_FILE_SUFFIXES, IGNORE_FILES
 
 """
 Decide whether a file inside a project should be ignored for deduplication and similarity
@@ -14,9 +14,13 @@ def should_ignore_path(path: Path) -> bool:
 
     if any(p in IGNORE_DIRS for p in parts):
         return True
-    if path.suffix.lower() in IGNORE_FILE_SUFFIXES: 
+    if path.suffix.lower() in IGNORE_FILE_SUFFIXES:
         return True
-    
+    if path.name in IGNORE_FILES:
+        return True
+    if path.name.startswith("._"):
+        return True
+
     return False
 
 
