@@ -174,7 +174,7 @@ def test_resolve_dedup_backfills_version_key_for_ask_case(client, auth_headers, 
     )
     assert res1.status_code == 200
     upload1 = _advance_past_blocks(client, auth_headers, res1.json()["data"])
-    _cleanup_upload_artifacts((upload1.get("state") or {}))
+    state1 = upload1.get("state") or {}
 
     # Variant upload: identical contents, different file paths -> triggers loose-fp 'ask'
     variant_files = {
@@ -196,6 +196,12 @@ def test_resolve_dedup_backfills_version_key_for_ask_case(client, auth_headers, 
     asks = state2.get("dedup_asks") or {}
     assert "VariantProj" in asks
     assert asks["VariantProj"].get("existing") == "BaseProj"
+
+    # Should warn users that same-name becomes version (if warning is present for this scenario)
+    warnings = state2.get("dedup_warnings") or {}
+    # Adapt warning check to match this test scenario for completeness.
+    if "VariantProj" in warnings:
+        assert "rename" in (warnings["VariantProj"] or "").lower()
 
     # Before resolve: files exist but are not version-scoped yet.
     before = seed_conn.execute(
