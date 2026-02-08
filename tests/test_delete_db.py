@@ -57,14 +57,10 @@ def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
     # dedup tables
     seed_dedup_registry(conn, user_id, name)
 
-    # project_classifications
+    # canonical project metadata now lives on `projects`
     conn.execute(
-        """
-        INSERT INTO project_classifications (
-            user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at
-        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-        """,
-        (user_id, f"/tmp/{name}.zip", f"{name}.zip", name, "individual", "code"),
+        "UPDATE projects SET classification = ?, project_type = ? WHERE user_id = ? AND display_name = ?",
+        ("individual", "code", user_id, name),
     )
 
     # files
@@ -150,14 +146,12 @@ def test_delete_project_everywhere_removes_only_target_project(conn, user_id):
     seed_project(conn, user_id, project2)
 
     # sanity: both exist
-    assert count_user_project(conn, user_id, "project_classifications", project1) == 1
     assert count_user_project(conn, user_id, "files", project1) == 1
     assert count_user_project(conn, user_id, "project_summaries", project1) == 1
     assert count_user_project(conn, user_id, "github_issues", project1) == 1
     assert count_user_project(conn, user_id, "git_individual_metrics", project1) == 1
     assert count_dedup(conn, user_id, project1) == (1, 1, 2)
 
-    assert count_user_project(conn, user_id, "project_classifications", project2) == 1
     assert count_user_project(conn, user_id, "files", project2) == 1
     assert count_user_project(conn, user_id, "project_summaries", project2) == 1
     assert count_user_project(conn, user_id, "github_issues", project2) == 1
@@ -168,7 +162,6 @@ def test_delete_project_everywhere_removes_only_target_project(conn, user_id):
     delete_project_everywhere(conn, user_id, project1)
 
     # project1 gone
-    assert count_user_project(conn, user_id, "project_classifications", project1) == 0
     assert count_user_project(conn, user_id, "files", project1) == 0
     assert count_user_project(conn, user_id, "project_summaries", project1) == 0
     assert count_user_project(conn, user_id, "github_issues", project1) == 0
@@ -176,7 +169,6 @@ def test_delete_project_everywhere_removes_only_target_project(conn, user_id):
     assert count_dedup(conn, user_id, project1) == (0, 0, 0)
 
     # project2 still there
-    assert count_user_project(conn, user_id, "project_classifications", project2) == 1
     assert count_user_project(conn, user_id, "files", project2) == 1
     assert count_user_project(conn, user_id, "project_summaries", project2) == 1
     assert count_user_project(conn, user_id, "github_issues", project2) == 1
