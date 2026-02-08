@@ -17,6 +17,7 @@ from src.utils.parsing import ZIP_DATA_DIR, parse_zip_file, analyze_project_layo
 from src.db.projects import (
     store_parsed_files,
     update_project_metadata,
+    get_project_key,
 )
 
 from src.db.upload_files import (
@@ -482,16 +483,19 @@ def submit_project_types(conn: sqlite3.Connection, user_id: int, upload_id: int,
     if missing:
         raise HTTPException(status_code=422, detail={"missing_projects": sorted(missing)})
 
+    # Prefer canonical keys over display_name (display_name is not unique in schema).
+    dedup_project_keys = (state.get("dedup_project_keys") or {}) if isinstance(state, dict) else {}
+
     for project_name, ptype in project_types.items():
-        conn.execute(
-            """
-            UPDATE projects
-            SET project_type = ?
-            WHERE user_id = ? AND display_name = ?
-            """,
-            (ptype, user_id, project_name),
-        )
-    conn.commit()
+        pk = dedup_project_keys.get(project_name)
+        if not isinstance(pk, int):
+            # Fallback for older uploads / edge cases where state lacks keys.
+            pk = get_project_key(conn, user_id, project_name)
+        if not isinstance(pk, int):
+            raise HTTPException(status_code=404, detail=f"Project not found: {project_name}")
+
+        # Validate via update helper (and update by project_key).
+        update_project_metadata(conn, pk, project_type=ptype)
 
     new_state = patch_upload_state(
         conn,

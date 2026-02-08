@@ -316,6 +316,47 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
     pending_projects = layout["pending_projects"]
     stray_locations = layout["stray_locations"]
 
+    """
+    If dedup decided a folder name maps to an existing (canonical) project name, apply that mapping BEFORE prompting so we only classify the canonical name.
+    This avoids cases like:
+      - ask user to classify both "code" and "code_ml2"
+      - then collapse keys during persistence and accidentally overwrite one.
+    """
+    if project_name_map:
+        # Remap auto assignments, detecting conflicts (same canonical name, different labels).
+        remapped_auto: dict[str, str] = {}
+        conflicted: set[str] = set()
+        for name, label in (auto_assignments or {}).items():
+            canonical = project_name_map.get(name, name)
+            existing = remapped_auto.get(canonical)
+            if existing is not None and existing != label:
+                conflicted.add(canonical)
+            else:
+                remapped_auto.setdefault(canonical, label)
+
+        # Remap pending list + de-dupe while preserving order.
+        remapped_pending: list[str] = []
+        seen: set[str] = set()
+        for name in (pending_projects or []):
+            canonical = project_name_map.get(name, name)
+            if canonical in seen:
+                continue
+            seen.add(canonical)
+            remapped_pending.append(canonical)
+
+        # If a canonical name has conflicting auto labels, force it to be manually classified.
+        for canonical in sorted(conflicted):
+            remapped_auto.pop(canonical, None)
+            if canonical not in seen:
+                remapped_pending.append(canonical)
+                seen.add(canonical)
+
+        # Anything auto-classified should not appear as pending.
+        remapped_pending = [p for p in remapped_pending if p not in remapped_auto]
+
+        auto_assignments = remapped_auto
+        pending_projects = remapped_pending
+
     if not auto_assignments and not pending_projects:
         print("No project folders detected to classify.")
         return {}
@@ -347,8 +388,14 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
                 assignments[name] = ask_project_classification(name)
 
     # If dedup decided a folder name maps to an existing project name, persist using the final name.
+    # Prefer the first value to avoid silent overwrites.
     if project_name_map:
-        assignments = {project_name_map.get(k, k): v for k, v in assignments.items()}
+        remapped: dict[str, str] = {}
+        for k, v in assignments.items():
+            canonical = project_name_map.get(k, k)
+            if canonical not in remapped:
+                remapped[canonical] = v
+        assignments = remapped
 
     # Persist classification in the new schema (projects + versions).
     # This helper is backwards-compatible and will ensure the project exists.
