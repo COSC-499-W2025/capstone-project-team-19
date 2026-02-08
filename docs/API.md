@@ -24,7 +24,7 @@ http://localhost:8000
 
 ## Table of Contents
 
-1. [Health](#health
+1. [Health](#health)
 2. [Authentication](#authentication)
 3. [Projects](#projects)
 4. [GitHub Integration](#github-integration)
@@ -554,7 +554,10 @@ A typical flow for the first six endpoints:
 2. **Poll/resume**: `GET /projects/upload/{upload_id}`
 3. **Resolve dedup (optional)**: `POST /projects/upload/{upload_id}/dedup/resolve`
 4. **Submit classifications**: `POST /projects/upload/{upload_id}/classifications`
-5. **Resolve mixed project types (optional)**: `POST /projects/upload/{upload_id}/project-types` 
+5. **Resolve mixed project types (optional)**: `POST /projects/upload/{upload_id}/project-types`
+6. **Select collaborative text contribution sections (optional, text-collab only)**:
+   - `GET /projects/upload/{upload_id}/projects/{project_name}/text/sections`
+   - `POST /projects/upload/{upload_id}/projects/{project_name}/text/sections`
 
 ---
 
@@ -591,9 +594,6 @@ A typical flow for the first six endpoints:
                     },
                     "files_info_count": 8
                 }
-            },
-            "error": null
-        }
         ```
 
 - **Resolve Dedup (Optional, New)**
@@ -634,12 +634,123 @@ A typical flow for the first six endpoints:
             "assignments": {
                 "Project A": "individual",
                 "Project B": "collaborative"
-                - **Submit Project Types (Code vs Text) (Optional)**
+            }
+        }
+
+- **Submit Project Types (Code vs Text) (Optional)**
     - **Endpoint**: `POST /projects/upload/{upload_id}/project-types`
     - **Description**: Submit user selections for project type (`code` vs `text`) when a detected project contains both code and text artifacts and requires a choice. The request must use project names exactly as reported in `state.layout.auto_assignments` and `state.layout.pending_projects`.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Path Params**:
         - `{upload_id}` (integer, required): The ID of the upload session
+
+- **List Main File Sections (Collaborative Text Contribution)**
+    - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project_name}/text/sections`
+    - **Description**: Returns numbered sections derived from the **selected main text file** for the project (from `uploads.state.file_roles[project_name].main_file`). Intended for selecting which parts of the document the user contributed to.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project_name}` (string, required): The project name
+    - **Query Params**:
+        - `max_section_chars` (integer, optional): Truncates each section’s `content` to this many characters.
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `MainFileSectionsDTO`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "project_name": "MockProject",
+                "main_file": "mock_projects/MockProject/main_report.txt",
+                "sections": [
+                    {
+                        "id": 1,
+                        "title": "Introduction",
+                        "preview": "This report describes…",
+                        "content": "This report describes…",
+                        "is_truncated": false
+                    }
+                ]
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `409 Conflict` if the main file is not selected yet for this project
+        - `404 Not Found` if the main file is missing on disk
+        - `422 Unprocessable Entity` if the main file cannot be extracted or is empty
+
+- **Set Main File Contributed Sections (Collaborative Text Contribution)**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/text/sections`
+    - **Description**: Persists the section IDs the user contributed to into `uploads.state.contributions[project_name].main_section_ids`. IDs are validated against the server-derived section list and stored de-duplicated + sorted.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project_name}` (string, required): The project name
+    - **Request DTO**: `SetMainFileSectionsRequestDTO`
+    - **Request Body**:
+        ```json
+        {
+            "selected_section_ids": [1, 3, 5]
+        }
+        ```
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `UploadDTO`
+    - **Error Responses**:
+        - `422 Unprocessable Entity` if any section IDs are out of range
+        - `409 Conflict` if the main file is not selected yet for this project
+
+- **Set Supporting Text Files (Collaborative Text Contribution)**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/supporting-text-files`
+    - **Description**: Stores which **supporting TEXT files** the user contributed to (excluding the selected main file, and excluding `.csv` files).
+        - Writes to: `uploads.state.contributions[project_name].supporting_text_relpaths`
+        - Values are stored **deduplicated + sorted**
+    - **Auth**: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required)
+        - `{project_name}` (string, required)
+    - **Request Body**:
+        ```json
+        {
+        "relpaths": [
+            "text_projects_og/PlantGrowthStudy/reading_notes.txt",
+            "text_projects_og/PlantGrowthStudy/second_draft.docx"
+        ]
+        }
+        ```
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `UploadDTO`
+    - **Error Responses**:
+
+    - `409 Conflict` if upload is not in a file-picking step (e.g. not `needs_file_roles` / `needs_summaries`), or if main file is not selected yet (service guard)
+    - `422 Unprocessable Entity` if any relpath is unsafe (e.g. contains `..`) or if the list includes the main file or any `.csv`
+    - `404 Not Found` if any relpath does not exist for this project/upload
+
+
+- **Set Supporting CSV Files (Collaborative Text Contribution)**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/supporting-csv-files`
+    - **Description**: Stores which **CSV files** the user contributed to.
+        - Writes to: `uploads.state.contributions[project_name].supporting_csv_relpaths`
+        - Values are stored **deduplicated + sorted**
+    - **Auth**: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required)
+        - `{project_name}` (string, required)
+    - **Request Body**:
+        ```json
+        {
+        "relpaths": [
+            "text_projects_og/PlantGrowthStudy/plant_growth_data.csv",
+            "text_projects_og/PlantGrowthStudy/plant_growth_data2.csv"
+        ]
+        }
+        ```
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `UploadDTO`
+    - **Error Responses**:
+        - `409 Conflict` if upload is not in a file-picking step (e.g. not `needs_file_roles` / `needs_summaries`)
+        - `422 Unprocessable Entity` if any relpath is unsafe, or if any relpath is not a `.csv`
+        - `404 Not Found` if any relpath does not exist for this project/upload
 ---
 
 ## **GitHub Integration**
@@ -1297,6 +1408,25 @@ Example:
 - **DedupResolveRequestDTO**
   - `decisions` (object, required)  
     Allowed values: `"skip"`, `"new_project"`, `"new_version"`
+
+- **MainFileSectionDTO**
+    - `id` (int, required): 1-based section identifier
+    - `title` (string, required): Display title derived from header or preview
+    - `preview` (string, optional): Short snippet for scanning
+    - `content` (string, optional): Section text (may be truncated)
+    - `is_truncated` (boolean, required): True if `content` was truncated
+
+- **MainFileSectionsDTO**
+    - `project_name` (string, required)
+    - `main_file` (string, required): The selected main file relpath for the project
+    - `sections` (List[MainFileSectionDTO], required)
+
+- **SetMainFileSectionsRequestDTO**
+    - `selected_section_ids` (List[int], required): IDs from `MainFileSectionsDTO.sections[*].id`
+
+- **SupportingFilesRequest**
+    - `relpaths` (List[string], required): relpaths returned by `GET .../files`
+
 
 ### **Skills DTOs**
 
