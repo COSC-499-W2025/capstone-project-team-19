@@ -16,6 +16,7 @@ from .ranked_projects import view_ranked_projects
 from .project_dates import edit_project_dates_menu
 from .delete import delete_old_insights
 from .thumbnails import manage_project_thumbnails
+from .skill_highlighting import manage_skill_highlighting
 
 __all__ = [
     "show_start_menu",
@@ -30,4 +31,5 @@ __all__ = [
     "edit_project_dates_menu",
     "delete_old_insights",
     "manage_project_thumbnails",
+    "manage_skill_highlighting",
 ]
