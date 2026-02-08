@@ -6,9 +6,9 @@ from src.menu.display import show_start_menu
 class TestShowStartMenu:
     """Tests for the main menu display functionality."""
 
-    @pytest.mark.parametrize("choice", [str(i) for i in range(1, 12)])
+    @pytest.mark.parametrize("choice", [str(i) for i in range(1, 14)])
     def test_valid_menu_choices(self, choice):
-        """Test that valid menu choices (1-11) are accepted and returned as integers."""
+        """Test that valid menu choices (1-13) are accepted and returned as integers."""
         username = "testuser"
 
         with patch("builtins.input", return_value=choice):
@@ -17,7 +17,7 @@ class TestShowStartMenu:
 
     @pytest.mark.parametrize("invalid_input,valid_input", [
         ("0", "1"),    # Number out of range (too low)
-        ("13", "2"),   # Number out of range (too high)
+        ("14", "2"),   # Number out of range (too high)
         ("99", "3"),   # Number out of range (way too high)
         ("-1", "4"),   # Negative number
     ])
@@ -94,7 +94,8 @@ class TestShowStartMenu:
             "9. Edit project dates",
             "10. Manage project thumbnails",
             "11. View all projects",
-            "12. Exit",
+            "12. Manage skill highlighting",
+            "13. Exit",
         ]
 
         with patch("builtins.input", return_value="1"):
