@@ -133,6 +133,12 @@ def run_deduplication_for_projects_api(
                 "project_key": pk,
                 "version_key": result.get("version_key"),
                 "existing_name": existing,
+                "warning": (
+                    "A project with this name already exists. This upload was stored as a new version. "
+                    "If you intended a separate project, rename it before uploading."
+                )
+                if result.get("forced_by_name")
+                else None,
             }
 
         elif kind == "ask":

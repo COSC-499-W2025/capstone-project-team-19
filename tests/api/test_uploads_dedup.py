@@ -150,3 +150,35 @@ def test_upload_loose_match_may_trigger_needs_dedup_and_resolve_endpoint_behaves
 
     _cleanup_upload_artifacts(state1)
     _cleanup_upload_artifacts(state2)
+
+
+def test_upload_same_project_name_stores_new_version_and_warns(client, auth_headers):
+    # Baseline upload: ProjA
+    zip1 = _make_zip_bytes({"ProjA/a.txt": "alpha"})
+    res1 = client.post(
+        "/projects/upload",
+        headers=auth_headers,
+        files={"file": ("base.zip", zip1, "application/zip")},
+    )
+    assert res1.status_code == 200
+    upload1 = _advance_past_blocks(client, auth_headers, res1.json()["data"])
+    state1 = upload1.get("state") or {}
+
+    # Second upload with same name but different contents
+    zip2 = _make_zip_bytes({"ProjA/b.txt": "beta"})
+    res2 = client.post(
+        "/projects/upload",
+        headers=auth_headers,
+        files={"file": ("variant.zip", zip2, "application/zip")},
+    )
+    assert res2.status_code == 200
+    upload2 = res2.json()["data"]
+    state2 = upload2.get("state") or {}
+
+    # Should warn users that same-name becomes version
+    warnings = state2.get("dedup_warnings") or {}
+    assert "ProjA" in warnings
+    assert "rename" in (warnings["ProjA"] or "").lower()
+
+    _cleanup_upload_artifacts(state1)
+    _cleanup_upload_artifacts(state2)
