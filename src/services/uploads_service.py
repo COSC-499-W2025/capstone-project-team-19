@@ -443,9 +443,18 @@ def submit_classifications(conn: sqlite3.Connection, user_id: int, upload_id: in
     projects = set(assignments.keys())
     type_result = infer_project_types_from_index(projects, index)
 
+    # Persist auto-detected types on canonical `projects` rows.
+    auto_types = type_result["auto_types"]
+    for project_name, ptype in auto_types.items():
+        pk = project_keys.get(project_name)
+        if not isinstance(pk, int):
+            pk = get_project_key(conn, user_id, project_name)
+        if isinstance(pk, int):
+            update_project_metadata(conn, pk, project_type=ptype)
+
     patch = {
         "classifications": assignments,
-        "project_types_auto": type_result["auto_types"],
+        "project_types_auto": auto_types,
         "project_types_mixed": type_result["mixed_projects"],
         "project_types_unknown": type_result["unknown_projects"],
     }
