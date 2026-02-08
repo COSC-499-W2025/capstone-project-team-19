@@ -78,19 +78,33 @@ def upsert_skill_preference(
             (user_id, context, context_id, skill_name, int(is_highlighted), display_order)
         )
     else:
-        conn.execute(
+        cursor = conn.execute(
             """
-            INSERT INTO user_skill_preferences
-                (user_id, context, context_id, skill_name, is_highlighted, display_order, updated_at)
-            VALUES (?, ?, NULL, ?, ?, ?, datetime('now'))
-            ON CONFLICT(user_id, context, context_id, skill_name)
-            DO UPDATE SET
-                is_highlighted = excluded.is_highlighted,
-                display_order = excluded.display_order,
-                updated_at = datetime('now')
+            SELECT id FROM user_skill_preferences
+            WHERE user_id = ? AND context = ? AND context_id IS NULL AND skill_name = ?
             """,
-            (user_id, context, skill_name, int(is_highlighted), display_order)
+            (user_id, context, skill_name)
         )
+        existing = cursor.fetchone()
+
+        if existing:
+            conn.execute(
+                """
+                UPDATE user_skill_preferences
+                SET is_highlighted = ?, display_order = ?, updated_at = datetime('now')
+                WHERE id = ?
+                """,
+                (int(is_highlighted), display_order, existing[0])
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO user_skill_preferences
+                    (user_id, context, context_id, skill_name, is_highlighted, display_order, updated_at)
+                VALUES (?, ?, NULL, ?, ?, ?, datetime('now'))
+                """,
+                (user_id, context, skill_name, int(is_highlighted), display_order)
+            )
     conn.commit()
 
 
