@@ -15,7 +15,7 @@ import warnings
 warnings.filterwarnings("ignore", message="Duplicate name:")
 # This is just to silence the warning in unit test (system doesn't know that we purposefully created a duplicate file for testing)
 
-from src.db import connect, store_parsed_files, get_or_create_user
+from src.db import connect, store_parsed_files, get_or_create_user, get_or_create_version_key_for_project
 
 CURR_DIR = os.path.dirname(os.path.abspath(__file__)) # Gives the location of the script itself, not where user is running the command from
 REPO_ROOT = os.path.abspath(os.path.join(CURR_DIR, "..")) # Moves up one level into main repository directory
@@ -97,6 +97,15 @@ def parse_zip_file(zip_path, user_id: int | None = None, conn=None, *, persist_t
 
         if user_id is None:
             user_id = get_or_create_user(conn, "local-user")
+
+        # Attach version_key so store_parsed_files can persist to files (versioned table)
+        project_names = {f.get("project_name") for f in files_info if f.get("file_type") != "config" and f.get("project_name")}
+        for pn in project_names:
+            vk = get_or_create_version_key_for_project(conn, user_id, pn)
+            if vk is not None:
+                for f in files_info:
+                    if f.get("project_name") == pn and f.get("file_type") != "config":
+                        f["version_key"] = vk
 
         store_parsed_files(conn, files_info, user_id)
 

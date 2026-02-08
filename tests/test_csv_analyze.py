@@ -32,7 +32,8 @@ def test_mixed_datatypes():
     result = ca.analyze_single_csv(df)
 
     assert result["col_count"] == 2
-    assert result["dtypes"]["Text"] == "object"
+    # pandas may report string columns as "object" (older) or "str" (newer / StringDtype)
+    assert result["dtypes"]["Text"] in ("object", "str")
     assert result["dtypes"]["Num"] in ["int64", "float64"]
 
 

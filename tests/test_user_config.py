@@ -274,10 +274,10 @@ def test_project_classifications_are_recorded(monkeypatch):
     user_id = get_or_create_user(conn, "jess")
     rows = conn.execute(
         """
-        SELECT project_name, classification
-        FROM project_classifications
+        SELECT display_name, classification
+        FROM projects
         WHERE user_id=?
-        ORDER BY project_name
+        ORDER BY display_name
         """,
         (user_id,),
     ).fetchall()

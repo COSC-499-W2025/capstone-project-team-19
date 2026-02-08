@@ -45,15 +45,20 @@ def resolve_repo_for_project(
         row = conn.execute(
             """
             SELECT 1
-            FROM project_classifications
-            WHERE user_id      = ?
-              AND zip_name     = ?
-              AND project_name = ?
-              AND project_type = 'code'
-              AND classification = 'collaborative'
+            FROM projects p
+            JOIN project_versions pv
+              ON pv.project_key = p.project_key
+            LEFT JOIN uploads u
+              ON u.upload_id = pv.upload_id
+            WHERE p.user_id = ?
+              AND p.display_name = ?
+              AND p.project_type = 'code'
+              AND p.classification = 'collaborative'
+              AND u.zip_name = ?
+            ORDER BY pv.version_key DESC
             LIMIT 1
             """,
-            (user_id, zip_name, project_name),
+            (user_id, project_name, zip_name),
         ).fetchone()
     except Exception:
         row = None

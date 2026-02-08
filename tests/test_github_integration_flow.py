@@ -21,10 +21,10 @@ def conn():
         CREATE TABLE github_repo_metrics (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
-            project_name TEXT NOT NULL,
+            project_key INTEGER NOT NULL,
             repo_owner TEXT NOT NULL,
             repo_name TEXT NOT NULL,
-            
+
             total_commits INTEGER,
             commit_days INTEGER,
             first_commit_date TEXT,
@@ -45,15 +45,23 @@ def conn():
             team_total_deletions INTEGER,
 
             last_synced TEXT DEFAULT (datetime('now')),
-            
-            UNIQUE(user_id, project_name, repo_owner, repo_name)
+
+            UNIQUE(user_id, project_key, repo_owner, repo_name)
         );
     """)
 
     conn.execute("""
+        CREATE TABLE projects (
+            project_key INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            display_name TEXT NOT NULL
+        )
+    """)
+    conn.execute("INSERT INTO projects (user_id, display_name) VALUES (?, ?)", (USER, PROJ))
+    conn.execute("""
         CREATE TABLE project_repos (
             user_id TEXT,
-            project_name TEXT,
+            project_key INTEGER NOT NULL,
             provider TEXT,
             repo_owner TEXT,
             repo_name TEXT,
@@ -62,11 +70,18 @@ def conn():
     """)
     return conn
 
+
 # Helpers
 def insert_repo(conn, user=USER, proj=PROJ, owner=OWNER, repo=REPO):
-    conn.execute("""
-        INSERT INTO project_repos VALUES (?, ?, 'github', ?, ?, ?)
-    """, (user, proj, owner, repo, f"{owner}/{repo}"))
+    row = conn.execute(
+        "SELECT project_key FROM projects WHERE user_id=? AND display_name=?",
+        (user, proj),
+    ).fetchone()
+    pk = row[0] if row else 1
+    conn.execute(
+        "INSERT INTO project_repos (user_id, project_key, provider, repo_owner, repo_name, repo_url) VALUES (?, ?, 'github', ?, ?, ?)",
+        (user, pk, owner, repo, f"{owner}/{repo}"),
+    )
 
 def mock_metrics(monkeypatch, commits=2, issues=3, prs=1, contrib=5):
     monkeypatch.setattr(

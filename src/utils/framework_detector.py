@@ -191,6 +191,12 @@ def detect_frameworks(conn, project_name, user_id, zip_path):
     Detect frameworks used in a project by scanning config files.
     Returns a set of framework names.
     """
+    from src.db import get_project_key
+
+    project_key = get_project_key(conn, user_id, project_name)
+    if project_key is None:
+        return set()
+
     # Use the analysis/zip_data path (used in parsing.py)
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
@@ -199,12 +205,12 @@ def detect_frameworks(conn, project_name, user_id, zip_path):
     cur = conn.cursor()
     frameworks = set()
 
-    # Fetch all config files for this project & user
+    # Fetch all config files for this project & user (by project_key)
     cur.execute("""
         SELECT file_path
         FROM config_files
-        WHERE project_name = ? AND user_id = ?
-    """, (project_name, user_id))
+        WHERE user_id = ? AND project_key = ?
+    """, (user_id, project_key))
 
     files = cur.fetchall()
     if not files:

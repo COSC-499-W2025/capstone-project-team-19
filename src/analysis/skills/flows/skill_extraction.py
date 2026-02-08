@@ -8,7 +8,7 @@ This file must:
 
 import sqlite3
 import os
-from src.db import get_project_metadata, has_contribution_data, get_user_contributed_files
+from src.db import get_project_metadata, get_latest_version_key, has_contribution_data, get_user_contributed_files
 from src.utils.helpers import _fetch_files
 from src.analysis.skills.flows.code_skill_extraction import extract_code_skills
 try:
@@ -28,7 +28,9 @@ def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
         print(f"[SKILLS] Cannot extract skills for '{project_name}' (missing metadata).")
         return
 
-    files = _fetch_files(conn, user_id, project_name, only_text=(project_type == "text"))
+    # Scope to the latest version so timelines/skills don't mix snapshots.
+    vk = get_latest_version_key(conn, user_id, project_name)
+    files = _fetch_files(conn, user_id, project_name, only_text=(project_type == "text"), version_key=vk)
     if not files:
         print(f"[SKILLS] No files found for '{project_name}'. Skipping skill extraction.")
         return

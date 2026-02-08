@@ -1,79 +1,66 @@
 """
 src/db/files.py
 
-User-uploaded file database operations:
- - Handles retrieval of file metadata such as project_name and file_type.
+User-uploaded file database operations.
+Files are versioned only: query by version_key (resolve project_name -> version_key via projects.py).
 """
 
-
 import sqlite3
-from typing import List, Tuple
+from typing import List, Tuple, Optional
+
+from .projects import get_latest_version_key, get_version_keys_for_project
 
 
 def get_files_for_user(conn: sqlite3.Connection, user_id: int) -> List[Tuple[str, str]]:
     """
-    Return all (project_name, file_type) pairs for files that belong to a given user
-    and have a non-null project_name.
+    Return all (project_display_name, file_type) pairs for files that belong to a given user.
+    Derives project name via files -> project_versions -> projects.
     """
     rows = conn.execute("""
-        SELECT project_name, file_type
-        FROM files
-        WHERE user_id = ? AND project_name IS NOT NULL
+        SELECT DISTINCT p.display_name, f.file_type
+        FROM files f
+        JOIN project_versions pv ON f.version_key = pv.version_key
+        JOIN projects p ON pv.project_key = p.project_key
+        WHERE f.user_id = ?
     """, (user_id,)).fetchall()
-
     return rows
 
 
-def get_recent_file_paths_for_project(conn, project_name, limit=200):
-    """
-    Return up to `limit` file paths for a given project_name,
-    ordered by modified timestamp (newest first).
-    """
+def get_recent_file_paths_for_version(conn, user_id: int, version_key: int, limit: int = 200):
+    """File paths for a version, newest first. Prefer when you already have version_key."""
     rows = conn.execute("""
-        SELECT DISTINCT file_path
-        FROM files
-        WHERE project_name = ?
-        ORDER BY modified DESC
-        LIMIT ?
-    """, (project_name, limit)).fetchall()
-
+        SELECT DISTINCT file_path FROM files
+        WHERE user_id = ? AND version_key = ?
+        ORDER BY modified DESC LIMIT ?
+    """, (user_id, version_key, limit)).fetchall()
     return [r[0] for r in rows if r and r[0]]
 
 
-def get_code_files_for_project(conn, user_id: int, project_name: str):
-    """
-    Return all (file_name, file_path) pairs for code files
-    belonging to a user + project_name.
-    """
-    rows = conn.execute("""
-        SELECT file_name, file_path
-        FROM files
-        WHERE user_id = ? AND project_name = ? AND file_type = 'code'
-    """, (user_id, project_name)).fetchall()
+def get_recent_file_paths_for_project(conn, user_id: int, project_name: str, limit: int = 200):
+    """Latest version only; resolve project_name -> version_key then call get_recent_file_paths_for_version."""
+    vk = get_latest_version_key(conn, user_id, project_name)
+    return get_recent_file_paths_for_version(conn, user_id, vk, limit) if vk else []
 
-    return rows
+
+def get_code_files_for_version(conn, user_id: int, version_key: int):
+    """(file_name, file_path) for code files in this version. Prefer when you have version_key."""
+    return conn.execute("""
+        SELECT file_name, file_path FROM files
+        WHERE user_id = ? AND version_key = ? AND file_type = 'code'
+    """, (user_id, version_key)).fetchall()
+
+
+def get_code_files_for_project(conn, user_id: int, project_name: str):
+    """Latest version only; resolve then get_code_files_for_version."""
+    vk = get_latest_version_key(conn, user_id, project_name)
+    return get_code_files_for_version(conn, user_id, vk) if vk else []
+
 
 def get_files_for_project(conn, user_id: int, project_name: str, only_text: bool = False):
-    """
-    Return a list of dicts with file metadata for a given project:
-        [{'file_name', 'file_type', 'file_path'}, ...]
-    """
-    query = """
-        SELECT file_name, file_type, file_path
-        FROM files
-        WHERE user_id = ? AND project_name = ?
-    """
-    params = [user_id, project_name]
+    """Latest version only; resolve then get_files_for_version."""
+    vk = get_latest_version_key(conn, user_id, project_name)
+    return get_files_for_version(conn, user_id, vk, only_text) if vk else []
 
-    if only_text:
-        query += " AND file_type = 'text'"
-
-    rows = conn.execute(query, params).fetchall()
-
-    return [
-        {"file_name": r[0], "file_type": r[1], "file_path": r[2]}
-        for r in rows
-    ]
 
 def get_file_extension_by_path(conn, user_id: int, file_path: str):
     """
@@ -84,8 +71,8 @@ def get_file_extension_by_path(conn, user_id: int, file_path: str):
         FROM files
         WHERE user_id = ? AND file_path = ?
     """, (user_id, file_path)).fetchone()
-
     return row[0] if row else None
+
 
 def find_file_extension_by_basename(conn, user_id: int, basename: str):
     """
@@ -96,57 +83,79 @@ def find_file_extension_by_basename(conn, user_id: int, basename: str):
         FROM files
         WHERE user_id = ? AND file_path LIKE ?
     """, (user_id, f"%{basename}%")).fetchone()
-
     return row[0] if row else None
 
-def get_code_extensions_for_project(conn, project_name: str):
-    """
-    Return a list of file extensions for code files belonging to a project.
-    """
-    rows = conn.execute("""
-        SELECT extension
-        FROM files
-        WHERE project_name = ? AND file_type = 'code'
-    """, (project_name,)).fetchall()
 
+def get_code_extensions_for_version(conn, user_id: int, version_key: int):
+    """Extensions for code files in this version. Prefer when you have version_key."""
+    rows = conn.execute("""
+        SELECT extension FROM files
+        WHERE user_id = ? AND version_key = ? AND file_type = 'code'
+    """, (user_id, version_key)).fetchall()
     return [r[0] for r in rows if r and r[0]]
+
+
+def get_code_extensions_for_project(conn, user_id: int, project_name: str):
+    """Latest version only; resolve then get_code_extensions_for_version."""
+    vk = get_latest_version_key(conn, user_id, project_name)
+    return get_code_extensions_for_version(conn, user_id, vk) if vk else []
+
 
 def delete_files_for_project(conn, user_id: int, project_name: str):
     """
-    Delete all files for a specific user + project_name.
+    Delete all files for the given user + project_name (all versions of that project).
     """
-    conn.execute("""
-        DELETE FROM files
-        WHERE user_id = ? AND project_name = ?
-    """, (user_id, project_name))
+    version_keys = get_version_keys_for_project(conn, user_id, project_name)
+    if not version_keys:
+        return
+    placeholders = ",".join("?" * len(version_keys))
+    conn.execute(
+        f"DELETE FROM files WHERE user_id = ? AND version_key IN ({placeholders})",
+        (user_id, *version_keys),
+    )
 
-def get_files_with_timestamps(conn, user_id: int, project_name: str, version_key: int | None = None):
+
+def get_files_with_timestamps_for_version(conn, user_id: int, version_key: int):
+    """Files with timestamps for this version. Prefer when you have version_key."""
+    if conn is None:
+        return []
+    rows = conn.execute("""
+        SELECT file_name, file_path, created, modified, file_type
+        FROM files WHERE user_id = ? AND version_key = ?
+        ORDER BY modified ASC
+    """, (user_id, version_key)).fetchall()
+    return [
+        {"file_name": r[0], "file_path": r[1], "created": r[2], "modified": r[3], "file_type": r[4]}
+        for r in rows
+    ]
+
+
+def get_files_with_timestamps(conn, user_id: int, project_name: str, version_key: Optional[int] = None):
     """
-    Fetch files for a project with their timestamps.
-    Returns a list of dicts with file_name, file_path, created, modified, and file_type.
+    Fetch files with timestamps. Pass version_key when you have it; else resolves project_name.
     """
     if conn is None:
         return []
+    if version_key is None:
+        version_key = get_latest_version_key(conn, user_id, project_name)
+    return get_files_with_timestamps_for_version(conn, user_id, version_key) if version_key is not None else []
 
-    query = """
-        SELECT file_name, file_path, created, modified, file_type
-        FROM files
-        WHERE user_id = ? AND project_name = ?
+
+def get_files_for_version(conn, user_id: int, version_key: int, only_text: bool = False):
     """
-    params: list[object] = [user_id, project_name]
-    if version_key is not None:
-        query += " AND version_key = ?"
-        params.append(version_key)
-    query += " ORDER BY modified ASC"
-
+    Return file metadata for a specific version_key.
+    [{'file_name', 'file_type', 'file_path'}, ...]
+    """
+    query = """
+        SELECT file_name, file_type, file_path
+        FROM files
+        WHERE user_id = ? AND version_key = ?
+    """
+    params: list = [user_id, version_key]
+    if only_text:
+        query += " AND file_type = 'text'"
     rows = conn.execute(query, params).fetchall()
     return [
-        {
-            'file_name': r[0],
-            'file_path': r[1],
-            'created': r[2],
-            'modified': r[3],
-            'file_type': r[4]
-        }
+        {"file_name": r[0], "file_type": r[1], "file_path": r[2]}
         for r in rows
     ]

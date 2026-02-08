@@ -16,49 +16,60 @@ def setup_in_memory_db():
         CREATE TABLE files (
             file_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
+            version_key INTEGER NOT NULL,
             file_name TEXT,
             file_path TEXT,
-            file_type TEXT,
-            project_name TEXT
+            file_type TEXT
         );
     """)
     conn.execute("""
-        CREATE TABLE project_classifications (
-            classification_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE projects (
+            project_key INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            project_name TEXT NOT NULL,
+            display_name TEXT NOT NULL,
             classification TEXT,
-            project_type TEXT,
-            recorded_at TEXT
+            project_type TEXT
+        );
+    """)
+    conn.execute("""
+        CREATE TABLE project_versions (
+            version_key INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_key INTEGER NOT NULL,
+            upload_id INTEGER,
+            fingerprint_strict TEXT NOT NULL,
+            fingerprint_loose TEXT,
+            created_at TEXT
         );
     """)
     conn.execute("""
         CREATE TABLE project_summaries (
+            project_summary_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            project_name TEXT NOT NULL,
+            project_key INTEGER NOT NULL,
             project_type TEXT,
             project_mode TEXT,
             summary_json TEXT,
             created_at TEXT,
-            PRIMARY KEY (user_id, project_name)
+            UNIQUE (user_id, project_key)
         );
     """)
     conn.execute("""
         CREATE TABLE project_skills (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            project_name TEXT NOT NULL,
+            project_key INTEGER NOT NULL,
             skill_name TEXT NOT NULL,
             level TEXT NOT NULL,
             score REAL NOT NULL,
             evidence_json TEXT,
-            UNIQUE(user_id, project_name, skill_name)
+            UNIQUE(user_id, project_key, skill_name)
         );
     """)
+    # Minimal tables needed by send_to_analysis() loaders
     conn.execute("""
         CREATE TABLE non_llm_text (
             metrics_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            classification_id INTEGER UNIQUE NOT NULL,
+            version_key INTEGER UNIQUE NOT NULL,
             doc_count INTEGER,
             total_words INTEGER,
             reading_level_avg REAL,
@@ -66,13 +77,13 @@ def setup_in_memory_db():
             keywords_json TEXT,
             summary_json TEXT,
             csv_metadata TEXT,
-            generated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            generated_at TEXT
         );
     """)
     conn.execute("""
         CREATE TABLE text_activity_contribution (
             activity_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            classification_id INTEGER NOT NULL,
+            version_key INTEGER UNIQUE NOT NULL,
             start_date TEXT,
             end_date TEXT,
             duration_days INTEGER,
@@ -81,31 +92,55 @@ def setup_in_memory_db():
             activity_classification_json TEXT,
             timeline_json TEXT,
             activity_counts_json TEXT,
-            generated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            generated_at TEXT
         );
     """)
     return conn
 
 
 def insert_file(conn, user_id, project_name, file_type):
+    vk = conn.execute(
+        """
+        SELECT pv.version_key FROM project_versions pv
+        JOIN projects p ON pv.project_key = p.project_key
+        WHERE p.user_id = ? AND p.display_name = ?
+        ORDER BY pv.version_key DESC LIMIT 1
+        """,
+        (user_id, project_name),
+    ).fetchone()
+    if not vk:
+        raise ValueError(f"No version for project {project_name}")
     conn.execute(
-        "INSERT INTO files (user_id, file_name, file_type, project_name) VALUES (?, ?, ?, ?)",
-        (user_id, f"{project_name}.{file_type}", file_type, project_name),
+        "INSERT INTO files (user_id, version_key, file_name, file_type) VALUES (?, ?, ?, ?)",
+        (user_id, vk[0], f"{project_name}.{file_type}", file_type),
     )
 
 
 def insert_classification(conn, user_id, project_name, classification, project_type=None):
-    conn.execute(
-        "INSERT INTO project_classifications (user_id, project_name, classification, project_type, recorded_at) VALUES (?, ?, ?, ?, ?)",
-        (user_id, project_name, classification, project_type, datetime.now().isoformat()),
+    cur = conn.execute(
+        """
+        INSERT INTO projects (user_id, display_name, classification, project_type)
+        VALUES (?, ?, ?, ?)
+        """,
+        (user_id, project_name, classification, project_type),
     )
+    project_key = cur.lastrowid
+    # Seed a "latest version" so get_classification_id() (now version_key) works.
+    conn.execute(
+        """
+        INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose, created_at)
+        VALUES (?, NULL, ?, ?, ?)
+        """,
+        (project_key, f"{project_name}_strict_fp", f"{project_name}_loose_fp", datetime.now().isoformat()),
+    )
+    conn.commit()
 
 def test_detect_project_type_auto_code_only_writes_and_returns():
     conn = setup_in_memory_db()
     user_id = 1
 
-    insert_file(conn, user_id, "projA", "code")
     insert_classification(conn, user_id, "projA", "individual")
+    insert_file(conn, user_id, "projA", "code")
 
     result = detect_project_type_auto(conn, user_id, {"projA": "individual"})
 
@@ -114,7 +149,7 @@ def test_detect_project_type_auto_code_only_writes_and_returns():
     assert result["unknown_projects"] == []
 
     db_type = conn.execute(
-        "SELECT project_type FROM project_classifications WHERE project_name='projA'"
+        "SELECT project_type FROM projects WHERE display_name='projA'"
     ).fetchone()[0]
     assert db_type == "code"
 
@@ -123,8 +158,8 @@ def test_detect_project_type_auto_text_only_writes_and_returns():
     conn = setup_in_memory_db()
     user_id = 1
 
-    insert_file(conn, user_id, "projB", "text")
     insert_classification(conn, user_id, "projB", "collaborative")
+    insert_file(conn, user_id, "projB", "text")
 
     result = detect_project_type_auto(conn, user_id, {"projB": "collaborative"})
 
@@ -133,7 +168,7 @@ def test_detect_project_type_auto_text_only_writes_and_returns():
     assert result["unknown_projects"] == []
 
     db_type = conn.execute(
-        "SELECT project_type FROM project_classifications WHERE project_name='projB'"
+        "SELECT project_type FROM projects WHERE display_name='projB'"
     ).fetchone()[0]
     assert db_type == "text"
 
@@ -151,7 +186,7 @@ def test_detect_project_type_auto_unknown_project_keeps_null_and_reports_unknown
     assert result["unknown_projects"] == ["projC"]
 
     db_type = conn.execute(
-        "SELECT project_type FROM project_classifications WHERE project_name='projC'"
+        "SELECT project_type FROM projects WHERE display_name='projC'"
     ).fetchone()[0]
     assert db_type is None
 
@@ -160,9 +195,9 @@ def test_detect_project_type_auto_mixed_project_is_returned_and_not_written():
     conn = setup_in_memory_db()
     user_id = 1
 
+    insert_classification(conn, user_id, "projD", "collaborative")
     insert_file(conn, user_id, "projD", "code")
     insert_file(conn, user_id, "projD", "text")
-    insert_classification(conn, user_id, "projD", "collaborative")
 
     result = detect_project_type_auto(conn, user_id, {"projD": "collaborative"})
 
@@ -171,7 +206,7 @@ def test_detect_project_type_auto_mixed_project_is_returned_and_not_written():
     assert result["unknown_projects"] == []
 
     db_type = conn.execute(
-        "SELECT project_type FROM project_classifications WHERE project_name='projD'"
+        "SELECT project_type FROM projects WHERE display_name='projD'"
     ).fetchone()[0]
     assert db_type is None
 
@@ -183,8 +218,8 @@ def test_detect_project_type_auto_never_prompts(monkeypatch):
     conn = setup_in_memory_db()
     user_id = 1
 
-    insert_file(conn, user_id, "projA", "code")
     insert_classification(conn, user_id, "projA", "individual")
+    insert_file(conn, user_id, "projA", "code")
 
     def _boom(*args, **kwargs):
         raise AssertionError("input() should not be called in detect_project_type_auto")
@@ -198,8 +233,8 @@ def test_detect_project_type_wrapper_does_not_prompt_for_unambiguous(monkeypatch
     conn = setup_in_memory_db()
     user_id = 1
 
-    insert_file(conn, user_id, "projA", "code")
     insert_classification(conn, user_id, "projA", "individual")
+    insert_file(conn, user_id, "projA", "code")
 
     def _boom(*args, **kwargs):
         raise AssertionError("input() should not be called for unambiguous projects")
@@ -209,7 +244,7 @@ def test_detect_project_type_wrapper_does_not_prompt_for_unambiguous(monkeypatch
     detect_project_type(conn, user_id, {"projA": "individual"})
 
     db_type = conn.execute(
-        "SELECT project_type FROM project_classifications WHERE project_name='projA'"
+        "SELECT project_type FROM projects WHERE display_name='projA'"
     ).fetchone()[0]
     assert db_type == "code"
 
@@ -218,16 +253,16 @@ def test_mixed_files_prompts_user(monkeypatch):
     conn = setup_in_memory_db()
     user_id = 1
 
+    insert_classification(conn, user_id, "projD", "collaborative")
     insert_file(conn, user_id, "projD", "code")
     insert_file(conn, user_id, "projD", "text")
-    insert_classification(conn, user_id, "projD", "collaborative")
 
     monkeypatch.setattr("builtins.input", lambda _: "c")
 
     detect_project_type(conn, user_id, {"projD": "collaborative"})
 
     result = conn.execute(
-        "SELECT project_type FROM project_classifications WHERE project_name='projD'"
+        "SELECT project_type FROM projects WHERE display_name='projD'"
     ).fetchone()[0]
     assert result == "code"
 
@@ -241,7 +276,7 @@ def test_no_files_defaults_to_null():
     detect_project_type(conn, user_id, {"projC": "individual"})
 
     db_type = conn.execute(
-        "SELECT project_type FROM project_classifications WHERE project_name='projC'"
+        "SELECT project_type FROM projects WHERE display_name='projC'"
     ).fetchone()[0]
     assert db_type is None
 

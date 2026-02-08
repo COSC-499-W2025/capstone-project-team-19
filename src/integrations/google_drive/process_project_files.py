@@ -14,6 +14,10 @@ ENABLE_REVISION_HISTORY = False
 
 def process_project_files(conn: sqlite3.Connection, creds, drive_service, docs_service, user_id: int, project_name: str, user_email: str, user_display_name: str = None):
     """ Process all linked Google Drive files for a given text project."""
+    project_key = db.get_project_key(conn, user_id, project_name)
+    if project_key is None:
+        return {"status": "failed", "error": f"Project not found: {project_name}"}
+
     files = db.get_project_drive_files(conn, user_id, project_name)
 
     doc_file_ids = []  # Collect only Google Docs file IDs for collaboration analysis
@@ -69,7 +73,7 @@ def process_project_files(conn: sqlite3.Connection, creds, drive_service, docs_s
         total_words = sum(rev.get("word_count", 0) for rev in result.get("revisions", []))
         summary_entry = {
             "user_id": user_id,
-            "project_name": project_name,
+            "project_key": project_key,
             "drive_file_id": file_id,
             "user_revision_count": result.get("revision_count", 0),
             "total_word_count": total_words,

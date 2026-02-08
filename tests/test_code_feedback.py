@@ -21,13 +21,29 @@ def conn(tmp_path: Path):
     db.execute("INSERT INTO users (username) VALUES (?)", ("testuser",))
     user_id = db.execute("SELECT user_id FROM users WHERE username=?", ("testuser",)).fetchone()[0]
 
+    # Minimal project/version rows (project_classifications table was removed).
+    upload_id = db.execute(
+        """
+        INSERT INTO uploads (user_id, zip_name, zip_path, status, state_json, created_at, updated_at)
+        VALUES (?, ?, ?, 'done', '{}', datetime('now'), datetime('now'))
+        """,
+        (user_id, "zip_test", "/tmp/fake.zip"),
+    ).lastrowid
+
+    project_key = db.execute(
+        """
+        INSERT INTO projects (user_id, display_name, classification, project_type)
+        VALUES (?, ?, ?, ?)
+        """,
+        (user_id, "proj", "individual", "code"),
+    ).lastrowid
+
     db.execute(
         """
-        INSERT INTO project_classifications
-            (user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at)
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose)
+        VALUES (?, ?, ?, ?)
         """,
-        (user_id, "/tmp/fake.zip", "zip_test", "proj", "individual", "code"),
+        (project_key, upload_id, "strict_fp", "loose_fp"),
     )
     db.commit()
 
@@ -107,15 +123,23 @@ def patch_detectors_and_buckets(monkeypatch):
     )
 
 
-def _fetch_feedback(conn, user_id, project_name):
+def _proj_key(conn, user_id):
+    row = conn.execute(
+        "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
+        (user_id, "proj"),
+    ).fetchone()
+    return row[0] if row else None
+
+
+def _fetch_feedback(conn, user_id, project_key):
     rows = conn.execute(
         """
         SELECT skill_name, criterion_key, criterion_label, expected, observed_json, suggestion
         FROM project_feedback
-        WHERE user_id=? AND project_name=?
+        WHERE user_id=? AND project_key=?
         ORDER BY skill_name, criterion_key
         """,
-        (user_id, project_name),
+        (user_id, project_key),
     ).fetchall()
     return [dict(r) for r in rows]
 
@@ -134,7 +158,7 @@ def test_expected_feedback_when_no_code_file(conn, user_id, monkeypatch):
 
     cse.extract_code_skills(conn, user_id, "proj", "individual", files)
 
-    fb = _fetch_feedback(conn, user_id, "proj")
+    fb = _fetch_feedback(conn, user_id, _proj_key(conn, user_id))
     assert len(fb) == 1
     assert fb[0]["criterion_key"] == "code.no_code_files"
     assert fb[0]["skill_name"] == "general"
@@ -158,7 +182,7 @@ def test_expected_feedback_when_unmet_criteria_for_caching_serialization_hashmap
     files = [{"file_name": "a.py", "file_path": "a.py"}]
     cse.extract_code_skills(conn, user_id, "proj", "individual", files)
 
-    fb = _fetch_feedback(conn, user_id, "proj")
+    fb = _fetch_feedback(conn, user_id, _proj_key(conn, user_id))
 
     # Should emit unmet positive criteria (hash_maps, serialization, caching).
     # detect_duplicate_code is negative-weight, but it's not present, so no feedback for it.
@@ -198,7 +222,7 @@ def test_expected_feedback_when_project_score_is_100(
     files = [{"file_name": "a.py", "file_path": "a.py"}]
     cse.extract_code_skills(conn, user_id, "proj", "individual", files)
 
-    fb = _fetch_feedback(conn, user_id, "proj")
+    fb = _fetch_feedback(conn, user_id, _proj_key(conn, user_id))
     assert fb == []
 
 
@@ -230,7 +254,7 @@ def test_expected_feedback_when_negative_weight_detector_is_present(
     files = [{"file_name": "a.py", "file_path": "a.py"}]
     cse.extract_code_skills(conn, user_id, "proj", "individual", files)
 
-    fb = _fetch_feedback(conn, user_id, "proj")
+    fb = _fetch_feedback(conn, user_id, _proj_key(conn, user_id))
     keys = {r["criterion_key"] for r in fb}
 
     # Negative detector should emit feedback when it hits

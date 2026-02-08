@@ -7,7 +7,7 @@ import json
 # TEXT ANALYSIS imports
 from src.analysis.text_individual.text_analyze import run_text_pipeline
 from src.analysis.text_individual.csv_analyze import analyze_all_csv
-from src.db import get_classification_id, get_text_activity_contribution
+from src.db import get_latest_version_key, get_text_activity_contribution
 from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
 from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
 
@@ -19,7 +19,7 @@ from src.analysis.code_collaborative.code_collaborative_analysis import analyze_
 from src.integrations.google_drive.process_project_files import process_project_files
 from src.db.project_summaries import save_project_summary
 from src.db.skills import get_project_skills
-from src.db import get_text_non_llm_metrics, get_classification_id
+from src.db import get_text_non_llm_metrics, get_latest_version_key
 from src.db.code_metrics import (
     insert_code_complexity_metrics,
     update_code_complexity_metrics,
@@ -101,11 +101,14 @@ def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dic
                 break
             print("Please enter 'c' or 't'.")
 
-        conn.execute("""
-            UPDATE project_classifications
+        conn.execute(
+            """
+            UPDATE projects
             SET project_type = ?
-            WHERE user_id = ? AND project_name = ?
-        """, (project_type, user_id, project_name))
+            WHERE user_id = ? AND display_name = ?
+            """,
+            (project_type, user_id, project_name),
+        )
 
     conn.commit()
 
@@ -121,11 +124,8 @@ def detect_project_type_auto(
     - Returns mixed projects needing user choice
     - NO input() calls
     """
-    files = conn.execute("""
-        SELECT project_name, file_type
-        FROM files
-        WHERE user_id = ? AND project_name IS NOT NULL
-    """, (user_id,)).fetchall()
+    from src.db.files import get_files_for_user
+    files = get_files_for_user(conn, user_id)
 
     project_counts: dict[str, dict[str, int]] = {}
     for project_name, file_type in files:
@@ -151,11 +151,14 @@ def detect_project_type_auto(
 
     # write auto-detected types to DB
     for project_name, project_type in auto_types.items():
-        conn.execute("""
-            UPDATE project_classifications
+        conn.execute(
+            """
+            UPDATE projects
             SET project_type = ?
-            WHERE user_id = ? AND project_name = ?
-        """, (project_type, user_id, project_name))
+            WHERE user_id = ? AND display_name = ?
+            """,
+            (project_type, user_id, project_name),
+        )
 
     conn.commit()
 
@@ -196,8 +199,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
         row = conn.execute(
             """
             SELECT project_type
-            FROM project_classifications
-            WHERE user_id = ? AND project_name = ?
+            FROM projects
+            WHERE user_id = ? AND display_name = ?
             """,
             (user_id, project_name),
         ).fetchone()
@@ -405,7 +408,7 @@ def get_individual_contributions(
     if project_type == "text":
         analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path, version_key=version_key)
     elif project_type == "code":
-        analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary)
+        analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key)
     else:
         print(f"[COLLABORATIVE] Unknown project type for '{project_name}', skipping.")
 
@@ -488,7 +491,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     if not result['success']:
         print("\n[TEXT-COLLAB] Google Drive connection failed → falling back to manual mode.\n")
         analyze_collaborative_text_project(
-            conn, user_id, project_name, parsed_files, None, current_ext_consent, summary, version_key=version_key
+            conn, user_id, project_name, parsed_files, zip_path, current_ext_consent, summary, version_key=version_key
         )
         return
 
@@ -499,7 +502,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     if not drive_service or not docs_service:
         print("\n[TEXT-COLLAB] Google Drive connected but incomplete services → fallback to manual.\n")
         analyze_collaborative_text_project(
-            conn, user_id, project_name, parsed_files, None, current_ext_consent, summary, version_key=version_key
+            conn, user_id, project_name, parsed_files, zip_path, current_ext_consent, summary, version_key=version_key
         )
         return
 
@@ -570,12 +573,12 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     )
 
 
-def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary):
+def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
     """Collaborative code analysis: Git data + LLM summary."""
     if constants.VERBOSE:
         print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' (code)")
 
-    metrics = analyze_code_project(conn, user_id, project_name, zip_path, summary)
+    metrics = analyze_code_project(conn, user_id, project_name, zip_path, summary, version_key=version_key)
 
     # activity-type summary for collaborative code
     activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
@@ -690,7 +693,7 @@ def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path
 
 def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
     """Runs full analysis on individual code projects (static metrics + Git + optional LLM)."""
-    languages = detect_languages(conn, project_name)
+    languages = detect_languages(conn, user_id, project_name, version_key=version_key)
     print(f"Languages detected in {project_name}: {languages}")
 
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path)
@@ -749,7 +752,7 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
 
 
 def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text, summary=None, version_key: int | None = None):
-    classification_id = get_classification_id(conn, user_id, project_name)
+    vk = version_key or get_latest_version_key(conn, user_id, project_name)
 
     if only_text:
         # ------------------------------
@@ -795,17 +798,16 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
 
     else:
         # --- Run non-LLM code analysis (static + Git metrics) ---
-        classification_id=get_classification_id(conn, user_id, project_name)
         code_analysis_result = run_code_non_llm_analysis(conn, user_id, project_name, zip_path)
-        if code_analysis_result and classification_id:
+        if code_analysis_result and vk:
             complexity_data = code_analysis_result.get('complexity_data')
             if complexity_data and complexity_data.get('summary'):
                 metrics = extract_complexity_metrics(complexity_data['summary'])
-                update = code_complexity_metrics_exists(conn, classification_id)
+                update = code_complexity_metrics_exists(conn, vk)
                 if update:
-                    update_code_complexity_metrics(conn, classification_id, *metrics)
+                    update_code_complexity_metrics(conn, vk, *metrics)
                 else:
-                    insert_code_complexity_metrics(conn, classification_id, *metrics)
+                    insert_code_complexity_metrics(conn, vk, *metrics)
 
 def _run_skill_extraction_for_all(conn, user_id, assignments):
     for project_name in assignments.keys():
@@ -842,14 +844,14 @@ def _load_text_metrics_into_summary(conn, user_id, project_name, summary):
     if not summary or summary.project_type != "text":
         return
     
-    classification_id = get_classification_id(conn, user_id, project_name)
-    if not classification_id:
+    vk = get_latest_version_key(conn, user_id, project_name)
+    if not vk:
         return
     
     text_metrics = {}
     
     # Load non-LLM metrics
-    non_llm = get_text_non_llm_metrics(conn, classification_id)
+    non_llm = get_text_non_llm_metrics(conn, vk)
     if non_llm:
         text_metrics["non_llm"] = {
             "doc_count": non_llm.get("doc_count"),
@@ -874,11 +876,11 @@ def _load_text_activity_type_into_summary(conn, user_id, project_name, summary, 
     if not summary:
         return
     
-    classification_id = get_classification_id(conn, user_id, project_name)
-    if not classification_id:
+    vk = get_latest_version_key(conn, user_id, project_name)
+    if not vk:
         return
     
-    activity_data = get_text_activity_contribution(conn, classification_id)
+    activity_data = get_text_activity_contribution(conn, vk)
     if not activity_data:
         return
     

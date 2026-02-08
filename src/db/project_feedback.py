@@ -6,13 +6,13 @@ import sqlite3
 from typing import Any, Dict, List, Optional
 
 
-def clear_project_feedback(conn: sqlite3.Connection, user_id: int, project_name: str) -> None:
+def clear_project_feedback(conn: sqlite3.Connection, user_id: int, project_key: int) -> None:
     conn.execute(
         """
         DELETE FROM project_feedback
-        WHERE user_id = ? AND project_name = ?
+        WHERE user_id = ? AND project_key = ?
         """,
-        (user_id, project_name),
+        (user_id, project_key),
     )
     conn.commit()
 
@@ -20,7 +20,7 @@ def clear_project_feedback(conn: sqlite3.Connection, user_id: int, project_name:
 def upsert_project_feedback(
     conn: sqlite3.Connection,
     user_id: int,
-    project_name: str,
+    project_key: int,
     project_type: str,              # "text" or "code"
     skill_name: str,                # bucket name
     criterion_key: str,             # stable id
@@ -35,12 +35,12 @@ def upsert_project_feedback(
     conn.execute(
         """
         INSERT INTO project_feedback (
-            user_id, project_name, project_type, skill_name,
+            user_id, project_key, project_type, skill_name,
             file_name, criterion_key, criterion_label,
             expected, observed_json, suggestion
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(user_id, project_name, skill_name, file_name, criterion_key)
+        ON CONFLICT(user_id, project_key, skill_name, file_name, criterion_key)
         DO UPDATE SET
             project_type    = excluded.project_type,
             criterion_label = excluded.criterion_label,
@@ -50,7 +50,7 @@ def upsert_project_feedback(
             generated_at    = datetime('now')
         """,
         (
-            user_id, project_name, project_type, skill_name,
+            user_id, project_key, project_type, skill_name,
             file_name, criterion_key, criterion_label,
             expected, observed_json, suggestion
         ),
@@ -61,11 +61,12 @@ def upsert_project_feedback(
 def list_projects_with_feedback(conn: sqlite3.Connection, user_id: int) -> List[Dict[str, Any]]:
     cur = conn.execute(
         """
-        SELECT project_name, project_type, COUNT(*) AS issues
-        FROM project_feedback
-        WHERE user_id = ?
-        GROUP BY project_name, project_type
-        ORDER BY issues DESC, project_name ASC
+        SELECT p.display_name, pf.project_type, COUNT(*) AS issues
+        FROM project_feedback pf
+        JOIN projects p ON p.project_key = pf.project_key AND p.user_id = pf.user_id
+        WHERE pf.user_id = ?
+        GROUP BY pf.project_key, p.display_name, pf.project_type
+        ORDER BY issues DESC, p.display_name ASC
         """,
         (user_id,),
     )
@@ -75,7 +76,7 @@ def list_projects_with_feedback(conn: sqlite3.Connection, user_id: int) -> List[
     ]
 
 
-def get_project_feedback(conn: sqlite3.Connection, user_id: int, project_name: str) -> List[Dict[str, Any]]:
+def get_project_feedback(conn: sqlite3.Connection, user_id: int, project_key: int) -> List[Dict[str, Any]]:
     cur = conn.execute(
         """
         SELECT
@@ -83,10 +84,10 @@ def get_project_feedback(conn: sqlite3.Connection, user_id: int, project_name: s
             criterion_key, criterion_label, expected,
             observed_json, suggestion, generated_at
         FROM project_feedback
-        WHERE user_id = ? AND project_name = ?
+        WHERE user_id = ? AND project_key = ?
         ORDER BY skill_name ASC, file_name ASC, criterion_key ASC
         """,
-        (user_id, project_name),
+        (user_id, project_key),
     )
 
     rows = []

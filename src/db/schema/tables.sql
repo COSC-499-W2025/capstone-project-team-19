@@ -61,10 +61,12 @@ ORDER BY u.user_id;
 
 
 -- FILES & PROJECT CLASSIFICATIONS
+-- Files are versioned only: each row belongs to one project_version (no project_name).
 
 CREATE TABLE IF NOT EXISTS files (
     file_id     INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id     INTEGER NOT NULL,
+    version_key INTEGER NOT NULL,
     file_name   TEXT NOT NULL,
     file_path   TEXT,
     extension   TEXT,
@@ -72,25 +74,33 @@ CREATE TABLE IF NOT EXISTS files (
     size_bytes  INTEGER,
     created     TEXT,
     modified    TEXT,
-    project_name TEXT,
-    version_key INTEGER,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_files_user 
+CREATE INDEX IF NOT EXISTS idx_files_user
     ON files(user_id, file_name);
+
+CREATE INDEX IF NOT EXISTS idx_files_user_version
+    ON files(user_id, version_key);
 
 CREATE TABLE IF NOT EXISTS projects (
     project_key INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     display_name TEXT NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    classification TEXT CHECK (classification IN ('individual','collaborative')),
+    project_type TEXT CHECK (project_type IN ('code', 'text')),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_user_display_name
+ON projects(user_id, display_name);
 
 CREATE TABLE IF NOT EXISTS project_versions (
     version_key INTEGER PRIMARY KEY AUTOINCREMENT,
     project_key INTEGER NOT NULL,
     upload_id INTEGER,
+    extraction_root TEXT,
     fingerprint_strict TEXT NOT NULL,
     fingerprint_loose TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -114,29 +124,15 @@ CREATE INDEX IF NOT EXISTS idx_version_files_hash
 CREATE INDEX IF NOT EXISTS idx_version_files_version 
     ON version_files(version_key);
 
-CREATE TABLE IF NOT EXISTS project_classifications (
-    classification_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id           INTEGER NOT NULL,
-    zip_path          TEXT NOT NULL,
-    zip_name          TEXT NOT NULL,
-    project_name      TEXT NOT NULL,
-    classification    TEXT NOT NULL CHECK (classification IN ('individual','collaborative')),
-    project_type      TEXT CHECK (project_type IN ('code', 'text')),
-    recorded_at       TEXT NOT NULL,
-    UNIQUE(user_id, zip_name, project_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_project_classifications_lookup
-    ON project_classifications(user_id, zip_name);
 
 CREATE TABLE IF NOT EXISTS config_files (
     config_id     INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id       INTEGER NOT NULL,
-    project_name  TEXT,
+    project_key   INTEGER NOT NULL,
     file_name     TEXT NOT NULL,
     file_path     TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 
@@ -144,7 +140,7 @@ CREATE TABLE IF NOT EXISTS config_files (
 
 CREATE TABLE IF NOT EXISTS non_llm_text (
     metrics_id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    classification_id INTEGER UNIQUE NOT NULL,
+    version_key       INTEGER UNIQUE NOT NULL,
     doc_count         INTEGER, -- always 1 (main file)
     total_words       INTEGER, -- of main file
     reading_level_avg REAL, -- of main file
@@ -153,14 +149,14 @@ CREATE TABLE IF NOT EXISTS non_llm_text (
     summary_json      TEXT,
     csv_metadata TEXT,
     generated_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
 );
 
 -- CODE METRICS TABLE
 
 CREATE TABLE IF NOT EXISTS non_llm_code_individual(
     metrics_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    classification_id INTEGER NOT NULL,
+    version_key INTEGER NOT NULL,
     total_files INTEGER,
     total_lines INTEGER,
     total_code_lines INTEGER,
@@ -176,7 +172,7 @@ CREATE TABLE IF NOT EXISTS non_llm_code_individual(
     lizard_details_json TEXT,
     generated_at TEXT DEFAULT(datetime('now')),
     UNIQUE(metrics_id),
-    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
 
 );
 
@@ -197,14 +193,15 @@ CREATE TABLE IF NOT EXISTS text_contribution_revisions (
 CREATE TABLE IF NOT EXISTS text_contribution_summary (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     drive_file_id TEXT NOT NULL,
     user_revision_count INTEGER NOT NULL DEFAULT 0,
     total_word_count INTEGER NOT NULL DEFAULT 0,
     total_revision_count INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES users(user_id),
-    UNIQUE(user_id, project_name, drive_file_id)
-);
+    UNIQUE(user_id, project_key, drive_file_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
+);  
 
 
 -- INTEGRATIONS (TOKENS, GITHUB, DRIVE)
@@ -223,7 +220,7 @@ CREATE TABLE IF NOT EXISTS user_tokens (
 CREATE TABLE IF NOT EXISTS project_repos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     provider TEXT NOT NULL,
     repo_url TEXT NOT NULL,
     repo_full_name TEXT,
@@ -232,22 +229,24 @@ CREATE TABLE IF NOT EXISTS project_repos (
     repo_id INTEGER,
     default_branch TEXT,
     linked_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(user_id, project_name, provider),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key, provider),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS project_drive_files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     local_file_name TEXT NOT NULL,
     drive_file_id TEXT NOT NULL,
     drive_file_name TEXT,
     mime_type TEXT,
     status TEXT NOT NULL CHECK (status IN ('auto_matched', 'manual_selected', 'not_found')),
     linked_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(user_id, project_name, local_file_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key, local_file_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS github_accounts (
@@ -266,7 +265,7 @@ CREATE TABLE IF NOT EXISTS github_repo_metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
 
@@ -291,15 +290,20 @@ CREATE TABLE IF NOT EXISTS github_repo_metrics (
 
     last_synced TEXT DEFAULT (datetime('now')),
 
-    UNIQUE (user_id, project_name, repo_owner, repo_name)
+    UNIQUE (user_id, project_key, repo_owner, repo_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_github_repo_metrics_lookup
+    ON github_repo_metrics (user_id, project_key, repo_owner, repo_name);
 
 -- GIT INDIVIDUAL METRICS (for local git repository analysis)
 CREATE TABLE IF NOT EXISTS git_individual_metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
 
     -- Commit statistics
     total_commits INTEGER,
@@ -327,36 +331,42 @@ CREATE TABLE IF NOT EXISTS git_individual_metrics (
 
     last_analyzed TEXT DEFAULT (datetime('now')),
 
-    UNIQUE (user_id, project_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE (user_id, project_key),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_git_individual_metrics_user_project
+    ON git_individual_metrics (user_id, project_key);
 
 -- PROJECT SUMMARIES
 
 CREATE TABLE IF NOT EXISTS project_summaries (
     project_summary_id  INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id             INTEGER NOT NULL,
-    project_name        TEXT NOT NULL,
+    project_key         INTEGER NOT NULL,
     project_type        TEXT,
     project_mode        TEXT,
     summary_json        TEXT NOT NULL,
     created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     manual_start_date   TEXT,  -- Manual override for start date (ISO format YYYY-MM-DD)
     manual_end_date     TEXT,  -- Manual override for end date (ISO format YYYY-MM-DD)
-    UNIQUE(user_id, project_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS project_skills (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     skill_name TEXT NOT NULL,
     level TEXT NOT NULL,
     score REAL NOT NULL,
     evidence_json TEXT,
-    UNIQUE(user_id, project_name, skill_name),
-    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key, skill_name),
+    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 -- USER FILE CONTRIBUTIONS (for collaborative projects)
@@ -365,32 +375,41 @@ CREATE TABLE IF NOT EXISTS project_skills (
 CREATE TABLE IF NOT EXISTS user_code_contributions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     file_path TEXT NOT NULL,
     lines_changed INTEGER DEFAULT 0,  -- additions + deletions
     commits_count INTEGER DEFAULT 0,
     recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, project_name, file_path),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key, file_path),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_user_code_contributions_user_project
+    ON user_code_contributions (user_id, project_key);
 
 CREATE TABLE IF NOT EXISTS github_collaboration_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     profile_json TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
 
-    UNIQUE (user_id, project_name, repo_owner, repo_name)
+    UNIQUE (user_id, project_key, repo_owner, repo_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_github_collaboration_profiles_lookup
+    ON github_collaboration_profiles (user_id, project_key, repo_owner, repo_name);
 
 CREATE TABLE IF NOT EXISTS github_issues (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     issue_title TEXT,
@@ -399,32 +418,34 @@ CREATE TABLE IF NOT EXISTS github_issues (
     created_at TEXT,
     closed_at TEXT,
     synced_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_issues_lookup
-    ON github_issues(user_id, project_name, repo_owner, repo_name);
+    ON github_issues(user_id, project_key, repo_owner, repo_name);
 
 CREATE TABLE IF NOT EXISTS github_issue_comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     issue_number INTEGER NOT NULL,
     comment_body TEXT,
     created_at TEXT,
     synced_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_issue_comments_lookup
-    ON github_issue_comments(user_id, project_name, repo_owner, repo_name);
+    ON github_issue_comments(user_id, project_key, repo_owner, repo_name);
 
 CREATE TABLE IF NOT EXISTS github_pull_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     pr_number INTEGER,
@@ -436,62 +457,66 @@ CREATE TABLE IF NOT EXISTS github_pull_requests (
     state TEXT,
     merged INTEGER DEFAULT 0,
     synced_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_prs_lookup
-    ON github_pull_requests(user_id, project_name, repo_owner, repo_name);
+    ON github_pull_requests(user_id, project_key, repo_owner, repo_name);
 
 CREATE TABLE IF NOT EXISTS github_commit_timestamps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     commit_timestamp TEXT NOT NULL,
     synced_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_commit_timestamps_lookup
-    ON github_commit_timestamps(user_id, project_name, repo_owner, repo_name);
+    ON github_commit_timestamps(user_id, project_key, repo_owner, repo_name);
 
 CREATE TABLE IF NOT EXISTS github_pr_reviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     pr_number INTEGER NOT NULL,
     review_json TEXT NOT NULL,
     synced_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_pr_reviews_lookup
-    ON github_pr_reviews(user_id, project_name, repo_owner, repo_name);
+    ON github_pr_reviews(user_id, project_key, repo_owner, repo_name);
 
 CREATE TABLE IF NOT EXISTS github_pr_review_comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     repo_owner TEXT NOT NULL,
     repo_name TEXT NOT NULL,
     pr_number INTEGER NOT NULL,
     comment_json TEXT NOT NULL,
     synced_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_pr_review_comments_lookup
-    ON github_pr_review_comments(user_id, project_name, repo_owner, repo_name);
+    ON github_pr_review_comments(user_id, project_key, repo_owner, repo_name);
 
 
 -- TEXT ACTIVITY TYPE CONTRIBUTION DATA
 
 CREATE TABLE IF NOT EXISTS text_activity_contribution (
     activity_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    classification_id INTEGER UNIQUE NOT NULL,
+    version_key INTEGER UNIQUE NOT NULL,
     start_date TEXT,
     end_date TEXT,
     duration_days INTEGER,
@@ -501,17 +526,17 @@ CREATE TABLE IF NOT EXISTS text_activity_contribution (
     timeline_json TEXT,               
     activity_counts_json TEXT,     
     generated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_text_activity_contribution_lookup
-    ON text_activity_contribution(classification_id);
+    ON text_activity_contribution(version_key);
 
 -- Code activity metrics (per user, project, scope, and source)
 CREATE TABLE IF NOT EXISTS code_activity_metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id      INTEGER NOT NULL,     -- who + which project
-    project_name TEXT    NOT NULL,
+    project_key  INTEGER NOT NULL,
     scope        TEXT    NOT NULL,  -- 'individual' or 'collaborative'
     source       TEXT    NOT NULL,  -- where this metric comes from: 'files', 'prs', or 'combined'
     activity_type TEXT   NOT NULL,  -- 'feature_coding', 'refactoring', 'debugging', 'testing', 'documentation'
@@ -519,16 +544,17 @@ CREATE TABLE IF NOT EXISTS code_activity_metrics (
     total_events INTEGER NOT NULL,
     percent      REAL    NOT NULL,  -- 0–100
     recorded_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_code_activity_metrics_lookup
-ON code_activity_metrics (user_id, project_name, scope, source);
+    ON code_activity_metrics (user_id, project_key, scope, source);
 
 -- Code Collaborative Metrics (pure numeric metrics)
 CREATE TABLE IF NOT EXISTS code_collaborative_metrics (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL,
-    project_name    TEXT    NOT NULL,
+    project_key     INTEGER NOT NULL,
     repo_path       TEXT    NOT NULL,
     -- totals
     commits_all     INTEGER,
@@ -559,27 +585,30 @@ CREATE TABLE IF NOT EXISTS code_collaborative_metrics (
     frameworks_json TEXT,
     -- others
     created_at      TEXT DEFAULT (datetime('now')),
-    UNIQUE(user_id, project_name)
+    UNIQUE(user_id, project_key),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_code_collab_metrics_user_project
-    ON code_collaborative_metrics (user_id, project_name);
+    ON code_collaborative_metrics (user_id, project_key);
 
 -- Summaries for collaborative code contributions (non-llm or llm)
 CREATE TABLE IF NOT EXISTS code_collaborative_summary (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     metrics_id      INTEGER NOT NULL,    -- FK to code_collaborative_metrics.id
     user_id         INTEGER NOT NULL,
-    project_name    TEXT    NOT NULL,
+    project_key     INTEGER NOT NULL,
     summary_type    TEXT    NOT NULL,    -- 'llm' or 'non-llm'
     content         TEXT    NOT NULL,    -- full manually-written or LLM summaries (project+contribution)
     created_at      TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (metrics_id) REFERENCES code_collaborative_metrics(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_code_collab_summary_user_project
-    ON code_collaborative_summary (user_id, project_name);
+    ON code_collaborative_summary (user_id, project_key);
 
 -- Resume snapshots (frozen resume outputs)
 CREATE TABLE IF NOT EXISTS resume_snapshots (
@@ -599,7 +628,7 @@ CREATE INDEX IF NOT EXISTS idx_resume_snapshots_user
 CREATE TABLE IF NOT EXISTS project_feedback (
     feedback_id     INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL,
-    project_name    TEXT NOT NULL,
+    project_key     INTEGER NOT NULL,
     project_type    TEXT CHECK (project_type IN ('code','text')),
     skill_name      TEXT NOT NULL,           -- e.g., clarity, structure, OOP, testing_and_ci
     file_name       TEXT NOT NULL DEFAULT '', -- optional: store per-file misses; '' = project-level
@@ -610,28 +639,31 @@ CREATE TABLE IF NOT EXISTS project_feedback (
     suggestion      TEXT,                    -- how to improve
     generated_at    TEXT NOT NULL DEFAULT (datetime('now')),
 
-    UNIQUE(user_id, project_name, skill_name, file_name, criterion_key),
-    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key, skill_name, file_name, criterion_key),
+    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY(project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_project_feedback_lookup
-    ON project_feedback(user_id, project_name);
+    ON project_feedback(user_id, project_key);
 
 CREATE INDEX IF NOT EXISTS idx_project_feedback_skill
-    ON project_feedback(user_id, project_name, skill_name);
+    ON project_feedback(user_id, project_key, skill_name);
+
 CREATE TABLE IF NOT EXISTS project_rankings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key INTEGER NOT NULL,
     manual_rank INTEGER, 
     updated_at TEXT DEFAULT (datetime('now')),
 
-    UNIQUE(user_id, project_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_project_rankings_user
-    ON project_rankings(user_id, manual_rank);
+    ON project_rankings(user_id, project_key, manual_rank);
 
 CREATE TABLE IF NOT EXISTS uploads (
   upload_id   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -652,10 +684,12 @@ CREATE INDEX IF NOT EXISTS idx_uploads_user_time
 CREATE TABLE IF NOT EXISTS project_thumbnails (
     thumbnail_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id      INTEGER NOT NULL,
-    project_name TEXT NOT NULL,
+    project_key  INTEGER NOT NULL,
     image_path   TEXT NOT NULL,
     added_at     TEXT NOT NULL,
     updated_at   TEXT NOT NULL,
-    UNIQUE(user_id, project_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, project_key),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
+
 );

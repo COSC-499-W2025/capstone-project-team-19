@@ -16,6 +16,8 @@ def run_with_patches(
 
     with patch("src.analysis.skills.flows.skill_extraction.get_project_metadata",
                return_value=_mock_meta(project_type)) as meta_mock, \
+         patch("src.analysis.skills.flows.skill_extraction.get_latest_version_key",
+               return_value=None) as vk_mock, \
          patch("src.analysis.skills.flows.skill_extraction._fetch_files",
                return_value=files) as fetch_mock, \
          patch("src.analysis.skills.flows.skill_extraction.extract_code_skills",
@@ -24,7 +26,9 @@ def run_with_patches(
         extract_skills(conn, 1, "proj")
 
     return {
+        "conn": conn,
         "meta": meta_mock,
+        "vk": vk_mock,
         "fetch": fetch_mock,
         "code": code_extractor,
     }
@@ -34,7 +38,14 @@ def test_happy_path_code():
     mocks = run_with_patches("code", ["file.py"])
 
     mocks["meta"].assert_called_once()
-    mocks["fetch"].assert_called_once()
+    mocks["vk"].assert_called_once()
+    mocks["fetch"].assert_called_once_with(
+        mocks["conn"],
+        1,
+        "proj",
+        only_text=False,
+        version_key=None,
+    )
     mocks["code"].assert_called_once_with(
         ANY_CONN := mocks["code"].call_args.args[0],   # conn, but irrelevant
         1,
@@ -48,7 +59,14 @@ def test_happy_path_text():
     mocks = run_with_patches("text", ["doc.txt"])
 
     mocks["meta"].assert_called_once()
-    mocks["fetch"].assert_called_once()
+    mocks["vk"].assert_called_once()
+    mocks["fetch"].assert_called_once_with(
+        mocks["conn"],
+        1,
+        "proj",
+        only_text=True,
+        version_key=None,
+    )
     # Text projects are handled by text_analyze.py, not skill_extraction.py
     # So code extractor should not be called
     mocks["code"].assert_not_called()

@@ -4,6 +4,8 @@ venv/
 # Python cache
 __pycache__/
 *.pyc
+.pycache/
+*.pyc
 
 # Env variables and secrets
 .env
