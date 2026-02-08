@@ -659,3 +659,21 @@ CREATE TABLE IF NOT EXISTS project_thumbnails (
     UNIQUE(user_id, project_name),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+
+-- USER SKILL PREFERENCES (for skills highlighting feature)
+-- Allows users to select which skills to highlight in portfolio/resume
+CREATE TABLE IF NOT EXISTS user_skill_preferences (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    context TEXT NOT NULL CHECK (context IN ('global', 'portfolio', 'resume')),
+    context_id INTEGER,  -- NULL for global/portfolio, resume_id for resume-specific
+    skill_name TEXT NOT NULL,
+    is_highlighted INTEGER DEFAULT 1,  -- 1=show, 0=hide
+    display_order INTEGER,  -- manual ordering (lower = higher priority)
+    updated_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, context, context_id, skill_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_skill_preferences_user_context
+    ON user_skill_preferences(user_id, context, context_id);
