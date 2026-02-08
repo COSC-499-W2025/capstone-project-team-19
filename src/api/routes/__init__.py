@@ -11,6 +11,7 @@ from src.api.routes.project_dates import router as project_dates_router
 from src.api.routes.skills import router as skills_router
 from src.api.routes.resumes import router as resumes_router
 from src.api.routes.github import router as github_router
+from src.api.routes.google_drive import router as google_drive_router
 from src.api.routes.consent import router as consent_router
 
 __all__ = [
@@ -20,5 +21,6 @@ __all__ = [
     "skills_router",
     "resumes_router",
     "github_router",
+    "google_drive_router",
     "consent_router",
 ]
