@@ -11,6 +11,7 @@ from src.menu.resume.helpers import (
     render_snapshot,
 )
 from src.models.project_summary import ProjectSummary
+from src.services.skill_preferences_service import get_highlighted_skills_for_display
 
 
 def load_project_summaries_by_ids(
@@ -64,11 +65,24 @@ def build_resume_snapshot_data(
     user_id: int,
     summaries: List[ProjectSummary],
     print_output: bool = False,
+    resume_id: Optional[int] = None,
 ) -> Optional[Tuple[dict, str]]:
     if not summaries:
         return None
 
-    snapshot = build_resume_snapshot(summaries)
+    highlighted_skills = get_highlighted_skills_for_display(
+        conn=conn,
+        user_id=user_id,
+        context="resume" if resume_id else "global",
+        context_id=resume_id,
+    )
+
+    # Pass highlighted skills to build_resume_snapshot
+    # If no preferences set, highlighted_skills will be empty list and all skills shown
+    snapshot = build_resume_snapshot(
+        summaries,
+        highlighted_skills=highlighted_skills if highlighted_skills else None,
+    )
     snapshot = enrich_snapshot_with_contributions(conn, user_id, snapshot)
     rendered = render_snapshot(conn, user_id, snapshot, print_output=print_output)
     return snapshot, rendered

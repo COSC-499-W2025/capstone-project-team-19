@@ -8,6 +8,7 @@ from src.services.resume_overrides import (
     update_project_manual_overrides,
     apply_manual_overrides_to_resumes,
 )
+from src.services.skill_preferences_service import get_highlighted_skills_for_display
 from src.insights.portfolio import (
     format_duration,
     format_languages,
@@ -18,6 +19,7 @@ from src.insights.portfolio import (
     resolve_portfolio_display_name,
     resolve_portfolio_summary_text,
     resolve_portfolio_contribution_bullets,
+    get_all_skills_from_summary,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,6 +36,7 @@ def build_portfolio_data(
     """
     Build structured portfolio project data from all ranked projects.
     Returns a list of project dicts, or None if no projects found.
+    Respects user skill highlighting preferences for portfolio context.
 
     Shared by the API route and the CLI menu.
     """
@@ -41,6 +44,13 @@ def build_portfolio_data(
     if not project_scores:
         return None
 
+    # Get highlighted skills for portfolio context (applies to all projects)
+    highlighted_skills = get_highlighted_skills_for_display(
+        conn=conn,
+        user_id=user_id,
+        context="portfolio",
+        context_id=None,
+    )
     projects: List[Dict[str, Any]] = []
 
     for project_name, score in project_scores:
@@ -74,13 +84,17 @@ def build_portfolio_data(
             if frameworks_line and not frameworks_line.endswith("N/A"):
                 frameworks_list = [f.strip() for f in frameworks_line.replace("Frameworks: ", "").split(",") if f.strip()]
 
-        # Extract skills as list
-        skill_lines = format_skills_block(summary)
-        skills: List[str] = []
-        for line in skill_lines:
-            stripped = line.strip()
-            if stripped.startswith("- "):
-                skills.append(stripped[2:])
+        # Extract skills as list, filtered by user preferences
+        # Get all skills from this project's summary
+        all_project_skills = get_all_skills_from_summary(summary)
+
+        # Filter by highlighted skills if user has preferences
+        if highlighted_skills:
+            # Only show skills that are both in this project AND highlighted
+            skills = [s for s in highlighted_skills if s in all_project_skills][:4]
+        else:
+            # No preferences set - use default (top 4 by score)
+            skills = all_project_skills[:4]
 
         projects.append({
             "project_name": project_name,
@@ -108,7 +122,16 @@ def render_portfolio_text(
 ) -> str:
     """
     Build a plain-text rendered portfolio from structured project data.
+    Respects user skill highlighting preferences.
     """
+    # Get highlighted skills for portfolio context
+    highlighted_skills = get_highlighted_skills_for_display(
+        conn=conn,
+        user_id=user_id,
+        context="portfolio",
+        context_id=None,
+    )
+
     lines: List[str] = []
     lines.append(f"Portfolio — {name}")
     lines.append("=" * 80)
@@ -128,7 +151,9 @@ def render_portfolio_text(
             lines.append(f"  {format_languages(summary)}")
             lines.append(f"  {format_frameworks(summary)}")
         lines.append(f"  {project['activity']}")
-        for line in format_skills_block(summary):
+
+        # Use highlighted skills if available
+        for line in format_skills_block(summary, highlighted_skills if highlighted_skills else None):
             lines.append(f"  {line}")
         for line in format_summary_block(project_type, project_mode, summary, conn, user_id, project_name):
             lines.append(f"  {line}")

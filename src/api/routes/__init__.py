@@ -13,6 +13,7 @@ from src.api.routes.skills import router as skills_router
 from src.api.routes.resumes import router as resumes_router
 from src.api.routes.github import router as github_router
 from src.api.routes.consent import router as consent_router
+from src.api.routes.portfolio import router as portfolio_router
 
 __all__ = [
     "projects_router",
@@ -23,4 +24,5 @@ __all__ = [
     "resumes_router",
     "github_router",
     "consent_router",
+    "portfolio_router",
 ]

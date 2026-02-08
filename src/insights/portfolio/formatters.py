@@ -308,12 +308,58 @@ def format_activity_line(
     return "Activity: " + ", ".join(parts)
 
 
-def format_skills_block(summary: Dict[str, Any]) -> List[str]:
+def format_skills_block(summary: Dict[str, Any], highlighted_skills: List[str] | None = None,) -> List[str]:
     """
     Build a block:
       - skill1
       - skill2
     """
+    metrics = summary.get("metrics") or {}
+    detailed = metrics.get("skills_detailed") or []
+    all_skill_names: List[str] = []
+
+    if isinstance(detailed, list) and detailed:
+        try:
+            sorted_skills = sorted(
+                detailed,
+                key=lambda s: float(s.get("score", 0.0)),
+                reverse=True,
+            )
+        except Exception:
+            sorted_skills = detailed
+
+        for s in sorted_skills:
+            name = s.get("skill_name")
+            if isinstance(name, str):
+                all_skill_names.append(name)
+
+    if not all_skill_names:
+        skills = summary.get("skills") or []
+        if isinstance(skills, list):
+            all_skill_names = list(skills)
+
+    if not all_skill_names:
+        return ["Skills: N/A"]
+
+    if highlighted_skills is not None:
+        # Filter to only include highlighted skills, maintain highlighted order
+        skill_names = [s for s in highlighted_skills if s in all_skill_names]
+        # Limit to 4 skills for display
+        skill_names = skill_names[:4]
+    else:
+        # Default: top 4 by score
+        skill_names = all_skill_names[:4]
+
+    if not skill_names:
+        return ["Skills: N/A"]
+
+    lines = ["Skills:"]
+    for name in skill_names:
+        lines.append(f"  - {name}")
+    return lines
+
+
+def get_all_skills_from_summary(summary: Dict[str, Any]) -> List[str]:
     metrics = summary.get("metrics") or {}
     detailed = metrics.get("skills_detailed") or []
     skill_names: List[str] = []
@@ -328,7 +374,7 @@ def format_skills_block(summary: Dict[str, Any]) -> List[str]:
         except Exception:
             sorted_skills = detailed
 
-        for s in sorted_skills[:4]:
+        for s in sorted_skills:
             name = s.get("skill_name")
             if isinstance(name, str):
                 skill_names.append(name)
@@ -336,15 +382,9 @@ def format_skills_block(summary: Dict[str, Any]) -> List[str]:
     if not skill_names:
         skills = summary.get("skills") or []
         if isinstance(skills, list):
-            skill_names = skills[:4]
+            skill_names = list(skills)
 
-    if not skill_names:
-        return ["Skills: N/A"]
-
-    lines = ["Skills:"]
-    for name in skill_names:
-        lines.append(f"  - {name}")
-    return lines
+    return skill_names
 
 
 def format_summary_block(
