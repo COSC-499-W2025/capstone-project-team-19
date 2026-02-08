@@ -159,7 +159,7 @@ def load_project_summaries(conn, user_id: int, get_all_user_project_summaries) -
     return projects
 
 
-def build_resume_snapshot(summaries: List[ProjectSummary]) -> Dict[str, Any]:
+def build_resume_snapshot(summaries: List[ProjectSummary], highlighted_skills: List[str] | None = None,) -> Dict[str, Any]:
     """Build a structured snapshot of resume data from project summaries."""
     projects = []
     for ps in summaries:
@@ -170,7 +170,7 @@ def build_resume_snapshot(summaries: List[ProjectSummary]) -> Dict[str, Any]:
             "languages": ps.languages or [],
             "frameworks": ps.frameworks or [],
             "summary_text": ps.summary_text,
-            "skills": _extract_skills(ps, map_labels=True),
+            "skills": _extract_skills(ps, map_labels=True, highlighted_skills=highlighted_skills),
         }
         # Extract key_role from contributions
         if ps.contributions and ps.contributions.get("key_role"):
@@ -188,13 +188,17 @@ def build_resume_snapshot(summaries: List[ProjectSummary]) -> Dict[str, Any]:
                         entry["contribution_percent"] = pct
                     collab_skills = text_collab.get("skills")
                     if isinstance(collab_skills, list) and collab_skills:
-                        entry["skills"] = collab_skills
+                        # For text collab skills, also filter by highlighted if available
+                        if highlighted_skills is not None:
+                            entry["skills"] = [s for s in collab_skills if s in highlighted_skills]
+                        else:
+                            entry["skills"] = collab_skills
         else:  # code
             entry["activities"] = _extract_activity(ps)
 
         projects.append(entry)
 
-    agg = _aggregate_skills(summaries)
+    agg = _aggregate_skills(summaries, highlighted_skills=highlighted_skills)
     return {"projects": projects, "aggregated_skills": agg}
 
 
@@ -469,7 +473,7 @@ def _extract_activity(ps: ProjectSummary) -> List[Dict[str, Any]]:
     return items
 
 
-def _extract_skills(ps: ProjectSummary, map_labels: bool = False) -> List[str]:
+def _extract_skills(ps: ProjectSummary, map_labels: bool = False, highlighted_skills: List[str] | None = None,) -> List[str]:
     skills = ps.metrics.get("skills_detailed")
     tech_skill_map = {
         "architecture_and_design": "Architecture & design",
@@ -482,6 +486,7 @@ def _extract_skills(ps: ProjectSummary, map_labels: bool = False) -> List[str]:
         "backend_development": "Backend development",
         "clean_code_and_quality": "Clean code & quality",
         "devops_and_ci_cd": "DevOps & CI/CD",
+        "api_and_backend": "API & backend",
     }
     writing_skill_map = {
         "clarity": "Clear communication",
@@ -497,6 +502,13 @@ def _extract_skills(ps: ProjectSummary, map_labels: bool = False) -> List[str]:
     }
     if isinstance(skills, list):
         names = [s.get("skill_name") for s in skills if isinstance(s, dict) and s.get("skill_name")]
+
+        # Filter by highlighted skills if provided
+        if highlighted_skills is not None:
+            # Only include skills that are in the highlighted list
+            # Maintain the order from highlighted_skills
+            names = [n for n in highlighted_skills if n in names]
+
         # Deduplicate while preserving order
         seen = set()
         unique = []
@@ -512,7 +524,7 @@ def _extract_skills(ps: ProjectSummary, map_labels: bool = False) -> List[str]:
     return []
 
 
-def _aggregate_skills(summaries: List[ProjectSummary]) -> Dict[str, List[str]]:
+def _aggregate_skills(summaries: List[ProjectSummary], highlighted_skills: List[str] | None = None,) -> Dict[str, List[str]]:
     langs = set()
     frameworks = set()
     tech_skills = set()
@@ -529,6 +541,7 @@ def _aggregate_skills(summaries: List[ProjectSummary]) -> Dict[str, List[str]]:
         "backend_development": "Backend development",
         "clean_code_and_quality": "Clean code & quality",
         "devops_and_ci_cd": "DevOps & CI/CD",
+        "api_and_backend": "API & backend",
     }
 
     writing_skill_map = {
@@ -547,7 +560,7 @@ def _aggregate_skills(summaries: List[ProjectSummary]) -> Dict[str, List[str]]:
     for ps in summaries:
         langs.update(ps.languages or [])
         frameworks.update(ps.frameworks or [])
-        skills = _extract_skills(ps)
+        skills = _extract_skills(ps, highlighted_skills=highlighted_skills)
         for s in skills:
             if s in writing_skill_map:
                 writing_skills.add(writing_skill_map[s])
