@@ -419,7 +419,18 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **Description**: Permanently deletes a specific project and all its associated data (skills, metrics, files, etc.).
     - **Path Parameters**:
         - `{project_id}` (integer, required): The project_summary_id of the project to delete
+    - **Query Parameters**:
+        - `refresh_resumes` (boolean, optional): If `true`, also removes the deleted project from any résumé snapshots. Résumés that become empty are deleted. Defaults to `false`.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Example Requests**:
+        ```bash
+        # Delete project (default, resumes unchanged)
+        DELETE /projects/9
+
+        # Delete project and update resumes
+        DELETE /projects/9?refresh_resumes=true
+        ```
     - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
     - **Response Body**:
         ```json
@@ -433,7 +444,18 @@ Handles project ingestion, analysis, classification, and metadata updates.
 - **Delete All Projects**
     - **Endpoint**: `DELETE /projects`
     - **Description**: Permanently deletes all projects belonging to the current user.
+    - **Query Parameters**:
+        - `refresh_resumes` (boolean, optional): If `true`, also removes deleted projects from any résumé snapshots. Résumés that become empty are deleted. Defaults to `false`.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Example Requests**:
+        ```bash
+        # Delete all projects (default, resumes unchanged)
+        DELETE /projects
+
+        # Delete all projects and update resumes
+        DELETE /projects?refresh_resumes=true
+        ```
     - **Response Status**: `200 OK`
     - **Response DTO**: `DeleteResultDTO`
     - **Response Body**:
