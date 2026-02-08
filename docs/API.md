@@ -28,7 +28,8 @@ http://localhost:8000
 2. [Authentication](#authentication)
 3. [Projects](#projects)
 4. [GitHub Integration](#github-integration)
-5. [Uploads Wizard](#uploads-wizard)
+5. [Google Drive Integration](#google-drive-integration)
+6. [Uploads Wizard](#uploads-wizard)
 6. [Privacy Consent](#privacyconsent)
 7. [Skills](#skills)
 8. [Resume](#resume)
@@ -683,6 +684,137 @@ Handles GitHub OAuth authentication and repository linking for projects during t
         
         
 
+---
+
+## Google Drive Integration
+
+**Base URL:** `/projects/upload/{upload_id}/projects/{project}/drive` and `/auth`
+
+Handles Google Drive OAuth authentication and file linking for projects during the upload wizard flow. Mirrors the GitHub integration pattern.
+
+### **Endpoints**
+- **Start Google Drive Connection**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project}/drive/start`
+    - **Description**: Initiates Google Drive OAuth connection flow for a project. If `connect_now` is `true` and user is not already connected, returns a Google authorization URL. If `connect_now` is `false`, records that Google Drive connection was skipped.
+    - **Path Parameters**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project}` (string, required): The project name
+    - **Headers**: 
+        - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
+    - **Request Body**:
+        ```json
+        {
+            "connect_now": true
+        }
+        ```
+    - **Response Status**: `200 OK` on success, `404 Not Found` if upload doesn't exist or belong to user
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&state=..."
+            },
+            "error": null
+        }
+        ```
+        If user is already connected or `connect_now` is `false`, `auth_url` will be `null`.
+
+- **Google Drive OAuth Callback**
+    - **Endpoint**: `GET /auth/google/callback`
+    - **Description**: Handles the OAuth callback from Google after user authorizes the application. Exchanges the authorization code for access and refresh tokens and saves them. No authentication required — this is a public callback endpoint.
+    - **Query Parameters**:
+        - `code` (string, required): Authorization code from Google
+        - `state` (string, optional): OAuth state parameter for security
+    - **Response Status**: `200 OK` on success, `400 Bad Request` if code exchange fails or state is invalid
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "message": "Google Drive connected successfully",
+            "data": {
+                "success": true,
+                "user_id": 1,
+                "upload_id": 1,
+                "project_name": "MyProject"
+            }
+        }
+        ```
+
+- **List Google Drive Files**
+    - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project}/drive/files`
+    - **Description**: Returns a list of the user's Google Drive files (filtered to supported types) that can be linked to the project. Requires Google Drive to be connected first.
+    - **Path Parameters**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project}` (string, required): The project name
+    - **Headers**: 
+        - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
+    - **Response Status**: `200 OK` on success, `401 Unauthorized` if Google Drive is not connected, `404 Not Found` if upload doesn't exist
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "files": [
+                    {
+                        "id": "1aBcDeFgHiJkLmNoPqRsT",
+                        "name": "Project Report.docx",
+                        "mime_type": "application/vnd.google-apps.document"
+                    },
+                    {
+                        "id": "2uVwXyZaBcDeFgHiJkLm",
+                        "name": "Data.csv",
+                        "mime_type": "text/plain"
+                    }
+                ]
+            },
+            "error": null
+        }
+        ```
+
+- **Link Google Drive Files**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project}/drive/link`
+    - **Description**: Links one or more Google Drive files to the project's local files. Each link maps a local file name (from the uploaded ZIP) to a Google Drive file. Requires Google Drive to be connected.
+    - **Path Parameters**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project}` (string, required): The project name
+    - **Headers**: 
+        - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
+    - **Request Body**:
+        ```json
+        {
+            "links": [
+                {
+                    "local_file_name": "report.docx",
+                    "drive_file_id": "1aBcDeFgHiJkLmNoPqRsT",
+                    "drive_file_name": "Project Report.docx",
+                    "mime_type": "application/vnd.google-apps.document"
+                },
+                {
+                    "local_file_name": "data.csv",
+                    "drive_file_id": "2uVwXyZaBcDeFgHiJkLm",
+                    "drive_file_name": "Data.csv",
+                    "mime_type": "text/plain"
+                }
+            ]
+        }
+        ```
+    - **Response Status**: `200 OK` on success, `400 Bad Request` if Google Drive is not connected, `404 Not Found` if upload doesn't exist
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "success": true,
+                "project_name": "MyProject",
+                "files_linked": 2
+            },
+            "error": null
+        }
+        ```
+
+---
+
 - **List Project Files**
     - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project_name}/files`
     - **Description**: Returns all parsed files for a project within an upload, plus convenience buckets for `text_files` and `csv_files`. Clients should use the returned `relpath` values for subsequent file-role selection calls.
@@ -1324,6 +1456,31 @@ Example:
 
 - **GitHubLinkRequest**
     - `repo_full_name` (string, required)
+
+### **Google Drive Integration DTOs**
+
+- **DriveStartRequest**
+    - `connect_now` (boolean, required)
+
+- **DriveStartResponse**
+    - `auth_url` (string, optional)
+
+- **DriveFileDTO**
+    - `id` (string, required): Google Drive file ID
+    - `name` (string, required): File name in Google Drive
+    - `mime_type` (string, required): MIME type of the file
+
+- **DriveFilesResponse**
+    - `files` (List[DriveFileDTO], required)
+
+- **DriveLinkItem**
+    - `local_file_name` (string, required): File name from the uploaded ZIP
+    - `drive_file_id` (string, required): Google Drive file ID to link to
+    - `drive_file_name` (string, required): File name in Google Drive
+    - `mime_type` (string, required): MIME type of the Drive file
+
+- **DriveLinkRequest**
+    - `links` (List[DriveLinkItem], required)
 
 - **DeleteResultDTO** (used by `DELETE /projects` and `DELETE /resume`)
     - `deleted_count` (int, required): Number of items deleted
