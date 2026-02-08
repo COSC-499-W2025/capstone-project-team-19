@@ -46,6 +46,21 @@ class UploadProjectFilesDTO(BaseModel):
 
 class MainFileRequestDTO(BaseModel):
     relpath: str
+    
 
 class SupportingFilesRequestDTO(BaseModel):
     relpaths: List[str] = []
+class MainFileSectionDTO(BaseModel):
+    id: int
+    title: str
+    preview: str
+    content: str
+    is_truncated: bool = False
+
+class MainFileSectionsResponseDTO(BaseModel):
+    project_name: str
+    main_file: str
+    sections: List[MainFileSectionDTO]
+
+class ContributedSectionsRequestDTO(BaseModel):
+    selected_section_ids: List[int]

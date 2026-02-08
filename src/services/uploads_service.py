@@ -62,22 +62,53 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
 
     update_upload_zip_metadata(conn, upload_id, zip_name=zip_name, zip_path=str(zip_path))
 
-    files_info = parse_zip_file(str(zip_path), user_id=user_id, conn=conn)
+    # IMPORTANT: don't persist yet, dedup needs to run first
+    files_info = parse_zip_file(str(zip_path), user_id=user_id, conn=conn, persist_to_db=False)
     if not files_info:
-        set_upload_state(
-            conn,
-            upload_id,
-            state={"error": "No valid files were processed from ZIP."},
-            status="failed",
-        )
-        return {
-            "upload_id": upload_id,
-            "status": "failed",
-            "zip_name": zip_name,
-            "state": {"error": "No valid files were processed from ZIP."},
-        }
+        set_upload_state(conn, upload_id, state={"error": "No valid files were processed from ZIP."}, status="failed")
+        return {"upload_id": upload_id, "status": "failed", "zip_name": zip_name, "state": {"error": "No valid files were processed from ZIP."}}
 
     layout = analyze_project_layout(files_info)
+
+    # --- DEDUP INTEGRATION (this is what your current file is missing) ---
+    extract_dir = extract_dir_from_upload_zip(ZIP_DATA_DIR, str(zip_path))
+    dedup = run_deduplication_for_projects_api(conn, user_id, str(extract_dir), layout, upload_id=upload_id)
+
+    skipped_set = set(dedup.get("skipped") or [])
+    asks = dedup.get("asks") or {}
+    new_versions = dedup.get("new_versions") or {}
+
+    # 1) Apply auto-skip BEFORE writing parsed files to DB
+    if skipped_set:
+        files_info = [f for f in files_info if f.get("project_name") not in skipped_set]
+        layout = analyze_project_layout(files_info)
+
+    # 2) Apply auto-rename for 'new_version' suggestions
+    for old_name, existing_name in new_versions.items():
+        if existing_name and old_name != existing_name:
+            apply_project_rename_to_files_info(files_info, old_name, existing_name)
+            layout = rename_project_in_layout(layout, old_name, existing_name)
+
+    # If everything got removed, fail early
+    if not files_info:
+        state = {
+            "zip_name": zip_name,
+            "zip_path": str(zip_path),
+            "layout": layout,
+            "files_info_count": 0,
+            "dedup_skipped_projects": sorted(list(skipped_set)),
+            "dedup_asks": asks,
+            "dedup_new_versions": new_versions,
+            "project_filetype_index": {},
+            "message": "All projects were skipped by deduplication (duplicates).",
+        }
+        set_upload_state(conn, upload_id, state=state, status="failed")
+        return {"upload_id": upload_id, "status": "failed", "zip_name": zip_name, "state": state}
+
+    # Store parsed files ONCE (post-skip/post-rename)
+    store_parsed_files(conn, files_info, user_id)
+
+    project_filetype_index = build_project_filetype_index(files_info)
 
     state = {
         "zip_name": zip_name,
@@ -90,7 +121,6 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
         "project_filetype_index": project_filetype_index,
     }
 
-    # If unresolved asks exist, stop before classification (matches CLI ordering)
     if asks:
         set_upload_state(conn, upload_id, state=state, status="needs_dedup")
         return {"upload_id": upload_id, "status": "needs_dedup", "zip_name": zip_name, "state": state}
