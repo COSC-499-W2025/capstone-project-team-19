@@ -79,7 +79,7 @@ def get_project_feedback(conn: sqlite3.Connection, user_id: int, project_name: s
     cur = conn.execute(
         """
         SELECT
-            project_type, skill_name, file_name,
+            feedback_id, project_type, skill_name, file_name,
             criterion_key, criterion_label, expected,
             observed_json, suggestion, generated_at
         FROM project_feedback
@@ -92,14 +92,15 @@ def get_project_feedback(conn: sqlite3.Connection, user_id: int, project_name: s
     rows = []
     for r in cur.fetchall():
         rows.append({
-            "project_type": r[0],
-            "skill_name": r[1],
-            "file_name": r[2],
-            "criterion_key": r[3],
-            "criterion_label": r[4],
-            "expected": r[5],
-            "observed": json.loads(r[6]) if r[6] else {},
-            "suggestion": r[7],
-            "generated_at": r[8],
+            "feedback_id": r[0],
+            "project_type": r[1],
+            "skill_name": r[2],
+            "file_name": r[3],
+            "criterion_key": r[4],
+            "criterion_label": r[5],
+            "expected": r[6],
+            "observed": json.loads(r[7]) if r[7] else {},
+            "suggestion": r[8],
+            "generated_at": r[9],
         })
     return rows
