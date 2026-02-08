@@ -133,6 +133,80 @@ Handles authentication and security for the endpoints.
 
 ---
 
+## **Authentication** (Required)
+
+This API uses **Bearer token authentication**.
+
+### Rule
+All endpoints require an access token **except**:
+- `GET /health`
+- `POST /auth/register`
+- `POST /auth/login`
+
+### How to authenticate
+1. Register (once): `POST /auth/register`
+2. Login: `POST /auth/login` then receive `access_token`
+3. Send the token on every request:
+
+**Header**
+- `Authorization: Bearer <access_token>`
+
+### Example
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:8000/projects
+```
+
+### Error Responses
+- `401 Unauthorized` - missing/invalid/expired token
+
+**Base URL:** `/auth`
+
+Handles authentication and security for the endpoints. 
+
+### **Endpoints**
+
+- **Register**
+    - **Endpoint**: `POST /register`
+    - **Description**: Uploads username and password to database. Checks if the username already exists in the database.
+    - **Headers**: None.
+    - **Response Status**: `201 Created` on success, `400 Bad Request` if username already taken
+    - **Request Body**:
+    ```json
+        {
+            "username": "John Doe",
+            "password": "securepassword123"
+        }
+    ```
+    - **Response Body**:
+    ```json
+        {
+            "user_id": 1,
+            "username": "John Doe"
+        }
+    ```
+
+- **Login**
+    - **Endpoint**: `POST /login`
+    - **Description**: Takes in a username and password, checks that the username exists and the password is correct. Returns an authorization (bearer) token that expires after 60 minutes.
+    - **Headers**: None.
+    - **Response Status**: `200 OK` on success, `401 Unauthorized` if credentials are invalid
+    - **Request Body**: 
+    ```json
+        {
+            "username": "John Doe",
+            "password": "securepassword"
+        }
+    ```
+    - **Response Body**:
+    ```json
+        {
+            "access_token": "token",
+            "token_type": "bearer"
+        }
+    ```
+
+---
+
 ## **Projects**
 
 **Base URL:** `/projects`
