@@ -594,9 +594,6 @@ A typical flow for the first six endpoints:
                     },
                     "files_info_count": 8
                 }
-            },
-            "error": null
-        }
         ```
 
 - **Resolve Dedup (Optional, New)**
@@ -702,6 +699,58 @@ A typical flow for the first six endpoints:
     - **Error Responses**:
         - `422 Unprocessable Entity` if any section IDs are out of range
         - `409 Conflict` if the main file is not selected yet for this project
+
+- **Set Supporting Text Files (Collaborative Text Contribution)**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/supporting-text-files`
+    - **Description**: Stores which **supporting TEXT files** the user contributed to (excluding the selected main file, and excluding `.csv` files).
+        - Writes to: `uploads.state.contributions[project_name].supporting_text_relpaths`
+        - Values are stored **deduplicated + sorted**
+    - **Auth**: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required)
+        - `{project_name}` (string, required)
+    - **Request Body**:
+        ```json
+        {
+        "relpaths": [
+            "text_projects_og/PlantGrowthStudy/reading_notes.txt",
+            "text_projects_og/PlantGrowthStudy/second_draft.docx"
+        ]
+        }
+        ```
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `UploadDTO`
+    - **Error Responses**:
+
+    - `409 Conflict` if upload is not in a file-picking step (e.g. not `needs_file_roles` / `needs_summaries`), or if main file is not selected yet (service guard)
+    - `422 Unprocessable Entity` if any relpath is unsafe (e.g. contains `..`) or if the list includes the main file or any `.csv`
+    - `404 Not Found` if any relpath does not exist for this project/upload
+
+
+- **Set Supporting CSV Files (Collaborative Text Contribution)**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/supporting-csv-files`
+    - **Description**: Stores which **CSV files** the user contributed to.
+        - Writes to: `uploads.state.contributions[project_name].supporting_csv_relpaths`
+        - Values are stored **deduplicated + sorted**
+    - **Auth**: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required)
+        - `{project_name}` (string, required)
+    - **Request Body**:
+        ```json
+        {
+        "relpaths": [
+            "text_projects_og/PlantGrowthStudy/plant_growth_data.csv",
+            "text_projects_og/PlantGrowthStudy/plant_growth_data2.csv"
+        ]
+        }
+        ```
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `UploadDTO`
+    - **Error Responses**:
+        - `409 Conflict` if upload is not in a file-picking step (e.g. not `needs_file_roles` / `needs_summaries`)
+        - `422 Unprocessable Entity` if any relpath is unsafe, or if any relpath is not a `.csv`
+        - `404 Not Found` if any relpath does not exist for this project/upload
 ---
 
 ## **GitHub Integration**
@@ -1374,6 +1423,9 @@ Example:
 
 - **SetMainFileSectionsRequestDTO**
     - `selected_section_ids` (List[int], required): IDs from `MainFileSectionsDTO.sections[*].id`
+
+- **SupportingFilesRequest**
+    - `relpaths` (List[string], required): relpaths returned by `GET .../files`
 
 
 ### **Skills DTOs**
