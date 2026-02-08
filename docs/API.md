@@ -669,7 +669,7 @@ A typical flow for the first six endpoints:
 - **Git Identities (Local Git)**
   - **Description**: Replaces the CLI prompt that asks users to pick their git identity from a local `.git` history.
     - **Notes**:
-      - `project_id` refers to the `classification_id` in `project_classifications`.
+      - `project_id` refers to `projects.project_key`.
       - GET returns empty `options` for individual code projects (no collaborator list).
       - POST is allowed only for collaborative code projects.
       - Selection matching uses email or name, so aliases may map to multiple indices.

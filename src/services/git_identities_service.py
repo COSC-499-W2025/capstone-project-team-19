@@ -11,7 +11,7 @@ from src.db import (
     ensure_user_github_table,
     load_user_github,
     save_user_github,
-    get_project_classification_by_id,
+    get_project_for_upload_by_key,
 )
 from src.utils.helpers import is_git_repo
 from src.utils.parsing import ZIP_DATA_DIR
@@ -79,6 +79,10 @@ def get_git_identities(
     upload: dict,
     project_id: int,
 ) -> Tuple[List[GitIdentityOptionDTO], List[int]]:
+    upload_id = upload.get("upload_id")
+    if not upload_id:
+        raise HTTPException(status_code=400, detail="Upload missing upload_id")
+
     zip_path = upload.get("zip_path")
     if not zip_path:
         raise HTTPException(status_code=400, detail="Upload missing zip_path")
@@ -87,7 +91,7 @@ def get_git_identities(
     if not zip_name:
         raise HTTPException(status_code=400, detail="Upload missing zip_name")
 
-    row = get_project_classification_by_id(conn, user_id, project_id, zip_name)
+    row = get_project_for_upload_by_key(conn, user_id, project_id, upload_id)
     if not row:
         raise HTTPException(status_code=404, detail="Project not found in this upload")
 
@@ -133,6 +137,10 @@ def save_git_identities(
     selected_indices: List[int],
     extra_emails: List[str],
 ) -> Tuple[List[GitIdentityOptionDTO], List[int]]:
+    upload_id = upload.get("upload_id")
+    if not upload_id:
+        raise HTTPException(status_code=400, detail="Upload missing upload_id")
+
     zip_path = upload.get("zip_path")
     if not zip_path:
         raise HTTPException(status_code=400, detail="Upload missing zip_path")
@@ -141,7 +149,7 @@ def save_git_identities(
     if not zip_name:
         raise HTTPException(status_code=400, detail="Upload missing zip_name")
 
-    row = get_project_classification_by_id(conn, user_id, project_id, zip_name)
+    row = get_project_for_upload_by_key(conn, user_id, project_id, upload_id)
     if not row:
         raise HTTPException(status_code=404, detail="Project not found in this upload")
 

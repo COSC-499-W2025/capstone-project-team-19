@@ -6,6 +6,7 @@ from src.api.routes import (
     project_dates_router,
     skills_router,
     resumes_router,
+    portfolio_router,
     github_router,
     consent_router,
 )

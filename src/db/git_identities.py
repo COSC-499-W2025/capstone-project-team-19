@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import os
-from typing import Dict, List, Optional
+from typing import Dict, List
 import sqlite3
 
 from src.utils.helpers import ensure_table
@@ -47,29 +46,3 @@ def save_user_github(conn: sqlite3.Connection, user_id: int, emails: List[str], 
             (user_id, nm),
         )
     conn.commit()
-
-
-def get_project_classification_by_id(
-    conn: sqlite3.Connection,
-    user_id: int,
-    project_id: int,
-    zip_name_raw: str,
-) -> Optional[Dict[str, str]]:
-    zip_name_stem = os.path.splitext(zip_name_raw)[0]
-    row = conn.execute(
-        """
-        SELECT project_name, classification, project_type
-        FROM project_classifications
-        WHERE classification_id = ?
-          AND user_id = ?
-          AND zip_name IN (?, ?)
-        """,
-        (project_id, user_id, zip_name_raw, zip_name_stem),
-    ).fetchone()
-    if not row:
-        return None
-    return {
-        "project_name": row[0],
-        "classification": row[1],
-        "project_type": row[2],
-    }

@@ -182,28 +182,30 @@ def insert_classification(seed_conn):
         classification: str,
         project_type: str,
     ) -> int:
-        zip_path = upload.get("zip_path")
-        if not zip_path:
-            zip_path = (upload.get("state") or {}).get("zip_path")
-        if not zip_path:
-            raise KeyError("zip_path")
         cur = seed_conn.execute(
             """
-            INSERT INTO project_classifications(
-                user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO projects(user_id, display_name, classification, project_type)
+            VALUES (?, ?, ?, ?)
+            """,
+            (user_id, project_name, classification, project_type),
+        )
+        project_key = cur.lastrowid
+
+        fingerprint = f"test-{user_id}-{project_name}-{upload.get('upload_id')}"
+        seed_conn.execute(
+            """
+            INSERT INTO project_versions(project_key, upload_id, fingerprint_strict, fingerprint_loose, created_at)
+            VALUES (?, ?, ?, ?, ?)
             """,
             (
-                user_id,
-                zip_path,
-                upload["zip_name"],
-                project_name,
-                classification,
-                project_type,
-            datetime.now(timezone.utc).isoformat(),
+                project_key,
+                upload.get("upload_id"),
+                fingerprint,
+                fingerprint,
+                datetime.now(timezone.utc).isoformat(),
             ),
         )
         seed_conn.commit()
-        return cur.lastrowid
+        return project_key
 
     return _insert

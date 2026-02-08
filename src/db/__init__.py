@@ -32,6 +32,7 @@ from .projects import (
     store_parsed_files,
     update_project_metadata,
     get_project_key,
+    get_project_for_upload_by_key,
     get_latest_version_key,
     get_project_metadata,
     get_zip_name_for_project,
@@ -126,7 +127,6 @@ from .git_identities import (
     ensure_user_github_table,
     load_user_github,
     save_user_github,
-    get_project_classification_by_id,
 )
 
 # project summaries
@@ -234,6 +234,7 @@ __all__ = [
     "store_parsed_files",
     "update_project_metadata",
     "get_project_key",
+    "get_project_for_upload_by_key",
     "get_latest_version_key",
     "get_project_metadata",
     "record_project_classification",

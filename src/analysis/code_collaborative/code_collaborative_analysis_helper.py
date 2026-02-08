@@ -40,7 +40,7 @@ def resolve_repo_for_project(
 
     Rules:
     - Only consider projects marked as (classification='collaborative', project_type='code')
-      in project_classifications for this user + zip_name.
+      in projects metadata for this user + zip_name.
     - Only look under:  ./src/analysis/zip_data/<zip_name>/<zip_name>/
       and require the directory name to match `project_name`.
     """
@@ -89,7 +89,7 @@ def resolve_repo_for_project(
         if DEBUG:
             print(
                 f"[debug] {project_name}: not marked collaborative/code in "
-                "project_classifications; skipping repo resolution"
+                "projects metadata; skipping repo resolution"
             )
         return None
 

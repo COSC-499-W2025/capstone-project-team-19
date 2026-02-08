@@ -167,6 +167,40 @@ def get_zip_name_for_project(conn: sqlite3.Connection, user_id: int, project_nam
     return row[0] if row else None
 
 
+def get_project_for_upload_by_key(
+    conn: sqlite3.Connection,
+    user_id: int,
+    project_key: int,
+    upload_id: int,
+) -> Optional[Dict[str, str]]:
+    """
+    Lookup project metadata scoped to a specific upload.
+
+    Returns:
+        dict with display_name, classification, project_type if found.
+    """
+    row = conn.execute(
+        """
+        SELECT p.display_name, p.classification, p.project_type
+        FROM projects p
+        JOIN project_versions pv ON pv.project_key = p.project_key
+        WHERE p.user_id = ?
+          AND p.project_key = ?
+          AND pv.upload_id = ?
+        ORDER BY pv.version_key DESC
+        LIMIT 1
+        """,
+        (user_id, project_key, upload_id),
+    ).fetchone()
+    if not row:
+        return None
+    return {
+        "project_name": row[0],
+        "classification": row[1],
+        "project_type": row[2],
+    }
+
+
 def record_project_classification(
     conn: sqlite3.Connection,
     user_id: int,
