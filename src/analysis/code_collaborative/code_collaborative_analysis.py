@@ -152,6 +152,7 @@ def analyze_code_project(conn: sqlite3.Connection,
             print("\n[skip] No identities selected.")
             return None
         save_user_github(conn, user_id, sel_emails, sel_names)
+        print("\nSaved your identity for future runs.")
         aliases = load_user_github(conn, user_id)
 
     # 4) read commits
