@@ -21,13 +21,29 @@ def conn(tmp_path: Path):
     db.execute("INSERT INTO users (username) VALUES (?)", ("testuser",))
     user_id = db.execute("SELECT user_id FROM users WHERE username=?", ("testuser",)).fetchone()[0]
 
+    # Minimal project/version rows (project_classifications table was removed).
+    upload_id = db.execute(
+        """
+        INSERT INTO uploads (user_id, zip_name, zip_path, status, state_json, created_at, updated_at)
+        VALUES (?, ?, ?, 'done', '{}', datetime('now'), datetime('now'))
+        """,
+        (user_id, "zip_test", "/tmp/fake.zip"),
+    ).lastrowid
+
+    project_key = db.execute(
+        """
+        INSERT INTO projects (user_id, display_name, classification, project_type)
+        VALUES (?, ?, ?, ?)
+        """,
+        (user_id, "proj", "individual", "code"),
+    ).lastrowid
+
     db.execute(
         """
-        INSERT INTO project_classifications
-            (user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at)
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose)
+        VALUES (?, ?, ?, ?)
         """,
-        (user_id, "/tmp/fake.zip", "zip_test", "proj", "individual", "code"),
+        (project_key, upload_id, "strict_fp", "loose_fp"),
     )
     db.commit()
 

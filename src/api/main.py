@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from src.api.routes import (
     projects_router,
     projects_ranking_router,
+    feedback_router,
+    project_dates_router,
     skills_router,
     resumes_router,
     github_router,
@@ -19,7 +21,10 @@ def health():
 app.include_router(auth_router)
 app.include_router(projects_ranking_router)
 app.include_router(projects_router)
+app.include_router(feedback_router)
+app.include_router(project_dates_router)
 app.include_router(skills_router)
 app.include_router(resumes_router)
 app.include_router(consent_router)
 app.include_router(github_router)
+app.include_router(portfolio_router)

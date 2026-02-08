@@ -1,7 +1,7 @@
 """Tests for DELETE API endpoints for projects and resumes."""
 import json
 from src.db.project_summaries import save_project_summary, get_project_summary_by_name
-from src.db.resumes import insert_resume_snapshot, list_resumes
+from src.db.resumes import insert_resume_snapshot, list_resumes, get_resume_snapshot
 
 
 # ============================================================================
@@ -29,6 +29,18 @@ def create_test_resume(conn, user_id, name):
     resume_json = json.dumps({
         "projects": [{"project_name": f"Project for {name}"}],
         "aggregated_skills": {}
+    })
+    resume_id = insert_resume_snapshot(conn, user_id, name, resume_json)
+    conn.commit()
+    return resume_id
+
+
+def create_test_resume_with_projects(conn, user_id, name, project_names):
+    """Create a test resume containing specific projects."""
+    projects = [{"project_name": pn, "languages": ["Python"], "skills": []} for pn in project_names]
+    resume_json = json.dumps({
+        "projects": projects,
+        "aggregated_skills": {"languages": ["Python"], "frameworks": [], "technical_skills": [], "writing_skills": []}
     })
     resume_id = insert_resume_snapshot(conn, user_id, name, resume_json)
     conn.commit()
@@ -312,6 +324,88 @@ def test_delete_project_wrong_user(client, auth_headers, seed_conn):
 
 
 # ============================================================================
+# DELETE /projects/{project_id}?refresh_resumes tests
+# ============================================================================
+
+def test_delete_project_refresh_resumes_default_false(client, auth_headers, seed_conn):
+    """Test that refresh_resumes defaults to false, leaving resumes unchanged."""
+    project_id = create_test_project(seed_conn, 1, "ProjectInResume")
+    resume_id = create_test_resume_with_projects(seed_conn, 1, "MyResume", ["ProjectInResume", "OtherProject"])
+
+    # Delete without refresh_resumes param (defaults to false)
+    res = client.delete(f"/projects/{project_id}", headers=auth_headers)
+    assert_delete_single_success(res)
+
+    # Resume should still contain the deleted project
+    snap = get_resume_snapshot(seed_conn, 1, resume_id)
+    data = json.loads(snap["resume_json"])
+    project_names = [p["project_name"] for p in data["projects"]]
+    assert "ProjectInResume" in project_names
+
+
+def test_delete_project_refresh_resumes_true_updates_resume(client, auth_headers, seed_conn):
+    """Test that refresh_resumes=true removes project from multi-project resume."""
+    project_id = create_test_project(seed_conn, 1, "ProjectToRemove")
+    create_test_project(seed_conn, 1, "ProjectToKeep")
+    resume_id = create_test_resume_with_projects(seed_conn, 1, "MyResume", ["ProjectToRemove", "ProjectToKeep"])
+
+    # Delete with refresh_resumes=true
+    res = client.delete(f"/projects/{project_id}?refresh_resumes=true", headers=auth_headers)
+    assert_delete_single_success(res)
+
+    # Resume should no longer contain the deleted project
+    snap = get_resume_snapshot(seed_conn, 1, resume_id)
+    data = json.loads(snap["resume_json"])
+    project_names = [p["project_name"] for p in data["projects"]]
+    assert "ProjectToRemove" not in project_names
+    assert "ProjectToKeep" in project_names
+
+
+def test_delete_project_refresh_resumes_true_deletes_empty_resume(client, auth_headers, seed_conn):
+    """Test that refresh_resumes=true deletes resume when it becomes empty."""
+    project_id = create_test_project(seed_conn, 1, "OnlyProject")
+    resume_id = create_test_resume_with_projects(seed_conn, 1, "SingleProjectResume", ["OnlyProject"])
+
+    # Verify resume exists
+    assert any(r["id"] == resume_id for r in list_resumes(seed_conn, 1))
+
+    # Delete with refresh_resumes=true
+    res = client.delete(f"/projects/{project_id}?refresh_resumes=true", headers=auth_headers)
+    assert_delete_single_success(res)
+
+    # Resume should be deleted since it had only one project
+    assert not any(r["id"] == resume_id for r in list_resumes(seed_conn, 1))
+
+
+def test_delete_project_refresh_resumes_true_no_resumes(client, auth_headers, seed_conn):
+    """Test that refresh_resumes=true works when user has no resumes."""
+    project_id = create_test_project(seed_conn, 1, "ProjectNoResume")
+
+    # Delete with refresh_resumes=true (no resumes exist)
+    res = client.delete(f"/projects/{project_id}?refresh_resumes=true", headers=auth_headers)
+    assert_delete_single_success(res)
+
+    # Verify project is gone
+    assert get_project_summary_by_name(seed_conn, 1, "ProjectNoResume") is None
+
+
+def test_delete_project_refresh_resumes_true_project_not_in_resume(client, auth_headers, seed_conn):
+    """Test that refresh_resumes=true works when project isn't in any resume."""
+    project_id = create_test_project(seed_conn, 1, "ProjectNotInResume")
+    resume_id = create_test_resume_with_projects(seed_conn, 1, "UnrelatedResume", ["DifferentProject"])
+
+    # Delete with refresh_resumes=true
+    res = client.delete(f"/projects/{project_id}?refresh_resumes=true", headers=auth_headers)
+    assert_delete_single_success(res)
+
+    # Resume should be unchanged
+    snap = get_resume_snapshot(seed_conn, 1, resume_id)
+    data = json.loads(snap["resume_json"])
+    assert len(data["projects"]) == 1
+    assert data["projects"][0]["project_name"] == "DifferentProject"
+
+
+# ============================================================================
 # DELETE /projects tests (delete all)
 # ============================================================================
 
@@ -362,6 +456,80 @@ def test_delete_all_projects_only_deletes_own_projects(client, auth_headers, see
 
     # Verify user 2's project still exists
     assert get_project_summary_by_name(seed_conn, 2, "User2Project") is not None
+
+
+# ============================================================================
+# DELETE /projects?refresh_resumes tests (delete all)
+# ============================================================================
+
+def test_delete_all_projects_refresh_resumes_default_false(client, auth_headers, seed_conn):
+    """Test that refresh_resumes defaults to false, leaving resumes unchanged."""
+    create_test_project(seed_conn, 1, "Project1")
+    create_test_project(seed_conn, 1, "Project2")
+    resume_id = create_test_resume_with_projects(seed_conn, 1, "MyResume", ["Project1", "Project2"])
+
+    # Delete all without refresh_resumes param (defaults to false)
+    res = client.delete("/projects", headers=auth_headers)
+    assert_delete_all_success(res, expected_count=2)
+
+    # Resume should still contain the deleted projects
+    snap = get_resume_snapshot(seed_conn, 1, resume_id)
+    data = json.loads(snap["resume_json"])
+    project_names = [p["project_name"] for p in data["projects"]]
+    assert "Project1" in project_names
+    assert "Project2" in project_names
+
+
+def test_delete_all_projects_refresh_resumes_true_deletes_resumes(client, auth_headers, seed_conn):
+    """Test that refresh_resumes=true deletes resumes that become empty."""
+    create_test_project(seed_conn, 1, "ProjectA")
+    create_test_project(seed_conn, 1, "ProjectB")
+    resume_id = create_test_resume_with_projects(seed_conn, 1, "MyResume", ["ProjectA", "ProjectB"])
+
+    # Verify resume exists
+    assert any(r["id"] == resume_id for r in list_resumes(seed_conn, 1))
+
+    # Delete all with refresh_resumes=true
+    res = client.delete("/projects?refresh_resumes=true", headers=auth_headers)
+    assert_delete_all_success(res, expected_count=2)
+
+    # Resume should be deleted since all its projects are gone
+    assert not any(r["id"] == resume_id for r in list_resumes(seed_conn, 1))
+
+
+def test_delete_all_projects_refresh_resumes_true_no_projects(client, auth_headers, seed_conn):
+    """Test that refresh_resumes=true works when no projects exist."""
+    resume_id = create_test_resume_with_projects(seed_conn, 1, "MyResume", ["SomeOldProject"])
+
+    # Delete all with refresh_resumes=true (no projects exist to delete)
+    res = client.delete("/projects?refresh_resumes=true", headers=auth_headers)
+    assert_delete_all_success(res, expected_count=0)
+
+    # Resume should be unchanged since no projects were deleted
+    assert any(r["id"] == resume_id for r in list_resumes(seed_conn, 1))
+
+
+def test_delete_all_projects_refresh_resumes_isolation(client, auth_headers, seed_conn):
+    """Test that refresh_resumes=true only affects current user's resumes."""
+    # Create projects and resumes for user 1
+    create_test_project(seed_conn, 1, "User1Project")
+    resume_id_1 = create_test_resume_with_projects(seed_conn, 1, "User1Resume", ["User1Project"])
+
+    # Create projects and resumes for user 2
+    create_other_user(seed_conn)
+    create_test_project(seed_conn, 2, "User2Project")
+    resume_id_2 = create_test_resume_with_projects(seed_conn, 2, "User2Resume", ["User2Project"])
+
+    # Delete all as user 1 with refresh_resumes=true
+    res = client.delete("/projects?refresh_resumes=true", headers=auth_headers)
+    assert_delete_all_success(res, expected_count=1)
+
+    # User 1's resume should be deleted (became empty)
+    assert not any(r["id"] == resume_id_1 for r in list_resumes(seed_conn, 1))
+
+    # User 2's project and resume should be unchanged
+    assert get_project_summary_by_name(seed_conn, 2, "User2Project") is not None
+    assert any(r["id"] == resume_id_2 for r in list_resumes(seed_conn, 2))
 
 
 # ============================================================================

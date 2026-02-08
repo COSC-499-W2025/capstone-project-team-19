@@ -274,6 +274,156 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **Request DTO**: `PatchProjectRankingRequestDTO`
     - **Request Body**:
       - Set manual rank:
+- **Project Dates**
+    - **Description**: View and manage **manual date overrides** for projects.
+        - If a project has manual dates, the API will report `source: "MANUAL"` and return those dates.
+        - If a project has no manual dates, the API will report `source: "AUTO"` and return the best available automatic date (if any).
+        - Manual dates affect any features that depend on project chronology (e.g., chronological skills, portfolio ordering).
+
+    - **List Project Dates**
+        - **Endpoint**: `GET /projects/dates`
+        - **Description**: Returns all projects with their effective dates and whether they come from manual overrides or automatic computation.
+        - **Auth**:`Authorization: Bearer <access_token>`
+        - **Request Body**: None
+        - **Response Status**: `200 OK`
+        - **Response Body**:
+            ```json
+            {
+                "success": true,
+                "data": {
+                    "projects": [
+                    {
+                        "project_summary_id": 9,
+                        "project_name": "My Project",
+                        "start_date": "2024-01-01",
+                        "end_date": "2024-12-31",
+                        "source": "MANUAL",
+                        "manual_start_date": "2024-01-01",
+                        "manual_end_date": "2024-12-31"
+                    },
+                    {
+                        "project_summary_id": 10,
+                        "project_name": "Another Project",
+                        "start_date": "2025-02-10",
+                        "end_date": "2025-03-05",
+                        "source": "AUTO",
+                        "manual_start_date": null,
+                        "manual_end_date": null
+                    }
+                    ]
+                },
+                "error": null
+            }
+            ```
+
+    - **Set / Patch Manual Project Dates**
+        - **Endpoint**: `PATCH /projects/{project_id}/dates`
+        - **Description**: Sets or clears the manual start/end dates for a single project.
+        - **Path Parameters**:
+            - `{project_id}` (integer, required): The `project_summary_id` of the project to update
+        - **Auth** : `Authorization: Bearer <access_token>`
+        - **Request Body**:
+            - Set both:
+                ```json
+                { "start_date": "2024-01-01", "end_date": "2024-12-31" }
+                ```
+            - Set one side only (leave the other unchanged by omitting it):
+                ```json
+                { "start_date": "2024-01-01" }
+                ```
+            - Clear one side only (send `null`):
+                ```json
+                { "end_date": null }
+                ```
+        - **Notes**:
+            - At least one of `start_date` or `end_date` must be present (sending `{}` returns `422 Unprocessable Entity`)
+            - Date format must be `YYYY-MM-DD`
+            - Dates cannot be in the future
+            - If both are present, `start_date` must be <= `end_date`
+        - **Response Status**: `200 OK`
+        - **Response Body**:
+            ```json
+            {
+              "success": true,
+              "data": {
+                    "project_summary_id": 9,
+                    "project_name": "My Project",
+                    "start_date": "2024-01-01",
+                    "end_date": "2024-12-31",
+                    "source": "MANUAL",
+                    "manual_start_date": "2024-01-01",
+                    "manual_end_date": "2024-12-31"
+              },
+              "error": null
+            }
+            ```
+        - **Error Responses**:
+            - `400 Bad Request` if date format is invalid, date is in the future, or start_date > end_date
+            - `404 Not Found` if the project does not exist / does not belong to the user
+
+    - **Clear Manual Dates for One Project (Revert to Automatic)**
+        - **Endpoint**: `DELETE /projects/{project_id}/dates`
+        - **Description**: Clears manual date overrides for a project (sets them back to automatic behavior).
+        - **Path Parameters**:
+            - `{project_id}` (integer, required): The `project_summary_id` of the project to clear
+        - **Auth**: `Authorization: Bearer <access_token>`
+        - **Request Body**: None
+        - **Response Status**: `200 OK`
+        - **Response Body**:
+            ```json
+            {
+                "success": true,
+                "data": {
+                    "project_summary_id": 9,
+                    "project_name": "My Project",
+                    "start_date": "2025-02-10",
+                    "end_date": "2025-03-05",
+                    "source": "AUTO",
+                    "manual_start_date": null,
+                    "manual_end_date": null
+                },
+                "error": null
+            }
+            ```
+        - **Error Responses**:
+            - `404 Not Found` if the project does not exist / does not belong to the user
+
+    - **Reset All Project Dates to Automatic**
+        - **Endpoint**: `POST /projects/dates/reset`
+        - **Description**: Clears all manual date overrides for the current user.
+        - **Auth**: `Authorization: Bearer <access_token>`
+        - **Request Body**: None
+        - **Response Status**: `200 OK`
+        - **Response Body**:
+            ```json
+            {
+                "success": true,
+                "data": {
+                    "cleared_count": 2
+                },
+                "error": null
+            }
+            ```
+
+- **Delete Project by ID**
+    - **Endpoint**: `DELETE /projects/{project_id}`
+    - **Description**: Permanently deletes a specific project and all its associated data (skills, metrics, files, etc.).
+    - **Path Parameters**:
+        - `{project_id}` (integer, required): The project_summary_id of the project to delete
+    - **Query Parameters**:
+        - `refresh_resumes` (boolean, optional): If `true`, also removes the deleted project from any résumé snapshots. Résumés that become empty are deleted. Defaults to `false`.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Example Requests**:
+        ```bash
+        # Delete project (default, resumes unchanged)
+        DELETE /projects/9
+
+        # Delete project and update resumes
+        DELETE /projects/9?refresh_resumes=true
+        ```
+    - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
+    - **Response Body**:
         ```json
         { "rank": 1 }
         ```
@@ -313,21 +463,77 @@ Handles project ingestion, analysis, classification, and metadata updates.
     ```
 
 - **Delete All Projects**
-  - **Endpoint**: `DELETE /projects`
-  - **Description**: Permanently deletes all projects belonging to the current user.
-  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-  - **Response Status**: `200 OK`
-  - **Response DTO**: `DeleteResultDTO`
-  - **Response Body**:
-    ```json
-    {
-      "success": true,
-      "data": {
-        "deleted_count": 3
-      },
-      "error": null
-    }
-    ```
+    - **Endpoint**: `DELETE /projects`
+    - **Description**: Permanently deletes all projects belonging to the current user.
+    - **Query Parameters**:
+        - `refresh_resumes` (boolean, optional): If `true`, also removes deleted projects from any résumé snapshots. Résumés that become empty are deleted. Defaults to `false`.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Example Requests**:
+        ```bash
+        # Delete all projects (default, resumes unchanged)
+        DELETE /projects
+
+        # Delete all projects and update resumes
+        DELETE /projects?refresh_resumes=true
+        ```
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `DeleteResultDTO`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "deleted_count": 3
+            },
+            "error": null
+        }
+        ```
+
+- **Retrieve Project Feedback**
+    - **Endpoint**: `GET /{project_id}/feedback`
+    - **Description**: Returns all feedback for one project.
+    - **Auth**: `Authorization: Bearer <access_token>`
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `ProjectFeedbackDTO`
+    - **Request Body**: None.
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "project_id": 9,
+                "project_name": "My Project",
+                "feedback": [
+                    {
+                        "feedback_id": 1,
+                        "project_type": "code",
+                        "skill_name": "code_quality",
+                        "file_name": "main.py",
+                        "criterion_key": "complexity",
+                        "criterion_label": "Code Complexity",
+                        "expected": "Cyclomatic complexity < 10",
+                        "observed": {"max_complexity": 12},
+                        "suggestion": "Refactor main() to reduce nested conditions",
+                        "generated_at": "2026-01-12 02:15:30"
+                    },
+                    {
+                        "feedback_id": 2,
+                        "project_type": "code",
+                        "skill_name": "documentation",
+                        "file_name": "utils.py",
+                        "criterion_key": "docstrings",
+                        "criterion_label": "Function Documentation",
+                        "expected": "All public functions documented",
+                        "observed": {"coverage": 0.75},
+                        "suggestion": "Add docstrings to helper_validate() and helper_process()",
+                        "generated_at": "2026-01-12 02:15:30"
+                    }
+                ]
+            },
+            "error": null
+        }
+        ```
 
 ---
 
@@ -1012,32 +1218,64 @@ Manages résumé-specific representations of projects.
         "data": {
             "id": 1,
             "name": "Updated Resume Name",
-            "created_at": "2024-01-12 10:30:00",
-            "projects": [...],
-            "aggregated_skills": {...},
-            "rendered_text": "..."
-        },
-        "error": null
-    }
-    ```
-  - **Error Responses**:
-    - `401 Unauthorized`: Missing or invalid Bearer token
-    - `404 Not Found`: Resume or project not found
-  - **Example: Rename résumé only (no project editing)**:
-    ```json
-    {
-      "name": "My Updated Resume"
-    }
-    ```
-  - **Example: Append new bullets to existing**:
-    ```json
-    {
-      "project_name": "MyProject",
-      "scope": "resume_only",
-      "contribution_bullets": ["Added new feature Y"],
-      "contribution_edit_mode": "append"
-    }
-    ```
+            "project_name": "MyProject",
+            "scope": "resume_only",
+            "display_name": "Custom Project Name",
+            "summary_text": "Updated project summary...",
+            "contribution_bullets": [
+                "Built feature X",
+                "Improved performance by 50%"
+            ],
+            "contribution_edit_mode": "replace",
+            "key_role": "Backend Developer"
+        }
+        ```
+        - `name` (string, optional): New name for the résumé (rename)
+        - `project_name` (string, optional): The text name of the project to edit. If omitted (no "project_name", just "name"), only the résumé name is updated.
+        - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
+            - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
+            - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
+        - `display_name` (string, optional): Custom display name for the project
+        - `summary_text` (string, optional): Updated summary text
+        - `contribution_bullets` (array of strings, optional): Custom contribution bullet points
+        - `contribution_edit_mode` (string, optional): How to apply contribution bullets. Defaults to `"replace"`.
+            - `"replace"`: Replace all existing bullets with the provided list
+            - `"append"`: Keep existing bullets and add the provided bullets to the end
+        - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead"). Follows the same `scope` rules as other fields.
+    - **Response Status**: `200 OK` or `404 Not Found`
+    - **Response Body**: Uses `ResumeDetailDTO`
+        ```json
+        {
+            "success": true,
+            "data": {
+                "id": 1,
+                "name": "Updated Resume Name",
+                "created_at": "2024-01-12 10:30:00",
+                "projects": [...],
+                "aggregated_skills": {...},
+                "rendered_text": "..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Resume or project not found
+    - **Example: Rename résumé only (no project editing)**:
+        ```json
+        {
+            "name": "My Updated Resume"
+        }
+        ```
+    - **Example: Append new bullets to existing**:
+        ```json
+        {
+            "project_name": "MyProject",
+            "scope": "resume_only",
+            "contribution_bullets": ["Added new feature Y"],
+            "contribution_edit_mode": "append"
+        }
+        ```
 
 - **Delete Resume by ID**
   - **Endpoint**: `DELETE /resume/{resume_id}`
@@ -1078,9 +1316,88 @@ Manages résumé-specific representations of projects.
 
 **Base URL:** `/portfolio`
 
-Manages portfolio showcase configuration.
+Manages portfolio showcase configuration. Portfolios are generated live from all of the user's analyzed projects, ranked by importance score. No data is persisted — the portfolio reflects the current state of project summaries and overrides.
 
 ### **Endpoints**
+
+- **Generate Portfolio**
+    - **Endpoint**: `POST /portfolio/generate`
+    - **Description**: Generates a portfolio view from all of the user's analyzed projects, ranked by importance. Returns structured project data and a rendered plain-text version. The portfolio is not persisted — it is built on demand from existing project summaries.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: Uses `PortfolioGenerateRequestDTO`
+        ```json
+        {
+            "name": "My Portfolio"
+        }
+        ```
+        - `name` (string, required): Label for the portfolio (used in rendered text header)
+    - **Response Status**: `200 OK` or `400 Bad Request`
+    - **Response Body**: Uses `PortfolioDetailDTO`
+        ```json
+        {
+            "success": true,
+            "data": {
+                "projects": [
+                    {
+                        "project_name": "MyProject",
+                        "display_name": "My Project",
+                        "project_type": "code",
+                        "project_mode": "collaborative",
+                        "score": 0.875,
+                        "duration": "Duration: 2024-01-15 – 2024-06-30",
+                        "languages": ["Python", "JavaScript"],
+                        "frameworks": ["FastAPI", "React"],
+                        "activity": "Activity: feature_coding 85%, testing 15%",
+                        "skills": ["Backend Development", "API Design"],
+                        "summary_text": "A web application for...",
+                        "contribution_bullets": ["Built the REST API layer"]
+                    }
+                ],
+                "rendered_text": "Portfolio — My Portfolio\n..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `400 Bad Request`: No projects found for this user
+        - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **Edit Portfolio**
+    - **Endpoint**: `POST /portfolio/edit`
+    - **Description**: Edits portfolio wording for a specific project. Changes can be scoped to the portfolio only or applied globally (affecting all resumes and the portfolio). Edits are stored as overrides in `project_summaries.summary_json` — no portfolio snapshot table is needed. Returns the updated portfolio view.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: Uses `PortfolioEditRequestDTO`
+        ```json
+        {
+            "project_name": "MyProject",
+            "scope": "portfolio_only",
+            "display_name": "Custom Project Name",
+            "summary_text": "Updated summary...",
+            "contribution_bullets": ["Built feature X", "Improved performance by 50%"]
+        }
+        ```
+        - `project_name` (string, required): The text name of the project to edit
+        - `scope` (string, optional): Either `"portfolio_only"` (default) or `"global"`
+            - `portfolio_only`: Changes apply only to the portfolio view (stored as `portfolio_overrides`)
+            - `global`: Changes apply to all resumes and the portfolio (stored as `manual_overrides` in `project_summaries`, fanned out to all `resume_snapshots`)
+        - `display_name` (string, optional): Custom display name for the project
+        - `summary_text` (string, optional): Updated summary text
+        - `contribution_bullets` (array of strings, optional): Custom contribution bullet points
+    - **Response Status**: `200 OK` or `404 Not Found`
+    - **Response Body**: Uses `PortfolioDetailDTO` (returns the full updated portfolio)
+        ```json
+        {
+            "success": true,
+            "data": {
+                "projects": [...],
+                "rendered_text": "..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Project not found
 
 ---
 
@@ -1262,13 +1579,42 @@ Example:
   - `project_ids` (List[int], optional): List of `project_summary_id` values from `project_summaries` table. Get these from `GET /projects`. If omitted, uses top 5 ranked projects.
 
 - **ResumeEditRequestDTO**
-  - `name` (string, optional): New name for the résumé
-  - `project_name` (string, optional): Text name of the project to edit. If omitted, only name is updated.
-  - `scope` (string, optional): `"resume_only"` (default) or `"global"`. Required when editing a project.
-  - `display_name` (string, optional): Custom display name for the project
-  - `summary_text` (string, optional): Updated summary text
-  - `contribution_bullets` (List[string], optional): Custom contribution bullet points
-  - `contribution_edit_mode` (string, optional): `"replace"` (default) or `"append"`
+    - `name` (string, optional): New name for the résumé
+    - `project_name` (string, optional): Text name of the project to edit. If omitted, only name is updated.
+    - `scope` (string, optional): `"resume_only"` (default) or `"global"`. Required when editing a project.
+    - `display_name` (string, optional): Custom display name for the project
+    - `summary_text` (string, optional): Updated summary text
+    - `contribution_bullets` (List[string], optional): Custom contribution bullet points
+    - `contribution_edit_mode` (string, optional): `"replace"` (default) or `"append"`
+    - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead")
+
+- **PortfolioGenerateRequestDTO**
+    - `name` (string, required): Label for the portfolio
+
+- **PortfolioEditRequestDTO**
+    - `project_name` (string, required): Text name of the project to edit
+    - `scope` (string, optional): `"portfolio_only"` (default) or `"global"`
+    - `display_name` (string, optional): Custom display name for the project
+    - `summary_text` (string, optional): Updated summary text
+    - `contribution_bullets` (List[string], optional): Custom contribution bullet points
+
+- **PortfolioProjectDTO**
+    - `project_name` (string, required)
+    - `display_name` (string, required)
+    - `project_type` (string, optional)
+    - `project_mode` (string, optional)
+    - `score` (float, required): Importance ranking score
+    - `duration` (string, optional): Formatted duration string (e.g. "Duration: 2024-01-15 – 2024-06-30")
+    - `languages` (List[string], optional): Top 3 languages (code projects only)
+    - `frameworks` (List[string], optional): Frameworks used (code projects only)
+    - `activity` (string, optional): Formatted activity line (e.g. "Activity: feature_coding 85%, testing 15%")
+    - `skills` (List[string], optional): Top 4 skills
+    - `summary_text` (string, optional): Project summary text
+    - `contribution_bullets` (List[string], optional): Contribution bullet points
+
+- **PortfolioDetailDTO**
+    - `projects` (List[PortfolioProjectDTO], optional)
+    - `rendered_text` (string, optional): Plain-text formatted portfolio
 
 ### **Privacy Consent DTOs**
 

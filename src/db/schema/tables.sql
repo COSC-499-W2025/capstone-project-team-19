@@ -84,13 +84,15 @@ CREATE TABLE IF NOT EXISTS projects (
     project_key INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     display_name TEXT NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    classification TEXT CHECK (classification IN ('individual','collaborative')),
+    project_type TEXT CHECK (project_type IN ('code', 'text'))
 );
 
 CREATE TABLE IF NOT EXISTS project_versions (
     version_key INTEGER PRIMARY KEY AUTOINCREMENT,
     project_key INTEGER NOT NULL,
     upload_id INTEGER,
+    extraction_root TEXT,
     fingerprint_strict TEXT NOT NULL,
     fingerprint_loose TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -114,21 +116,6 @@ CREATE INDEX IF NOT EXISTS idx_version_files_hash
 CREATE INDEX IF NOT EXISTS idx_version_files_version 
     ON version_files(version_key);
 
-CREATE TABLE IF NOT EXISTS project_classifications (
-    classification_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id           INTEGER NOT NULL,
-    zip_path          TEXT NOT NULL,
-    zip_name          TEXT NOT NULL,
-    project_name      TEXT NOT NULL,
-    classification    TEXT NOT NULL CHECK (classification IN ('individual','collaborative')),
-    project_type      TEXT CHECK (project_type IN ('code', 'text')),
-    recorded_at       TEXT NOT NULL,
-    UNIQUE(user_id, zip_name, project_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_project_classifications_lookup
-    ON project_classifications(user_id, zip_name);
 
 CREATE TABLE IF NOT EXISTS config_files (
     config_id     INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -144,7 +131,7 @@ CREATE TABLE IF NOT EXISTS config_files (
 
 CREATE TABLE IF NOT EXISTS non_llm_text (
     metrics_id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    classification_id INTEGER UNIQUE NOT NULL,
+    version_key       INTEGER UNIQUE NOT NULL,
     doc_count         INTEGER, -- always 1 (main file)
     total_words       INTEGER, -- of main file
     reading_level_avg REAL, -- of main file
@@ -153,14 +140,14 @@ CREATE TABLE IF NOT EXISTS non_llm_text (
     summary_json      TEXT,
     csv_metadata TEXT,
     generated_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
 );
 
 -- CODE METRICS TABLE
 
 CREATE TABLE IF NOT EXISTS non_llm_code_individual(
     metrics_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    classification_id INTEGER NOT NULL,
+    version_key INTEGER NOT NULL,
     total_files INTEGER,
     total_lines INTEGER,
     total_code_lines INTEGER,
@@ -176,7 +163,7 @@ CREATE TABLE IF NOT EXISTS non_llm_code_individual(
     lizard_details_json TEXT,
     generated_at TEXT DEFAULT(datetime('now')),
     UNIQUE(metrics_id),
-    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
 
 );
 
@@ -491,7 +478,7 @@ CREATE INDEX IF NOT EXISTS idx_github_pr_review_comments_lookup
 
 CREATE TABLE IF NOT EXISTS text_activity_contribution (
     activity_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    classification_id INTEGER UNIQUE NOT NULL,
+    version_key INTEGER UNIQUE NOT NULL,
     start_date TEXT,
     end_date TEXT,
     duration_days INTEGER,
@@ -501,11 +488,11 @@ CREATE TABLE IF NOT EXISTS text_activity_contribution (
     timeline_json TEXT,               
     activity_counts_json TEXT,     
     generated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (classification_id) REFERENCES project_classifications(classification_id) ON DELETE CASCADE
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_text_activity_contribution_lookup
-    ON text_activity_contribution(classification_id);
+    ON text_activity_contribution(version_key);
 
 -- Code activity metrics (per user, project, scope, and source)
 CREATE TABLE IF NOT EXISTS code_activity_metrics (

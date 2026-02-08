@@ -6,25 +6,39 @@ Menu option for viewing portfolio items.
 
 from __future__ import annotations
 
-import json
 from typing import Any, Dict, List, Tuple
 
 from src.insights.rank_projects.rank_project_importance import collect_project_data
-from src.db import get_project_summary_by_name, get_project_summary_row, update_project_summary_json
+from src.db import get_project_summary_row
 from src.insights.portfolio import (
-    format_duration,
     format_languages,
     format_frameworks,
-    format_activity_line,
-    format_skills_block,
     format_summary_block,
     resolve_portfolio_contribution_bullets,
     resolve_portfolio_display_name,
     resolve_portfolio_summary_text,
 )
 from src.export.portfolio_docx import export_portfolio_to_docx
+from src.services.portfolio_service import (
+    build_portfolio_data,
+    update_portfolio_overrides,
+    clear_portfolio_overrides_for_fields,
+)
 from src.services import resume_overrides
 from src.export.portfolio_pdf import export_portfolio_to_pdf
+_PLACEHOLDER_CONTRIB = "[No manual contribution summary provided]"
+
+def _strip_placeholder_contrib(bullets: list[str]) -> list[str]:
+    """Remove empty strings and the placeholder contribution text."""
+    out = []
+    for b in bullets or []:
+        t = (b or "").strip()
+        if not t:
+            continue
+        if t == _PLACEHOLDER_CONTRIB:
+            continue
+        out.append(t)
+    return out
 
 def view_portfolio_menu(conn, user_id: int, username: str) -> None:
     """
@@ -80,9 +94,9 @@ def _display_portfolio(conn, user_id: int, username: str) -> bool:
     Returns True if portfolio was displayed, False if no projects.
     """
     try:
-        project_scores = collect_project_data(conn, user_id)
+        projects = build_portfolio_data(conn, user_id)
 
-        if not project_scores:
+        if not projects:
             print(f"\n{'=' * 80}")
             print("No projects found. Please analyze some projects first.")
             print(f"{'=' * 80}\n")
@@ -92,36 +106,31 @@ def _display_portfolio(conn, user_id: int, username: str) -> bool:
         print(f"Portfolio view for {username}")
         print(f"{'=' * 80}\n")
 
-        for rank, (project_name, score) in enumerate(project_scores, start=1):
+        for rank, project in enumerate(projects, start=1):
+            project_name = project["project_name"]
+            project_type = project["project_type"]
+            project_mode = project["project_mode"]
+
             row = get_project_summary_row(conn, user_id, project_name)
-            if row is None:
-                continue
+            summary = (row["summary"] or {}) if row else {}
 
-            summary = row["summary"]
-            project_type = row.get("project_type") or summary.get("project_type") or "unknown"
-            project_mode = row.get("project_mode") or summary.get("project_mode") or "individual"
-            created_at = row.get("created_at") or ""
-
-            display_name = resolve_portfolio_display_name(summary, project_name)
-            print(f"[{rank}] {display_name} — Score {score:.3f}")
+            print(f"[{rank}] {project['display_name']} — Score {project['score']:.3f}")
             print(f"  Type: {project_type} ({project_mode})")
-            print(
-                f"  {format_duration(project_type, project_mode, created_at, user_id, project_name, conn)}"
-            )
+            print(f"  {project['duration']}")
 
-            # Code: show languages + frameworks.
             if project_type == "code":
                 print(f"  {format_languages(summary)}")
                 print(f"  {format_frameworks(summary)}")
 
-            # Activity (same for code/text)
-            print(
-                f"  {format_activity_line(project_type, project_mode, conn, user_id, project_name, summary)}"
-            )
+            print(f"  {project['activity']}")
 
             # Skills block (bullets)
-            for line in format_skills_block(summary):
-                print(f"  {line}")
+            if project["skills"]:
+                print("  Skills:")
+                for skill in project["skills"]:
+                    print(f"    - {skill}")
+            else:
+                print("  Skills: N/A")
 
             # Summary block (LLM vs non-LLM)
             for line in format_summary_block(
@@ -246,82 +255,6 @@ def _collect_section_updates(
     return updates
 
 
-def _clear_portfolio_overrides_for_fields(
-    conn,
-    user_id: int,
-    project_name: str,
-    fields: set[str],
-) -> None:
-    """
-    Clear specific fields from portfolio_overrides so that manual_overrides take effect.
-    Called when user makes a global edit from the portfolio flow.
-    """
-    summary_row = get_project_summary_by_name(conn, user_id, project_name)
-    if not summary_row:
-        return
-
-    try:
-        summary_dict = json.loads(summary_row["summary_json"])
-    except Exception:
-        return
-
-    overrides = summary_dict.get("portfolio_overrides")
-    if not overrides or not isinstance(overrides, dict):
-        return
-
-    changed = False
-    for field in fields:
-        if field in overrides:
-            del overrides[field]
-            changed = True
-
-    if not changed:
-        return
-
-    if overrides:
-        summary_dict["portfolio_overrides"] = overrides
-    else:
-        summary_dict.pop("portfolio_overrides", None)
-
-    update_project_summary_json(conn, user_id, project_name, json.dumps(summary_dict))
-
-
-def _update_project_portfolio_overrides(
-    conn,
-    user_id: int,
-    project_name: str,
-    updates: dict[str, Any],
-) -> dict[str, Any] | None:
-    summary_row = get_project_summary_by_name(conn, user_id, project_name)
-    if not summary_row:
-        return None
-
-    try:
-        summary_dict = json.loads(summary_row["summary_json"])
-    except Exception:
-        return None
-
-    overrides = summary_dict.get("portfolio_overrides") or {}
-    if not isinstance(overrides, dict):
-        overrides = {}
-
-    for key, value in updates.items():
-        if value:
-            overrides[key] = value
-        else:
-            overrides.pop(key, None)
-
-    if overrides:
-        summary_dict["portfolio_overrides"] = overrides
-    else:
-        summary_dict.pop("portfolio_overrides", None)
-
-    updated = update_project_summary_json(conn, user_id, project_name, json.dumps(summary_dict))
-    if not updated:
-        return None
-    return overrides
-
-
 def _handle_edit_portfolio_wording(conn, user_id: int, username: str) -> bool:
     project_scores = collect_project_data(conn, user_id)
     if not project_scores:
@@ -388,7 +321,7 @@ def _handle_edit_portfolio_wording(conn, user_id: int, username: str) -> bool:
         return False
 
     if scope_choice == "1":
-        overrides = _update_project_portfolio_overrides(conn, user_id, project_name, updates)
+        overrides = update_portfolio_overrides(conn, user_id, project_name, updates)
         if overrides is None:
             print("Unable to update portfolio overrides.")
             return False
@@ -402,7 +335,7 @@ def _handle_edit_portfolio_wording(conn, user_id: int, username: str) -> bool:
 
     # Clear portfolio-specific overrides for fields being updated globally,
     # so the global manual_overrides take effect (they have lower priority).
-    _clear_portfolio_overrides_for_fields(conn, user_id, project_name, set(updates.keys()))
+    clear_portfolio_overrides_for_fields(conn, user_id, project_name, set(updates.keys()))
 
     resume_overrides.apply_manual_overrides_to_resumes(
         conn,

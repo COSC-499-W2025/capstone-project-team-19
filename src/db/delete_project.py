@@ -12,7 +12,7 @@ def delete_project_everywhere(
     Hard-delete all stored data for a (user_id, project_name) pair, INCLUDING dedup tables.
 
     This removes:
-      - project_classifications (and any CASCADE-linked metric tables)
+      - dedup registry (projects, project_versions, version_files), which cascades into version_key-keyed metric tables
       - project_summaries, project_skills, project_feedback, project_rankings, thumbnails
       - files/config_files
       - per-project activity metrics
@@ -60,18 +60,7 @@ def delete_project_everywhere(
             cur.execute("DELETE FROM projects WHERE project_key = ?", (pk,))
 
         # ---------------------------------------------------------------------
-        # 1) Delete classification rows (cascades into metric tables via FK)
-        # ---------------------------------------------------------------------
-        cur.execute(
-            """
-            DELETE FROM project_classifications
-            WHERE user_id = ? AND project_name = ?
-            """,
-            (user_id, project_name),
-        )
-
-        # ---------------------------------------------------------------------
-        # 2) Tables keyed directly by (user_id, project_name)
+        # 1) Tables keyed directly by (user_id, project_name)
         # ---------------------------------------------------------------------
         tables_user_project = [
             "files",
@@ -106,7 +95,7 @@ def delete_project_everywhere(
             )
 
         # ---------------------------------------------------------------------
-        # 3) Optional DB hygiene (safe even if nothing is orphaned)
+        # 2) Optional DB hygiene (safe even if nothing is orphaned)
         # ---------------------------------------------------------------------
         # If earlier deletes left orphan rows due to FK settings, this cleans them.
         cur.execute(

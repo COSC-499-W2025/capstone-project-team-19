@@ -8,9 +8,9 @@ from src.db import connect
 def handle_existing_zip(conn, user_id, zip_path):
     cursor = conn.cursor()
 
-    # There can only be one project connected to a single zip_path in the database (no duplicates)
+    # There can only be one upload connected to a single zip_path in the database (no duplicates)
     cursor.execute("""
-        SELECT 1 FROM project_classifications
+        SELECT 1 FROM uploads
         WHERE user_id = ? AND zip_path = ?
         LIMIT 1;
     """, (user_id, zip_path))
@@ -44,21 +44,63 @@ def delete_existing_zip_data(conn, user_id, zip_path) -> None:
     """Deletes all database records for the given ZIP path"""
 
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT project_name FROM project_classifications
-        WHERE user_id = ? AND zip_path = ?
-    """, (user_id, zip_path))
-    projects = [row[0] for row in cursor.fetchall()]
+    upload_ids = [
+        row[0]
+        for row in cursor.execute(
+            """
+            SELECT upload_id
+            FROM uploads
+            WHERE user_id = ? AND zip_path = ?
+            """,
+            (user_id, zip_path),
+        ).fetchall()
+    ]
 
-    for project_name in projects:
-        cursor.execute("""
-            DELETE FROM files
-            WHERE user_id = ? AND project_name = ?
-        """, (user_id, project_name))
+    if not upload_ids:
+        return
 
-    cursor.execute("""
-        DELETE FROM project_classifications
-        WHERE user_id = ? AND zip_path = ?
-    """, (user_id, zip_path))
+    # Find impacted projects (by project_key) and their display names.
+    impacted = cursor.execute(
+        f"""
+        SELECT DISTINCT p.project_key, p.display_name
+        FROM project_versions pv
+        JOIN projects p ON p.project_key = pv.project_key
+        WHERE p.user_id = ?
+          AND pv.upload_id IN ({",".join(["?"] * len(upload_ids))})
+        """,
+        (user_id, *upload_ids),
+    ).fetchall()
+
+    # Delete versions for those uploads (cascades into version_files + version_key-keyed metrics).
+    cursor.execute(
+        f"DELETE FROM project_versions WHERE upload_id IN ({','.join(['?'] * len(upload_ids))})",
+        tuple(upload_ids),
+    )
+
+    # Delete file rows for impacted project display names.
+    for _project_key, display_name in impacted:
+        cursor.execute(
+            "DELETE FROM files WHERE user_id = ? AND project_name = ?",
+            (user_id, display_name),
+        )
+        cursor.execute(
+            "DELETE FROM config_files WHERE user_id = ? AND project_name = ?",
+            (user_id, display_name),
+        )
+
+    # Remove project rows that now have zero versions.
+    for project_key, _display_name in impacted:
+        still_has_versions = cursor.execute(
+            "SELECT 1 FROM project_versions WHERE project_key = ? LIMIT 1",
+            (project_key,),
+        ).fetchone()
+        if not still_has_versions:
+            cursor.execute("DELETE FROM projects WHERE project_key = ?", (project_key,))
+
+    # Finally delete the uploads row(s).
+    cursor.execute(
+        f"DELETE FROM uploads WHERE upload_id IN ({','.join(['?'] * len(upload_ids))})",
+        tuple(upload_ids),
+    )
 
     conn.commit()
