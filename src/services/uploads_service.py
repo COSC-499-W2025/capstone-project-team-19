@@ -20,12 +20,6 @@ from src.db.projects import (
     get_project_key,
 )
 
-from src.db.upload_files import (
-    attach_version_key_to_upload_files,
-    delete_upload_files_for_project,
-    rename_upload_files_project,
-)
-
 from src.utils.deduplication.api_integration import (
     run_deduplication_for_projects_api,
     find_project_dir,
@@ -273,6 +267,11 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
     skipped_now: set[str] = set()
     renames: dict[str, str] = {}
 
+    # Re-collect parsed file metadata for this upload so we can persist ask-cases
+    # after creating their version_key. (Ask-cases have no version_key yet, so they
+    # were intentionally not inserted into the versioned-only `files` table.)
+    all_files_info = parse_zip_file(str(zip_path), user_id=user_id, conn=conn, persist_to_db=False) or []
+
     for project_name, decision in decisions.items():
         ask_item = asks.get(project_name) or {}
         project_dir = find_project_dir(str(extract_dir), root_name, project_name)
@@ -284,21 +283,8 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
             remove_project_from_layout(layout, project_name)
             remove_project_key_in_index(index, project_name)
 
-            # Remove this upload's stored parsed files so later steps don't see it.
-            delete_upload_files_for_project(conn, user_id=user_id, project_name=project_name, zip_stem=zip_stem)
-
             dedup_version_keys.pop(project_name, None)
             dedup_project_keys.pop(project_name, None)
-            # Remove files for this project's version(s) in this upload (versioned-only files table)
-            pk = get_project_key(conn, user_id, project_name)
-            if pk is not None:
-                vrows = conn.execute(
-                    "SELECT version_key FROM project_versions WHERE project_key = ? AND upload_id = ?",
-                    (pk, upload_id),
-                ).fetchall()
-                for (vk,) in vrows:
-                    conn.execute("DELETE FROM files WHERE user_id = ? AND version_key = ?", (user_id, vk))
-            conn.commit()
             continue
 
         if decision == "new_project":
@@ -310,9 +296,13 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
                 dedup_project_keys[project_name] = pk
             if isinstance(vk, int):
                 dedup_version_keys[project_name] = vk
-                attach_version_key_to_upload_files(
-                    conn, user_id=user_id, project_name=project_name, version_key=vk, zip_stem=zip_stem
-                )
+                project_files = [
+                    f for f in all_files_info
+                    if f.get("project_name") == project_name and f.get("file_type") != "config"
+                ]
+                for f in project_files:
+                    f["version_key"] = int(vk)
+                store_parsed_files(conn, project_files, user_id)
                 conn.execute(
                     "UPDATE project_versions SET extraction_root = COALESCE(extraction_root, ?) WHERE version_key = ?",
                     (zip_root, int(vk)),
@@ -329,28 +319,14 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
             pk = created.get("project_key")
             vk = created.get("version_key")
 
-            if project_name != existing:
-                rename_upload_files_project(
-                    conn,
-                    user_id=user_id,
-                    old_project_name=project_name,
-                    new_project_name=existing,
-                    zip_stem=zip_stem,
-                )
-
-            # Reassign this upload's version for project_name to the existing project (no new version)
-            pk_old = get_project_key(conn, user_id, project_name)
-            if pk_old is not None:
-                vrow = conn.execute(
-                    "SELECT version_key FROM project_versions WHERE project_key = ? AND upload_id = ? ORDER BY version_key DESC LIMIT 1",
-                    (pk_old, upload_id),
-                ).fetchone()
-                if vrow:
-                    conn.execute(
-                        "UPDATE project_versions SET project_key = ? WHERE version_key = ?",
-                        (int(best_pk), vrow[0]),
-                    )
-                    conn.commit()
+            if isinstance(vk, int):
+                project_files = [
+                    f for f in all_files_info
+                    if f.get("project_name") == project_name and f.get("file_type") != "config"
+                ]
+                for f in project_files:
+                    f["version_key"] = int(vk)
+                store_parsed_files(conn, project_files, user_id)
 
             if project_name != existing:
                 rename_project_in_layout(layout, project_name, existing)
@@ -367,9 +343,6 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
                 dedup_project_keys[final_name] = pk
             if isinstance(vk, int):
                 dedup_version_keys[final_name] = vk
-                attach_version_key_to_upload_files(
-                    conn, user_id=user_id, project_name=final_name, version_key=vk, zip_stem=zip_stem
-                )
                 conn.execute(
                     "UPDATE project_versions SET extraction_root = COALESCE(extraction_root, ?) WHERE version_key = ?",
                     (zip_root, int(vk)),
