@@ -163,7 +163,7 @@ After arranging your files, zip the root folder (e.g., zip `my-workspace/` into 
 This project optionally supports Google Drive analysis through the Google Drive API.
 All access is strictly consent-based and is not required for a project to be analyzed.
 
-### For Course Evaluators (TAs)
+### For Course Evaluators (TAs) and Team Members
 
 Google Drive integration **can be tested by course evaluators**.
 
@@ -196,10 +196,10 @@ Configure OAuth Consent Screen
 7. Select "I agree to the Google API Services: User Data Policy. ", Click "Continue"
 8. Click save
 
-Create OAuth Credentials
+Create OAuth Credentials (Desktop — for CLI analysis)
 1. Go to APIs & Services -> Credentials
 2. Click "+ Create Credentials" -> OAuth client ID
-3. Choose Desktop app
+3. Choose **Desktop app**
 4. Name it anything
 5. Click "Create"
 6. Click "Download JSON"
@@ -209,25 +209,27 @@ Placing the Credentials file within the project
 1. Place the file so its path is: `src/integrations/google_drive/google_drive_auth/credentials.json`
 2. Verify the path is correct before running the application.
 
+Create OAuth Credentials (Web — for API endpoints)
+1. Go to APIs & Services -> Credentials
+2. Click "+ Create Credentials" -> OAuth client ID
+3. Choose **Web application**
+4. Name it anything (e.g. "Capstone Web OAuth")
+5. Under "Authorized redirect URIs", add: `http://localhost:8000/auth/google/callback`
+6. Click "Create"
+7. Copy the **Client ID** and **Client Secret**
+8. Add them to your `.env` file:
+   ```
+   GOOGLE_CLIENT_ID=<your-client-id>
+   GOOGLE_CLIENT_SECRET=<your-client-secret>
+   GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
+   ```
+
 If credentials are not provided, the system will fall back to local-only analysis,
 and all core functionality will remain available.
 
-> Note: Google Drive OAuth requires the evaluator’s email to be a Google account (e.g., Gmail).
+> Note: Google Drive OAuth requires the user’s email to be a Google account (e.g., Gmail).
 
 
-### For Team Development Use
-Each team member has been added as a test user in the Google Drive API project
-using the email associated with the **"COSC 499 - GROUP 19"** shared Google Drive folder.
-
-To enable Google Drive integration locally:
-
-1. Obtain `credentials.json` from the team (via private communication).
-2. Place the file at: `src/integrations/google_drive/google_drive_auth/credentials.json`
-3. Verify the path is correct before running the application.
-
-> **Security Note**  
-> `credentials.json` contains sensitive OAuth credentials.  
-> This file is included in `.gitignore` and must never be committed to version control.
 
 ## Environment Variables and OAuth Setup
 
