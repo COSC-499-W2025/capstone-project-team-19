@@ -27,6 +27,11 @@ from src.services.uploads_service import (
     list_project_files,
     set_project_main_file,
 )
+from src.api.schemas.uploads import SupportingFilesRequestDTO
+from src.services.uploads_supporting_contributions_service import (
+    set_project_supporting_text_files,
+    set_project_supporting_csv_files,
+)
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -123,6 +128,37 @@ def post_upload_project_main_file(
 ):
     upload = set_project_main_file(conn, user_id, upload_id, project_name, body.relpath)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_name}/supporting-text-files",
+    response_model=ApiResponse[UploadDTO],
+)
+def post_upload_project_supporting_text_files(
+    upload_id: int,
+    project_name: str,
+    body: SupportingFilesRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = set_project_supporting_text_files(conn, user_id, upload_id, project_name, body.relpaths)
+    return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_name}/supporting-csv-files",
+    response_model=ApiResponse[UploadDTO],
+)
+def post_upload_project_supporting_csv_files(
+    upload_id: int,
+    project_name: str,
+    body: SupportingFilesRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = set_project_supporting_csv_files(conn, user_id, upload_id, project_name, body.relpaths)
+    return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
 
 
 @router.delete("", response_model=ApiResponse[DeleteResultDTO])

@@ -47,3 +47,5 @@ class UploadProjectFilesDTO(BaseModel):
 class MainFileRequestDTO(BaseModel):
     relpath: str
 
+class SupportingFilesRequestDTO(BaseModel):
+    relpaths: List[str] = []
