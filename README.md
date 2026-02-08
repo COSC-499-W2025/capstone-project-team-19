@@ -196,6 +196,15 @@ Configure OAuth Consent Screen
 7. Select "I agree to the Google API Services: User Data Policy. ", Click "Continue"
 8. Click save
 
+Add Yourself as a Test User
+1. Go to APIs & Services -> OAuth consent screen
+2. Find the "Test users" section
+3. Click "+ Add users"
+4. Enter your Google email address (the one you will use to authorize)
+5. Click Save
+
+> Note: While the app is in "Testing" mode, only emails listed as test users can authorize — even if you are the project owner. This applies to both the CLI and web OAuth flows.
+
 Create OAuth Credentials (Desktop — for CLI analysis)
 1. Go to APIs & Services -> Credentials
 2. Click "+ Create Credentials" -> OAuth client ID
