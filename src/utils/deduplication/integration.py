@@ -40,7 +40,14 @@ def handle_dedup_result(conn, user_id, result, display_name):
         pk = result["project_key"]
         row = conn.execute("SELECT display_name FROM projects WHERE project_key = ?", (pk,)).fetchone()
         existing = row[0] if row else display_name
-        print(f"Project '{display_name}' detected as new version of '{existing}'.")
+        if result.get("forced_by_name"):
+            print(
+                f"Project '{display_name}' already exists for this user. "
+                f"This upload was stored as a new version of '{existing}'. "
+                "If you intended a separate project, rename it before uploading."
+            )
+        else:
+            print(f"Project '{display_name}' detected as new version of '{existing}'.")
         return existing
     
     return display_name
@@ -67,7 +74,14 @@ def handle_dedup_result_with_version(conn, user_id, result, display_name):
         vk = result.get("version_key")
         row = conn.execute("SELECT display_name FROM projects WHERE project_key = ?", (pk,)).fetchone()
         existing = row[0] if row else display_name
-        print(f"Project '{display_name}' detected as new version of '{existing}'.")
+        if result.get("forced_by_name"):
+            print(
+                f"Project '{display_name}' already exists for this user. "
+                f"This upload was stored as a new version of '{existing}'. "
+                "If you intended a separate project, rename it before uploading."
+            )
+        else:
+            print(f"Project '{display_name}' detected as new version of '{existing}'.")
         return {"action": "keep", "final_name": existing, "project_key": pk, "version_key": vk, "kind": kind}
 
     if kind == "new_project":

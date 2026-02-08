@@ -98,6 +98,12 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
     asks: dict = dedup.get("asks") or {}
     new_versions: dict = dedup.get("new_versions") or {}
     decisions: dict = dedup.get("decisions") or {}
+    # Collect any dedup warnings for clients/CLI to display.
+    dedup_warnings: dict[str, str] = {}
+    for pname, d in (decisions or {}).items():
+        w = (d or {}).get("warning")
+        if isinstance(w, str) and w.strip():
+            dedup_warnings[pname] = w.strip()
 
     # Apply dedup renames to layout + files_info (so later steps operate on final project names)
     for old_name, existing_name in (new_versions or {}).items():
@@ -154,6 +160,7 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
         "dedup_skipped_projects": sorted(list(skipped_set)),
         "dedup_asks": asks,
         "dedup_new_versions": new_versions,
+        "dedup_warnings": dedup_warnings,
         "dedup_version_keys": version_keys,
         "dedup_project_keys": project_keys,
         "project_filetype_index": project_filetype_index,
