@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 4-5 (Jan 26 - Feb 8)](#t2-week-4-5-monday-january-26---sunday-february-8)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12-18)](#t2-week-2-monday-january-12---sunday-january-18)
 - [Week 1 (Jan 5-11)](#t2-week-1-monday-january-5---sunday-january-11)
@@ -238,3 +239,23 @@ Last week, I mentioned wanting to look more deeply into the system’s security.
 I also looked into the security concern around how the GitHub key is stored. The main issue is that the key lives right beside the project on the user’s machine, meaning the user can simply find it if they want. While it would be interesting to move this to a more secure location, the team ultimately agreed it isn’t worth the time and complexity when we have other milestone requirements to meet.
 
 Next week, I plan to continue implementing API endpoints and take on any tasks assigned to me by the team.
+
+## (T2 Week 4-5) Monday January 26 - Sunday February 8
+
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Feb2-Feb8.PNG)
+
+This log covers both week 4 and week 5.
+
+**Coding Tasks**
+- I implemented the endpoints for displaying and editing project ranking in [PR #428](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/428). I tried to keep the implementation as close as possible to the existing CLI menu option for project ranking, so I was able to reuse a lot of code that was already in the system.
+
+- I also implemented the endpoint that returns feedback for a specific project in [PR #442](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/442). Similar to the ranking endpoints, most of the work was already supported in the database, it was mainly just connecting the pieces together through the API.
+
+- The last endpoints I added were the project date ones in [PR #445](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/445). These needed a bit more logic than the others, like validation (making sure the dates are real, in the correct format, and that the end date isn’t before the start date) and switching between automatically detected dates and manually set dates.
+
+
+**Refactoring / Project Versioning**
+
+In [PR #450](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/450), I started a much larger refactor to prepare for project versions. Before this, the system relied heavily on the project name through the `project_classifications` table. But once we started adding multiple versions of projects (which can all have the same name), we didn’t really have a clean way to identify which version we needed or track differences between them. This refactor was the start of migrating toward a stable project identity based on IDs instead of names. I continued this work in [PR #456](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/456), where I removed the remaining reliance on `project_name` and migrated the system to use `project_key` instead. With this change, we can more easily find specific versions of a project, analyze them separately, and support the timelines and heatmaps we need for Milestone 3.
+
+Next week, I want to continue the project versioning implementation by removing legacy code that is no longer up to date with the switch to `project_key`. I’ll also be starting the logic for building timelines, heatmaps, and project progression data, and I’d like to implement the API endpoints for those visuals as well.
