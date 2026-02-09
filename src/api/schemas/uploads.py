@@ -48,6 +48,8 @@ class MainFileRequestDTO(BaseModel):
     relpath: str
     
 
+class SupportingFilesRequestDTO(BaseModel):
+    relpaths: List[str] = []
 class MainFileSectionDTO(BaseModel):
     id: int
     title: str

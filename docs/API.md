@@ -594,36 +594,29 @@ A typical flow for the first six endpoints:
   - **Response Status**: `200 OK`
 
 - **Get Upload Status (Resume / Poll)**
-  - **Endpoint**: `GET /projects/upload/{upload_id}`
-  - **Description**: Returns the current upload wizard state for the given `upload_id`. Use this to resume a wizard flow or refresh the UI.
-  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-  - **Path Params**:
-    - `{upload_id}` (integer, required): The ID of the upload session
-  - **Response Status**: `200 OK` on success, `404 Not Found` if upload doesn't exist or belong to user
-  -                 "upload_id": 5,
-              "status": "needs_classification",
-              "zip_name": "text_projects.zip",
-              "state": {
-                  "zip_name": "text_projects.zip",
-                  "zip_path": "/.../src/analysis/zip_data/_uploads/5_text_projects.zip",
-                  "layout": {
-                      "root_name": "text_projects",
-                      "auto_assignments": {},
-                      "pending_projects": [
-                          "PlantGrowthStudy"
-                      ],
-                      "stray_locations": []
-                  },
-                  "files_info_count": 8
-              }
-          },
-          "error": null
-
-    }
-
-    ```
-
-    ```
+    - **Endpoint**: `GET /projects/upload/{upload_id}`
+    - **Description**: Returns the current upload wizard state for the given `upload_id`. Use this to resume a wizard flow or refresh the UI.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required): The ID of the upload session
+    - **Response Status**: `200 OK` on success, `404 Not Found` if upload doesn't exist or belong to user
+    -                 "upload_id": 5,
+                "status": "needs_classification",
+                "zip_name": "text_projects.zip",
+                "state": {
+                    "zip_name": "text_projects.zip",
+                    "zip_path": "/.../src/analysis/zip_data/_uploads/5_text_projects.zip",
+                    "layout": {
+                        "root_name": "text_projects",
+                        "auto_assignments": {},
+                        "pending_projects": [
+                            "PlantGrowthStudy"
+                        ],
+                        "stray_locations": []
+                    },
+                    "files_info_count": 8
+                }
+        ```
 
 - **Resolve Dedup (Optional, New)**
   - **Endpoint**: `POST /projects/upload/{upload_id}/dedup/resolve`
@@ -662,8 +655,11 @@ A typical flow for the first six endpoints:
         "assignments": {
             "Project A": "individual",
             "Project B": "collaborative"
-            - **Submit Project Types (Code vs Text) (Optional)**
+        }
+    }
     ```
+
+- **Submit Project Types (Code vs Text) (Optional)**
   - **Endpoint**: `POST /projects/upload/{upload_id}/project-types`
   - **Description**: Submit user selections for project type (`code` vs `text`) when a detected project contains both code and text artifacts and requires a choice. The request must use project names exactly as reported in `state.layout.auto_assignments` and `state.layout.pending_projects`.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
@@ -818,6 +814,58 @@ A typical flow for the first six endpoints:
     - **Error Responses**:
         - `422 Unprocessable Entity` if any section IDs are out of range
         - `409 Conflict` if the main file is not selected yet for this project
+
+- **Set Supporting Text Files (Collaborative Text Contribution)**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/supporting-text-files`
+    - **Description**: Stores which **supporting TEXT files** the user contributed to (excluding the selected main file, and excluding `.csv` files).
+        - Writes to: `uploads.state.contributions[project_name].supporting_text_relpaths`
+        - Values are stored **deduplicated + sorted**
+    - **Auth**: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required)
+        - `{project_name}` (string, required)
+    - **Request Body**:
+        ```json
+        {
+        "relpaths": [
+            "text_projects_og/PlantGrowthStudy/reading_notes.txt",
+            "text_projects_og/PlantGrowthStudy/second_draft.docx"
+        ]
+        }
+        ```
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `UploadDTO`
+    - **Error Responses**:
+
+    - `409 Conflict` if upload is not in a file-picking step (e.g. not `needs_file_roles` / `needs_summaries`), or if main file is not selected yet (service guard)
+    - `422 Unprocessable Entity` if any relpath is unsafe (e.g. contains `..`) or if the list includes the main file or any `.csv`
+    - `404 Not Found` if any relpath does not exist for this project/upload
+
+
+- **Set Supporting CSV Files (Collaborative Text Contribution)**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/supporting-csv-files`
+    - **Description**: Stores which **CSV files** the user contributed to.
+        - Writes to: `uploads.state.contributions[project_name].supporting_csv_relpaths`
+        - Values are stored **deduplicated + sorted**
+    - **Auth**: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required)
+        - `{project_name}` (string, required)
+    - **Request Body**:
+        ```json
+        {
+        "relpaths": [
+            "text_projects_og/PlantGrowthStudy/plant_growth_data.csv",
+            "text_projects_og/PlantGrowthStudy/plant_growth_data2.csv"
+        ]
+        }
+        ```
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `UploadDTO`
+    - **Error Responses**:
+        - `409 Conflict` if upload is not in a file-picking step (e.g. not `needs_file_roles` / `needs_summaries`)
+        - `422 Unprocessable Entity` if any relpath is unsafe, or if any relpath is not a `.csv`
+        - `404 Not Found` if any relpath does not exist for this project/upload
 ---
 
 ## **GitHub Integration**
@@ -1796,6 +1844,9 @@ Example:
 
 - **SetMainFileSectionsRequestDTO**
     - `selected_section_ids` (List[int], required): IDs from `MainFileSectionsDTO.sections[*].id`
+
+- **SupportingFilesRequest**
+    - `relpaths` (List[string], required): relpaths returned by `GET .../files`
 
 
 ### **Skills DTOs**
