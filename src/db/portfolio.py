@@ -185,21 +185,26 @@ def get_text_duration(
     """
     cur = conn.execute(
         """
+        WITH latest_version AS (
+            SELECT pv.version_key
+            FROM project_versions pv
+            JOIN projects p ON p.project_key = pv.project_key
+            WHERE p.user_id = ? AND p.display_name = ?
+            ORDER BY pv.version_key DESC
+            LIMIT 1
+        )
         SELECT
             COALESCE(ps.manual_start_date, tac.start_date) AS start_date,
             COALESCE(ps.manual_end_date, tac.end_date) AS end_date
-        FROM text_activity_contribution AS tac
-        JOIN project_classifications AS pc
-          ON tac.classification_id = pc.classification_id
+        FROM latest_version lv
+        LEFT JOIN text_activity_contribution tac
+          ON lv.version_key = tac.version_key
         LEFT JOIN project_summaries ps
-          ON pc.user_id = ps.user_id
-          AND pc.project_name = ps.project_name
-        WHERE pc.user_id = ?
-          AND pc.project_name = ?
+          ON ps.user_id = ? AND ps.project_name = ?
         ORDER BY tac.generated_at DESC
         LIMIT 1
         """,
-        (user_id, project_name),
+        (user_id, project_name, user_id, project_name),
     )
     row = cur.fetchone()
     if row is None:

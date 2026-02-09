@@ -25,18 +25,21 @@ def create_test_user(test_db):
 
 
 def create_project_classification(test_db, user_id, project_name, project_type="code", recorded_at=None):
-    """Helper: Create a project classification and return classification_id."""
+    """Helper: Create a project and return latest version_key."""
     if recorded_at is None:
         recorded_at = datetime.now().isoformat()
-    
-    test_db.execute("""
-        INSERT INTO project_classifications 
-        (user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at)
-        VALUES (?, '/path/to/test.zip', 'test.zip', ?, 'individual', ?, ?)
-    """, (user_id, project_name, project_type, recorded_at))
-    test_db.commit()
-    
-    return db.get_classification_id(test_db, user_id, project_name)
+
+    # record_project_classification returns a version_key in the new schema.
+    return db.record_project_classification(
+        test_db,
+        user_id=user_id,
+        zip_path="/path/to/test.zip",
+        zip_name="test",
+        project_name=project_name,
+        classification="individual",
+        project_type=project_type,
+        when=recorded_at,
+    )
 
 
 def insert_skill(test_db, user_id, project_name, skill_name, level, score):
@@ -56,7 +59,7 @@ def test_get_skill_events_with_text_end_date(test_db):
     # Insert text activity contribution with end_date
     test_db.execute("""
         INSERT INTO text_activity_contribution 
-        (classification_id, start_date, end_date, duration_days, total_files, classified_files,
+        (version_key, start_date, end_date, duration_days, total_files, classified_files,
          activity_classification_json, timeline_json, activity_counts_json)
         VALUES (?, '2024-01-01', '2024-01-15', 14, 5, 5, '{}', '[]', '{}')
     """, (classification_id,))
@@ -152,7 +155,7 @@ def test_get_skill_timeline_separates_dated_and_undated(test_db):
     classification_id = create_project_classification(test_db, user_id, "DatedProject", "text")
     test_db.execute("""
         INSERT INTO text_activity_contribution 
-        (classification_id, start_date, end_date, duration_days, total_files, classified_files,
+        (version_key, start_date, end_date, duration_days, total_files, classified_files,
          activity_classification_json, timeline_json, activity_counts_json)
         VALUES (?, '2024-01-01', '2024-01-15', 14, 5, 5, '{}', '[]', '{}')
     """, (classification_id,))
@@ -204,7 +207,7 @@ def test_get_skill_timeline_sorts_dated_by_date(test_db):
     
     test_db.execute("""
         INSERT INTO text_activity_contribution 
-        (classification_id, start_date, end_date, duration_days, total_files, classified_files,
+        (version_key, start_date, end_date, duration_days, total_files, classified_files,
          activity_classification_json, timeline_json, activity_counts_json)
         VALUES 
         (?, '2024-01-01', '2024-01-10', 9, 3, 3, '{}', '[]', '{}'),
@@ -239,7 +242,7 @@ def test_get_skill_timeline_only_dated_skills(test_db):
     
     test_db.execute("""
         INSERT INTO text_activity_contribution 
-        (classification_id, start_date, end_date, duration_days, total_files, classified_files,
+        (version_key, start_date, end_date, duration_days, total_files, classified_files,
          activity_classification_json, timeline_json, activity_counts_json)
         VALUES (?, '2024-01-01', '2024-01-15', 14, 5, 5, '{}', '[]', '{}')
     """, (classification_id,))

@@ -420,7 +420,18 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **Description**: Permanently deletes a specific project and all its associated data (skills, metrics, files, etc.).
     - **Path Parameters**:
         - `{project_id}` (integer, required): The project_summary_id of the project to delete
+    - **Query Parameters**:
+        - `refresh_resumes` (boolean, optional): If `true`, also removes the deleted project from any résumé snapshots. Résumés that become empty are deleted. Defaults to `false`.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Example Requests**:
+        ```bash
+        # Delete project (default, resumes unchanged)
+        DELETE /projects/9
+
+        # Delete project and update resumes
+        DELETE /projects/9?refresh_resumes=true
+        ```
     - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
     - **Response Body**:
         ```json
@@ -434,7 +445,18 @@ Handles project ingestion, analysis, classification, and metadata updates.
 - **Delete All Projects**
     - **Endpoint**: `DELETE /projects`
     - **Description**: Permanently deletes all projects belonging to the current user.
+    - **Query Parameters**:
+        - `refresh_resumes` (boolean, optional): If `true`, also removes deleted projects from any résumé snapshots. Résumés that become empty are deleted. Defaults to `false`.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Example Requests**:
+        ```bash
+        # Delete all projects (default, resumes unchanged)
+        DELETE /projects
+
+        # Delete all projects and update resumes
+        DELETE /projects?refresh_resumes=true
+        ```
     - **Response Status**: `200 OK`
     - **Response DTO**: `DeleteResultDTO`
     - **Response Body**:
@@ -447,6 +469,52 @@ Handles project ingestion, analysis, classification, and metadata updates.
             "error": null
         }
         ```
+
+- **Retrieve Project Feedback**
+    - **Endpoint**: `GET /{project_id}/feedback`
+    - **Description**: Returns all feedback for one project.
+    - **Auth**: `Authorization: Bearer <access_token>`
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `ProjectFeedbackDTO`
+    - **Request Body**: None.
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "project_id": 9,
+                "project_name": "My Project",
+                "feedback": [
+                    {
+                        "feedback_id": 1,
+                        "project_type": "code",
+                        "skill_name": "code_quality",
+                        "file_name": "main.py",
+                        "criterion_key": "complexity",
+                        "criterion_label": "Code Complexity",
+                        "expected": "Cyclomatic complexity < 10",
+                        "observed": {"max_complexity": 12},
+                        "suggestion": "Refactor main() to reduce nested conditions",
+                        "generated_at": "2026-01-12 02:15:30"
+                    },
+                    {
+                        "feedback_id": 2,
+                        "project_type": "code",
+                        "skill_name": "documentation",
+                        "file_name": "utils.py",
+                        "criterion_key": "docstrings",
+                        "criterion_label": "Function Documentation",
+                        "expected": "All public functions documented",
+                        "observed": {"coverage": 0.75},
+                        "suggestion": "Add docstrings to helper_validate() and helper_process()",
+                        "generated_at": "2026-01-12 02:15:30"
+                    }
+                ]
+            },
+            "error": null
+        }
+        ```
+
 ---
 
 ## **Uploads Wizard**
@@ -1145,7 +1213,8 @@ Manages résumé-specific representations of projects.
                 "Built feature X",
                 "Improved performance by 50%"
             ],
-            "contribution_edit_mode": "replace"
+            "contribution_edit_mode": "replace",
+            "key_role": "Backend Developer"
         }
         ```
         - `name` (string, optional): New name for the résumé (rename)
@@ -1159,6 +1228,7 @@ Manages résumé-specific representations of projects.
         - `contribution_edit_mode` (string, optional): How to apply contribution bullets. Defaults to `"replace"`.
             - `"replace"`: Replace all existing bullets with the provided list
             - `"append"`: Keep existing bullets and add the provided bullets to the end
+        - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead"). Follows the same `scope` rules as other fields.
     - **Response Status**: `200 OK` or `404 Not Found`
     - **Response Body**: Uses `ResumeDetailDTO`
         ```json
@@ -1233,11 +1303,88 @@ Manages résumé-specific representations of projects.
 
 **Base URL:** `/portfolio`
 
-Manages portfolio showcase configuration.
+Manages portfolio showcase configuration. Portfolios are generated live from all of the user's analyzed projects, ranked by importance score. No data is persisted — the portfolio reflects the current state of project summaries and overrides.
 
 ### **Endpoints**
 
+- **Generate Portfolio**
+    - **Endpoint**: `POST /portfolio/generate`
+    - **Description**: Generates a portfolio view from all of the user's analyzed projects, ranked by importance. Returns structured project data and a rendered plain-text version. The portfolio is not persisted — it is built on demand from existing project summaries.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: Uses `PortfolioGenerateRequestDTO`
+        ```json
+        {
+            "name": "My Portfolio"
+        }
+        ```
+        - `name` (string, required): Label for the portfolio (used in rendered text header)
+    - **Response Status**: `200 OK` or `400 Bad Request`
+    - **Response Body**: Uses `PortfolioDetailDTO`
+        ```json
+        {
+            "success": true,
+            "data": {
+                "projects": [
+                    {
+                        "project_name": "MyProject",
+                        "display_name": "My Project",
+                        "project_type": "code",
+                        "project_mode": "collaborative",
+                        "score": 0.875,
+                        "duration": "Duration: 2024-01-15 – 2024-06-30",
+                        "languages": ["Python", "JavaScript"],
+                        "frameworks": ["FastAPI", "React"],
+                        "activity": "Activity: feature_coding 85%, testing 15%",
+                        "skills": ["Backend Development", "API Design"],
+                        "summary_text": "A web application for...",
+                        "contribution_bullets": ["Built the REST API layer"]
+                    }
+                ],
+                "rendered_text": "Portfolio — My Portfolio\n..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `400 Bad Request`: No projects found for this user
+        - `401 Unauthorized`: Missing or invalid Bearer token
 
+- **Edit Portfolio**
+    - **Endpoint**: `POST /portfolio/edit`
+    - **Description**: Edits portfolio wording for a specific project. Changes can be scoped to the portfolio only or applied globally (affecting all resumes and the portfolio). Edits are stored as overrides in `project_summaries.summary_json` — no portfolio snapshot table is needed. Returns the updated portfolio view.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: Uses `PortfolioEditRequestDTO`
+        ```json
+        {
+            "project_name": "MyProject",
+            "scope": "portfolio_only",
+            "display_name": "Custom Project Name",
+            "summary_text": "Updated summary...",
+            "contribution_bullets": ["Built feature X", "Improved performance by 50%"]
+        }
+        ```
+        - `project_name` (string, required): The text name of the project to edit
+        - `scope` (string, optional): Either `"portfolio_only"` (default) or `"global"`
+            - `portfolio_only`: Changes apply only to the portfolio view (stored as `portfolio_overrides`)
+            - `global`: Changes apply to all resumes and the portfolio (stored as `manual_overrides` in `project_summaries`, fanned out to all `resume_snapshots`)
+        - `display_name` (string, optional): Custom display name for the project
+        - `summary_text` (string, optional): Updated summary text
+        - `contribution_bullets` (array of strings, optional): Custom contribution bullet points
+    - **Response Status**: `200 OK` or `404 Not Found`
+    - **Response Body**: Uses `PortfolioDetailDTO` (returns the full updated portfolio)
+        ```json
+        {
+            "success": true,
+            "data": {
+                "projects": [...],
+                "rendered_text": "..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Project not found
 
 ---
 
@@ -1423,6 +1570,35 @@ Example:
     - `summary_text` (string, optional): Updated summary text
     - `contribution_bullets` (List[string], optional): Custom contribution bullet points
     - `contribution_edit_mode` (string, optional): `"replace"` (default) or `"append"`
+    - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead")
+
+- **PortfolioGenerateRequestDTO**
+    - `name` (string, required): Label for the portfolio
+
+- **PortfolioEditRequestDTO**
+    - `project_name` (string, required): Text name of the project to edit
+    - `scope` (string, optional): `"portfolio_only"` (default) or `"global"`
+    - `display_name` (string, optional): Custom display name for the project
+    - `summary_text` (string, optional): Updated summary text
+    - `contribution_bullets` (List[string], optional): Custom contribution bullet points
+
+- **PortfolioProjectDTO**
+    - `project_name` (string, required)
+    - `display_name` (string, required)
+    - `project_type` (string, optional)
+    - `project_mode` (string, optional)
+    - `score` (float, required): Importance ranking score
+    - `duration` (string, optional): Formatted duration string (e.g. "Duration: 2024-01-15 – 2024-06-30")
+    - `languages` (List[string], optional): Top 3 languages (code projects only)
+    - `frameworks` (List[string], optional): Frameworks used (code projects only)
+    - `activity` (string, optional): Formatted activity line (e.g. "Activity: feature_coding 85%, testing 15%")
+    - `skills` (List[string], optional): Top 4 skills
+    - `summary_text` (string, optional): Project summary text
+    - `contribution_bullets` (List[string], optional): Contribution bullet points
+
+- **PortfolioDetailDTO**
+    - `projects` (List[PortfolioProjectDTO], optional)
+    - `rendered_text` (string, optional): Plain-text formatted portfolio
 
 ### **Privacy Consent DTOs**
 

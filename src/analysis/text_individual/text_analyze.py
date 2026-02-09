@@ -7,7 +7,7 @@ from .llm_summary import generate_text_llm_summary
 from .alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.analysis.activity_type.text.activity_type import print_activity, get_activity_contribution_data
-from src.db import get_files_with_timestamps, store_text_activity_contribution, get_classification_id
+from src.db import get_files_with_timestamps, store_text_activity_contribution, get_latest_version_key
 try:
     from src import constants
 except ModuleNotFoundError:
@@ -145,10 +145,10 @@ def run_text_pipeline(
             )
         # Store activity type data to database (only if conn is available)
             if conn is not None:
-                classification_id=get_classification_id(conn, user_id, current_project_name)
                 activity_data=get_activity_contribution_data(all_project_files, main_file_name=main_file['file_name'])
-                if classification_id and activity_data:
-                    store_text_activity_contribution(conn, classification_id, activity_data)
+                vk = version_key or get_latest_version_key(conn, user_id, current_project_name)
+                if vk and activity_data:
+                    store_text_activity_contribution(conn, vk, activity_data)
             print_activity(all_project_files,current_project_name,main_file_name=main_file['file_name'])
 
         # --- Load main file content ---
@@ -157,8 +157,7 @@ def run_text_pipeline(
         if not main_text and not suppress_print:
             print("Could not extract text. Skipping.\n")
             continue
-        
-
+            
             
         # --- Supporting text files ---
         supporting_files = [f for f in files_sorted if f != main_file]

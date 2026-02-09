@@ -30,12 +30,14 @@ from .users import (
 # Project operations
 from .projects import (
     store_parsed_files,
-    record_project_classification,
-    record_project_classifications,
-    get_project_classifications,
-    get_classification_id,
+    update_project_metadata,
+    get_project_key,
+    get_latest_version_key,
     get_project_metadata,
     get_zip_name_for_project,
+    record_project_classification,
+    record_project_classifications,
+    get_classification_id,
 )
 
 # GitHub repository operations
@@ -89,7 +91,7 @@ from .contributions import (
 from .tokens import save_token_placeholder
 
 # skills
-from .skills import insert_project_skill, get_skill_events
+from .skills import insert_project_skill, get_skill_events, get_project_skills
 
 # file contributions
 from .file_contributions import (
@@ -222,11 +224,13 @@ __all__ = [
     "get_user_by_username",
     "get_or_create_user",
     "store_parsed_files",
+    "update_project_metadata",
+    "get_project_key",
+    "get_latest_version_key",
+    "get_project_metadata",
     "record_project_classification",
     "record_project_classifications",
-    "get_project_classifications",
     "get_classification_id",
-    "get_project_metadata",
     "save_project_repo",
     "get_project_repo",
     "store_collaboration_profile",

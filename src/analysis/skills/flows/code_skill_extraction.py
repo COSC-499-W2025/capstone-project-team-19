@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Set
 
@@ -250,22 +251,81 @@ def _filter_code_files(files: List[Dict[str, Any]], code_exts: Set[str]) -> List
 
 
 def _get_zip_name(conn, user_id: int, project_name: str) -> Optional[str]:
+    """
+    Return the extraction folder name under `src/analysis/zip_data/` for a project.
+
+    Important:
+    - The extraction folder is based on the stored upload path stem:
+        analysis/zip_data/<Path(zip_path).stem>/
+    - `uploads.zip_name` is just the original filename and is NOT reliable.
+    """
     try:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT zip_name
-            FROM project_classifications
-            WHERE user_id = ? AND project_name = ?
+            SELECT u.zip_path, pv.extraction_root, pv.version_key
+            FROM project_versions pv
+            JOIN projects p ON p.project_key = pv.project_key
+            LEFT JOIN uploads u ON u.upload_id = pv.upload_id
+            WHERE p.user_id = ? AND p.display_name = ?
+            ORDER BY (u.zip_path IS NOT NULL) DESC,
+                     (pv.extraction_root IS NOT NULL AND pv.extraction_root != '') DESC,
+                     pv.version_key DESC
             LIMIT 1
             """,
             (user_id, project_name),
         )
+
         row = cursor.fetchone()
-        return row[0] if row else None
+        zip_path = row[0] if row else None
+        extraction_root = row[1] if row else None
+        version_key = row[2] if row else None
+
+        if zip_path:
+            # Extraction folder name is the stem of the stored zip path
+            return Path(str(zip_path)).stem
+
+        if extraction_root:
+            return str(extraction_root)
+
+        # Last resort (legacy rows): infer extraction_root from one file on disk
+        if constants.VERBOSE:
+            print(
+                f"[SKILL EXTRACTION] Warning: No upload zip_path found for {project_name} "
+                f"(latest version may not be linked to an upload)."
+            )
+
+        if version_key is not None:
+            sample = cursor.execute(
+                """
+                SELECT file_path
+                FROM files
+                WHERE version_key = ? AND file_path IS NOT NULL AND file_path != ''
+                ORDER BY file_id DESC
+                LIMIT 1
+                """,
+                (int(version_key),),
+            ).fetchone()
+            if sample and sample[0]:
+                raw = str(sample[0]).replace("\\", "/")
+                root = raw.split("/", 1)[0].strip()
+                if root:
+                    # Persist for future runs
+                    try:
+                        cursor.execute(
+                            "UPDATE project_versions SET extraction_root = ? WHERE version_key = ?",
+                            (root, int(version_key)),
+                        )
+                        conn.commit()
+                    except Exception:
+                        pass
+                    return root
+
+        return None
+
     except Exception as e:
         if constants.VERBOSE:
-            print(f"[SKILL EXTRACTION] Error querying zip_name: {e}")
+            print(f"[SKILL EXTRACTION] Error querying zip_path: {e}")
         return None
 
 

@@ -129,29 +129,29 @@ def get_all_projects_with_dates(conn, user_id):
     Returns list of dicts with keys: project_name, actual_project_date
     """
     query = """
-        WITH latest_classification AS (
-            SELECT pc.project_name,
-                   pc.project_type,
-                   pc.classification_id
-            FROM project_classifications pc
-            WHERE pc.user_id = ?
-              AND pc.classification_id = (
-                  SELECT pc2.classification_id
-                  FROM project_classifications pc2
-                  WHERE pc2.user_id = pc.user_id
-                    AND pc2.project_name = pc.project_name
-                  ORDER BY pc2.recorded_at DESC, pc2.classification_id DESC
-                  LIMIT 1
-              )
+        WITH latest_version AS (
+            SELECT
+                p.user_id,
+                p.display_name AS project_name,
+                p.project_type,
+                (
+                    SELECT pv2.version_key
+                    FROM project_versions pv2
+                    WHERE pv2.project_key = p.project_key
+                    ORDER BY pv2.version_key DESC
+                    LIMIT 1
+                ) AS version_key
+            FROM projects p
+            WHERE p.user_id = ?
         ),
         project_dates AS (
-            SELECT 
+            SELECT
                 ps.project_name,
                 COALESCE(
                     ps.manual_end_date,
                     CASE
-                        WHEN lc.project_type = 'text' THEN tac.end_date
-                        WHEN lc.project_type = 'code' THEN
+                        WHEN lv.project_type = 'text' THEN tac.end_date
+                        WHEN lv.project_type = 'code' THEN
                             COALESCE(
                                 grm.last_commit_date,
                                 json_extract(ps.summary_json, '$.metrics.git.commit_stats.last_commit_date'),
@@ -161,27 +161,27 @@ def get_all_projects_with_dates(conn, user_id):
                     END
                 ) AS actual_project_date
             FROM project_summaries ps
-            LEFT JOIN latest_classification lc
-                ON ps.user_id = ?  -- Note: need user_id in join for safety
-                AND ps.project_name = lc.project_name
+            LEFT JOIN latest_version lv
+                ON ps.user_id = lv.user_id
+                AND ps.project_name = lv.project_name
             LEFT JOIN text_activity_contribution tac
-                ON lc.classification_id = tac.classification_id
+                ON lv.version_key = tac.version_key
             LEFT JOIN github_repo_metrics grm
                 ON ps.user_id = grm.user_id
                 AND ps.project_name = grm.project_name
             WHERE ps.user_id = ?
         )
-        SELECT 
+        SELECT
             project_name,
             MAX(actual_project_date) AS actual_project_date
         FROM project_dates
         GROUP BY project_name
-        ORDER BY 
+        ORDER BY
             actual_project_date DESC NULLS LAST,
             project_name;
     """
 
-    rows = conn.execute(query, (user_id, user_id, user_id)).fetchall()
+    rows = conn.execute(query, (user_id, user_id)).fetchall()
 
     return [
         {

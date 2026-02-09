@@ -44,6 +44,53 @@ def _ensure_column(conn: sqlite3.Connection, table: str, column: str, ddl: str) 
     conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
 
 
+def _backfill_extraction_root(conn: sqlite3.Connection) -> None:
+    """
+    Best-effort migration:
+    - Ensures `project_versions.extraction_root` exists
+    - Backfills it from `files.file_path` for each version_key
+
+    Rationale:
+    Legacy/CLI flows can create `project_versions` without `upload_id`, so we cannot
+    always locate extracted files via `uploads.zip_path`. Storing `extraction_root`
+    lets downstream analysis locate `src/analysis/zip_data/<extraction_root>/...`.
+    """
+    _ensure_column(conn, "project_versions", "extraction_root", "TEXT")
+
+    missing = conn.execute(
+        """
+        SELECT version_key
+        FROM project_versions
+        WHERE extraction_root IS NULL OR extraction_root = ''
+        """
+    ).fetchall()
+
+    for (version_key,) in missing:
+        sample = conn.execute(
+            """
+            SELECT file_path
+            FROM files
+            WHERE version_key = ? AND file_path IS NOT NULL AND file_path != ''
+            ORDER BY file_id DESC
+            LIMIT 1
+            """,
+            (int(version_key),),
+        ).fetchone()
+
+        if not sample or not sample[0]:
+            continue
+
+        raw = str(sample[0]).replace("\\", "/")
+        root = raw.split("/", 1)[0].strip()
+        if not root:
+            continue
+
+        conn.execute(
+            "UPDATE project_versions SET extraction_root = ? WHERE version_key = ?",
+            (root, int(version_key)),
+        )
+
+
 def init_schema(conn: sqlite3.Connection) -> None:
     """Create all tables and indexes if they don't exist."""
     schema_path = Path(__file__).parent / "schema" / "tables.sql"
@@ -54,6 +101,9 @@ def init_schema(conn: sqlite3.Connection) -> None:
 
     # Version-scoping for project versions/deduplication flows
     _ensure_column(conn, "files", "version_key", "INTEGER")
+
+    # Store extraction folder name for legacy versions (no upload_id linkage)
+    _backfill_extraction_root(conn)
 
     # Indexes that reference migrated columns should be created after migrations.
     conn.execute(
