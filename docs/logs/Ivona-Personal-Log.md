@@ -2,6 +2,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 4 (Jan 26-Feb 8)](#t2-week-4-monday-january-26---sunday-february-8)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12-18)](#t2-week-2-monday-january-12---sunday-january-18)
 - [Week 1 (Jan 5-11)](#t2-week-1-monday-january-5---sunday-january-11)
@@ -193,6 +194,26 @@ PRs I reviewed:
 
 Next Week:
 I started on GET /portfolio api endpoint and plan to finish it next week. I also plan to continue working on api endpoints for project upload flow, specifically the Google OAuth ones. 
+
+
+## (T2 Week 4) Monday January 26 - Sunday February 8
+![Screenshot of this week's peer eval](./screenshots/Ivona-Jan.26-Feb.8.PNG)
+
+Coding PRs:
+I worked on PR ([#463](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/463)) to add the GoogleDrive api integration to our project upload flow. In this PR I implemented web OAuth flow for googledrive along with tests for it, 4 api endpoints (to start the oauth flow, to complete the oauth flow, to get the user's Google Drive files, to select files to link to the project files). I also added documentation for these endpoints and tests.
+
+PRs I reviewed:
+
+1st PR review (Timmi's): ([#450](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/450)) on refactoring the database model to support versioned projects.
+
+2nd PR review (Timmi's) ([#456](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/456)) on refactoring our system to use project keys and project version keys to be able to hold multiple project versions in our system.
+
+3rd PR review (Adara's) ([#446](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/446)) on adding 2 api endpoints for the main-file selction during the project upload process.
+
+4th PR review (Adara's) ([#464](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/464)) on adding 2 api endpoints for selecting the supporting files during the project upload process.
+
+Next Week:
+I plan to help finish any api endpoints our team has left to do and start making wireframes for the frontend.
 
 
 
