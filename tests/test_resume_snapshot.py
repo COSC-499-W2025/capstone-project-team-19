@@ -248,21 +248,16 @@ def test_render_snapshot_text_activity_two_stages():
     init_schema(conn)
     user_id = 1
 
-    cur = conn.execute(
-        """
-        INSERT INTO project_classifications (
-            user_id,
-            zip_path,
-            zip_name,
-            project_name,
-            classification,
-            project_type,
-            recorded_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (user_id, "fake.zip", "fake", "TextProj", "collaborative", "text", "2025-01-01"),
+    from src.db import record_project_classification
+    version_key = record_project_classification(
+        conn,
+        user_id,
+        "fake.zip",
+        "fake",
+        "TextProj",
+        "collaborative",
+        project_type="text",
     )
-    classification_id = cur.lastrowid
 
     from src.db.text_activity import store_text_activity_contribution
     activity_data = {
@@ -275,7 +270,7 @@ def test_render_snapshot_text_activity_two_stages():
         "activity_classification": {},
         "timeline": [],
     }
-    store_text_activity_contribution(conn, classification_id, activity_data)
+    store_text_activity_contribution(conn, version_key, activity_data)
 
     from src.menu.resume.helpers import render_snapshot
     snapshot = {
@@ -287,7 +282,7 @@ def test_render_snapshot_text_activity_two_stages():
                 "text_type": "Academic writing",
                 "summary_text": "Example summary",
                 "contribution_percent": 50.0,
-                "classification_id": classification_id,
+                "classification_id": version_key,
                 "languages": [],
                 "frameworks": [],
                 "skills": [],

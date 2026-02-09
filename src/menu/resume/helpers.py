@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 from src.models.project_summary import ProjectSummary
 from typing import Any, Dict, List
 from src.db.code_activity import get_code_activity_percents, get_normalized_code_metrics
-from src.db import get_classification_id
+from src.db import get_latest_version_key
 from src.db.text_activity import get_text_activity_contribution
 from .date_helpers import enrich_snapshot_with_dates
 
@@ -480,8 +480,8 @@ def build_contribution_bullets(
         if isinstance(pct, (int, float)):
             bullets.append(f"Contributed to {pct:.1f}% of the project deliverables.")
 
-        classification_id = project.get("classification_id") or get_classification_id(conn, user_id, project_name)
-        row = get_text_activity_contribution(conn, classification_id) if classification_id else None
+        vk = project.get("version_key") or project.get("classification_id") or get_latest_version_key(conn, user_id, project_name)
+        row = get_text_activity_contribution(conn, vk) if vk else None
 
         if not row:
             if not bullets:

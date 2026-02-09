@@ -44,7 +44,6 @@ def _fresh_state(seed_conn):
         "version_files",
         "project_versions",
         "projects",
-        "project_classifications",
         "files",
         "uploads",
         "users",

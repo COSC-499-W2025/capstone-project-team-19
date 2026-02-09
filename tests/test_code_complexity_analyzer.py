@@ -2,6 +2,7 @@ import os
 import pytest
 from unittest.mock import MagicMock, Mock, mock_open
 import src.analysis.code_individual.code_complexity_analyzer as cca
+from src.db import init_schema
 
 
 def test_analyze_code_complexity_no_files(tmp_sqlite_conn, capsys):
@@ -9,18 +10,8 @@ def test_analyze_code_complexity_no_files(tmp_sqlite_conn, capsys):
     Test when no code files are found in database.
     Should return empty dict and print message.
     """
-    # Create tables if needed
-    cursor = tmp_sqlite_conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS files (
-            file_name TEXT,
-            file_path TEXT,
-            user_id INTEGER,
-            project_name TEXT,
-            file_type TEXT
-        )
-    """)
-    tmp_sqlite_conn.commit()
+    init_schema(tmp_sqlite_conn)
+    # No project/version/files -> get_code_files_for_project returns []
 
     result = cca.analyze_code_complexity(tmp_sqlite_conn, 1, 'test_project', '/path/to/test.zip')
 
@@ -32,20 +23,18 @@ def test_analyze_code_complexity_with_python_file(tmp_sqlite_conn, tmp_path, mon
     """
     Test analyzing a Python file with both Radon and Lizard.
     """
-    # Setup database with a Python file
+    init_schema(tmp_sqlite_conn)
     cursor = tmp_sqlite_conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS files (
-            file_name TEXT,
-            file_path TEXT,
-            user_id INTEGER,
-            project_name TEXT,
-            file_type TEXT
-        )
-    """)
+    cursor.execute("INSERT INTO projects (user_id, display_name) VALUES (1, 'test_project')")
+    pk = cursor.lastrowid
     cursor.execute(
-        "INSERT INTO files (file_name, file_path, user_id, project_name, file_type) VALUES (?, ?, ?, ?, ?)",
-        ('test.py', 'src/test.py', 1, 'test_project', 'code')
+        "INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose) VALUES (?, 1, 'fp', 'fp')",
+        (pk,),
+    )
+    vk = cursor.lastrowid
+    cursor.execute(
+        "INSERT INTO files (user_id, version_key, file_name, file_path, file_type) VALUES (1, ?, 'test.py', 'src/test.py', 'code')",
+        (vk,),
     )
     tmp_sqlite_conn.commit()
 

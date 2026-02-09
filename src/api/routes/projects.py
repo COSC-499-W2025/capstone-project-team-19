@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
+import os
 from sqlite3 import Connection
 
 from src.api.dependencies import get_db, get_current_user_id
@@ -11,7 +12,19 @@ from src.api.schemas.uploads import (
     DedupResolveRequestDTO,
     UploadProjectFilesDTO,
     MainFileRequestDTO,
+    MainFileSectionsResponseDTO,
+    ContributedSectionsRequestDTO,
 )
+from src.api.schemas.git_identities import (
+    GitIdentitiesResponse,
+    GitIdentitiesSelectRequest,
+    GitIdentityOptionDTO,
+)
+from src.services.git_identities_service import (
+    get_git_identities as get_git_identities_service,
+    save_git_identities as save_git_identities_service,
+)
+from src.db.uploads import get_upload_by_id
 from src.services.projects_service import (
     list_projects,
     get_project_by_id,
@@ -26,6 +39,10 @@ from src.services.uploads_service import (
     submit_project_types,
     list_project_files,
     set_project_main_file,
+)
+from src.services.uploads_contribution_service import (
+    list_main_file_sections,
+    set_main_file_contributed_sections,
 )
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -123,6 +140,87 @@ def post_upload_project_main_file(
 ):
     upload = set_project_main_file(conn, user_id, upload_id, project_name, body.relpath)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+@router.get(
+    "/upload/{upload_id}/projects/{project_name}/text/sections",
+    response_model=ApiResponse[MainFileSectionsResponseDTO],
+)
+def get_main_file_sections(
+    upload_id: int,
+    project_name: str,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    data = list_main_file_sections(conn, user_id, upload_id, project_name)
+    if not data:
+        raise HTTPException(status_code=404, detail="Main file sections not found")
+    return ApiResponse(success=True, data=MainFileSectionsResponseDTO(**data), error=None)
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_name}/text/contributions",
+    response_model=ApiResponse[UploadDTO],
+)
+def post_main_file_contributed_sections(
+    upload_id: int,
+    project_name: str,
+    body: ContributedSectionsRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    data = set_main_file_contributed_sections(conn, user_id, upload_id, project_name, body.selected_section_ids)
+    return ApiResponse(success=True, data=UploadDTO(**data), error=None)
+
+
+@router.get(
+    "/upload/{upload_id}/projects/{project_key}/git/identities",
+    response_model=ApiResponse[GitIdentitiesResponse],
+)
+def get_git_identities_route(
+    upload_id: int,
+    project_key: int,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    options, selected_indices = get_git_identities_service(conn, user_id, upload, project_key)
+
+    return ApiResponse(
+        success=True,
+        data=GitIdentitiesResponse(options=options, selected_indices=selected_indices),
+        error=None,
+    )
+
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_key}/git/identities",
+    response_model=ApiResponse[GitIdentitiesResponse],
+)
+def post_git_identities_route(
+    upload_id: int,
+    project_key: int,
+    body: GitIdentitiesSelectRequest,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    options, selected_indices = save_git_identities_service(
+        conn,
+        user_id,
+        upload,
+        project_key,
+        body.selected_indices,
+        body.extra_emails,
+    )
+
+    return ApiResponse(
+        success=True,
+        data=GitIdentitiesResponse(options=options, selected_indices=selected_indices),
+        error=None,
+    )
 
 
 @router.delete("", response_model=ApiResponse[DeleteResultDTO])

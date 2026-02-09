@@ -31,8 +31,8 @@ def test_individual_project_no_filtering(test_conn):
     """Test that individual projects analyze all files without filtering."""
     # Setup project classification as individual
     test_conn.execute("""
-        INSERT INTO project_classifications (user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at)
-        VALUES (1, '/tmp/test.zip', 'test', 'myproject', 'individual', 'code', datetime('now'))
+        INSERT INTO projects (user_id, display_name, classification, project_type)
+        VALUES (1, 'myproject', 'individual', 'code')
     """)
     test_conn.commit()
 
@@ -60,8 +60,8 @@ def test_collaborative_project_with_filtering(test_conn):
     """Test that collaborative projects filter files based on contributions."""
     # Setup project classification as collaborative
     test_conn.execute("""
-        INSERT INTO project_classifications (user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at)
-        VALUES (1, '/tmp/test.zip', 'test', 'teamproject', 'collaborative', 'code', datetime('now'))
+        INSERT INTO projects (user_id, display_name, classification, project_type)
+        VALUES (1, 'teamproject', 'collaborative', 'code')
     """)
     test_conn.commit()
 
@@ -100,8 +100,8 @@ def test_collaborative_project_no_contribution_data(test_conn):
     """Test collaborative project when contribution data doesn't exist - uses all files."""
     # Setup project classification as collaborative
     test_conn.execute("""
-        INSERT INTO project_classifications (user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at)
-        VALUES (1, '/tmp/test.zip', 'test', 'teamproject', 'collaborative', 'code', datetime('now'))
+        INSERT INTO projects (user_id, display_name, classification, project_type)
+        VALUES (1, 'teamproject', 'collaborative', 'code')
     """)
     test_conn.commit()
 
@@ -127,8 +127,8 @@ def test_collaborative_project_path_matching_verbose_on(test_conn, capsys):
     """Test that file path matching works correctly with different path formats."""
     # Setup project classification as collaborative
     test_conn.execute("""
-        INSERT INTO project_classifications (user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at)
-        VALUES (1, '/tmp/test.zip', 'test', 'proj', 'collaborative', 'code', datetime('now'))
+        INSERT INTO projects (user_id, display_name, classification, project_type)
+        VALUES (1, 'proj', 'collaborative', 'code')
     """)
     test_conn.commit()
 
@@ -167,8 +167,8 @@ def test_collaborative_project_path_matching_verbose_on(test_conn, capsys):
 def test_collaborative_project_path_matching_non_verbose(test_conn, capsys):
     """Same scenario as path matching, but VERBOSE = False → no debug output."""
     test_conn.execute("""
-        INSERT INTO project_classifications (user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at)
-        VALUES (1, '/tmp/test.zip', 'test', 'proj2', 'collaborative', 'code', datetime('now'))
+        INSERT INTO projects (user_id, display_name, classification, project_type)
+        VALUES (1, 'proj2', 'collaborative', 'code')
     """)
     test_conn.commit()
 
@@ -204,8 +204,8 @@ def test_missing_project_type_skips_extraction(test_conn, capsys):
     """Test that extraction is skipped when project_type is missing."""
     # Insert classification without project_type
     test_conn.execute("""
-        INSERT INTO project_classifications (user_id, zip_path, zip_name, project_name, classification, recorded_at)
-        VALUES (1, '/tmp/test.zip', 'test', 'incomplete', 'individual', datetime('now'))
+        INSERT INTO projects (user_id, display_name, classification, project_type)
+        VALUES (1, 'incomplete', 'individual', NULL)
     """)
     test_conn.commit()
 
@@ -222,8 +222,8 @@ def test_missing_project_type_skips_extraction(test_conn, capsys):
 def test_no_files_found_skips_extraction(test_conn, capsys):
     """Test that extraction is skipped when no files are found."""
     test_conn.execute("""
-        INSERT INTO project_classifications (user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at)
-        VALUES (1, '/tmp/test.zip', 'test', 'emptyproject', 'individual', 'code', datetime('now'))
+        INSERT INTO projects (user_id, display_name, classification, project_type)
+        VALUES (1, 'emptyproject', 'individual', 'code')
     """)
     test_conn.commit()
 
@@ -242,8 +242,8 @@ def test_no_files_found_skips_extraction(test_conn, capsys):
 def test_collaborative_all_files_filtered_out(test_conn, capsys):
     """Test edge case where all files are filtered out (user contributed to no code files)."""
     test_conn.execute("""
-        INSERT INTO project_classifications (user_id, zip_path, zip_name, project_name, classification, project_type, recorded_at)
-        VALUES (1, '/tmp/test.zip', 'test', 'teamproject', 'collaborative', 'code', datetime('now'))
+        INSERT INTO projects (user_id, display_name, classification, project_type)
+        VALUES (1, 'teamproject', 'collaborative', 'code')
     """)
     test_conn.commit()
 

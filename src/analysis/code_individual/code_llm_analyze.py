@@ -160,7 +160,7 @@ def run_code_llm_analysis(
     # If we have DB context, fill it with real values
     if conn is not None and user_id is not None:
         try:
-            detected_languages = detect_languages(conn, project_name)
+            detected_languages = detect_languages(conn, user_id, project_name)
         except Exception as e:
             if constants.VERBOSE:
                 print("DEBUG detect_languages failed:", e)
