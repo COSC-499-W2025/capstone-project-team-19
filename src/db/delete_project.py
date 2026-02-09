@@ -45,7 +45,98 @@ def delete_project_everywhere(
         ]
 
         for pk in project_keys:
-            # Delete version_files first (depends on project_versions)
+            # Tables keyed by (user_id, project_key). Explicit deletes so deletion works even when
+            # PRAGMA foreign_keys is OFF (e.g. some test connections). When FK is ON, CASCADE would also remove these, redundant but safe.
+            cur.execute(
+                "DELETE FROM project_skills WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_summaries WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_feedback WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_rankings WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_thumbnails WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM config_files WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM text_contribution_summary WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_repos WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_drive_files WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM user_code_contributions WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM git_individual_metrics WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM code_collaborative_summary WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM code_collaborative_metrics WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM code_activity_metrics WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_repo_metrics WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_collaboration_profiles WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_issues WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_issue_comments WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_pull_requests WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_commit_timestamps WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_pr_reviews WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_pr_review_comments WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+
+            # Delete version_files first (depends on project_versions), then versions, then project row
             cur.execute(
                 """
                 DELETE FROM version_files
@@ -55,38 +146,14 @@ def delete_project_everywhere(
                 """,
                 (pk,),
             )
-            # Then versions, then the project row
             cur.execute("DELETE FROM project_versions WHERE project_key = ?", (pk,))
             cur.execute("DELETE FROM projects WHERE project_key = ?", (pk,))
 
         # ---------------------------------------------------------------------
         # 1) Tables keyed directly by (user_id, project_name)
         # ---------------------------------------------------------------------
-        tables_user_project = [
-            "files",
-            "config_files",
-            "project_summaries",
-            "project_skills",
-            "project_feedback",
-            "project_rankings",
-            "project_thumbnails",
-            "text_contribution_summary",
-            "project_repos",
-            "project_drive_files",
-            "user_code_contributions",
-            "code_activity_metrics",
-            "code_collaborative_metrics",
-            "code_collaborative_summary",
-            "git_individual_metrics",
-            "github_repo_metrics",
-            "github_collaboration_profiles",
-            "github_issues",
-            "github_issue_comments",
-            "github_pull_requests",
-            "github_commit_timestamps",
-            "github_pr_reviews",
-            "github_pr_review_comments",
-        ]
+        # files table is versioned-only; deleted via CASCADE when project_versions are removed above.
+        tables_user_project: list[str] = []
 
         for table in tables_user_project:
             cur.execute(
@@ -128,12 +195,17 @@ def delete_all_user_projects(conn: sqlite3.Connection, user_id: int) -> int:
     # Get orphaned project names from projects table (dedup data without summaries)
     orphan_rows = conn.execute(
         """
-        SELECT display_name FROM projects
-        WHERE user_id = ? AND display_name NOT IN (
-            SELECT project_name FROM project_summaries WHERE user_id = ?
-        )
+        SELECT p.display_name
+        FROM projects p
+        WHERE p.user_id = ?
+        AND NOT EXISTS (
+            SELECT 1
+            FROM project_summaries ps
+            WHERE ps.user_id = p.user_id
+                AND ps.project_key = p.project_key
+        );
         """,
-        (user_id, user_id),
+            (user_id,),
     ).fetchall()
     orphan_names = {row[0] for row in orphan_rows}
 

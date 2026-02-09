@@ -20,12 +20,6 @@ from src.db.projects import (
     get_project_key,
 )
 
-from src.db.upload_files import (
-    attach_version_key_to_upload_files,
-    delete_upload_files_for_project,
-    rename_upload_files_project,
-)
-
 from src.utils.deduplication.api_integration import (
     run_deduplication_for_projects_api,
     find_project_dir,
@@ -69,18 +63,8 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
     # Parse/extract ZIP, but do NOT persist files yet: we want to attach version_key after dedup.
     files_info = parse_zip_file(str(zip_path), user_id=user_id, conn=conn, persist_to_db=False)
     if not files_info:
-        set_upload_state(
-            conn,
-            upload_id,
-            state={"error": "No valid files were processed from ZIP."},
-            status="failed",
-        )
-        return {
-            "upload_id": upload_id,
-            "status": "failed",
-            "zip_name": zip_name,
-            "state": {"error": "No valid files were processed from ZIP."},
-        }
+        set_upload_state(conn, upload_id, state={"error": "No valid files were processed from ZIP."}, status="failed")
+        return {"upload_id": upload_id, "status": "failed", "zip_name": zip_name, "state": {"error": "No valid files were processed from ZIP."}}
 
     layout = analyze_project_layout(files_info)
 
@@ -98,6 +82,12 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
     asks: dict = dedup.get("asks") or {}
     new_versions: dict = dedup.get("new_versions") or {}
     decisions: dict = dedup.get("decisions") or {}
+    # Collect any dedup warnings for clients/CLI to display.
+    dedup_warnings: dict[str, str] = {}
+    for pname, d in (decisions or {}).items():
+        w = (d or {}).get("warning")
+        if isinstance(w, str) and w.strip():
+            dedup_warnings[pname] = w.strip()
 
     # Apply dedup renames to layout + files_info (so later steps operate on final project names)
     for old_name, existing_name in (new_versions or {}).items():
@@ -154,12 +144,12 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
         "dedup_skipped_projects": sorted(list(skipped_set)),
         "dedup_asks": asks,
         "dedup_new_versions": new_versions,
+        "dedup_warnings": dedup_warnings,
         "dedup_version_keys": version_keys,
         "dedup_project_keys": project_keys,
         "project_filetype_index": project_filetype_index,
     }
 
-    # If unresolved asks exist, stop before classification (matches CLI ordering)
     if asks:
         set_upload_state(conn, upload_id, state=state, status="needs_dedup")
         return {"upload_id": upload_id, "status": "needs_dedup", "zip_name": zip_name, "state": state}
@@ -266,6 +256,11 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
     skipped_now: set[str] = set()
     renames: dict[str, str] = {}
 
+    # Re-collect parsed file metadata for this upload so we can persist ask-cases
+    # after creating their version_key. (Ask-cases have no version_key yet, so they
+    # were intentionally not inserted into the versioned-only `files` table.)
+    all_files_info = parse_zip_file(str(zip_path), user_id=user_id, conn=conn, persist_to_db=False) or []
+
     for project_name, decision in decisions.items():
         ask_item = asks.get(project_name) or {}
         project_dir = find_project_dir(str(extract_dir), root_name, project_name)
@@ -276,9 +271,6 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
             skipped_now.add(project_name)
             remove_project_from_layout(layout, project_name)
             remove_project_key_in_index(index, project_name)
-
-            # Remove this upload's stored parsed files so later steps don't see it.
-            delete_upload_files_for_project(conn, user_id=user_id, project_name=project_name, zip_stem=zip_stem)
 
             dedup_version_keys.pop(project_name, None)
             dedup_project_keys.pop(project_name, None)
@@ -293,9 +285,13 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
                 dedup_project_keys[project_name] = pk
             if isinstance(vk, int):
                 dedup_version_keys[project_name] = vk
-                attach_version_key_to_upload_files(
-                    conn, user_id=user_id, project_name=project_name, version_key=vk, zip_stem=zip_stem
-                )
+                project_files = [
+                    f for f in all_files_info
+                    if f.get("project_name") == project_name and f.get("file_type") != "config"
+                ]
+                for f in project_files:
+                    f["version_key"] = int(vk)
+                store_parsed_files(conn, project_files, user_id)
                 conn.execute(
                     "UPDATE project_versions SET extraction_root = COALESCE(extraction_root, ?) WHERE version_key = ?",
                     (zip_root, int(vk)),
@@ -312,15 +308,16 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
             pk = created.get("project_key")
             vk = created.get("version_key")
 
-            if project_name != existing:
-                rename_upload_files_project(
-                    conn,
-                    user_id=user_id,
-                    old_project_name=project_name,
-                    new_project_name=existing,
-                    zip_stem=zip_stem,
-                )
+            if isinstance(vk, int):
+                project_files = [
+                    f for f in all_files_info
+                    if f.get("project_name") == project_name and f.get("file_type") != "config"
+                ]
+                for f in project_files:
+                    f["version_key"] = int(vk)
+                store_parsed_files(conn, project_files, user_id)
 
+            if project_name != existing:
                 rename_project_in_layout(layout, project_name, existing)
                 rename_project_key_in_index(index, project_name, existing)
 
@@ -335,9 +332,6 @@ def resolve_dedup(conn: sqlite3.Connection, user_id: int, upload_id: int, decisi
                 dedup_project_keys[final_name] = pk
             if isinstance(vk, int):
                 dedup_version_keys[final_name] = vk
-                attach_version_key_to_upload_files(
-                    conn, user_id=user_id, project_name=final_name, version_key=vk, zip_stem=zip_stem
-                )
                 conn.execute(
                     "UPDATE project_versions SET extraction_root = COALESCE(extraction_root, ?) WHERE version_key = ?",
                     (zip_root, int(vk)),
@@ -443,9 +437,18 @@ def submit_classifications(conn: sqlite3.Connection, user_id: int, upload_id: in
     projects = set(assignments.keys())
     type_result = infer_project_types_from_index(projects, index)
 
+    # Persist auto-detected types on canonical `projects` rows.
+    auto_types = type_result["auto_types"]
+    for project_name, ptype in auto_types.items():
+        pk = project_keys.get(project_name)
+        if not isinstance(pk, int):
+            pk = get_project_key(conn, user_id, project_name)
+        if isinstance(pk, int):
+            update_project_metadata(conn, pk, project_type=ptype)
+
     patch = {
         "classifications": assignments,
-        "project_types_auto": type_result["auto_types"],
+        "project_types_auto": auto_types,
         "project_types_mixed": type_result["mixed_projects"],
         "project_types_unknown": type_result["unknown_projects"],
     }
@@ -515,39 +518,49 @@ def _rows_for_project_scoped_to_upload(
     user_id: int,
     project_name: str,
     zip_path: str,
+    upload_id: int,
 ):
     """
-    Try to scope file listing to the current upload by matching the zip stem in file_path.
-    Falls back to unscoped query if the scoped one returns nothing (to avoid breaking if
-    file_path storage is inconsistent).
+    Return file rows for this project in this upload (versioned-only files table).
+    Scopes by version_key(s) for (project, upload_id), optionally by zip stem in file_path.
+    Returns rows as (file_name, file_path, extension, file_type, size_bytes, created, modified);
+    callers append project_name when building file items. project_name when building file items.
     """
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return []
+    vrows = conn.execute(
+        "SELECT version_key FROM project_versions WHERE project_key = ? AND upload_id = ?",
+        (pk, upload_id),
+    ).fetchall()
+    version_keys = [r[0] for r in vrows]
+    if not version_keys:
+        return []
     zip_stem = Path(zip_path).stem
+    placeholders = ",".join("?" * len(version_keys))
 
     scoped = conn.execute(
-        """
-        SELECT file_name, file_path, extension, file_type, size_bytes, created, modified, project_name
+        f"""
+        SELECT file_name, file_path, extension, file_type, size_bytes, created, modified
         FROM files
-        WHERE user_id = ? AND project_name = ?
-          AND (
-            file_path LIKE ? OR file_path LIKE ?
-          )
+        WHERE user_id = ? AND version_key IN ({placeholders})
+          AND (file_path LIKE ? OR file_path LIKE ?)
         ORDER BY file_path ASC
         """,
-        (user_id, project_name, f"%/{zip_stem}/%", f"{zip_stem}/%"),
+        (user_id, *version_keys, f"%/{zip_stem}/%", f"{zip_stem}/%"),
     ).fetchall()
 
     if scoped:
         return scoped
 
-    # fallback (older DB rows might not include zip_stem)
     return conn.execute(
-        """
-        SELECT file_name, file_path, extension, file_type, size_bytes, created, modified, project_name
+        f"""
+        SELECT file_name, file_path, extension, file_type, size_bytes, created, modified
         FROM files
-        WHERE user_id = ? AND project_name = ?
+        WHERE user_id = ? AND version_key IN ({placeholders})
         ORDER BY file_path ASC
         """,
-        (user_id, project_name),
+        (user_id, *version_keys),
     ).fetchall()
 
 
@@ -569,9 +582,10 @@ def list_project_files(conn: sqlite3.Connection, user_id: int, upload_id: int, p
     if not zip_path:
         raise HTTPException(status_code=400, detail="Upload missing zip_path")
 
-    rows = _rows_for_project_scoped_to_upload(conn, user_id, project_name, zip_path)
+    rows = _rows_for_project_scoped_to_upload(conn, user_id, project_name, zip_path, upload_id)
 
-    items = [build_file_item_from_row(Path(ZIP_DATA_DIR), r) for r in rows]
+    # build_file_item_from_row expects (..., project_name); files table no longer has project_name
+    items = [build_file_item_from_row(Path(ZIP_DATA_DIR), (*r, project_name)) for r in rows]
     buckets = categorize_project_files(items)
 
     return {
@@ -604,9 +618,9 @@ def set_project_main_file(conn: sqlite3.Connection, user_id: int, upload_id: int
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    rows = _rows_for_project_scoped_to_upload(conn, user_id, project_name, zip_path)
+    rows = _rows_for_project_scoped_to_upload(conn, user_id, project_name, zip_path, upload_id)
     valid_relpaths = {
-        build_file_item_from_row(Path(ZIP_DATA_DIR), r).get("relpath") for r in rows
+        build_file_item_from_row(Path(ZIP_DATA_DIR), (*r, project_name)).get("relpath") for r in rows
     }
 
     if relpath_norm not in valid_relpaths:

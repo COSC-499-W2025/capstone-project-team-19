@@ -15,6 +15,7 @@ from src.db.file_contributions import (
     delete_file_contributions_for_project,
 )
 from src.db import init_schema
+from src.db.projects import get_project_key
 
 
 @pytest.fixture
@@ -171,9 +172,12 @@ def test_delete_file_contributions_for_project(test_conn):
     store_file_contributions(test_conn, 1, "proj1", contributions)
     delete_file_contributions_for_project(test_conn, 1, "proj1")
 
+    pk = get_project_key(test_conn, 1, "proj1")
+    assert pk is not None
     cursor = test_conn.cursor()
     cursor.execute(
-        "SELECT COUNT(*) FROM user_code_contributions WHERE user_id = 1 AND project_name = 'proj1'"
+        "SELECT COUNT(*) FROM user_code_contributions WHERE user_id = 1 AND project_key = ?",
+        (pk,),
     )
     assert cursor.fetchone()[0] == 0
 
