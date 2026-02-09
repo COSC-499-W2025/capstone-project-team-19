@@ -13,6 +13,7 @@ from src.db import (
     connect,
     init_schema,
     get_or_create_user,
+    get_project_key,
     get_project_rank,
     get_all_project_ranks,
     save_project_summary
@@ -72,34 +73,59 @@ def test_projects(db_conn, test_user):
     return projects
 
 
+def _ensure_project(conn, user_id, name):
+    """Ensure a project exists and return its project_key."""
+    summary = ProjectSummary(
+        project_name=name,
+        project_type="code",
+        project_mode="individual",
+        summary_text=f"Test summary for {name}",
+        skills=[],
+        metrics={}
+    )
+    summary_dict = asdict(summary)
+    summary_dict["created_at"] = summary.created_at.isoformat()
+    summary_json = json.dumps(summary_dict)
+    save_project_summary(conn, user_id, name, summary_json)
+    pk = get_project_key(conn, user_id, name)
+    assert pk is not None
+    return pk
+
+
 class TestDatabaseOperations:
     """Test all database operations for project rankings."""
 
     def test_set_project_rank(self, db_conn, test_user):
         """Test setting a manual rank for a project."""
-        set_project_rank(db_conn, test_user, "Test Project", 1)
+        pk = _ensure_project(db_conn, test_user, "Test Project")
+        set_project_rank(db_conn, test_user, pk, 1)
 
-        rank = get_project_rank(db_conn, test_user, "Test Project")
+        rank = get_project_rank(db_conn, test_user, pk)
         assert rank == 1
 
     def test_set_project_rank_null(self, db_conn, test_user):
         """Test setting rank to NULL (auto-ranking)."""
-        set_project_rank(db_conn, test_user, "Test Project", 1)
-        set_project_rank(db_conn, test_user, "Test Project", None)
+        pk = _ensure_project(db_conn, test_user, "Test Project")
+        set_project_rank(db_conn, test_user, pk, 1)
+        set_project_rank(db_conn, test_user, pk, None)
 
-        rank = get_project_rank(db_conn, test_user, "Test Project")
+        rank = get_project_rank(db_conn, test_user, pk)
         assert rank is None
 
     def test_get_project_rank_nonexistent(self, db_conn, test_user):
         """Test getting rank for a project that doesn't have one."""
-        rank = get_project_rank(db_conn, test_user, "Nonexistent Project")
+        # Use a project_key that doesn't exist (e.g. 99999)
+        rank = get_project_rank(db_conn, test_user, 99999)
         assert rank is None
 
     def test_get_all_project_ranks(self, db_conn, test_user):
         """Test getting all project ranks."""
-        set_project_rank(db_conn, test_user, "Project A", 1)
-        set_project_rank(db_conn, test_user, "Project B", 2)
-        set_project_rank(db_conn, test_user, "Project C", 3)
+        pk_a = _ensure_project(db_conn, test_user, "Project A")
+        pk_b = _ensure_project(db_conn, test_user, "Project B")
+        pk_c = _ensure_project(db_conn, test_user, "Project C")
+        set_project_rank(db_conn, test_user, pk_a, 1)
+        set_project_rank(db_conn, test_user, pk_b, 2)
+        set_project_rank(db_conn, test_user, pk_c, 3)
 
         ranks = get_all_project_ranks(db_conn, test_user)
 
@@ -110,11 +136,13 @@ class TestDatabaseOperations:
 
     def test_get_all_project_ranks_sorted(self, db_conn, test_user):
         """Test that ranks are returned sorted."""
-        # Use bulk_set_rankings to avoid automatic shifting
+        pk_a = _ensure_project(db_conn, test_user, "Project A")
+        pk_b = _ensure_project(db_conn, test_user, "Project B")
+        pk_c = _ensure_project(db_conn, test_user, "Project C")
         bulk_set_rankings(db_conn, test_user, [
-            ("Project C", 3),
-            ("Project A", 1),
-            ("Project B", 2),
+            (pk_c, 3),
+            (pk_a, 1),
+            (pk_b, 2),
         ])
 
         ranks = get_all_project_ranks(db_conn, test_user)
@@ -126,17 +154,21 @@ class TestDatabaseOperations:
 
     def test_clear_project_rank(self, db_conn, test_user):
         """Test clearing a single project rank."""
-        set_project_rank(db_conn, test_user, "Project A", 1)
-        clear_project_rank(db_conn, test_user, "Project A")
+        pk_a = _ensure_project(db_conn, test_user, "Project A")
+        set_project_rank(db_conn, test_user, pk_a, 1)
+        clear_project_rank(db_conn, test_user, pk_a)
 
-        rank = get_project_rank(db_conn, test_user, "Project A")
+        rank = get_project_rank(db_conn, test_user, pk_a)
         assert rank is None
 
     def test_clear_all_rankings(self, db_conn, test_user):
         """Test clearing all rankings for a user."""
-        set_project_rank(db_conn, test_user, "Project A", 1)
-        set_project_rank(db_conn, test_user, "Project B", 2)
-        set_project_rank(db_conn, test_user, "Project C", 3)
+        pk_a = _ensure_project(db_conn, test_user, "Project A")
+        pk_b = _ensure_project(db_conn, test_user, "Project B")
+        pk_c = _ensure_project(db_conn, test_user, "Project C")
+        set_project_rank(db_conn, test_user, pk_a, 1)
+        set_project_rank(db_conn, test_user, pk_b, 2)
+        set_project_rank(db_conn, test_user, pk_c, 3)
 
         clear_all_rankings(db_conn, test_user)
 
@@ -145,10 +177,13 @@ class TestDatabaseOperations:
 
     def test_bulk_set_rankings(self, db_conn, test_user):
         """Test bulk setting multiple rankings."""
+        pk_a = _ensure_project(db_conn, test_user, "Project A")
+        pk_b = _ensure_project(db_conn, test_user, "Project B")
+        pk_c = _ensure_project(db_conn, test_user, "Project C")
         rankings = [
-            ("Project A", 1),
-            ("Project B", 2),
-            ("Project C", 3),
+            (pk_a, 1),
+            (pk_b, 2),
+            (pk_c, 3),
         ]
         bulk_set_rankings(db_conn, test_user, rankings)
 
@@ -160,10 +195,11 @@ class TestDatabaseOperations:
 
     def test_update_existing_rank(self, db_conn, test_user):
         """Test updating an existing rank."""
-        set_project_rank(db_conn, test_user, "Project A", 1)
-        set_project_rank(db_conn, test_user, "Project A", 5)
+        pk_a = _ensure_project(db_conn, test_user, "Project A")
+        set_project_rank(db_conn, test_user, pk_a, 1)
+        set_project_rank(db_conn, test_user, pk_a, 5)
 
-        rank = get_project_rank(db_conn, test_user, "Project A")
+        rank = get_project_rank(db_conn, test_user, pk_a)
         assert rank == 5
 
 class TestRankingLogic:
@@ -172,7 +208,8 @@ class TestRankingLogic:
     def test_collect_project_data_with_manual_ranks(self, db_conn, test_user, test_projects):
         """Test that collect_project_data respects manual rankings."""
         # Set manual rank for Project Gamma (lowest auto-score)
-        set_project_rank(db_conn, test_user, "Project Gamma", 1)
+        pk_gamma = get_project_key(db_conn, test_user, "Project Gamma")
+        set_project_rank(db_conn, test_user, pk_gamma, 1)
 
         ranked_projects = collect_project_data(db_conn, test_user, respect_manual_ranking=True)
 
@@ -181,7 +218,8 @@ class TestRankingLogic:
 
     def test_collect_project_data_without_manual_ranks(self, db_conn, test_user, test_projects):
         """Test that collect_project_data can ignore manual rankings."""
-        set_project_rank(db_conn, test_user, "Project Gamma", 1)
+        pk_gamma = get_project_key(db_conn, test_user, "Project Gamma")
+        set_project_rank(db_conn, test_user, pk_gamma, 1)
 
         ranked_projects = collect_project_data(db_conn, test_user, respect_manual_ranking=False)
 
@@ -191,8 +229,10 @@ class TestRankingLogic:
     def test_mixed_manual_and_auto_ranking(self, db_conn, test_user, test_projects):
         """Test mixing manual and automatic rankings."""
         # Manually rank only some projects
-        set_project_rank(db_conn, test_user, "Project Beta", 1)
-        set_project_rank(db_conn, test_user, "Project Gamma", 2)
+        pk_beta = get_project_key(db_conn, test_user, "Project Beta")
+        pk_gamma = get_project_key(db_conn, test_user, "Project Gamma")
+        set_project_rank(db_conn, test_user, pk_beta, 1)
+        set_project_rank(db_conn, test_user, pk_gamma, 2)
 
         ranked_projects = collect_project_data(db_conn, test_user, respect_manual_ranking=True)
 
@@ -208,10 +248,14 @@ class TestRankingLogic:
 
     def test_all_projects_manually_ranked(self, db_conn, test_user, test_projects):
         """Test when all projects have manual ranks."""
-        set_project_rank(db_conn, test_user, "Project Delta", 1)
-        set_project_rank(db_conn, test_user, "Project Alpha", 2)
-        set_project_rank(db_conn, test_user, "Project Beta", 3)
-        set_project_rank(db_conn, test_user, "Project Gamma", 4)
+        pk_delta = get_project_key(db_conn, test_user, "Project Delta")
+        pk_alpha = get_project_key(db_conn, test_user, "Project Alpha")
+        pk_beta = get_project_key(db_conn, test_user, "Project Beta")
+        pk_gamma = get_project_key(db_conn, test_user, "Project Gamma")
+        set_project_rank(db_conn, test_user, pk_delta, 1)
+        set_project_rank(db_conn, test_user, pk_alpha, 2)
+        set_project_rank(db_conn, test_user, pk_beta, 3)
+        set_project_rank(db_conn, test_user, pk_gamma, 4)
 
         ranked_projects = collect_project_data(db_conn, test_user, respect_manual_ranking=True)
 

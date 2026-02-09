@@ -25,14 +25,18 @@ def setup_user():
 
 def create_text_project_with_date(conn, user_id, project_name, end_date):
     """Helper to create a text project with completion date."""
-    record_project_classification(conn, user_id, f"/path/{project_name}.zip", project_name.lower(), project_name, "individual")
-    conn.execute("UPDATE project_classifications SET project_type = 'text' WHERE project_name = ?", (project_name,))
+    version_key = record_project_classification(
+        conn,
+        user_id,
+        f"/path/{project_name}.zip",
+        project_name.lower(),
+        project_name,
+        "individual",
+        project_type="text",
+    )
     summary = {"project_type": "text", "project_mode": "individual"}
     save_project_summary(conn, user_id, project_name, json.dumps(summary))
-    classification_id = conn.execute(
-        "SELECT classification_id FROM project_classifications WHERE project_name = ?", (project_name,)
-    ).fetchone()[0]
-    store_text_activity_contribution(conn, classification_id, {
+    store_text_activity_contribution(conn, version_key, {
         "timestamp_analysis": {
             "end_date": end_date,
         }
@@ -41,8 +45,15 @@ def create_text_project_with_date(conn, user_id, project_name, end_date):
 def create_code_project_with_date(conn, user_id, project_name, last_commit_date, is_collaborative=False):
     """Helper to create a code project with completion date."""
     mode = "collaborative" if is_collaborative else "individual"
-    record_project_classification(conn, user_id, f"/path/{project_name}.zip", project_name.lower(), project_name, mode)
-    conn.execute("UPDATE project_classifications SET project_type = 'code' WHERE project_name = ?", (project_name,))
+    record_project_classification(
+        conn,
+        user_id,
+        f"/path/{project_name}.zip",
+        project_name.lower(),
+        project_name,
+        mode,
+        project_type="code",
+    )
     
     # Create summary with git commit stats in JSON
     if is_collaborative:
@@ -151,7 +162,10 @@ def test_handles_projects_without_dates(setup_user):
     conn, user_id, username = setup_user
     
     record_project_classification(conn, user_id, "/path/test.zip", "test", "NoDateProject", "individual")
-    conn.execute("UPDATE project_classifications SET project_type = 'code' WHERE project_name = 'NoDateProject'")
+    conn.execute(
+        "UPDATE projects SET project_type = 'code' WHERE user_id = ? AND display_name = ?",
+        (user_id, "NoDateProject"),
+    )
     summary = {"project_type": "code", "project_mode": "individual"}
     save_project_summary(conn, user_id, "NoDateProject", json.dumps(summary))
 

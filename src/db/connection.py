@@ -44,6 +44,31 @@ def _ensure_column(conn: sqlite3.Connection, table: str, column: str, ddl: str) 
     conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
 
 
+def _backfill_extraction_root(conn: sqlite3.Connection) -> None:
+    """
+    Best-effort migration:
+    - Ensures `project_versions.extraction_root` exists
+    - Backfills it from `files.file_path` for each version_key
+
+    Rationale:
+    Legacy/CLI flows can create `project_versions` without `upload_id`, so we cannot
+    always locate extracted files via `uploads.zip_path`. Storing `extraction_root`
+    lets downstream analysis locate `src/analysis/zip_data/<extraction_root>/...`.
+    """
+    _ensure_column(conn, "project_versions", "extraction_root", "TEXT")
+
+    missing = conn.execute(
+        """
+        SELECT version_key
+        FROM project_versions
+        WHERE extraction_root IS NULL OR extraction_root = ''
+        """
+    ).fetchall()
+
+    # Do not infer extraction_root from file_path first segment: that segment is inside the zip (e.g. "code_collaborative"), not the zip folder name under zip_data. 
+    # Skill extraction resolves the folder by scanning zip_data when extraction_root and zip_path are missing.
+
+
 def init_schema(conn: sqlite3.Connection) -> None:
     """Create all tables and indexes if they don't exist."""
     schema_path = Path(__file__).parent / "schema" / "tables.sql"
@@ -52,13 +77,11 @@ def init_schema(conn: sqlite3.Connection) -> None:
 
     conn.executescript(schema_sql)
 
-    # Version-scoping for project versions/deduplication flows
+    # Legacy migration: ensure version_key exists on files (schema now has version_key, no project_name)
     _ensure_column(conn, "files", "version_key", "INTEGER")
 
-    # Indexes that reference migrated columns should be created after migrations.
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_files_user_project_version ON files(user_id, project_name, version_key)"
-    )
+    # Store extraction folder name for legacy versions (no upload_id linkage)
+    _backfill_extraction_root(conn)
 
     conn.commit()
     print(f"Initialized database schema from {schema_path}")

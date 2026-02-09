@@ -1192,7 +1192,8 @@ Manages résumé-specific representations of projects.
                 "Built feature X",
                 "Improved performance by 50%"
             ],
-            "contribution_edit_mode": "replace"
+            "contribution_edit_mode": "replace",
+            "key_role": "Backend Developer"
         }
         ```
         - `name` (string, optional): New name for the résumé (rename)
@@ -1206,6 +1207,7 @@ Manages résumé-specific representations of projects.
         - `contribution_edit_mode` (string, optional): How to apply contribution bullets. Defaults to `"replace"`.
             - `"replace"`: Replace all existing bullets with the provided list
             - `"append"`: Keep existing bullets and add the provided bullets to the end
+        - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead"). Follows the same `scope` rules as other fields.
     - **Response Status**: `200 OK` or `404 Not Found`
     - **Response Body**: Uses `ResumeDetailDTO`
         ```json
@@ -1274,17 +1276,154 @@ Manages résumé-specific representations of projects.
         }
         ```
 
+- **Export Resume to DOCX**
+    - **Endpoint**: `GET /resume/{resume_id}/export/docx`
+    - **Description**: Exports a résumé snapshot to a Word document (.docx) file.
+    - **Path Parameters**:
+        - `{resume_id}` (integer, required): The ID of the résumé snapshot to export. Get this from `GET /resume`.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary file download with MIME type `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+    - **Response Headers**:
+        - `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+        - `Content-Disposition: attachment; filename="resume_username_2025-01-15_14-30-00.docx"`
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Resume not found or doesn't belong to user
+
+- **Export Resume to PDF**
+    - **Endpoint**: `GET /resume/{resume_id}/export/pdf`
+    - **Description**: Exports a résumé snapshot to a PDF document.
+    - **Path Parameters**:
+        - `{resume_id}` (integer, required): The ID of the résumé snapshot to export. Get this from `GET /resume`.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary file download with MIME type `application/pdf`
+    - **Response Headers**:
+        - `Content-Type: application/pdf`
+        - `Content-Disposition: attachment; filename="resume_username_2025-01-15_14-30-00.pdf"`
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Resume not found or doesn't belong to user
+
 ---
 
 ## **Portfolio**
 
 **Base URL:** `/portfolio`
 
-Manages portfolio showcase configuration.
+Manages portfolio showcase configuration. Portfolios are generated live from all of the user's analyzed projects, ranked by importance score. No data is persisted — the portfolio reflects the current state of project summaries and overrides.
 
 ### **Endpoints**
 
+- **Generate Portfolio**
+    - **Endpoint**: `POST /portfolio/generate`
+    - **Description**: Generates a portfolio view from all of the user's analyzed projects, ranked by importance. Returns structured project data and a rendered plain-text version. The portfolio is not persisted — it is built on demand from existing project summaries.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: Uses `PortfolioGenerateRequestDTO`
+        ```json
+        {
+            "name": "My Portfolio"
+        }
+        ```
+        - `name` (string, required): Label for the portfolio (used in rendered text header)
+    - **Response Status**: `200 OK` or `400 Bad Request`
+    - **Response Body**: Uses `PortfolioDetailDTO`
+        ```json
+        {
+            "success": true,
+            "data": {
+                "projects": [
+                    {
+                        "project_name": "MyProject",
+                        "display_name": "My Project",
+                        "project_type": "code",
+                        "project_mode": "collaborative",
+                        "score": 0.875,
+                        "duration": "Duration: 2024-01-15 – 2024-06-30",
+                        "languages": ["Python", "JavaScript"],
+                        "frameworks": ["FastAPI", "React"],
+                        "activity": "Activity: feature_coding 85%, testing 15%",
+                        "skills": ["Backend Development", "API Design"],
+                        "summary_text": "A web application for...",
+                        "contribution_bullets": ["Built the REST API layer"]
+                    }
+                ],
+                "rendered_text": "Portfolio — My Portfolio\n..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `400 Bad Request`: No projects found for this user
+        - `401 Unauthorized`: Missing or invalid Bearer token
 
+- **Edit Portfolio**
+    - **Endpoint**: `POST /portfolio/edit`
+    - **Description**: Edits portfolio wording for a specific project. Changes can be scoped to the portfolio only or applied globally (affecting all resumes and the portfolio). Edits are stored as overrides in `project_summaries.summary_json` — no portfolio snapshot table is needed. Returns the updated portfolio view.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: Uses `PortfolioEditRequestDTO`
+        ```json
+        {
+            "project_name": "MyProject",
+            "scope": "portfolio_only",
+            "display_name": "Custom Project Name",
+            "summary_text": "Updated summary...",
+            "contribution_bullets": ["Built feature X", "Improved performance by 50%"]
+        }
+        ```
+        - `project_name` (string, required): The text name of the project to edit
+        - `scope` (string, optional): Either `"portfolio_only"` (default) or `"global"`
+            - `portfolio_only`: Changes apply only to the portfolio view (stored as `portfolio_overrides`)
+            - `global`: Changes apply to all resumes and the portfolio (stored as `manual_overrides` in `project_summaries`, fanned out to all `resume_snapshots`)
+        - `display_name` (string, optional): Custom display name for the project
+        - `summary_text` (string, optional): Updated summary text
+        - `contribution_bullets` (array of strings, optional): Custom contribution bullet points
+    - **Response Status**: `200 OK` or `404 Not Found`
+    - **Response Body**: Uses `PortfolioDetailDTO` (returns the full updated portfolio)
+        ```json
+        {
+            "success": true,
+            "data": {
+                "projects": [...],
+                "rendered_text": "..."
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Project not found
+
+- **Export Portfolio to DOCX**
+    - **Endpoint**: `GET /portfolio/export/docx`
+    - **Description**: Exports the user's portfolio to a Word document (.docx) file. Includes all ranked projects with their metadata, summaries, and contribution bullets.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary file download with MIME type `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+    - **Response Headers**:
+        - `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+        - `Content-Disposition: attachment; filename="portfolio_username_2025-01-15_14-30-00.docx"`
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: No projects found for this user
+
+- **Export Portfolio to PDF**
+    - **Endpoint**: `GET /portfolio/export/pdf`
+    - **Description**: Exports the user's portfolio to a PDF document. Includes all ranked projects with their metadata, summaries, and contribution bullets.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary file download with MIME type `application/pdf`
+    - **Response Headers**:
+        - `Content-Type: application/pdf`
+        - `Content-Disposition: attachment; filename="portfolio_username_2025-01-15_14-30-00.pdf"`
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: No projects found for this user
 
 ---
 
@@ -1489,6 +1628,35 @@ Example:
     - `summary_text` (string, optional): Updated summary text
     - `contribution_bullets` (List[string], optional): Custom contribution bullet points
     - `contribution_edit_mode` (string, optional): `"replace"` (default) or `"append"`
+    - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead")
+
+- **PortfolioGenerateRequestDTO**
+    - `name` (string, required): Label for the portfolio
+
+- **PortfolioEditRequestDTO**
+    - `project_name` (string, required): Text name of the project to edit
+    - `scope` (string, optional): `"portfolio_only"` (default) or `"global"`
+    - `display_name` (string, optional): Custom display name for the project
+    - `summary_text` (string, optional): Updated summary text
+    - `contribution_bullets` (List[string], optional): Custom contribution bullet points
+
+- **PortfolioProjectDTO**
+    - `project_name` (string, required)
+    - `display_name` (string, required)
+    - `project_type` (string, optional)
+    - `project_mode` (string, optional)
+    - `score` (float, required): Importance ranking score
+    - `duration` (string, optional): Formatted duration string (e.g. "Duration: 2024-01-15 – 2024-06-30")
+    - `languages` (List[string], optional): Top 3 languages (code projects only)
+    - `frameworks` (List[string], optional): Frameworks used (code projects only)
+    - `activity` (string, optional): Formatted activity line (e.g. "Activity: feature_coding 85%, testing 15%")
+    - `skills` (List[string], optional): Top 4 skills
+    - `summary_text` (string, optional): Project summary text
+    - `contribution_bullets` (List[string], optional): Contribution bullet points
+
+- **PortfolioDetailDTO**
+    - `projects` (List[PortfolioProjectDTO], optional)
+    - `rendered_text` (string, optional): Plain-text formatted portfolio
 
 ### **Privacy Consent DTOs**
 

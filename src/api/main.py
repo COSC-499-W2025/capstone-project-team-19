@@ -8,6 +8,8 @@ from src.api.routes import (
     resumes_router,
     github_router,
     consent_router,
+    portfolio_router,
+    export_router,
 )
 from src.api.auth.routes import router as auth_router
 
@@ -27,3 +29,5 @@ app.include_router(skills_router)
 app.include_router(resumes_router)
 app.include_router(consent_router)
 app.include_router(github_router)
+app.include_router(portfolio_router)
+app.include_router(export_router)

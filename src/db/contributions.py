@@ -35,18 +35,19 @@ def store_text_contribution_revision(conn: sqlite3.Connection, revision: Dict[st
 def store_text_contribution_summary(conn: sqlite3.Connection, summary: Dict[str, Any]) -> None:
     """
     Store or update a text contribution summary record.
+    summary must include project_key (int).
     """
     conn.execute("""
         INSERT INTO text_contribution_summary (
-            user_id, project_name, drive_file_id, user_revision_count, total_word_count, total_revision_count
+            user_id, project_key, drive_file_id, user_revision_count, total_word_count, total_revision_count
         ) VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(user_id, project_name, drive_file_id) DO UPDATE SET
+        ON CONFLICT(user_id, project_key, drive_file_id) DO UPDATE SET
             user_revision_count=excluded.user_revision_count,
             total_word_count=excluded.total_word_count,
             total_revision_count=excluded.total_revision_count
     """, (
         summary["user_id"],
-        summary["project_name"],
+        summary["project_key"],
         summary["drive_file_id"],
         summary.get("user_revision_count", 0),
         summary.get("total_word_count", 0),

@@ -7,6 +7,8 @@ GitHub pull request-related read operations.
 import sqlite3
 from typing import List, Dict
 
+from .projects import get_project_key
+
 
 def get_pull_requests_for_project(
     conn: sqlite3.Connection,
@@ -16,6 +18,9 @@ def get_pull_requests_for_project(
     """
     Return PR rows for this user + project as plain dicts.
     """
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return []
     rows = conn.execute(
         """
         SELECT
@@ -30,9 +35,9 @@ def get_pull_requests_for_project(
             merged
         FROM github_pull_requests
         WHERE user_id = ?
-          AND project_name = ?
+          AND project_key = ?
         """,
-        (user_id, project_name),
+        (user_id, pk),
     ).fetchall()
 
     result: List[Dict] = []

@@ -7,6 +7,7 @@ Display ranked projects with their scores.
 import json
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from src.db import (
+    get_project_key,
     get_project_summary_by_name,
     get_all_project_ranks,
 )
@@ -194,13 +195,17 @@ def interactive_reorder(conn, user_id):
         print("\nError: Duplicate numbers detected. Each project should appear only once.")
         return
 
-    # Convert indices to project names
-    new_order = [projects[idx][0] for idx in new_order_indices]
+    # Convert indices to project names, then resolve to project_key for DB
+    new_order_names = [projects[idx][0] for idx in new_order_indices]
+    rankings = []
+    for rank, name in enumerate(new_order_names, start=1):
+        pk = get_project_key(conn, user_id, name)
+        if pk is not None:
+            rankings.append((pk, rank))
 
     # Clear + apply in one transaction so we never commit a half-state.
     with conn:
         clear_all_rankings(conn, user_id)
-        rankings = [(name, rank) for rank, name in enumerate(new_order, start=1)]
         bulk_set_rankings(conn, user_id, rankings)
 
     print(f"\nSuccessfully reordered {len(rankings)} projects!")
@@ -241,7 +246,9 @@ def set_specific_rank(conn, user_id):
         rank_input = input(f"Enter rank for '{project_name}' (or 'auto' for automatic): ").strip()
 
         if rank_input.lower() == 'auto':
-            clear_project_rank(conn, user_id, project_name)
+            project_key = get_project_key(conn, user_id, project_name)
+            if project_key is not None:
+                clear_project_rank(conn, user_id, project_key)
             print(f"\n'{project_name}' now uses automatic ranking.")
         else:
             desired_position = int(rank_input)
@@ -259,8 +266,12 @@ def set_specific_rank(conn, user_id):
             # Insert at desired position (convert to 0-indexed)
             project_list.insert(desired_position - 1, project_name)
 
-            # Assign sequential ranks to all projects in new order
-            rankings = [(name, rank) for rank, name in enumerate(project_list, start=1)]
+            # Assign sequential ranks (resolve names to project_key for DB)
+            rankings = []
+            for rank, name in enumerate(project_list, start=1):
+                pk = get_project_key(conn, user_id, name)
+                if pk is not None:
+                    rankings.append((pk, rank))
             bulk_set_rankings(conn, user_id, rankings)
 
             print(f"\n'{project_name}' moved to position #{desired_position}.")

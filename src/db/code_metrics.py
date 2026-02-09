@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any
 
 def update_code_complexity_metrics(
     conn: sqlite3.Connection,
-    classification_id: int,
+    version_key: int,
     total_files: int,
     total_lines: int,
     total_code_lines: int,
@@ -37,7 +37,7 @@ def update_code_complexity_metrics(
                 radon_details_json = ?,
                 lizard_details_json = ?,
                 generated_at = datetime('now')
-            WHERE classification_id = ?
+            WHERE version_key = ?
             """,
             (
                 total_files,
@@ -53,14 +53,14 @@ def update_code_complexity_metrics(
                 low_maintainability_files,
                 radon_details_json,
                 lizard_details_json,
-                classification_id,
+                version_key,
             ),
         )
         conn.commit()
 
 def insert_code_complexity_metrics(
     conn: sqlite3.Connection,
-    classification_id: int,
+    version_key: int,
     total_files: int,
     total_lines: int,
     total_code_lines: int,
@@ -78,7 +78,7 @@ def insert_code_complexity_metrics(
         conn.execute(
             """
             INSERT INTO non_llm_code_individual (
-                classification_id,
+                version_key,
                 total_files,
                 total_lines,
                 total_code_lines,
@@ -96,7 +96,7 @@ def insert_code_complexity_metrics(
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             """,
             (
-                classification_id,
+                version_key,
                 total_files,
                 total_lines,
                 total_code_lines,
@@ -117,12 +117,12 @@ def insert_code_complexity_metrics(
 
 def get_code_complexity_metrics(
     conn: sqlite3.Connection,
-    classification_id: int
+    version_key: int
 ) -> Optional[Dict[str, Any]]:
     row = conn.execute(
         """
         SELECT metrics_id,
-               classification_id,
+               version_key,
                total_files,
                total_lines,
                total_code_lines,
@@ -138,9 +138,9 @@ def get_code_complexity_metrics(
                lizard_details_json,
                generated_at
         FROM non_llm_code_individual
-        WHERE classification_id = ?
+        WHERE version_key = ?
         """,
-        (classification_id,),
+        (version_key,),
     ).fetchone()
 
     if not row:
@@ -152,7 +152,7 @@ def get_code_complexity_metrics(
 
     return {
         "metrics_id": row[0],
-        "classification_id": row[1],
+        "version_key": row[1],
         "total_files": row[2],
         "total_lines": row[3],
         "total_code_lines": row[4],
@@ -172,14 +172,14 @@ def get_code_complexity_metrics(
 
 def code_complexity_metrics_exists(
     conn: sqlite3.Connection,
-    classification_id: int
+    version_key: int
 ) -> bool:
     result = conn.execute(
         """
         SELECT 1
         FROM non_llm_code_individual
-        WHERE classification_id = ?
+        WHERE version_key = ?
         """,
-        (classification_id,),
+        (version_key,),
     ).fetchone()
     return result is not None

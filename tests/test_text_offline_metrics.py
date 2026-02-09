@@ -26,7 +26,7 @@ def _fetch_metrics(conn, classification_id):
                reading_level_label,
                keywords_json
         FROM non_llm_text
-        WHERE classification_id = ?
+        WHERE version_key = ?
         """,
         (classification_id,),
     ).fetchone()

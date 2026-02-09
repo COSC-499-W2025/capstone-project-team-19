@@ -14,6 +14,29 @@ def make_conn():
     return sqlite3.connect(":memory:")
 
 
+def make_conn_with_projects(user_id=1, display_name="proj"):
+    """
+    In-memory conn with minimal schema so get_project_key(conn, user_id, display_name) works.
+    Used by extract_code_skills tests that pass a real conn.
+    """
+    conn = sqlite3.connect(":memory:")
+    conn.execute(
+        """
+        CREATE TABLE projects (
+            project_key INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            display_name TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "INSERT INTO projects (user_id, display_name) VALUES (?, ?)",
+        (user_id, display_name),
+    )
+    conn.commit()
+    return conn
+
+
 def fake_file(content="x", name="f.py"):
     """Creates one fake file dictionary."""
     return {"content": content, "file_name": name}
@@ -134,7 +157,8 @@ def test_aggregate_buckets_all_zero():
 # Tests: extract_code_skills
 
 def test_extract_code_skills_happy_path():
-    conn = make_conn()
+    # Minimal schema so get_project_key(conn, 1, "proj") succeeds (no such table: projects otherwise)
+    conn = make_conn_with_projects(user_id=1, display_name="proj")
 
     # detectors produce one hit
     detectors = {
