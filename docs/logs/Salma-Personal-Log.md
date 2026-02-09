@@ -4,6 +4,7 @@
 
 ### Term 2
 
+- [Weeks 4–5 (Jan 26–Feb 8)](#t2-weeks-4-5-monday-january-26---sunday-february-8)
 - [Week 3 (Jan 19–25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12–18)](#t2-week-2-monday-january-12---sunday-january-18)
 - [Week 1 (Jan 5–11)](#t2-week-1-monday-january-5---sunday-january-11)
@@ -107,7 +108,6 @@ Next Steps: improve the non-LLM summary generation for code-collaborative analys
 Week recap:
 
 - Improved the summary of non-llm code collaborative analysis:
-
   - Provided a template to the user with clear instructions and an example input (e.g., “please include what the project does, your technical focus, your contribution,” etc.). Shortened and reformatted the template into bullet points based on Timmi’s feedback.
   - Fixed a related bug: only asks for user input if the user rejects LLM consent, and the question is moved earlier (before any analysis) to avoid redundant prompts per project.
   - Enhanced the stopwords filter for keyword extraction from all user inputs using NLTK.
@@ -125,20 +125,17 @@ Next week: I plan to store non-LLM code collaborative metrics (was unsure about 
 I postponed storing the non-LLM collaborative code metrics because a few milestone-1 tasks became higher priority. Here’s what I completed over the past weeks:
 
 - PR #206 (Repo restructuring during reading week)
-
   - Refactored the src/ directory into clearer subfolders for better organization and maintainability.
   - Updated all related imports and path references across scripts and tests.
   - Applied Timmi’s suggestion to rename common/ to utils/ to follow industry standard.
 
 - PR #233 (Code activity-type detection basic logic pipeline)
-
   - Implemented build_activity_summary() to aggregate activity counts from files and PRs, including percentage breakdowns.
   - Added a standardized formatter for both individual and collaborative analysis flows.
   - Created test_code_activity_type.py to validate path shortening, formatter output, and aggregation logic.
   - Activity detection uses keyword matching on filenames and PR text (e.g., test/spec → Testing, readme/md → Documentation, refactor/fix/bug/docs in PRs → corresponding category). Anything else defaults to Feature Coding.
 
 - PR #238 (Improvements for PR #233)
-
   - Integrated user-associated files into the collaborative analysis logic.
   - Incorporated teammate feedback: removed duplicate imports (Ammaar), excluded dependency files by reusing the list from the non-LLM analysis (Johanes), and moved SQL-related queries into src/db (Ivona).
   - Updated the console output to a cleaner table format.
@@ -228,4 +225,21 @@ I also reviewed some PRs such as:
 - Johanes' PR ([#402](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/402)) on testing API endpoints for resume generation and editing, where I identified a failing test.
 - Timmi's PR ([#398](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/398)) on project deduplication to validate detection of identical, different, and new version of projects.
 
-Next week: Next week, I plan to reformat the portfolio export based on feedback from Johanes and Adara, and take on an API-related task or another item decided during the team meeting.
+Next week: I plan to reformat the portfolio export based on feedback from Johanes and Adara, and take on an API-related task or another item decided during the team meeting.
+
+## (T2 Weeks 4-5) Monday January 26 - Sunday February 8
+
+![Screenshot of this week's peer evaluation](./screenshots/Salma-Jan26-Feb8.PNG)
+
+I worked on PR [#435](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/435) to improve portfolio exporting to improve portfolio export functionality by restoring the missing “Export to PDF (.pdf)” menu option, aligning PDF and DOCX export formats, and removing the placeholder contribution summary when user input is provided. This PR also updates and adds tests to ensure portfolio content changes are accurately reflected across both PDF and DOCX exports.
+
+I also worked on PR [#455](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/455) to add Git identity support to the upload flow by introducing GET and POST API endpoints that list collaborators from local .git history and allow users to select their identities during project upload. I added API tests and updated the documentation, and refactored SQL helpers for better reuse and separation. I also refactored the logic to use project_key instead of project summary or classification IDs, and persisted auto-detected project types during the classification step.
+
+I reviewed some PRs, four of them are:
+
+- Adara's PR [#431](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/431) on fixing a project deletion bug, where I suggested converting the DB setup and project seeding into pytest fixtures to reduce duplication.
+- Ammaar's PR [#434](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/434) on the delete API endpoint, where I noted an issue in which projects are deleted in the CLI but not removed from the database.
+- Timmi's PR [#450](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/450) on the project version DB refactor, where I identified edge cases such as incorrect project type assignment for new versions and failure to detect a .git directory.
+- Timmi's PR [#445](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/445) on the project dates API, where I found an edge case in which setting only one manual date prevents clearing it via PATCH when the other date is missing.
+
+Next week: I plan to implement the API endpoint for running the analysis (POST /projects/upload/{upload_id}/run). This might require additional endpoints such as run preferences (per upload), project and contribution summaries, project role inputs, and others.
