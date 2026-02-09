@@ -182,29 +182,67 @@ def insert_classification(seed_conn):
         classification: str,
         project_type: str,
     ) -> int:
-        cur = seed_conn.execute(
-            """
-            INSERT INTO projects(user_id, display_name, classification, project_type)
-            VALUES (?, ?, ?, ?)
-            """,
-            (user_id, project_name, classification, project_type),
-        )
-        project_key = cur.lastrowid
+        # Prefer project keys created by the upload flow.
+        state = upload.get("state") or {}
+        project_keys = state.get("dedup_project_keys") or {}
+        project_key = project_keys.get(project_name)
 
-        fingerprint = f"test-{user_id}-{project_name}-{upload.get('upload_id')}"
+        if not isinstance(project_key, int):
+            row = seed_conn.execute(
+                """
+                SELECT project_key
+                FROM projects
+                WHERE user_id = ? AND display_name = ?
+                ORDER BY project_key DESC
+                LIMIT 1
+                """,
+                (user_id, project_name),
+            ).fetchone()
+            if row:
+                project_key = int(row[0])
+
+        if not isinstance(project_key, int):
+            cur = seed_conn.execute(
+                """
+                INSERT INTO projects(user_id, display_name, classification, project_type)
+                VALUES (?, ?, ?, ?)
+                """,
+                (user_id, project_name, classification, project_type),
+            )
+            project_key = cur.lastrowid
+
         seed_conn.execute(
-            """
-            INSERT INTO project_versions(project_key, upload_id, fingerprint_strict, fingerprint_loose, created_at)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (
-                project_key,
-                upload.get("upload_id"),
-                fingerprint,
-                fingerprint,
-                datetime.now(timezone.utc).isoformat(),
-            ),
+            "UPDATE projects SET classification = ?, project_type = ? WHERE project_key = ?",
+            (classification, project_type, project_key),
         )
+
+        upload_id = upload.get("upload_id")
+        if upload_id is not None:
+            exists = seed_conn.execute(
+                """
+                SELECT 1 FROM project_versions
+                WHERE project_key = ? AND upload_id = ?
+                """,
+                (project_key, upload_id),
+            ).fetchone()
+            if not exists:
+                fingerprint = f"test-{user_id}-{project_name}-{upload_id}"
+                seed_conn.execute(
+                    """
+                    INSERT INTO project_versions(
+                        project_key, upload_id, fingerprint_strict, fingerprint_loose, created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        project_key,
+                        upload_id,
+                        fingerprint,
+                        fingerprint,
+                        datetime.now(timezone.utc).isoformat(),
+                    ),
+                )
+
         seed_conn.commit()
         return project_key
 
