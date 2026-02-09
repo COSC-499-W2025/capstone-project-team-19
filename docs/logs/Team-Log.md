@@ -603,3 +603,69 @@ Next week, the team will continue completing the remaining upload wizard endpoin
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Jan19-Jan25.png)     |
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Jan19-Jan25.png)     |
 
+## (Term 2 Week 4-5) Monday January 26 - Sunday February 8
+
+**Connection to previous week:**  
+Following Week 3’s work on stabilizing the upload wizard (dedup + versioning), authentication, and the first wave of resume/portfolio features, the team continued working on finishing the remaining API endpoints. This period was mainly focused on completing missing routes, migrating the system to handle project versions, and expanding export and feedback support.
+
+### Coding tasks  
+
+The team implemented and finalized several remaining endpoints needed for full API coverage. 
+
+Ranking and feedback functionality was implemented through new ranking endpoints and feedback routes in [PR #428](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/428) and [PR #442](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/442), allowing users to submit structured feedback and improving downstream customization workflows. The final touches to the CLI flow of code feedback was completed in [PR #430](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/430). Project date API routes were implemented in [PR #445](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/445), so the user can have automatic dates or manually set the dates of a project.
+
+Deletion support across the API was added in [PR #434](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/434), ensuring projects and their associated records can be removed safely from our system using the API endpoints/routes. Resume and portfolio export API routes were additionally implemented in [PR #447](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/447), so users can download their resumes/portfolios from the frontend. The portfolio export was improved in [PR #435](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/435). An endpoint for refreshing a resume when a project is deleted was implemented in [PR #440](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/440) so that if the user wants they can remove a deleted project from their resume(s). 
+
+The necessary endpoints for generating and editing the portfolio was implemented in [PR #436](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/436). Getting the users contributions to a code project with API routes was finalized in [PR #446](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/446), matching the text contribution routes implemented last week. 
+
+Additionally, we implemented the necessary API endpoints for supporting Google Drive and the local git file identies in [PR #463](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/463) and [PR #455](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/455), respectively.
+
+Adding the user's key role to the resume, and allowing the user to edit their key role, was implemented and completed in [PR #420](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/420) and [PR #424](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/424).
+
+Project version support (for timelines, heatmaps, project progressions) required refactoring the database, queries, and helpers, and so the start for supporting different versions was done in [PR #450](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/450) and [PR #456](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/456).
+
+Additional bug fixes were addressed in [PR #431](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/431) and [PR #448](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/448). 
+
+### Testing or debugging tasks  
+
+Testing during Weeks 4–5 primarily involved writing and updating pytest coverage for the newly implemented endpoints. The team validated ranking/feedback routes, deletion behavior, resume/portfolio export flows, and portfolio editing functionality, and ran manual tests to ensure the ongoing project version refactor did not break existing upload or resume workflows.
+
+Bugs were fixed as they were found.
+
+### Reviewing or collaboration tasks  
+
+The team followed the required review process where each PR received at least two reviewers before merging. Many changes were requested throughout the review cycle, with team members identifying bugs, missing edge cases, and consistency issues across endpoints. Collaboration was important during these weeks since multiple contributors were implementing API routes in parallel, and we worked together to ensure new endpoints matched the patterns and expectations of the existing codebase.
+
+### Issues or blockers 
+
+There were no major technical blockers, but development slowed down at times due to the ongoing project version refactor. Since the version-scoped database changes affected shared tables, queries, and helper functions, this led to frequent merge conflicts and extra rebasing work. With multiple dependent PRs open at once, review and integration also took longer than usual, but overall the past two weeks went smoothly.
+
+### Plan / goals for next week  
+
+Next week, the team will focus on completing the remaining work for project versioning support, including finishing the necessary database and endpoint updates and implementing the logic for timelines, heatmaps, and project progressions. We will continue finalizing any remaining API routes and ensuring we are not missing any major endpoints required for the frontend. The team will also decide on the framework and structure moving forward for the next stage of development, and begin preparing for the Milestone 2 deliverables.
+
+### Burnup chart
+
+![Burnup chart for Jan 26 - Feb 8]()
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshot                                                                    |
+| --------------- | ----------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara]()     |
+| `ammaarkhan`    | ![Completed tasks for Ammaar]()   |
+| `ivonanicetin`  | ![Completed tasks for Ivona]()     |
+| `johaneshp`     | ![Completed tasks for Johanes]() |
+| `salmavkh`      | ![Completed tasks for Salma]()     |
+| `taoTimTim`     | ![Completed tasks for Timmi]()     |
