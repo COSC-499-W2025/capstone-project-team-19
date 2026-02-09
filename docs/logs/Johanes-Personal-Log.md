@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 4&5 (Jan 26-Feb 8)](#t2-week-45-monday-26th-january---sunday-8th-february)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-19th-january---sunday-25th-january)
 - [Week 2 (Jan 12–18)](#t2-week-2-monday-12th-january---sunday-18th-january)
 - [Week 1 (Jan 5–11)](#t2-week-1-monday-5th-january---sunday-11th-january)
@@ -151,3 +152,22 @@ Giving feedback about how the PDF should be formatted.
 I also reviewed some other PRs giving feedback about reminder on using Authorization: Bearer <token> instead of still using user id in the header.
 
 Next week plan: Continue implementing other api endpoints
+
+## (T2 Week 4&5) Monday 26th January - Sunday 8th February
+![Screenshot of week 3_T2 peer eval](./screenshots/Johanes-Jan26-Feb8.png)
+Week recap: 
+These two weeks I've been working on 4 prs. 
+
+First PR: PR #436, where I implemented the api endpoint for portfolio generation, and portfolio editing. I also updated the resume editing endpoint so that it can do the key_role editing too.
+
+Second PR: PR #448, when peer testing, I found one bug in the system where completely unrelated projects were detected as related by the system. It is due to the project file contain .DS_Store (metadata files) which wasnot filtered out by the system. In some cases, each folder contains .DS_Store, which make it was detected as duplication by the system, I fixed that by filtering out the file.
+
+Third PR: PR #461, I implemented the new feature of highlighting skills, allowing user to choose which skill to be shown in either portfolio or resume. At first i implemented it globally, however, ammaar's comment made sense, to follow the existing overriding pattern, which allow user to customize it manually per resume per project. I choose to implement the per project customization in the next PR since this PR already too big. This PR was also reviewed by adara where she catches the bug where exporting to pdf and docx does not reflect the highlighted skills. (Has not been merged yet, I am hoping to merge this PR by this midnight.)
+
+Fourth PR: API/skill highlight. this is the api endpoint for the implementation of my third PR. However, due to many changes made in previous PR, i choose to draft it and continue next week.
+
+I didnt reviewed many PR these 2 weeks, I acknowledge my inactivity during these 2 weeks due to overloaded assignments I am having. I will try to catch up next week.
+
+I reviewed Ammaar's Key Role PR, where one case (no .git) was skipped, so the user cant input they key role in that case. I also reviewed Adara's PR and Salma's PR
+
+Next week plan: Continue implementing the endpoint and make the necessary update for the skill highlighting features.
