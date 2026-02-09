@@ -1,18 +1,14 @@
 from src.utils.extension_catalog import get_languages_for_extension
 
 
-def detect_languages(conn, project_name):
+def detect_languages(conn, user_id: int, project_name: str, version_key: int | None = None):
     """Detects all programming languages used in the given project folder."""
- 
-    cursor = conn.cursor()
-    #Get all code file extensions in the project 
-    query = """
-        SELECT extension
-        FROM files
-        WHERE project_name = ? AND file_type = 'code'
-    """
-    cursor.execute(query, (project_name,))
-    results = cursor.fetchall()
+    from src.db.files import get_code_extensions_for_project, get_code_extensions_for_version
+    if version_key is not None:
+        exts = get_code_extensions_for_version(conn, user_id, version_key)
+    else:
+        exts = get_code_extensions_for_project(conn, user_id, project_name)
+    results = [(e,) for e in exts]
 
     languages = set()
 

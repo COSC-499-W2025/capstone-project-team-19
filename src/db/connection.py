@@ -65,30 +65,8 @@ def _backfill_extraction_root(conn: sqlite3.Connection) -> None:
         """
     ).fetchall()
 
-    for (version_key,) in missing:
-        sample = conn.execute(
-            """
-            SELECT file_path
-            FROM files
-            WHERE version_key = ? AND file_path IS NOT NULL AND file_path != ''
-            ORDER BY file_id DESC
-            LIMIT 1
-            """,
-            (int(version_key),),
-        ).fetchone()
-
-        if not sample or not sample[0]:
-            continue
-
-        raw = str(sample[0]).replace("\\", "/")
-        root = raw.split("/", 1)[0].strip()
-        if not root:
-            continue
-
-        conn.execute(
-            "UPDATE project_versions SET extraction_root = ? WHERE version_key = ?",
-            (root, int(version_key)),
-        )
+    # Do not infer extraction_root from file_path first segment: that segment is inside the zip (e.g. "code_collaborative"), not the zip folder name under zip_data. 
+    # Skill extraction resolves the folder by scanning zip_data when extraction_root and zip_path are missing.
 
 
 def init_schema(conn: sqlite3.Connection) -> None:
@@ -99,16 +77,11 @@ def init_schema(conn: sqlite3.Connection) -> None:
 
     conn.executescript(schema_sql)
 
-    # Version-scoping for project versions/deduplication flows
+    # Legacy migration: ensure version_key exists on files (schema now has version_key, no project_name)
     _ensure_column(conn, "files", "version_key", "INTEGER")
 
     # Store extraction folder name for legacy versions (no upload_id linkage)
     _backfill_extraction_root(conn)
-
-    # Indexes that reference migrated columns should be created after migrations.
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_files_user_project_version ON files(user_id, project_name, version_key)"
-    )
 
     conn.commit()
     print(f"Initialized database schema from {schema_path}")

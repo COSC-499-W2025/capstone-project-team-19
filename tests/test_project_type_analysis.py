@@ -16,10 +16,10 @@ def setup_in_memory_db():
         CREATE TABLE files (
             file_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
+            version_key INTEGER NOT NULL,
             file_name TEXT,
             file_path TEXT,
-            file_type TEXT,
-            project_name TEXT
+            file_type TEXT
         );
     """)
     conn.execute("""
@@ -43,25 +43,26 @@ def setup_in_memory_db():
     """)
     conn.execute("""
         CREATE TABLE project_summaries (
+            project_summary_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            project_name TEXT NOT NULL,
+            project_key INTEGER NOT NULL,
             project_type TEXT,
             project_mode TEXT,
             summary_json TEXT,
             created_at TEXT,
-            PRIMARY KEY (user_id, project_name)
+            UNIQUE (user_id, project_key)
         );
     """)
     conn.execute("""
         CREATE TABLE project_skills (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            project_name TEXT NOT NULL,
+            project_key INTEGER NOT NULL,
             skill_name TEXT NOT NULL,
             level TEXT NOT NULL,
             score REAL NOT NULL,
             evidence_json TEXT,
-            UNIQUE(user_id, project_name, skill_name)
+            UNIQUE(user_id, project_key, skill_name)
         );
     """)
     # Minimal tables needed by send_to_analysis() loaders
@@ -98,9 +99,20 @@ def setup_in_memory_db():
 
 
 def insert_file(conn, user_id, project_name, file_type):
+    vk = conn.execute(
+        """
+        SELECT pv.version_key FROM project_versions pv
+        JOIN projects p ON pv.project_key = p.project_key
+        WHERE p.user_id = ? AND p.display_name = ?
+        ORDER BY pv.version_key DESC LIMIT 1
+        """,
+        (user_id, project_name),
+    ).fetchone()
+    if not vk:
+        raise ValueError(f"No version for project {project_name}")
     conn.execute(
-        "INSERT INTO files (user_id, file_name, file_type, project_name) VALUES (?, ?, ?, ?)",
-        (user_id, f"{project_name}.{file_type}", file_type, project_name),
+        "INSERT INTO files (user_id, version_key, file_name, file_type) VALUES (?, ?, ?, ?)",
+        (user_id, vk[0], f"{project_name}.{file_type}", file_type),
     )
 
 
@@ -127,8 +139,8 @@ def test_detect_project_type_auto_code_only_writes_and_returns():
     conn = setup_in_memory_db()
     user_id = 1
 
-    insert_file(conn, user_id, "projA", "code")
     insert_classification(conn, user_id, "projA", "individual")
+    insert_file(conn, user_id, "projA", "code")
 
     result = detect_project_type_auto(conn, user_id, {"projA": "individual"})
 
@@ -146,8 +158,8 @@ def test_detect_project_type_auto_text_only_writes_and_returns():
     conn = setup_in_memory_db()
     user_id = 1
 
-    insert_file(conn, user_id, "projB", "text")
     insert_classification(conn, user_id, "projB", "collaborative")
+    insert_file(conn, user_id, "projB", "text")
 
     result = detect_project_type_auto(conn, user_id, {"projB": "collaborative"})
 
@@ -183,9 +195,9 @@ def test_detect_project_type_auto_mixed_project_is_returned_and_not_written():
     conn = setup_in_memory_db()
     user_id = 1
 
+    insert_classification(conn, user_id, "projD", "collaborative")
     insert_file(conn, user_id, "projD", "code")
     insert_file(conn, user_id, "projD", "text")
-    insert_classification(conn, user_id, "projD", "collaborative")
 
     result = detect_project_type_auto(conn, user_id, {"projD": "collaborative"})
 
@@ -206,8 +218,8 @@ def test_detect_project_type_auto_never_prompts(monkeypatch):
     conn = setup_in_memory_db()
     user_id = 1
 
-    insert_file(conn, user_id, "projA", "code")
     insert_classification(conn, user_id, "projA", "individual")
+    insert_file(conn, user_id, "projA", "code")
 
     def _boom(*args, **kwargs):
         raise AssertionError("input() should not be called in detect_project_type_auto")
@@ -221,8 +233,8 @@ def test_detect_project_type_wrapper_does_not_prompt_for_unambiguous(monkeypatch
     conn = setup_in_memory_db()
     user_id = 1
 
-    insert_file(conn, user_id, "projA", "code")
     insert_classification(conn, user_id, "projA", "individual")
+    insert_file(conn, user_id, "projA", "code")
 
     def _boom(*args, **kwargs):
         raise AssertionError("input() should not be called for unambiguous projects")
@@ -241,9 +253,9 @@ def test_mixed_files_prompts_user(monkeypatch):
     conn = setup_in_memory_db()
     user_id = 1
 
+    insert_classification(conn, user_id, "projD", "collaborative")
     insert_file(conn, user_id, "projD", "code")
     insert_file(conn, user_id, "projD", "text")
-    insert_classification(conn, user_id, "projD", "collaborative")
 
     monkeypatch.setattr("builtins.input", lambda _: "c")
 

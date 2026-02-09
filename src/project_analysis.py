@@ -124,11 +124,8 @@ def detect_project_type_auto(
     - Returns mixed projects needing user choice
     - NO input() calls
     """
-    files = conn.execute("""
-        SELECT project_name, file_type
-        FROM files
-        WHERE user_id = ? AND project_name IS NOT NULL
-    """, (user_id,)).fetchall()
+    from src.db.files import get_files_for_user
+    files = get_files_for_user(conn, user_id)
 
     project_counts: dict[str, dict[str, int]] = {}
     for project_name, file_type in files:
@@ -411,7 +408,7 @@ def get_individual_contributions(
     if project_type == "text":
         analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path, version_key=version_key)
     elif project_type == "code":
-        analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary)
+        analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key)
     else:
         print(f"[COLLABORATIVE] Unknown project type for '{project_name}', skipping.")
 
@@ -576,12 +573,12 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     )
 
 
-def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary):
+def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
     """Collaborative code analysis: Git data + LLM summary."""
     if constants.VERBOSE:
         print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' (code)")
 
-    metrics = analyze_code_project(conn, user_id, project_name, zip_path, summary)
+    metrics = analyze_code_project(conn, user_id, project_name, zip_path, summary, version_key=version_key)
 
     # activity-type summary for collaborative code
     activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
@@ -696,7 +693,7 @@ def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path
 
 def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
     """Runs full analysis on individual code projects (static metrics + Git + optional LLM)."""
-    languages = detect_languages(conn, project_name)
+    languages = detect_languages(conn, user_id, project_name, version_key=version_key)
     print(f"Languages detected in {project_name}: {languages}")
 
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path)

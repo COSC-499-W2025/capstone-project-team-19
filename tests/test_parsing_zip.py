@@ -230,9 +230,11 @@ def test_parse_zip_file_assigns_project_names(tmp_path, test_user_id):
     from src.db import connect
     conn = connect()
     project_rows = conn.execute("""
-        SELECT DISTINCT project_name
-        FROM files
-        WHERE file_path LIKE '%solo-notes%'
+        SELECT DISTINCT p.display_name
+        FROM files f
+        JOIN project_versions pv ON f.version_key = pv.version_key
+        JOIN projects p ON pv.project_key = p.project_key
+        WHERE f.file_path LIKE '%solo-notes%'
     """).fetchall()
     assert ("solo-notes",) in project_rows
 

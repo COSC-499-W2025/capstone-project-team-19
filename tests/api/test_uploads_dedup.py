@@ -198,16 +198,16 @@ def test_resolve_dedup_backfills_version_key_for_ask_case(client, auth_headers, 
     assert "VariantProj" in asks
     assert asks["VariantProj"].get("existing") == "BaseProj"
 
-    # Before resolve: files exist but are not version-scoped yet.
-    before = seed_conn.execute(
+    # Before resolve: ask-case files are not yet inserted into the versioned-only `files` table.
+    versions_before = seed_conn.execute(
         """
-        SELECT COUNT(*) AS n, SUM(CASE WHEN version_key IS NULL THEN 1 ELSE 0 END) AS n_null
-        FROM files
-        WHERE user_id = 1 AND project_name = 'VariantProj'
+        SELECT COUNT(*) AS n
+        FROM project_versions pv
+        JOIN projects p ON p.project_key = pv.project_key
+        WHERE p.user_id = 1 AND p.display_name = 'BaseProj'
         """,
     ).fetchone()
-    assert int(before["n"]) == 2
-    assert int(before["n_null"]) == 2
+    assert int(versions_before["n"]) == 1
 
     # Resolve as new_version; this should rename VariantProj -> BaseProj and attach version_key.
     resolved_res = client.post(
@@ -223,16 +223,35 @@ def test_resolve_dedup_backfills_version_key_for_ask_case(client, auth_headers, 
     assert isinstance((resolved_state.get("dedup_project_keys") or {}).get("BaseProj"), int)
     assert isinstance((resolved_state.get("dedup_version_keys") or {}).get("BaseProj"), int)
 
-    # After resolve: the upload's rows should be under BaseProj and have non-null version_key
-    after = seed_conn.execute(
+    # After resolve: BaseProj should have a new version, and the latest version should have files.
+    versions_after = seed_conn.execute(
         """
-        SELECT COUNT(*) AS n, SUM(CASE WHEN version_key IS NULL THEN 1 ELSE 0 END) AS n_null
-        FROM files
-        WHERE user_id = 1 AND project_name = 'BaseProj'
+        SELECT COUNT(*) AS n
+        FROM project_versions pv
+        JOIN projects p ON p.project_key = pv.project_key
+        WHERE p.user_id = 1 AND p.display_name = 'BaseProj'
         """,
     ).fetchone()
-    assert int(after["n"]) >= 2
-    assert int(after["n_null"]) == 0
+    assert int(versions_after["n"]) >= 2
+
+    latest_vk = seed_conn.execute(
+        """
+        SELECT pv.version_key
+        FROM project_versions pv
+        JOIN projects p ON p.project_key = pv.project_key
+        WHERE p.user_id = 1 AND p.display_name = 'BaseProj'
+        ORDER BY pv.version_key DESC
+        LIMIT 1
+        """,
+    ).fetchone()
+    assert latest_vk is not None
+    latest_vk = int(latest_vk[0])
+
+    latest_files = seed_conn.execute(
+        "SELECT COUNT(*) AS n FROM files WHERE user_id = 1 AND version_key = ?",
+        (latest_vk,),
+    ).fetchone()
+    assert int(latest_files["n"]) == 2
 
     _cleanup_upload_artifacts(state2)
     _cleanup_upload_artifacts(resolved_state)

@@ -17,21 +17,26 @@ from .file_matcher import (
     search_by_name,
 )
 from .file_selector import select_from_matches, handle_no_matches
-from src.db import store_file_link
+from src.db import store_file_link, get_project_key
+from src.db.deduplication import insert_project
 try:
     from src import constants
 except ModuleNotFoundError:
     import constants
 
-def find_and_link_files(service: Resource,project_name: str,zip_files: List[str],conn,user_id: int) -> Dict[str, List[str]]:
+def find_and_link_files(service: Resource, project_name: str, zip_files: List[str], conn, user_id: int) -> Dict[str, List[str]]:
     """
     Find and link files from Google Drive to local ZIP files for a given project.
     """
+    project_key = get_project_key(conn, user_id, project_name)
+    if project_key is None:
+        project_key = insert_project(conn, user_id, project_name)
+
     # Remove any existing links for this project first (to avoid duplicates)
     conn.execute("""
-        DELETE FROM project_drive_files 
-        WHERE user_id=? AND project_name=?
-    """, (user_id, project_name))
+        DELETE FROM project_drive_files
+        WHERE user_id=? AND project_key=?
+    """, (user_id, project_key))
     conn.commit()
     
     selected_files: Dict[str, Tuple[str, str, str]] = {}

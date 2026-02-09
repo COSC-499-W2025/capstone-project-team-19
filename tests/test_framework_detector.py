@@ -11,23 +11,48 @@ from src.utils import framework_detector as fd
 
 @pytest.fixture
 def conn():
-    """In-memory sqlite DB with minimal config_files table used by detector."""
+    """In-memory sqlite DB with minimal projects + config_files (project_key) for detector."""
     c = sqlite3.connect(":memory:")
     cur = c.cursor()
     cur.execute(
         """
+        CREATE TABLE projects (
+            project_key INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            display_name TEXT NOT NULL
+        )
+        """
+    )
+    cur.execute(
+        """
         CREATE TABLE config_files (
-            id INTEGER PRIMARY KEY,
-            file_name TEXT,
-            file_path TEXT,
-            user_id INTEGER,
-            project_name TEXT
+            config_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            project_key INTEGER NOT NULL,
+            file_name TEXT NOT NULL,
+            file_path TEXT
         )
         """
     )
     c.commit()
     yield c
     c.close()
+
+
+def _ensure_project(conn, user_id, project_name):
+    """Insert project if missing; return project_key."""
+    row = conn.execute(
+        "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
+        (user_id, project_name),
+    ).fetchone()
+    if row:
+        return row[0]
+    conn.execute(
+        "INSERT INTO projects (user_id, display_name) VALUES (?, ?)",
+        (user_id, project_name),
+    )
+    conn.commit()
+    return conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
 
 def _repo_zip_base(zip_name):
@@ -64,10 +89,11 @@ def _test_framework_detection(conn, zip_name, file_path, file_content, project_n
     """Helper function to reduce test boilerplate."""
     try:
         _make_zip_data_file(zip_name, file_path, file_content)
+        project_key = _ensure_project(conn, user_id, project_name)
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO config_files (file_name, file_path, user_id, project_name) VALUES (?, ?, ?, ?)",
-            (os.path.basename(file_path), file_path, user_id, project_name),
+            "INSERT INTO config_files (user_id, project_key, file_name, file_path) VALUES (?, ?, ?, ?)",
+            (user_id, project_key, os.path.basename(file_path), file_path),
         )
         conn.commit()
 
@@ -86,10 +112,11 @@ def test_missing_config_file_is_skipped(conn):
     zip_name = "sample_zip_missing"
     try:
         # Do NOT create the actual file on disk, only add DB reference
+        project_key = _ensure_project(conn, 2, "projB")
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO config_files (file_name, file_path, user_id, project_name) VALUES (?, ?, ?, ?)",
-            ("does_not_exist.cfg", "does_not_exist.cfg", 2, "projB"),
+            "INSERT INTO config_files (user_id, project_key, file_name, file_path) VALUES (?, ?, ?, ?)",
+            (2, project_key, "does_not_exist.cfg", "does_not_exist.cfg"),
         )
         conn.commit()
 
@@ -108,10 +135,11 @@ def test_unreadable_config_entry_is_handled_gracefully(conn):
         problematic = os.path.join(base, "not_a_file.txt")
         os.makedirs(problematic, exist_ok=True)  # create directory instead of file
 
+        project_key = _ensure_project(conn, 4, "projD")
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO config_files (file_name, file_path, user_id, project_name) VALUES (?, ?, ?, ?)",
-            ("not_a_file.txt", "not_a_file.txt", 4, "projD"),
+            "INSERT INTO config_files (user_id, project_key, file_name, file_path) VALUES (?, ?, ?, ?)",
+            (4, project_key, "not_a_file.txt", "not_a_file.txt"),
         )
         conn.commit()
 

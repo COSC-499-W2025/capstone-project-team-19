@@ -8,6 +8,7 @@ from src.api.routes import (
     resumes_router,
     github_router,
     consent_router,
+    portfolio_router
 )
 from src.api.auth.routes import router as auth_router
 
