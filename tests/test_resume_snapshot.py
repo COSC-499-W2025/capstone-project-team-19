@@ -88,7 +88,17 @@ def test_view_existing_resume_lists_and_renders(monkeypatch, capsys):
 
     # Seed one summary and a resume snapshot
     save_project_summary(conn, user_id, "projA", _make_summary("projA"))
-    snap_data = {"projects": [{"project_name": "projA"}], "aggregated_skills": {}}
+    snap_data = {
+        "projects": [
+            {
+                "project_name": "projA",
+                "project_type": "code",
+                "project_mode": "individual",
+                "summary_text": "A short summary",
+            }
+        ],
+        "aggregated_skills": {},
+    }
     insert_resume_snapshot(conn, user_id, "MyResume", json.dumps(snap_data), "Rendered text")
 
     # Mock selection of first resume
@@ -99,7 +109,7 @@ def test_view_existing_resume_lists_and_renders(monkeypatch, capsys):
 
     captured = capsys.readouterr().out
     assert "MyResume" in captured
-    assert "Rendered text" in captured
+    assert "projA" in captured
     assert handled is True
 
 

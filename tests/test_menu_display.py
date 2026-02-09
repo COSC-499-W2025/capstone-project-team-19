@@ -6,9 +6,9 @@ from src.menu.display import show_start_menu
 class TestShowStartMenu:
     """Tests for the main menu display functionality."""
 
-    @pytest.mark.parametrize("choice", [str(i) for i in range(1, 12)])
+    @pytest.mark.parametrize("choice", [str(i) for i in range(1, 13)])
     def test_valid_menu_choices(self, choice):
-        """Test that valid menu choices (1-11) are accepted and returned as integers."""
+        """Test that valid menu choices (1-12) are accepted and returned as integers."""
         username = "testuser"
 
         with patch("builtins.input", return_value=choice):
@@ -124,4 +124,3 @@ class TestShowStartMenu:
             assert isinstance(result, int)
             assert result == 5
             assert not isinstance(result, str)
-

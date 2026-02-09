@@ -44,7 +44,9 @@ from src.insights.portfolio import (
     resolve_portfolio_display_name,
     resolve_portfolio_summary_text,
     resolve_portfolio_contribution_bullets,
+    get_all_skills_from_summary,
 )
+from src.services.skill_preferences_service import get_highlighted_skills_for_display
 
 # use shared helpers
 from src.export.shared_helpers import (
@@ -207,6 +209,14 @@ def export_portfolio_to_pdf(
         doc.build(story)
         return filepath
 
+    # Get highlighted skills for portfolio context (applies to all projects)
+    highlighted_skills = get_highlighted_skills_for_display(
+        conn=conn,
+        user_id=user_id,
+        context="portfolio",
+        context_id=None,
+    )
+
     for project_name, _score in project_scores:
         row = get_project_summary_row(conn, user_id, project_name)
         if row is None:
@@ -240,8 +250,15 @@ def export_portfolio_to_pdf(
         if activity_line.lower().startswith("activity:"):
             activity_line = activity_line.split(":", 1)[1].strip()
 
-        # Skills: one line
-        skills = _skills_one_line(summary)
+        # Skills: one line (filtered by skill preferences)
+        all_project_skills = get_all_skills_from_summary(summary)
+        if highlighted_skills:
+            # Filter to only show highlighted skills that exist in this project
+            filtered_skills = [s for s in highlighted_skills if s in all_project_skills]
+        else:
+            # No preferences set - use all skills
+            filtered_skills = all_project_skills
+        skills = ", ".join(filtered_skills) if filtered_skills else ""
 
         # Summary + contribution from portfolio resolvers
         project_summary_text = (resolve_portfolio_summary_text(summary) or "").strip()

@@ -38,7 +38,12 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.flowables import HRFlowable
 
-from src.export.resume_helpers import format_date_range, parse_date, clean_languages_above_threshold
+from src.export.resume_helpers import (
+    format_date_range,
+    parse_date,
+    clean_languages_above_threshold,
+    filter_skills_by_highlighted,
+)
 
 
 def _safe_slug(s: str) -> str:
@@ -97,6 +102,7 @@ def export_resume_record_to_pdf(
     username: str,
     record: Dict[str, Any],
     out_dir: str = "./out",
+    highlighted_skills: Optional[List[str]] = None,
 ) -> Path:
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
@@ -255,8 +261,18 @@ def export_resume_record_to_pdf(
     add_skill_line("Languages", languages)
 
     add_skill_line("Frameworks", agg.get("frameworks") or [])
-    add_skill_line("Technical skills", agg.get("technical_skills") or [])
-    add_skill_line("Writing skills", agg.get("writing_skills") or [])
+
+    tech_skills = filter_skills_by_highlighted(
+        agg.get("technical_skills") or [],
+        highlighted_skills,
+    )
+    writing_skills = filter_skills_by_highlighted(
+        agg.get("writing_skills") or [],
+        highlighted_skills,
+    )
+
+    add_skill_line("Technical skills", tech_skills)
+    add_skill_line("Writing skills", writing_skills)
 
     # ---------------------------
     # PROJECTS

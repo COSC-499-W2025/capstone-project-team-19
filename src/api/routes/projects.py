@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
+import os
 from sqlite3 import Connection
 
 from src.api.dependencies import get_db, get_current_user_id
@@ -14,6 +15,16 @@ from src.api.schemas.uploads import (
     MainFileSectionsResponseDTO,
     ContributedSectionsRequestDTO,
 )
+from src.api.schemas.git_identities import (
+    GitIdentitiesResponse,
+    GitIdentitiesSelectRequest,
+    GitIdentityOptionDTO,
+)
+from src.services.git_identities_service import (
+    get_git_identities as get_git_identities_service,
+    save_git_identities as save_git_identities_service,
+)
+from src.db.uploads import get_upload_by_id
 from src.services.projects_service import (
     list_projects,
     get_project_by_id,
@@ -194,6 +205,56 @@ def post_upload_project_supporting_csv_files(
     upload = set_project_supporting_csv_files(conn, user_id, upload_id, project_name, body.relpaths)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
 
+@router.get(
+    "/upload/{upload_id}/projects/{project_key}/git/identities",
+    response_model=ApiResponse[GitIdentitiesResponse],
+)
+def get_git_identities_route(
+    upload_id: int,
+    project_key: int,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    options, selected_indices = get_git_identities_service(conn, user_id, upload, project_key)
+
+    return ApiResponse(
+        success=True,
+        data=GitIdentitiesResponse(options=options, selected_indices=selected_indices),
+        error=None,
+    )
+
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_key}/git/identities",
+    response_model=ApiResponse[GitIdentitiesResponse],
+)
+def post_git_identities_route(
+    upload_id: int,
+    project_key: int,
+    body: GitIdentitiesSelectRequest,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    options, selected_indices = save_git_identities_service(
+        conn,
+        user_id,
+        upload,
+        project_key,
+        body.selected_indices,
+        body.extra_emails,
+    )
+
+    return ApiResponse(
+        success=True,
+        data=GitIdentitiesResponse(options=options, selected_indices=selected_indices),
+        error=None,
+    )
 
 
 @router.delete("", response_model=ApiResponse[DeleteResultDTO])
