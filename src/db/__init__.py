@@ -32,6 +32,7 @@ from .projects import (
     store_parsed_files,
     update_project_metadata,
     get_project_key,
+    get_project_for_upload_by_key,
     get_latest_version_key,
     get_or_create_version_key_for_project,
     get_project_metadata,
@@ -128,6 +129,13 @@ from .code_activity import (
 
 # github prs
 from .github_pull_requests import get_pull_requests_for_project
+
+# git identities
+from .git_identities import (
+    ensure_user_github_table,
+    load_user_github,
+    save_user_github,
+)
 
 # project summaries
 from .project_summaries import (
@@ -234,6 +242,7 @@ __all__ = [
     "store_parsed_files",
     "update_project_metadata",
     "get_project_key",
+    "get_project_for_upload_by_key",
     "get_latest_version_key",
     "get_or_create_version_key_for_project",
     "get_project_metadata",
