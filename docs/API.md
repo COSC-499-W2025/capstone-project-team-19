@@ -1165,6 +1165,38 @@ Manages résumé-specific representations of projects.
         }
         ```
 
+- **Export Resume to DOCX**
+    - **Endpoint**: `GET /resume/{resume_id}/export/docx`
+    - **Description**: Exports a résumé snapshot to a Word document (.docx) file.
+    - **Path Parameters**:
+        - `{resume_id}` (integer, required): The ID of the résumé snapshot to export. Get this from `GET /resume`.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary file download with MIME type `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+    - **Response Headers**:
+        - `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+        - `Content-Disposition: attachment; filename="resume_username_2025-01-15_14-30-00.docx"`
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Resume not found or doesn't belong to user
+
+- **Export Resume to PDF**
+    - **Endpoint**: `GET /resume/{resume_id}/export/pdf`
+    - **Description**: Exports a résumé snapshot to a PDF document.
+    - **Path Parameters**:
+        - `{resume_id}` (integer, required): The ID of the résumé snapshot to export. Get this from `GET /resume`.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary file download with MIME type `application/pdf`
+    - **Response Headers**:
+        - `Content-Type: application/pdf`
+        - `Content-Disposition: attachment; filename="resume_username_2025-01-15_14-30-00.pdf"`
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Resume not found or doesn't belong to user
+
 ---
 
 ## **Portfolio**
@@ -1253,6 +1285,34 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
     - **Error Responses**:
         - `401 Unauthorized`: Missing or invalid Bearer token
         - `404 Not Found`: Project not found
+
+- **Export Portfolio to DOCX**
+    - **Endpoint**: `GET /portfolio/export/docx`
+    - **Description**: Exports the user's portfolio to a Word document (.docx) file. Includes all ranked projects with their metadata, summaries, and contribution bullets.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary file download with MIME type `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+    - **Response Headers**:
+        - `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+        - `Content-Disposition: attachment; filename="portfolio_username_2025-01-15_14-30-00.docx"`
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: No projects found for this user
+
+- **Export Portfolio to PDF**
+    - **Endpoint**: `GET /portfolio/export/pdf`
+    - **Description**: Exports the user's portfolio to a PDF document. Includes all ranked projects with their metadata, summaries, and contribution bullets.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary file download with MIME type `application/pdf`
+    - **Response Headers**:
+        - `Content-Type: application/pdf`
+        - `Content-Disposition: attachment; filename="portfolio_username_2025-01-15_14-30-00.pdf"`
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: No projects found for this user
 
 ---
 
