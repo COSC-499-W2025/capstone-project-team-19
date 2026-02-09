@@ -142,21 +142,18 @@ def test_portfolio_export_pdf_requires_auth(client):
     assert res.status_code == 401
 
 
-def test_portfolio_export_docx_success_empty(client, auth_headers, consent_user_id_1):
-    """Portfolio export works even with no projects (returns empty doc)."""
+def test_portfolio_export_docx_no_projects(client, auth_headers, consent_user_id_1):
+    """Portfolio export returns 404 when user has no projects."""
     res = client.get("/portfolio/export/docx", headers=auth_headers)
-    assert res.status_code == 200
-    assert res.headers["content-type"] == DOCX_MIME
-    assert len(res.content) > 0
+    assert res.status_code == 404
+    assert "no projects" in res.json()["detail"].lower()
 
 
-def test_portfolio_export_pdf_success_empty(client, auth_headers, consent_user_id_1):
-    """Portfolio export works even with no projects (returns empty doc)."""
+def test_portfolio_export_pdf_no_projects(client, auth_headers, consent_user_id_1):
+    """Portfolio export returns 404 when user has no projects."""
     res = client.get("/portfolio/export/pdf", headers=auth_headers)
-    assert res.status_code == 200
-    assert res.headers["content-type"] == PDF_MIME
-    assert len(res.content) > 0
-    assert res.content[:4] == b"%PDF"
+    assert res.status_code == 404
+    assert "no projects" in res.json()["detail"].lower()
 
 
 def test_portfolio_export_docx_with_project(client, auth_headers, seed_conn, consent_user_id_1):

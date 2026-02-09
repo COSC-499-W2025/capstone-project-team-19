@@ -21,6 +21,7 @@ from src.export.resume_docx import export_resume_record_to_docx
 from src.export.resume_pdf import export_resume_record_to_pdf
 from src.export.portfolio_docx import export_portfolio_to_docx
 from src.export.portfolio_pdf import export_portfolio_to_pdf
+from src.insights.rank_projects.rank_project_importance import collect_project_data
 
 
 router = APIRouter(tags=["export"])
@@ -111,6 +112,9 @@ def export_portfolio_docx(
     user_id = current_user["id"]
     username = current_user["username"]
 
+    if not collect_project_data(conn, user_id):
+        raise HTTPException(status_code=404, detail="No projects found")
+
     temp_dir = tempfile.mkdtemp()
     background_tasks.add_task(_cleanup_temp_dir, temp_dir)
 
@@ -137,6 +141,9 @@ def export_portfolio_pdf(
     """Export the user's portfolio to PDF format."""
     user_id = current_user["id"]
     username = current_user["username"]
+
+    if not collect_project_data(conn, user_id):
+        raise HTTPException(status_code=404, detail="No projects found")
 
     temp_dir = tempfile.mkdtemp()
     background_tasks.add_task(_cleanup_temp_dir, temp_dir)
