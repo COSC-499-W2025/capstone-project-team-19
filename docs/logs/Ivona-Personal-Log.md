@@ -206,7 +206,11 @@ PRs I reviewed:
 
 1st PR review (Timmi's): ([#450](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/450)) on refactoring the database model to support versioned projects.
 
-2nd PR review (Adar's) ([#456](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/456)) on refactoring our system to use project keys and project version keys to be able to hold multiple project versions in our system.
+2nd PR review (Timmi's) ([#456](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/456)) on refactoring our system to use project keys and project version keys to be able to hold multiple project versions in our system.
+
+3rd PR review (Adara's) ([#446](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/446)) on adding 2 api endpoints for the main-file selction during the project upload process.
+
+4th PR review (Adara's) ([#464](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/464)) on adding 2 api endpoints for selecting the supporting files during the project upload process.
 
 Next Week:
 I plan to help finish any api endpoints our team has left to do and start making wireframes for the frontend.
