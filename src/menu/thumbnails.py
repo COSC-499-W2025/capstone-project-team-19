@@ -8,6 +8,7 @@ import matplotlib.image as mpimg
 
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from src.db import (
+    get_project_key,
     upsert_project_thumbnail,
     get_project_thumbnail_path,
     delete_project_thumbnail,
@@ -76,7 +77,12 @@ def manage_project_thumbnails(conn, user_id: int, username: str) -> None:
         if project_name is None:
             continue
 
-        existing = get_project_thumbnail_path(conn, user_id, project_name)
+        project_key = get_project_key(conn, user_id, project_name)
+        if project_key is None:
+            print(f"\nProject '{project_name}' not found.\n")
+            continue
+
+        existing = get_project_thumbnail_path(conn, user_id, project_key)
 
         if action == "1":
             print(
@@ -88,7 +94,7 @@ def manage_project_thumbnails(conn, user_id: int, username: str) -> None:
             try:
                 src = validate_image_path(raw_path)
                 dst = save_standardized_thumbnail(src, images_dir, user_id, project_name)
-                upsert_project_thumbnail(conn, user_id, project_name, str(dst))
+                upsert_project_thumbnail(conn, user_id, project_key, str(dst))
                 print(f"\n✓ Thumbnail added for '{project_name}' -> {dst}\n")
             except Exception as e:
                 print(f"\nFailed to add thumbnail: {e}\n")
@@ -98,7 +104,7 @@ def manage_project_thumbnails(conn, user_id: int, username: str) -> None:
             try:
                 src = validate_image_path(raw_path)
                 dst = save_standardized_thumbnail(src, images_dir, user_id, project_name)
-                upsert_project_thumbnail(conn, user_id, project_name, str(dst))
+                upsert_project_thumbnail(conn, user_id, project_key, str(dst))
                 print(f"\n✓ Thumbnail updated for '{project_name}' -> {dst}\n")
             except Exception as e:
                 print(f"\nFailed to update thumbnail: {e}\n")
@@ -121,7 +127,7 @@ def manage_project_thumbnails(conn, user_id: int, username: str) -> None:
                 print("\nCancelled.\n")
                 continue
 
-            ok = delete_project_thumbnail(conn, user_id, project_name)
+            ok = delete_project_thumbnail(conn, user_id, project_key)
             if ok:
                 # optional: delete managed file if it's in ./images
                 try:
@@ -139,7 +145,8 @@ def _select_project_with_thumbnail(conn, user_id: int) -> str | None:
     project_scores = collect_project_data(conn, user_id)
 
     for name, _ in project_scores:
-        if get_project_thumbnail_path(conn, user_id, name):
+        pk = get_project_key(conn, user_id, name)
+        if pk is not None and get_project_thumbnail_path(conn, user_id, pk):
             projects.append(name)
 
     if not projects:

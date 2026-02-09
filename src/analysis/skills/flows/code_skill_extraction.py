@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Set
 
@@ -7,7 +8,7 @@ from src.analysis.skills.buckets.code_buckets import CODE_SKILL_BUCKETS
 from src.analysis.skills.detectors.code.code_detector_registry import CODE_DETECTOR_FUNCTIONS
 from src.analysis.skills.flows.code_feedback_templates import _DETECTOR_FEEDBACK
 from src.analysis.skills.utils.skill_levels import score_to_level
-from src.db import insert_project_skill, upsert_project_feedback
+from src.db import get_project_key, insert_project_skill, upsert_project_feedback
 from src.utils.extension_catalog import code_extensions
 from src.utils.helpers import read_file_content
 
@@ -54,32 +55,34 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
 
     feedback_ctx: Optional[Dict[str, Any]] = None
     if conn is not None:
+        project_key = get_project_key(conn, int(user_id), str(project_name))
+        if project_key is not None:
 
-        def _add_feedback(
-            skill_name: str,
-            file_name: str,
-            criterion_key: str,
-            criterion_label: str,
-            expected: str,
-            observed: Dict[str, Any],
-            suggestion: str,
-        ) -> None:
-            upsert_project_feedback(
-                conn=conn,
-                user_id=int(user_id),
-                project_name=str(project_name),
-                project_type="code",
-                skill_name=str(skill_name),
-                file_name=str(file_name or ""),
-                criterion_key=str(criterion_key),
-                criterion_label=str(criterion_label),
-                expected=str(expected),
-                observed=observed or {},
-                suggestion=str(suggestion),
-            )
+            def _add_feedback(
+                skill_name: str,
+                file_name: str,
+                criterion_key: str,
+                criterion_label: str,
+                expected: str,
+                observed: Dict[str, Any],
+                suggestion: str,
+            ) -> None:
+                upsert_project_feedback(
+                    conn=conn,
+                    user_id=int(user_id),
+                    project_key=int(project_key),
+                    project_type="code",
+                    skill_name=str(skill_name),
+                    file_name=str(file_name or ""),
+                    criterion_key=str(criterion_key),
+                    criterion_label=str(criterion_label),
+                    expected=str(expected),
+                    observed=observed or {},
+                    suggestion=str(suggestion),
+                )
 
-        # callback-only ctx (no dead fallback path)
-        feedback_ctx = {"add_feedback": _add_feedback}
+            # callback-only ctx (no dead fallback path)
+            feedback_ctx = {"add_feedback": _add_feedback}
 
     zip_name = _get_zip_name(conn, user_id, project_name)
     if not zip_name:
@@ -250,22 +253,88 @@ def _filter_code_files(files: List[Dict[str, Any]], code_exts: Set[str]) -> List
 
 
 def _get_zip_name(conn, user_id: int, project_name: str) -> Optional[str]:
+    """
+    Return the extraction folder name under `src/analysis/zip_data/` for a project.
+
+    Important:
+    - The extraction folder is based on the stored upload path stem:
+        analysis/zip_data/<Path(zip_path).stem>/
+    - `uploads.zip_name` is just the original filename and is NOT reliable.
+    """
     try:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT zip_name
-            FROM project_classifications
-            WHERE user_id = ? AND project_name = ?
+            SELECT u.zip_path, pv.extraction_root, pv.version_key
+            FROM project_versions pv
+            JOIN projects p ON p.project_key = pv.project_key
+            LEFT JOIN uploads u ON u.upload_id = pv.upload_id
+            WHERE p.user_id = ? AND p.display_name = ?
+            ORDER BY (u.zip_path IS NOT NULL) DESC,
+                     (pv.extraction_root IS NOT NULL AND pv.extraction_root != '') DESC,
+                     pv.version_key DESC
             LIMIT 1
             """,
             (user_id, project_name),
         )
+
         row = cursor.fetchone()
-        return row[0] if row else None
+        zip_path = row[0] if row else None
+        extraction_root = row[1] if row else None
+        version_key = row[2] if row else None
+
+        if zip_path:
+            # Extraction folder name is the stem of the stored zip path
+            return Path(str(zip_path)).stem
+
+        # When zip_path is missing, extraction_root may be wrong (e.g. set from
+        # file_path first segment). Try scanning zip_data for a subdir that contains our files.
+        if constants.VERBOSE:
+            print(
+                f"[SKILL EXTRACTION] Warning: No upload zip_path found for {project_name}, "
+                "scanning zip_data for extraction folder."
+            )
+
+        if version_key is not None:
+            paths = cursor.execute(
+                """
+                SELECT file_path FROM files
+                WHERE version_key = ? AND file_path IS NOT NULL AND file_path != ''
+                LIMIT 50
+                """,
+                (int(version_key),),
+            ).fetchall()
+            file_paths = [str(r[0]).replace("\\", "/") for r in paths if r and r[0]]
+            if file_paths:
+                current_file = os.path.abspath(__file__)
+                src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+                zip_data_base = os.path.join(src_dir, "analysis", "zip_data")
+                if os.path.isdir(zip_data_base):
+                    for candidate in os.listdir(zip_data_base):
+                        subdir = os.path.join(zip_data_base, candidate)
+                        if not os.path.isdir(subdir):
+                            continue
+                        for rel in file_paths:
+                            full = os.path.join(subdir, rel)
+                            if os.path.isfile(full):
+                                try:
+                                    cursor.execute(
+                                        "UPDATE project_versions SET extraction_root = ? WHERE version_key = ?",
+                                        (candidate, int(version_key)),
+                                    )
+                                    conn.commit()
+                                except Exception:
+                                    pass
+                                return candidate
+
+        if extraction_root:
+            return str(extraction_root)
+
+        return None
+
     except Exception as e:
         if constants.VERBOSE:
-            print(f"[SKILL EXTRACTION] Error querying zip_name: {e}")
+            print(f"[SKILL EXTRACTION] Error querying zip_path: {e}")
         return None
 
 

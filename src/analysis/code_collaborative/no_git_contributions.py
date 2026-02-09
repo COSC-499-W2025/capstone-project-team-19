@@ -14,6 +14,7 @@ import sqlite3
 
 from src.db import (
     get_files_for_project,
+    get_files_for_version,
     store_file_contributions,
     get_zip_name_for_project,
 )
@@ -40,6 +41,7 @@ def store_contributions_without_git(
     project_name: str,
     desc: str | None,
     debug: bool = False,
+    version_key: int | None = None,
 ) -> None:
     """
     Main entry for no-git collaborative code:
@@ -48,7 +50,10 @@ def store_contributions_without_git(
       3) If no hits, fall back to “all code files”.
       4) Persist to user_code_contributions so activity/skills filters work.
     """
-    files = get_files_for_project(conn, user_id, project_name, only_text=False)
+    if version_key is not None:
+        files = get_files_for_version(conn, user_id, version_key, only_text=False)
+    else:
+        files = get_files_for_project(conn, user_id, project_name, only_text=False)
     code_files = [f for f in files if f.get("file_type") == "code" and f.get("file_path")]
     if not code_files:
         return
