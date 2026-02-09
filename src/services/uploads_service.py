@@ -63,18 +63,8 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
     # Parse/extract ZIP, but do NOT persist files yet: we want to attach version_key after dedup.
     files_info = parse_zip_file(str(zip_path), user_id=user_id, conn=conn, persist_to_db=False)
     if not files_info:
-        set_upload_state(
-            conn,
-            upload_id,
-            state={"error": "No valid files were processed from ZIP."},
-            status="failed",
-        )
-        return {
-            "upload_id": upload_id,
-            "status": "failed",
-            "zip_name": zip_name,
-            "state": {"error": "No valid files were processed from ZIP."},
-        }
+        set_upload_state(conn, upload_id, state={"error": "No valid files were processed from ZIP."}, status="failed")
+        return {"upload_id": upload_id, "status": "failed", "zip_name": zip_name, "state": {"error": "No valid files were processed from ZIP."}}
 
     layout = analyze_project_layout(files_info)
 
@@ -160,7 +150,6 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
         "project_filetype_index": project_filetype_index,
     }
 
-    # If unresolved asks exist, stop before classification (matches CLI ordering)
     if asks:
         set_upload_state(conn, upload_id, state=state, status="needs_dedup")
         return {"upload_id": upload_id, "status": "needs_dedup", "zip_name": zip_name, "state": state}
