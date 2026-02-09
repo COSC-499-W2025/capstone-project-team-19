@@ -8,6 +8,7 @@ from src.api.routes import (
     resumes_router,
     portfolio_router,
     github_router,
+    google_drive_router,
     consent_router,
     portfolio_router,
     export_router,
@@ -30,5 +31,6 @@ app.include_router(skills_router)
 app.include_router(resumes_router)
 app.include_router(consent_router)
 app.include_router(github_router)
+app.include_router(google_drive_router)
 app.include_router(portfolio_router)
 app.include_router(export_router)
