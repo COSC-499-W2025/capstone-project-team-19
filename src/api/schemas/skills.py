@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class SkillEventDTO(BaseModel):
     skill_name: str
@@ -11,3 +11,31 @@ class SkillEventDTO(BaseModel):
 
 class SkillsListDTO(BaseModel):
     skills: List[SkillEventDTO]
+
+class SkillPreferenceDTO(BaseModel):
+    skill_name: str
+    is_highlighted: bool = True
+    display_order: Optional[int] = None
+
+class SkillWithStatusDTO(BaseModel):
+    skill_name: str
+    is_highlighted: bool = True
+    display_order: Optional[int] = None
+    project_count: int = 0
+    max_score: float = 0.0
+
+class SkillPreferencesListDTO(BaseModel):
+    skills: List[SkillWithStatusDTO]
+    context: str = "global"
+    context_id: Optional[int] = None
+
+class UpdateSkillPreferencesRequestDTO(BaseModel):
+    skills: List[SkillPreferenceDTO] = Field(
+        ...,
+        description="List of skill preferences to update"
+    )
+
+class HighlightedSkillsDTO(BaseModel):
+    skills: List[str]
+    context: str = "global"
+    context_id: Optional[int] = None

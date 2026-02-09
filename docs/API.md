@@ -24,20 +24,21 @@ http://localhost:8000
 
 ## Table of Contents
 
-1. [Health](#health
+1. [Health](#health)
 2. [Authentication](#authentication)
 3. [Projects](#projects)
 4. [GitHub Integration](#github-integration)
 5. [Uploads Wizard](#uploads-wizard)
 6. [Privacy Consent](#privacyconsent)
 7. [Skills](#skills)
-8. [Resume](#resume)
-9. [Portfolio](#portfolio)
-10. [Path Variables](#path-variables)  
-11. [DTO References](#dto-references)  
-12. [Best Practices](#best-practices)  
-13. [Error Codes](#error-codes)  
-14. [Example Error Response](#example-error-response)  
+8. [Skill Preferences (Highlighting)](#skill-preferences-highlighting)
+9. [Resume](#resume)
+10. [Portfolio](#portfolio)
+11. [Path Variables](#path-variables)  
+12. [DTO References](#dto-references)  
+13. [Best Practices](#best-practices)  
+14. [Error Codes](#error-codes)  
+15. [Example Error Response](#example-error-response)  
 
 ---
 
@@ -955,8 +956,110 @@ Exposes extracted skills and timelines.
             },
             "error": null
         }
+        ``` 
+---
+
+## **Skill Preferences (Highlighting)**
+
+**Base URL:** `/skills/preferences`
+
+Manages skill highlighting preferences. Users can choose which skills to show or hide in their portfolio and résumé, and customize the display order. Preferences can be set globally or scoped to specific contexts (portfolio or individual résumés).
+
+### **Context System**
+
+Skill preferences support a hierarchical context system:
+- `global` – Default preferences that apply everywhere
+- `portfolio` – Portfolio-specific preferences (falls back to global if not set)
+- `resume` – Résumé-specific preferences, identified by `context_id` (falls back to global if not set)
+
+### **Endpoints**
+
+- **Get Skill Preferences**
+    - **Endpoint**: `GET /skills/preferences`
+    - **Description**: Returns all skills with their current highlighting status and metadata. Skills default to highlighted if no preference is set.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Query Parameters**:
+        - `context` (string, optional): `"global"` (default), `"portfolio"`, or `"resume"`
+        - `context_id` (integer, optional): Resume ID when context is `"resume"`
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `SkillPreferencesListDTO`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "skills": [
+                    {
+                        "skill_name": "algorithms",
+                        "is_highlighted": true,
+                        "display_order": 1,
+                        "project_count": 3,
+                        "max_score": 0.95
+                    },
+                    {
+                        "skill_name": "api_and_backend",
+                        "is_highlighted": false,
+                        "display_order": null,
+                        "project_count": 2,
+                        "max_score": 0.85
+                    }
+                ],
+                "context": "global",
+                "context_id": null
+            },
+            "error": null
+        }
         ```
-        
+
+- **Update Skill Preferences**
+    - **Endpoint**: `PUT /skills/preferences`
+    - **Description**: Updates skill preferences. Supports partial updates – only specified skills are updated, others remain unchanged. Use this to toggle visibility or set display order.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request DTO**: `UpdateSkillPreferencesRequestDTO`
+    - **Request Body**:
+        ```json
+        {
+            "skills": [
+                {"skill_name": "algorithms", "is_highlighted": true, "display_order": 1},
+                {"skill_name": "api_and_backend", "is_highlighted": false}
+            ]
+        }
+        ```
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `SkillPreferencesListDTO`
+    - **Response Body**: Returns the full updated list of skills with their status (same format as GET)
+
+- **Reset Skill Preferences**
+    - **Endpoint**: `DELETE /skills/preferences`
+    - **Description**: Clears all global skill preferences. After reset, all skills will be shown with default ordering (by score).
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `SkillPreferencesListDTO`
+    - **Response Body**: Returns the current state after reset (all skills highlighted, default order)
+
+- **Get Highlighted Skills Only**
+    - **Endpoint**: `GET /skills/preferences/highlighted`
+    - **Description**: Returns only the skill names that are currently highlighted (visible), in display order. This is a convenience endpoint for consumers who just need the final list of visible skills.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Query Parameters**:
+        - `context` (string, optional): `"global"` (default), `"portfolio"`, or `"resume"`
+        - `context_id` (integer, optional): Resume ID when context is `"resume"`
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `HighlightedSkillsDTO`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "skills": ["algorithms", "data_structures", "testing_and_ci"],
+                "context": "global",
+                "context_id": null
+            },
+            "error": null
+        }
+        ```
+
 ---
 
 ## **Resume**
@@ -1389,6 +1492,33 @@ Example:
 
 - **SkillsListDTO**
     - `skills` (List[SkillEventDTO], required)
+
+### **Skill Preferences DTOs**
+
+- **SkillPreferenceDTO**
+    - `skill_name` (string, required)
+    - `is_highlighted` (bool, optional): Default `true`
+    - `display_order` (int, optional): Custom display order
+
+- **SkillWithStatusDTO**
+    - `skill_name` (string, required)
+    - `is_highlighted` (bool, optional): Default `true`
+    - `display_order` (int, optional): Custom display order
+    - `project_count` (int, optional): Number of projects using this skill
+    - `max_score` (float, optional): Maximum score for this skill
+
+- **SkillPreferencesListDTO** (used by `GET /skills/preferences`, `PUT /skills/preferences`, `DELETE /skills/preferences`)
+    - `skills` (List[SkillWithStatusDTO], required)
+    - `context` (string, optional): `"global"`, `"portfolio"`, or `"resume"`
+    - `context_id` (int, optional): Resume ID when context is `"resume"`
+
+- **UpdateSkillPreferencesRequestDTO** (used by `PUT /skills/preferences`)
+    - `skills` (List[SkillPreferenceDTO], required): List of skill preferences to update
+
+- **HighlightedSkillsDTO** (used by `GET /skills/preferences/highlighted`)
+    - `skills` (List[string], required): List of highlighted skill names
+    - `context` (string, optional): `"global"`, `"portfolio"`, or `"resume"`
+    - `context_id` (int, optional): Resume ID when context is `"resume"`
 
 ### **Resume DTOs**
 
