@@ -136,19 +136,19 @@ def post_upload_project_main_file(
 
 
 @router.get(
-    "/upload/{upload_id}/projects/{project_id}/git/identities",
+    "/upload/{upload_id}/projects/{project_key}/git/identities",
     response_model=ApiResponse[GitIdentitiesResponse],
 )
 def get_git_identities_route(
     upload_id: int,
-    project_id: int,
+    project_key: int,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
     upload = get_upload_by_id(conn, upload_id)
     if not upload or upload["user_id"] != user_id:
         raise HTTPException(status_code=404, detail="Upload not found")
-    options, selected_indices = get_git_identities_service(conn, user_id, upload, project_id)
+    options, selected_indices = get_git_identities_service(conn, user_id, upload, project_key)
 
     return ApiResponse(
         success=True,
@@ -158,12 +158,12 @@ def get_git_identities_route(
 
 
 @router.post(
-    "/upload/{upload_id}/projects/{project_id}/git/identities",
+    "/upload/{upload_id}/projects/{project_key}/git/identities",
     response_model=ApiResponse[GitIdentitiesResponse],
 )
 def post_git_identities_route(
     upload_id: int,
-    project_id: int,
+    project_key: int,
     body: GitIdentitiesSelectRequest,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
@@ -175,7 +175,7 @@ def post_git_identities_route(
         conn,
         user_id,
         upload,
-        project_id,
+        project_key,
         body.selected_indices,
         body.extra_emails,
     )

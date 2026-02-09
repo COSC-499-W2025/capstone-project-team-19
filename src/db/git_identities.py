@@ -20,6 +20,21 @@ def ensure_user_github_table(conn: sqlite3.Connection) -> None:
         )
         """,
     )
+    conn.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_user_github_user_email
+        ON user_github(user_id, email)
+        WHERE email IS NOT NULL
+        """
+    )
+    conn.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_user_github_user_name
+        ON user_github(user_id, name)
+        WHERE name IS NOT NULL
+        """
+    )
+    conn.commit()
 
 
 def load_user_github(conn: sqlite3.Connection, user_id: int) -> Dict[str, set]:

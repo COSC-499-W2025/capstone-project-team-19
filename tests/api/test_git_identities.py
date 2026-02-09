@@ -5,7 +5,7 @@ def test_git_identities_collaborative_get_and_post(
     insert_classification,
 ):
     upload = uploaded_git_zip
-    project_id = insert_classification(
+    project_key = insert_classification(
         user_id=1,
         upload=upload,
         project_name="ProjectA",
@@ -14,7 +14,7 @@ def test_git_identities_collaborative_get_and_post(
     )
 
     res = client.get(
-        f"/projects/upload/{upload['upload_id']}/projects/{project_id}/git/identities",
+        f"/projects/upload/{upload['upload_id']}/projects/{project_key}/git/identities",
         headers=auth_headers,
     )
     assert res.status_code == 200
@@ -24,7 +24,7 @@ def test_git_identities_collaborative_get_and_post(
     assert {"alice@example.com", "bob@example.com"}.issubset(emails)
 
     post = client.post(
-        f"/projects/upload/{upload['upload_id']}/projects/{project_id}/git/identities",
+        f"/projects/upload/{upload['upload_id']}/projects/{project_key}/git/identities",
         headers=auth_headers,
         json={"selected_indices": [1], "extra_emails": ["extra@example.com"]},
     )
@@ -40,7 +40,7 @@ def test_git_identities_individual_get_empty_options(
     insert_classification,
 ):
     upload = uploaded_git_zip
-    project_id = insert_classification(
+    project_key = insert_classification(
         user_id=1,
         upload=upload,
         project_name="ProjectA",
@@ -49,7 +49,7 @@ def test_git_identities_individual_get_empty_options(
     )
 
     res = client.get(
-        f"/projects/upload/{upload['upload_id']}/projects/{project_id}/git/identities",
+        f"/projects/upload/{upload['upload_id']}/projects/{project_key}/git/identities",
         headers=auth_headers,
     )
     assert res.status_code == 200
@@ -65,7 +65,7 @@ def test_git_identities_post_individual_is_409(
     insert_classification,
 ):
     upload = uploaded_git_zip
-    project_id = insert_classification(
+    project_key = insert_classification(
         user_id=1,
         upload=upload,
         project_name="ProjectA",
@@ -74,7 +74,7 @@ def test_git_identities_post_individual_is_409(
     )
 
     post = client.post(
-        f"/projects/upload/{upload['upload_id']}/projects/{project_id}/git/identities",
+        f"/projects/upload/{upload['upload_id']}/projects/{project_key}/git/identities",
         headers=auth_headers,
         json={"selected_indices": [1], "extra_emails": []},
     )

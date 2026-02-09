@@ -669,17 +669,17 @@ A typical flow for the first six endpoints:
 - **Git Identities (Local Git)**
   - **Description**: Replaces the CLI prompt that asks users to pick their git identity from a local `.git` history.
     - **Notes**:
-      - `project_id` refers to `projects.project_key`.
+      - `project_key` is the value from `projects.project_key`.
       - GET returns empty `options` for individual code projects (no collaborator list).
       - POST is allowed only for collaborative code projects.
       - Selection matching uses email or name, so aliases may map to multiple indices.
     - **List Git Identities**
-      - **Endpoint**: `GET /{upload_id}/projects/{project_id}/git/identities`
+        - **Endpoint**: `GET /{upload_id}/projects/{project_key}/git/identities`
       - **Description**: Returns a ranked list of identities found in the local git history for this project, plus `selected_indices` based on the user’s saved identities.
       - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-      - **Path Params**:
-        - `{upload_id}` (integer, required): The upload session ID
-        - `{project_id}` (integer, required): The project classification ID
+        - **Path Params**:
+            - `{upload_id}` (integer, required): The upload session ID
+            - `{project_key}` (integer, required): The project key
       - **Error Responses**:
         - `401 Unauthorized` if missing or invalid Bearer token
         - `404 Not Found` if the project does not belong to this upload
@@ -711,12 +711,12 @@ A typical flow for the first six endpoints:
       }
       ```
     - **Save Git Identity Selection**
-      - **Endpoint**: `POST /{upload_id}/projects/{project_id}/git/identities`
+        - **Endpoint**: `POST /{upload_id}/projects/{project_key}/git/identities`
       - **Description**: Saves the user’s selected git identities (by index) and optional extra commit emails for future runs.
       - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-      - **Path Params**:
-        - `{upload_id}` (integer, required): The upload session ID
-        - `{project_id}` (integer, required): The project classification ID
+        - **Path Params**:
+            - `{upload_id}` (integer, required): The upload session ID
+            - `{project_key}` (integer, required): The project key
       - **Request Body**:
         ```json
         {

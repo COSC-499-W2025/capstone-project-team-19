@@ -77,7 +77,7 @@ def get_git_identities(
     conn: Connection,
     user_id: int,
     upload: dict,
-    project_id: int,
+    project_key: int,
 ) -> Tuple[List[GitIdentityOptionDTO], List[int]]:
     upload_id = upload.get("upload_id")
     if not upload_id:
@@ -91,7 +91,7 @@ def get_git_identities(
     if not zip_name:
         raise HTTPException(status_code=400, detail="Upload missing zip_name")
 
-    row = get_project_for_upload_by_key(conn, user_id, project_id, upload_id)
+    row = get_project_for_upload_by_key(conn, user_id, project_key, upload_id)
     if not row:
         raise HTTPException(status_code=404, detail="Project not found in this upload")
 
@@ -133,7 +133,7 @@ def save_git_identities(
     conn: Connection,
     user_id: int,
     upload: dict,
-    project_id: int,
+    project_key: int,
     selected_indices: List[int],
     extra_emails: List[str],
 ) -> Tuple[List[GitIdentityOptionDTO], List[int]]:
@@ -149,7 +149,7 @@ def save_git_identities(
     if not zip_name:
         raise HTTPException(status_code=400, detail="Upload missing zip_name")
 
-    row = get_project_for_upload_by_key(conn, user_id, project_id, upload_id)
+    row = get_project_for_upload_by_key(conn, user_id, project_key, upload_id)
     if not row:
         raise HTTPException(status_code=404, detail="Project not found in this upload")
 
