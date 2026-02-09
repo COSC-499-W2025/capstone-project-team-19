@@ -10,6 +10,7 @@ from src.api.routes.projects_ranking import router as projects_ranking_router
 from src.api.routes.feedback import router as feedback_router
 from src.api.routes.project_dates import router as project_dates_router
 from src.api.routes.skills import router as skills_router
+from src.api.routes.skill_preferences import router as skill_preferences_router
 from src.api.routes.resumes import router as resumes_router
 from src.api.routes.github import router as github_router
 from src.api.routes.consent import router as consent_router
@@ -21,6 +22,7 @@ __all__ = [
     "feedback_router",
     "project_dates_router",
     "skills_router",
+    "skill_preferences_router",
     "resumes_router",
     "github_router",
     "consent_router",

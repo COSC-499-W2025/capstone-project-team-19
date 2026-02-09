@@ -8,6 +8,7 @@ from src.api.routes import (
     resumes_router,
     github_router,
     consent_router,
+    skill_preferences_router,
     portfolio_router,
 )
 from src.api.auth.routes import router as auth_router
@@ -25,6 +26,7 @@ app.include_router(projects_router)
 app.include_router(feedback_router)
 app.include_router(project_dates_router)
 app.include_router(skills_router)
+app.include_router(skill_preferences_router)
 app.include_router(resumes_router)
 app.include_router(consent_router)
 app.include_router(github_router)
