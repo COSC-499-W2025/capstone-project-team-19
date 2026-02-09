@@ -5,6 +5,7 @@ from src.analysis.code_collaborative.no_git_contributions import (
     store_contributions_without_git,
 )
 from src.db import init_schema
+from src.db.projects import get_project_key
 
 
 def test_rank_files_by_description_uses_name_and_path(tmp_path):
@@ -36,22 +37,32 @@ def test_rank_files_by_description_uses_content_slice(tmp_path):
 
 def test_store_contributions_without_git_falls_back_to_all(tmp_sqlite_conn):
     init_schema(tmp_sqlite_conn)
-    # Insert minimal files rows
+    # Create project + version so files can reference version_key
+    tmp_sqlite_conn.execute("INSERT INTO projects (user_id, display_name) VALUES (1, 'demo')")
+    pk = tmp_sqlite_conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    tmp_sqlite_conn.execute(
+        "INSERT INTO project_versions (project_key, upload_id, fingerprint_strict, fingerprint_loose) VALUES (?, 1, 'fp', 'fp')",
+        (pk,),
+    )
+    vk = tmp_sqlite_conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     tmp_sqlite_conn.execute(
         """
-        INSERT INTO files (user_id, file_name, file_type, file_path, project_name)
-        VALUES (1, 'a.py', 'code', 'proj/a.py', 'demo'),
-               (1, 'b.py', 'code', 'proj/b.py', 'demo')
-        """
+        INSERT INTO files (user_id, version_key, file_name, file_type, file_path)
+        VALUES (1, ?, 'a.py', 'code', 'proj/a.py'),
+               (1, ?, 'b.py', 'code', 'proj/b.py')
+        """,
+        (vk, vk),
     )
     tmp_sqlite_conn.commit()
 
     # Empty desc => no keyword hits => fallback to all code files
     store_contributions_without_git(tmp_sqlite_conn, user_id=1, project_name="demo", desc="", debug=False)
 
+    pk = get_project_key(tmp_sqlite_conn, 1, "demo")
+    assert pk is not None
     rows = tmp_sqlite_conn.execute(
-        "SELECT file_path FROM user_code_contributions WHERE user_id=? AND project_name=? ORDER BY file_path",
-        (1, "demo"),
+        "SELECT file_path FROM user_code_contributions WHERE user_id=? AND project_key=? ORDER BY file_path",
+        (1, pk),
     ).fetchall()
     assert [r[0] for r in rows] == ["proj/a.py", "proj/b.py"]
 

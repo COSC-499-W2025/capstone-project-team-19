@@ -24,7 +24,7 @@ http://localhost:8000
 
 ## Table of Contents
 
-1. [Health](#health
+1. [Health](#health)
 2. [Authentication](#authentication)
 3. [Projects](#projects)
 4. [GitHub Integration](#github-integration)
@@ -576,6 +576,9 @@ A typical flow for the first six endpoints:
 3. **Resolve dedup (optional)**: `POST /projects/upload/{upload_id}/dedup/resolve`
 4. **Submit classifications**: `POST /projects/upload/{upload_id}/classifications`
 5. **Resolve mixed project types (optional)**: `POST /projects/upload/{upload_id}/project-types`
+6. **Select collaborative text contribution sections (optional, text-collab only)**:
+   - `GET /projects/upload/{upload_id}/projects/{project_name}/text/sections`
+   - `POST /projects/upload/{upload_id}/projects/{project_name}/text/sections`
 
 ---
 
@@ -752,7 +755,69 @@ A typical flow for the first six endpoints:
         }
       ```
 
-      ```
+- **Submit Project Types (Code vs Text) (Optional)**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/project-types`
+    - **Description**: Submit user selections for project type (`code` vs `text`) when a detected project contains both code and text artifacts and requires a choice. The request must use project names exactly as reported in `state.layout.auto_assignments` and `state.layout.pending_projects`.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required): The ID of the upload session
+
+- **List Main File Sections (Collaborative Text Contribution)**
+    - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project_name}/text/sections`
+    - **Description**: Returns numbered sections derived from the **selected main text file** for the project (from `uploads.state.file_roles[project_name].main_file`). Intended for selecting which parts of the document the user contributed to.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project_name}` (string, required): The project name
+    - **Query Params**:
+        - `max_section_chars` (integer, optional): Truncates each section’s `content` to this many characters.
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `MainFileSectionsDTO`
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "project_name": "MockProject",
+                "main_file": "mock_projects/MockProject/main_report.txt",
+                "sections": [
+                    {
+                        "id": 1,
+                        "title": "Introduction",
+                        "preview": "This report describes…",
+                        "content": "This report describes…",
+                        "is_truncated": false
+                    }
+                ]
+            },
+            "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `409 Conflict` if the main file is not selected yet for this project
+        - `404 Not Found` if the main file is missing on disk
+        - `422 Unprocessable Entity` if the main file cannot be extracted or is empty
+
+- **Set Main File Contributed Sections (Collaborative Text Contribution)**
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/text/sections`
+    - **Description**: Persists the section IDs the user contributed to into `uploads.state.contributions[project_name].main_section_ids`. IDs are validated against the server-derived section list and stored de-duplicated + sorted.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Path Params**:
+        - `{upload_id}` (integer, required): The upload session ID
+        - `{project_name}` (string, required): The project name
+    - **Request DTO**: `SetMainFileSectionsRequestDTO`
+    - **Request Body**:
+        ```json
+        {
+            "selected_section_ids": [1, 3, 5]
+        }
+        ```
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `UploadDTO`
+    - **Error Responses**:
+        - `422 Unprocessable Entity` if any section IDs are out of range
+        - `409 Conflict` if the main file is not selected yet for this project
+---
 
 ## **GitHub Integration**
 
@@ -1310,6 +1375,38 @@ Manages résumé-specific representations of projects.
     }
     ```
 
+- **Export Resume to DOCX**
+    - **Endpoint**: `GET /resume/{resume_id}/export/docx`
+    - **Description**: Exports a résumé snapshot to a Word document (.docx) file.
+    - **Path Parameters**:
+        - `{resume_id}` (integer, required): The ID of the résumé snapshot to export. Get this from `GET /resume`.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary file download with MIME type `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+    - **Response Headers**:
+        - `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+        - `Content-Disposition: attachment; filename="resume_username_2025-01-15_14-30-00.docx"`
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Resume not found or doesn't belong to user
+
+- **Export Resume to PDF**
+    - **Endpoint**: `GET /resume/{resume_id}/export/pdf`
+    - **Description**: Exports a résumé snapshot to a PDF document.
+    - **Path Parameters**:
+        - `{resume_id}` (integer, required): The ID of the résumé snapshot to export. Get this from `GET /resume`.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary file download with MIME type `application/pdf`
+    - **Response Headers**:
+        - `Content-Type: application/pdf`
+        - `Content-Disposition: attachment; filename="resume_username_2025-01-15_14-30-00.pdf"`
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Resume not found or doesn't belong to user
+
 ---
 
 ## **Portfolio**
@@ -1398,6 +1495,34 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
     - **Error Responses**:
         - `401 Unauthorized`: Missing or invalid Bearer token
         - `404 Not Found`: Project not found
+
+- **Export Portfolio to DOCX**
+    - **Endpoint**: `GET /portfolio/export/docx`
+    - **Description**: Exports the user's portfolio to a Word document (.docx) file. Includes all ranked projects with their metadata, summaries, and contribution bullets.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary file download with MIME type `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+    - **Response Headers**:
+        - `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+        - `Content-Disposition: attachment; filename="portfolio_username_2025-01-15_14-30-00.docx"`
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: No projects found for this user
+
+- **Export Portfolio to PDF**
+    - **Endpoint**: `GET /portfolio/export/pdf`
+    - **Description**: Exports the user's portfolio to a PDF document. Includes all ranked projects with their metadata, summaries, and contribution bullets.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary file download with MIME type `application/pdf`
+    - **Response Headers**:
+        - `Content-Type: application/pdf`
+        - `Content-Disposition: attachment; filename="portfolio_username_2025-01-15_14-30-00.pdf"`
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: No projects found for this user
 
 ---
 
@@ -1524,6 +1649,22 @@ Example:
 - **DedupResolveRequestDTO**
   - `decisions` (object, required)  
     Allowed values: `"skip"`, `"new_project"`, `"new_version"`
+
+- **MainFileSectionDTO**
+    - `id` (int, required): 1-based section identifier
+    - `title` (string, required): Display title derived from header or preview
+    - `preview` (string, optional): Short snippet for scanning
+    - `content` (string, optional): Section text (may be truncated)
+    - `is_truncated` (boolean, required): True if `content` was truncated
+
+- **MainFileSectionsDTO**
+    - `project_name` (string, required)
+    - `main_file` (string, required): The selected main file relpath for the project
+    - `sections` (List[MainFileSectionDTO], required)
+
+- **SetMainFileSectionsRequestDTO**
+    - `selected_section_ids` (List[int], required): IDs from `MainFileSectionsDTO.sections[*].id`
+
 
 ### **Skills DTOs**
 

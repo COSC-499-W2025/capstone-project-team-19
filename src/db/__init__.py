@@ -34,6 +34,7 @@ from .projects import (
     get_project_key,
     get_project_for_upload_by_key,
     get_latest_version_key,
+    get_or_create_version_key_for_project,
     get_project_metadata,
     get_zip_name_for_project,
     record_project_classification,
@@ -104,7 +105,14 @@ from .file_contributions import (
 )
 
 # files
-from .files import get_files_for_project, get_files_with_timestamps
+from .files import (
+    get_files_for_project,
+    get_files_for_version,
+    get_files_with_timestamps,
+    get_files_with_timestamps_for_version,
+    get_code_files_for_version,
+    get_code_extensions_for_version,
+)
 
 # text activity type contribution
 from .text_activity import (
@@ -236,6 +244,7 @@ __all__ = [
     "get_project_key",
     "get_project_for_upload_by_key",
     "get_latest_version_key",
+    "get_or_create_version_key_for_project",
     "get_project_metadata",
     "record_project_classification",
     "record_project_classifications",
@@ -272,7 +281,11 @@ __all__ = [
     "store_code_activity_metrics",
     "get_pull_requests_for_project",
     "get_files_for_project",
+    "get_files_for_version",
     "get_files_with_timestamps",
+    "get_files_with_timestamps_for_version",
+    "get_code_files_for_version",
+    "get_code_extensions_for_version",
     "store_text_activity_contribution",
     "get_text_activity_contribution",
     "save_project_summary",

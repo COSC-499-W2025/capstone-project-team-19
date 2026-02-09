@@ -8,15 +8,24 @@ from src.db.skills import insert_project_skill, get_project_skills
 def conn():
     conn = sqlite3.connect(":memory:")
     conn.execute("""
+        CREATE TABLE projects (
+            project_key INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            display_name TEXT NOT NULL,
+            classification TEXT,
+            project_type TEXT
+        )
+    """)
+    conn.execute("""
         CREATE TABLE project_skills (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            project_name TEXT NOT NULL,
+            project_key INTEGER NOT NULL,
             skill_name TEXT NOT NULL,
             level TEXT NOT NULL,
             score REAL NOT NULL,
             evidence_json TEXT,
-            UNIQUE(user_id, project_name, skill_name)
+            UNIQUE(user_id, project_key, skill_name)
         )
     """)
     conn.commit()

@@ -4,8 +4,15 @@ try:
 except ModuleNotFoundError:
     import constants
 
+from src.db.projects import get_project_key
+from src.db.deduplication import insert_project
+
+
 def store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics):
     """Store parsed GitHub metrics into the normalized database schema."""
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        pk = insert_project(conn, user_id, project_name)
 
     commits = metrics.get("commits", {})
     issues = metrics.get("issues", {})
@@ -40,7 +47,7 @@ def store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics)
 
     conn.execute("""
         INSERT INTO github_repo_metrics (
-            user_id, project_name, repo_owner, repo_name,
+            user_id, project_key, repo_owner, repo_name,
             total_commits, commit_days, first_commit_date, last_commit_date,
             issues_opened, issues_closed,
             prs_opened, prs_merged,
@@ -48,7 +55,7 @@ def store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics)
             team_total_commits, team_total_additions, team_total_deletions
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(user_id, project_name, repo_owner, repo_name)
+        ON CONFLICT(user_id, project_key, repo_owner, repo_name)
         DO UPDATE SET
             total_commits = excluded.total_commits,
             commit_days = excluded.commit_days,
@@ -66,7 +73,7 @@ def store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics)
             team_total_deletions = excluded.team_total_deletions,
             last_synced = datetime('now')
     """, (
-        user_id, project_name, owner, repo,
+        user_id, pk, owner, repo,
         total_commits, commit_days, first_commit_date, last_commit_date,
         issues_opened, issues_closed,
         prs_opened, prs_merged,
@@ -82,6 +89,9 @@ def store_github_repo_metrics(conn, user_id, project_name, owner, repo, metrics)
 # get a github repositories metrics from the local db
 def get_github_repo_metrics(conn, user_id, project_name, owner, repo):
     """Retrieve stored GitHub metrics for a given project from the normalized table."""
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return None
     cur = conn.execute("""
         SELECT
             total_commits,
@@ -100,9 +110,9 @@ def get_github_repo_metrics(conn, user_id, project_name, owner, repo):
             team_total_deletions,
             last_synced
         FROM github_repo_metrics
-        WHERE user_id = ? AND project_name = ? AND repo_owner = ? AND repo_name = ?
+        WHERE user_id = ? AND project_key = ? AND repo_owner = ? AND repo_name = ?
         LIMIT 1
-    """, (user_id, project_name, owner, repo))
+    """, (user_id, pk, owner, repo))
 
     row = cur.fetchone()
     if not row:
@@ -142,7 +152,10 @@ def print_github_metrics_summary(repo_metrics: dict):
 
 def store_github_detailed_metrics(conn, user_id, project_name, owner, repo, metrics):
     """Store detailed GitHub metrics (issues, PRs, reviews, timestamps) into separate tables."""
-    
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        pk = insert_project(conn, user_id, project_name)
+
     issues = metrics.get("issues", {})
     prs = metrics.get("pull_requests", {})
     commit_timestamps = metrics.get("commit_timestamps", [])
@@ -151,45 +164,45 @@ def store_github_detailed_metrics(conn, user_id, project_name, owner, repo, metr
     # Clear existing data for this repo to avoid duplicates
     conn.execute("""
         DELETE FROM github_issues 
-        WHERE user_id = ? AND project_name = ? AND repo_owner = ? AND repo_name = ?
-    """, (user_id, project_name, owner, repo))
+        WHERE user_id = ? AND project_key = ? AND repo_owner = ? AND repo_name = ?
+    """, (user_id, pk, owner, repo))
     
     conn.execute("""
         DELETE FROM github_issue_comments 
-        WHERE user_id = ? AND project_name = ? AND repo_owner = ? AND repo_name = ?
-    """, (user_id, project_name, owner, repo))
+        WHERE user_id = ? AND project_key = ? AND repo_owner = ? AND repo_name = ?
+    """, (user_id, pk, owner, repo))
     
     conn.execute("""
         DELETE FROM github_pull_requests 
-        WHERE user_id = ? AND project_name = ? AND repo_owner = ? AND repo_name = ?
-    """, (user_id, project_name, owner, repo))
+        WHERE user_id = ? AND project_key = ? AND repo_owner = ? AND repo_name = ?
+    """, (user_id, pk, owner, repo))
     
     conn.execute("""
         DELETE FROM github_commit_timestamps 
-        WHERE user_id = ? AND project_name = ? AND repo_owner = ? AND repo_name = ?
-    """, (user_id, project_name, owner, repo))
+        WHERE user_id = ? AND project_key = ? AND repo_owner = ? AND repo_name = ?
+    """, (user_id, pk, owner, repo))
     
     conn.execute("""
         DELETE FROM github_pr_reviews 
-        WHERE user_id = ? AND project_name = ? AND repo_owner = ? AND repo_name = ?
-    """, (user_id, project_name, owner, repo))
+        WHERE user_id = ? AND project_key = ? AND repo_owner = ? AND repo_name = ?
+    """, (user_id, pk, owner, repo))
     
     conn.execute("""
         DELETE FROM github_pr_review_comments 
-        WHERE user_id = ? AND project_name = ? AND repo_owner = ? AND repo_name = ?
-    """, (user_id, project_name, owner, repo))
+        WHERE user_id = ? AND project_key = ? AND repo_owner = ? AND repo_name = ?
+    """, (user_id, pk, owner, repo))
     
     # Store user issues
     user_issues = issues.get("user_issues", [])
     for issue in user_issues:
         conn.execute("""
             INSERT INTO github_issues (
-                user_id, project_name, repo_owner, repo_name,
+                user_id, project_key, repo_owner, repo_name,
                 issue_title, issue_body, labels_json, created_at, closed_at
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            user_id, project_name, owner, repo,
+            user_id, pk, owner, repo,
             issue.get("title"),
             issue.get("body"),
             json.dumps(issue.get("labels", [])),
@@ -206,12 +219,12 @@ def store_github_detailed_metrics(conn, user_id, project_name, owner, repo, metr
     for comment in user_issue_comments:
         conn.execute("""
             INSERT INTO github_issue_comments (
-                user_id, project_name, repo_owner, repo_name,
+                user_id, project_key, repo_owner, repo_name,
                 issue_number, comment_body, created_at
             )
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (
-            user_id, project_name, owner, repo,
+            user_id, pk, owner, repo,
             comment.get("issue_number"),
             comment.get("body"),
             comment.get("created_at")
@@ -222,12 +235,12 @@ def store_github_detailed_metrics(conn, user_id, project_name, owner, repo, metr
     for pr in user_prs:
         conn.execute("""
             INSERT INTO github_pull_requests (
-                user_id, project_name, repo_owner, repo_name,
+                user_id, project_key, repo_owner, repo_name,
                 pr_number, pr_title, pr_body, labels_json, created_at, merged_at, state, merged
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            user_id, project_name, owner, repo,
+            user_id, pk, owner, repo,
             pr.get("number"),
             pr.get("title"),
             pr.get("body"),
@@ -244,10 +257,10 @@ def store_github_detailed_metrics(conn, user_id, project_name, owner, repo, metr
         ts_str = timestamp.isoformat() if hasattr(timestamp, 'isoformat') else str(timestamp)
         conn.execute("""
             INSERT INTO github_commit_timestamps (
-                user_id, project_name, repo_owner, repo_name, commit_timestamp
+                user_id, project_key, repo_owner, repo_name, commit_timestamp
             )
             VALUES (?, ?, ?, ?, ?)
-        """, (user_id, project_name, owner, repo, ts_str))
+        """, (user_id, pk, owner, repo, ts_str))
     
     # Store PR reviews
     for pr_number, review_data in reviews.items():
@@ -255,11 +268,11 @@ def store_github_detailed_metrics(conn, user_id, project_name, owner, repo, metr
         for review in reviews_list:
             conn.execute("""
                 INSERT INTO github_pr_reviews (
-                    user_id, project_name, repo_owner, repo_name, pr_number, review_json
+                    user_id, project_key, repo_owner, repo_name, pr_number, review_json
                 )
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (
-                user_id, project_name, owner, repo,
+                user_id, pk, owner, repo,
                 pr_number,
                 json.dumps(review)
             ))
@@ -269,11 +282,11 @@ def store_github_detailed_metrics(conn, user_id, project_name, owner, repo, metr
         for comment in review_comments:
             conn.execute("""
                 INSERT INTO github_pr_review_comments (
-                    user_id, project_name, repo_owner, repo_name, pr_number, comment_json
+                    user_id, project_key, repo_owner, repo_name, pr_number, comment_json
                 )
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (
-                user_id, project_name, owner, repo,
+                user_id, pk, owner, repo,
                 pr_number,
                 json.dumps(comment)
             ))

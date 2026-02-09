@@ -24,7 +24,7 @@ def user_id():
     return 1
 
 
-def seed_dedup_registry(conn: sqlite3.Connection, user_id: int, display_name: str) -> None:
+def seed_dedup_registry(conn: sqlite3.Connection, user_id: int, display_name: str) -> int:
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO projects (user_id, display_name) VALUES (?, ?)",
@@ -51,11 +51,13 @@ def seed_dedup_registry(conn: sqlite3.Connection, user_id: int, display_name: st
     )
 
     conn.commit()
+    return int(pk), int(vk)
 
 
 def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
     # dedup tables
-    seed_dedup_registry(conn, user_id, name)
+    pk, vk = seed_dedup_registry(conn, user_id, name)
+    project_key = pk
 
     # canonical project metadata now lives on `projects`
     conn.execute(
@@ -63,45 +65,72 @@ def seed_project(conn: sqlite3.Connection, user_id: int, name: str) -> None:
         ("individual", "code", user_id, name),
     )
 
-    # files
+    # files (versioned only: version_key required)
     conn.execute(
         """
         INSERT INTO files (
-            user_id, file_name, file_path, extension, file_type,
-            size_bytes, created, modified, project_name
-        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?)
+            user_id, version_key, file_name, file_path, extension, file_type,
+            size_bytes, created, modified
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
         """,
-        (user_id, f"{name}.py", f"src/{name}.py", ".py", "code", 10, name),
+        (user_id, vk, f"{name}.py", f"src/{name}.py", ".py", "code", 10),
     )
 
     # project_summaries
     conn.execute(
         """
-        INSERT INTO project_summaries (user_id, project_name, project_type, project_mode, summary_json)
+        INSERT INTO project_summaries (user_id, project_key, project_type, project_mode, summary_json)
         VALUES (?, ?, ?, ?, ?)
         """,
-        (user_id, name, "code", "individual", json.dumps({"summary": name})),
+        (user_id, int(project_key), "code", "individual", json.dumps({"summary": name})),
     )
 
     # github_issues
     conn.execute(
         """
-        INSERT INTO github_issues (user_id, project_name, repo_owner, repo_name, issue_title)
+        INSERT INTO github_issues (user_id, project_key, repo_owner, repo_name, issue_title)
         VALUES (?, ?, ?, ?, ?)
         """,
-        (user_id, name, "owner", "repo", f"issue {name}"),
+        (user_id, project_key, "owner", "repo", f"issue {name}"),
     )
 
     # git_individual_metrics (minimal insert works since other cols are nullable)
     conn.execute(
-        "INSERT INTO git_individual_metrics (user_id, project_name) VALUES (?, ?)",
-        (user_id, name),
+        "INSERT INTO git_individual_metrics (user_id, project_key) VALUES (?, ?)",
+        (user_id, project_key),
     )
 
     conn.commit()
 
 
 def count_user_project(conn: sqlite3.Connection, user_id: int, table: str, project_name: str) -> int:
+    if table == "files":
+        # files is versioned only; count via project_versions -> projects
+        return conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM files f
+            JOIN project_versions pv ON f.version_key = pv.version_key
+            JOIN projects p ON pv.project_key = p.project_key
+            WHERE f.user_id = ? AND p.display_name = ?
+            """,
+            (user_id, project_name),
+        ).fetchone()[0]
+    if table in {
+        "project_summaries", "project_skills", "git_individual_metrics", "user_code_contributions",
+        "github_repo_metrics", "github_collaboration_profiles", "github_issues", "github_issue_comments",
+        "github_pull_requests", "github_commit_timestamps", "github_pr_reviews", "github_pr_review_comments",
+    }:
+        # migrated tables use project_key; join through projects for name-based assertions
+        return conn.execute(
+            f"""
+            SELECT COUNT(*)
+            FROM {table} t
+            JOIN projects p ON p.project_key = t.project_key
+            WHERE t.user_id = ? AND p.display_name = ?
+            """,
+            (user_id, project_name),
+        ).fetchone()[0]
     return conn.execute(
         f"SELECT COUNT(*) FROM {table} WHERE user_id=? AND project_name=?",
         (user_id, project_name),

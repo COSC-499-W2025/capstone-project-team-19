@@ -23,23 +23,14 @@ def _fetch_files(
     version_key: int | None = None,
 ) -> List[Dict[str, str]]:
     """
-    Fetch files for a project from the 'files' table.
+    Fetch files for a project from the 'files' table (versioned only).
+    If version_key is given, uses that version; otherwise uses latest version for project_name.
     Returns: [{'file_name','file_type','file_path'}, ...]
     """
-    query = """
-        SELECT file_name, file_type, file_path
-        FROM files
-        WHERE user_id = ? AND project_name = ?
-    """
-    params = [user_id, project_name]
+    from src.db.files import get_files_for_project, get_files_for_version
     if version_key is not None:
-        query += " AND version_key = ?"
-        params.append(version_key)
-    if only_text:
-        query += " AND file_type = 'text'"
-
-    rows = conn.execute(query, params).fetchall()
-    return [{"file_name": r[0], "file_type": r[1], "file_path": r[2]} for r in rows]
+        return get_files_for_version(conn, user_id, version_key, only_text=only_text)
+    return get_files_for_project(conn, user_id, project_name, only_text=only_text)
 def get_file_extension_from_db(conn: sqlite3.Connection, user_id: int, filepath: str) -> str | None:
     """Fetch file extension from DB using normalized relative path matching."""
     try:

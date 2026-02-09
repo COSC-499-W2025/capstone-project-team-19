@@ -2,7 +2,7 @@
 
 from .github_api import list_user_repos, get_gh_repo_metadata
 from .token_store import save_github_token, get_github_token
-from src.db import connect, save_project_repo
+from src.db import connect, save_project_repo, get_project_key
 import sqlite3
 
 """
@@ -11,7 +11,7 @@ GitHub repository linking utilities.
 Supports associating a local project entry in the database with a GitHub repository (chosen by user).
 Retrieves the user's GitHub repositories by using their stored OAuth token
 It attempts to match a repo to a project automatically based on project name, otherwise it prompts the user to choose a repo
-The matched/selected repo URL is saved tot he database
+The matched/selected repo URL is saved to the database
 """
 
 
@@ -20,11 +20,15 @@ def ensure_repo_link(conn, user_id, project_name, token):
     Check if repo already linked; if yes return True,
     if no return False so user can trigger selection.
     """
+    project_key = get_project_key(conn, user_id, project_name)
+    if project_key is None:
+        return False
+
     row = conn.execute("""
         SELECT repo_url FROM project_repos
-        WHERE user_id=? AND project_name=? AND provider='github'
+        WHERE user_id=? AND project_key=? AND provider='github'
         LIMIT 1
-    """, (user_id, project_name)).fetchone()
+    """, (user_id, project_key)).fetchone()
 
     if row:
         print(f"Repo already linked for {project_name}: {row[0]}")
@@ -77,13 +81,17 @@ def select_and_store_repo(conn, user_id, project_name, token):
 
 
 def _store_repo(conn, user_id, project_name, repo_url):
+    from src.db.deduplication import insert_project
+    project_key = get_project_key(conn, user_id, project_name)
+    if project_key is None:
+        project_key = insert_project(conn, user_id, project_name)
     conn.execute("""
-        INSERT OR REPLACE INTO project_repos (user_id, project_name, provider, repo_url)
+        INSERT OR REPLACE INTO project_repos (user_id, project_key, provider, repo_url)
         VALUES (?, ?, 'github', ?)
-    """, (user_id, project_name, repo_url))
-    
+    """, (user_id, project_key, repo_url))
     conn.commit()
     print(f"Linked {project_name} → {repo_url}")
+
 
 def get_github_repo_metadata(user_id, project_name, repo_url, token):
     # parse url for repo_owner and repo_name
@@ -96,13 +104,17 @@ def get_github_repo_metadata(user_id, project_name, repo_url, token):
     return repo_url, repo_owner, repo_name, repo_id, default_branch
 
 def get_gh_repo_name_and_owner(conn, user_id, project_name):
+    project_key = get_project_key(conn, user_id, project_name)
+    if project_key is None:
+        return None, None
     row = conn.execute("""
         SELECT repo_owner, repo_name
         FROM project_repos
-        WHERE user_id = ? AND project_name = ? AND provider = 'github'
+        WHERE user_id = ? AND project_key = ? AND provider = 'github'
         LIMIT 1
-    """, (user_id, project_name)).fetchone()
+    """, (user_id, project_key)).fetchone()
 
-    if not row: return None, None
-    
+    if not row:
+        return None, None
+
     return row[0], row[1]

@@ -6,12 +6,13 @@ from src.analysis.code_collaborative.code_collaborative_analysis_helper import p
 from src.analysis.text_individual.alt_summary import prompt_manual_summary
 from src.analysis.skills.flows.text_skill_extraction import extract_text_skills
 from src.utils.helpers import normalize_pdf_paragraphs
-from src.db import get_files_with_timestamps, get_latest_version_key, store_text_activity_contribution
+from src.db import get_files_with_timestamps, get_files_with_timestamps_for_version, get_latest_version_key, store_text_activity_contribution
 from src.analysis.activity_type.text.activity_type import print_activity, get_activity_contribution_data
 try:
     from src import constants
 except ModuleNotFoundError:
     import constants
+from src.analysis.text_collaborative.text_sections import extract_document_sections
 
 def analyze_collaborative_text_project(
     conn,
@@ -102,7 +103,7 @@ def analyze_collaborative_text_project(
     # ---------------------------------------------------------
     # STEP 2 — Extract sections or paragraphs for user selection
     # ---------------------------------------------------------
-    sections = _extract_document_sections(full_main_text)
+    sections = extract_document_sections(full_main_text)
 
     print("\nSelect the sections/paragraphs YOU contributed to:")
     for i, sec in enumerate(sections, start=1):
@@ -284,8 +285,11 @@ def analyze_collaborative_text_project(
             for csv_file in user_csv_metadata['files']
         ])
 
-    # Fetch timestamp data for ALL project files
-    all_project_files = get_files_with_timestamps(conn, user_id, project_name, version_key=version_key)
+    # Fetch timestamp data for ALL project files (use version_key when available to avoid re-resolution)
+    if version_key is not None:
+        all_project_files = get_files_with_timestamps_for_version(conn, user_id, version_key)
+    else:
+        all_project_files = get_files_with_timestamps(conn, user_id, project_name)
 
     # Filter to only files the user contributed to
     user_contributed_files = [
@@ -404,61 +408,6 @@ def _load_main_text(parsed_files, main_file_name, zip_path, conn, user_id):
 
     path = os.path.join(base_path, match["file_path"])
     return extract_text_file(path, conn, user_id) or ""
-
-
-def _extract_document_sections(full_text: str):
-    """
-    Detect headers OR paragraph previews.
-    Return list of {header, preview, text}.
-    """
-
-    lines = full_text.split("\n")
-    sections = []
-    buffer = []
-    current_header = None
-
-    header_pattern = re.compile(r"^[A-Z][A-Za-z ]{2,}$")  # e.g. "Introduction", "Method"
-
-    for line in lines:
-        stripped = line.strip()
-
-        if header_pattern.match(stripped):  # header detected
-            # flush previous section
-            if buffer:
-                section_text = "\n".join(buffer).strip()
-                sections.append({
-                    "header": current_header,
-                    "preview": section_text[:60],
-                    "text": section_text
-                })
-                buffer = []
-
-            current_header = stripped
-        else:
-            buffer.append(stripped)
-
-    # flush last
-    if buffer:
-        section_text = "\n".join(buffer).strip()
-        sections.append({
-            "header": current_header,
-            "preview": section_text[:60],
-            "text": section_text
-        })
-
-    # If NO headers at all → use paragraph previews
-    if all(s["header"] is None for s in sections):
-        paragraphs = [p.strip() for p in full_text.split("\n") if p.strip()]
-        sections = []
-        for p in paragraphs:
-            preview = " ".join(p.split()[:5])
-            sections.append({
-                "header": None,
-                "preview": preview + "...",
-                "text": p
-            })
-
-    return sections
 
 
 def _manual_contribution_summary_prompt():
