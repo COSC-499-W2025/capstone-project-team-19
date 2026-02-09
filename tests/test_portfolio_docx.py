@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from docx import Document
 
+from src.db import init_schema
 
 def _extract_docx_text(docx_path: Path) -> str:
     doc = Document(str(docx_path))
@@ -17,7 +18,9 @@ def _extract_docx_text(docx_path: Path) -> str:
 def conn():
     # Real connection not used because we monkeypatch data fetchers,
     # but keep signature consistent.
-    return sqlite3.connect(":memory:")
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    return conn
 
 
 def test_export_portfolio_docx_no_projects(monkeypatch, tmp_path, conn):
@@ -77,6 +80,10 @@ def test_export_portfolio_docx_happy_path_includes_project_text_and_long_summary
 
     monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: Final 100%")
     monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").replace(" 100%", "").strip())
+
+    # Skills: exporter now derives from summary + highlighted skills
+    monkeypatch.setattr(mod, "get_all_skills_from_summary", lambda _summary: ["data analysis", "APIs"])
+    monkeypatch.setattr(mod, "get_highlighted_skills_for_display", lambda *args, **kwargs: [])
 
     # Skills: exporter uses _skills_one_line(summary)
     monkeypatch.setattr(mod, "_skills_one_line", lambda _summary: "data analysis, APIs")
