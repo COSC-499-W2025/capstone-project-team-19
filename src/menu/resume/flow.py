@@ -36,6 +36,8 @@ from src.services.resume_overrides import (
     update_project_manual_overrides,
     apply_manual_overrides_to_resumes,
 )
+from src.menu.skill_highlighting import manage_skill_highlighting
+from src.services.skill_preferences_service import get_highlighted_skills_for_display
 
 def _handle_create_resume(conn, user_id: int, username: str):
     summaries = load_project_summaries(conn, user_id, get_all_user_project_summaries)
@@ -144,16 +146,27 @@ def _handle_view_existing_resume(conn, user_id: int) -> bool:
         print("Unable to load the selected resume.")
         return False
 
-    # Use stored rendered text, fall back JSON
-    if record.get("rendered_text"):
-        print("\n" + record["rendered_text"])
-    else:
-        try:
-            snapshot = json.loads(record["resume_json"])
-            render_snapshot(conn, user_id, snapshot, print_output=True)
-        except Exception:
-            print("Stored resume is corrupted or unreadable.")
-            return False
+    # Get skill preferences for this resume (falls back to global if none set)
+    highlighted_skills = get_highlighted_skills_for_display(
+        conn=conn,
+        user_id=user_id,
+        context="resume",
+        context_id=resume_id,
+    )
+
+    # Always re-render with current skill preferences applied
+    try:
+        snapshot = json.loads(record["resume_json"])
+        render_snapshot(
+            conn,
+            user_id,
+            snapshot,
+            print_output=True,
+            highlighted_skills=highlighted_skills if highlighted_skills else None,
+        )
+    except Exception:
+        print("Stored resume is corrupted or unreadable.")
+        return False
 
     return True
 
@@ -291,7 +304,19 @@ def _handle_export_resume_docx(conn, user_id: int, username: str) -> bool:
         print("Unable to load the selected resume.")
         return False
 
-    out_file = export_resume_record_to_docx(username=username, record=record, out_dir="./out")
+    highlighted_skills = get_highlighted_skills_for_display(
+        conn=conn,
+        user_id=user_id,
+        context="resume",
+        context_id=resume_id,
+    )
+
+    out_file = export_resume_record_to_docx(
+        username=username,
+        record=record,
+        out_dir="./out",
+        highlighted_skills=highlighted_skills,
+    )
     print(f"\nSaving resume to {out_file} ...")
     print("✓ Export complete.\n")
     return True
@@ -410,7 +435,55 @@ def _handle_export_resume_pdf(conn, user_id: int, username: str) -> bool:
         print("Unable to load the selected resume.")
         return False
 
-    out_file = export_resume_record_to_pdf(username=username, record=record, out_dir="./out")
+    highlighted_skills = get_highlighted_skills_for_display(
+        conn=conn,
+        user_id=user_id,
+        context="resume",
+        context_id=resume_id,
+    )
+
+    out_file = export_resume_record_to_pdf(
+        username=username,
+        record=record,
+        out_dir="./out",
+        highlighted_skills=highlighted_skills,
+    )
     print(f"\nSaving resume to {out_file} ...")
     print("✓ Export complete.\n")
+    return True
+
+
+def _handle_manage_resume_skills(conn, user_id: int, username: str) -> bool:
+    """Manage skill highlighting preferences for a specific resume."""
+    resumes = list_resumes(conn, user_id)
+    if not resumes:
+        print("No saved resumes yet. Create one first.")
+        return False
+
+    print("\nSaved resumes:")
+    for idx, r in enumerate(resumes, 1):
+        print(f"{idx}. {r['name']} (created {r['created_at']})")
+
+    choice = input("Select a resume to manage skills (number) or press Enter to cancel: ").strip()
+    if not choice.isdigit():
+        print("Cancelled.")
+        return False
+
+    idx = int(choice)
+    if idx < 1 or idx > len(resumes):
+        print("Invalid selection.")
+        return False
+
+    resume = resumes[idx - 1]
+    resume_id = resume["id"]
+    resume_name = resume["name"]
+
+    manage_skill_highlighting(
+        conn,
+        user_id,
+        username,
+        context="resume",
+        context_id=resume_id,
+        context_name=resume_name,
+    )
     return True

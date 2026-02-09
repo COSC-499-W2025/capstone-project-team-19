@@ -8,6 +8,7 @@ import pytest
 from pypdf import PdfReader
 from reportlab.platypus import Spacer
 
+from src.db import init_schema
 
 # --- Tiny 1x1 PNG (valid) as raw bytes so we don't need Pillow ---
 # This is a standard minimal PNG file (transparent).
@@ -33,7 +34,9 @@ def _extract_pdf_text(pdf_path: Path) -> str:
 def conn():
     # Real connection not used because we monkeypatch data fetchers,
     # but keep signature consistent.
-    return sqlite3.connect(":memory:")
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    return conn
 
 
 def test_export_portfolio_pdf_no_projects(monkeypatch, tmp_path, conn):
@@ -102,8 +105,9 @@ def test_export_portfolio_pdf_happy_path_includes_project_text_and_long_summary(
     monkeypatch.setattr(mod, "format_activity_line", lambda *_args, **_kwargs: "Activity: Final 100%")
     monkeypatch.setattr(mod, "strip_percent_tokens", lambda s: (s or "").replace(" 100%", "").strip())
 
-    # Skills: exporter uses _skills_one_line(summary)
-    monkeypatch.setattr(mod, "_skills_one_line", lambda _summary: "data analysis, APIs")
+    # Skills: exporter now derives from summary + highlighted skills
+    monkeypatch.setattr(mod, "get_all_skills_from_summary", lambda _summary: ["data analysis", "APIs"])
+    monkeypatch.setattr(mod, "get_highlighted_skills_for_display", lambda *args, **kwargs: [])
 
     # Very long summary line to ensure it's not lost (wrapping shouldn't drop content)
     long_tail = " ".join(["verylongtext"] * 50)

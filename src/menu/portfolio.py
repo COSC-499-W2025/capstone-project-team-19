@@ -26,19 +26,8 @@ from src.services.portfolio_service import (
 )
 from src.services import resume_overrides
 from src.export.portfolio_pdf import export_portfolio_to_pdf
-_PLACEHOLDER_CONTRIB = "[No manual contribution summary provided]"
+from src.menu.skill_highlighting import manage_skill_highlighting
 
-def _strip_placeholder_contrib(bullets: list[str]) -> list[str]:
-    """Remove empty strings and the placeholder contribution text."""
-    out = []
-    for b in bullets or []:
-        t = (b or "").strip()
-        if not t:
-            continue
-        if t == _PLACEHOLDER_CONTRIB:
-            continue
-        out.append(t)
-    return out
 
 def view_portfolio_menu(conn, user_id: int, username: str) -> None:
     """
@@ -51,8 +40,9 @@ def view_portfolio_menu(conn, user_id: int, username: str) -> None:
         print("2. Edit wording")
         print("3. Export to Word (.docx)")
         print("4. Export to PDF (.pdf)")
-        print("5. Back to main menu")
-        choice = input("Select an option (1-5): ").strip()
+        print("5. Manage skill highlighting")
+        print("6. Back to main menu")
+        choice = input("Select an option (1-6): ").strip()
 
         if choice == "1":
             _display_portfolio(conn, user_id, username)
@@ -74,10 +64,19 @@ def view_portfolio_menu(conn, user_id: int, username: str) -> None:
                 print("")
                 continue
         elif choice == "5":
+            manage_skill_highlighting(
+                conn,
+                user_id,
+                username,
+                context="portfolio",
+            )
+            print("")
+            continue
+        elif choice == "6":
             print("")
             return
         else:
-            print("Invalid choice, please enter 1, 2, 3, 4, or 5.")
+            print("Invalid choice, please enter 1, 2, 3, 4, 5, or 6.")
 
 
 # Keep old function name as alias for backwards compatibility

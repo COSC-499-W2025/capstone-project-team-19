@@ -31,7 +31,8 @@ from src.export.resume_helpers import (
     add_bullet,
     add_role_date_line,
     _project_sort_key,
-    clean_languages_above_threshold
+    clean_languages_above_threshold,
+    filter_skills_by_highlighted,
 )
 
 def _clean_str(value: Any) -> str | None:
@@ -114,6 +115,7 @@ def export_resume_record_to_docx(
     username: str,
     record: Dict[str, Any],
     out_dir: str = "./out",
+    highlighted_skills: Optional[List[str]] = None,
 ) -> Path:
     """
     record is the dict returned by get_resume_snapshot(...).
@@ -185,8 +187,18 @@ def export_resume_record_to_docx(
     add_skill_line("Languages", languages)
 
     add_skill_line("Frameworks", agg.get("frameworks") or [])
-    add_skill_line("Technical skills", agg.get("technical_skills") or [])
-    add_skill_line("Writing skills", agg.get("writing_skills") or [])
+
+    tech_skills = filter_skills_by_highlighted(
+        agg.get("technical_skills") or [],
+        highlighted_skills,
+    )
+    writing_skills = filter_skills_by_highlighted(
+        agg.get("writing_skills") or [],
+        highlighted_skills,
+    )
+
+    add_skill_line("Technical skills", tech_skills)
+    add_skill_line("Writing skills", writing_skills)
 
     projects_sorted = sorted(
         projects,

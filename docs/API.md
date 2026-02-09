@@ -1889,7 +1889,33 @@ Example:
     - `projects` (List[PortfolioProjectDTO], optional)
     - `rendered_text` (string, optional): Plain-text formatted portfolio
 
-### **Privacy Consent DTOs**
+- **PortfolioGenerateRequestDTO**
+    - `name` (string, required): Label for the portfolio
+
+- **PortfolioEditRequestDTO**
+    - `project_name` (string, required): Text name of the project to edit
+    - `scope` (string, optional): `"portfolio_only"` (default) or `"global"`
+    - `display_name` (string, optional): Custom display name for the project
+    - `summary_text` (string, optional): Updated summary text
+    - `contribution_bullets` (List[string], optional): Custom contribution bullet points
+
+- **PortfolioProjectDTO**
+    - `project_name` (string, required)
+    - `display_name` (string, required)
+    - `project_type` (string, optional)
+    - `project_mode` (string, optional)
+    - `score` (float, required): Importance ranking score
+    - `duration` (string, optional): Formatted duration string (e.g. "Duration: 2024-01-15 – 2024-06-30")
+    - `languages` (List[string], optional): Top 3 languages (code projects only)
+    - `frameworks` (List[string], optional): Frameworks used (code projects only)
+    - `activity` (string, optional): Formatted activity line (e.g. "Activity: feature_coding 85%, testing 15%")
+    - `skills` (List[string], optional): Top 4 skills
+    - `summary_text` (string, optional): Project summary text
+    - `contribution_bullets` (List[string], optional): Contribution bullet points
+
+- **PortfolioDetailDTO**
+    - `projects` (List[PortfolioProjectDTO], optional)
+    - `rendered_text` (string, optional): Plain-text formatted portfolio
 
 - **ConsentRequestDTO**
   - `status` (string, required): Must be either "accepted" or "rejected"
