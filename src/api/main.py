@@ -9,6 +9,7 @@ from src.api.routes import (
     github_router,
     google_drive_router,
     consent_router,
+    portfolio_router,
 )
 from src.api.auth.routes import router as auth_router
 
