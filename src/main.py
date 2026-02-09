@@ -23,7 +23,6 @@ from src.menu import (
     view_ranked_projects,
     manage_project_thumbnails,
     edit_project_dates_menu,
-    manage_skill_highlighting,
 )
 from src.consent.consent import CONSENT_TEXT, get_user_consent, record_consent
 from src.consent.external_consent import get_external_consent, record_external_consent
@@ -89,8 +88,6 @@ def prompt_and_store():
         elif menu_choice == 11:
             project_list(conn, user_id, username)
         elif menu_choice == 12:
-            manage_skill_highlighting(conn, user_id, username)
-        elif menu_choice == 13:
             print("\nThank you for using the system. Goodbye!")
             return None
         elif menu_choice == 1:

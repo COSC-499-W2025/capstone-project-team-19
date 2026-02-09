@@ -207,8 +207,13 @@ def render_snapshot(
     user_id: int,
     snapshot: Dict[str, Any],
     print_output: bool = True,
+    highlighted_skills: List[str] | None = None,
 ) -> str:
-    """Render a snapshot to text; optionally print to console."""
+    """Render a snapshot to text; optionally print to console.
+
+    Args:
+        highlighted_skills: If provided, only show skills in this list.
+    """
     lines: List[str] = []
 
     projects = snapshot.get("projects", [])
@@ -227,7 +232,7 @@ def render_snapshot(
         lines.append("")
         lines.append(header)
         for p in group_entries:
-            lines.extend(_render_project_block(conn, user_id, p))
+            lines.extend(_render_project_block(conn, user_id, p, highlighted_skills=highlighted_skills))
 
     agg = snapshot.get("aggregated_skills", {})
     skills_lines = []
@@ -235,10 +240,20 @@ def render_snapshot(
         skills_lines.append(f"Languages: {', '.join(sorted(set(agg['languages'])))}")
     if agg.get("frameworks"):
         skills_lines.append(f"Frameworks: {', '.join(sorted(set(agg['frameworks'])))}")
-    if agg.get("technical_skills"):
-        skills_lines.append(f"Technical skills: {', '.join(sorted(set(agg['technical_skills'])))}")
-    if agg.get("writing_skills"):
-        skills_lines.append(f"Writing skills: {', '.join(sorted(set(agg['writing_skills'])))}")
+
+    # Filter aggregated skills by highlighted_skills if provided
+    tech_skills = agg.get("technical_skills", [])
+    writing_skills = agg.get("writing_skills", [])
+
+    if highlighted_skills is not None:
+        # Filter to only include skills that are highlighted
+        tech_skills = _filter_skills_by_highlighted(tech_skills, highlighted_skills)
+        writing_skills = _filter_skills_by_highlighted(writing_skills, highlighted_skills)
+
+    if tech_skills:
+        skills_lines.append(f"Technical skills: {', '.join(sorted(set(tech_skills)))}")
+    if writing_skills:
+        skills_lines.append(f"Writing skills: {', '.join(sorted(set(writing_skills)))}")
 
     if skills_lines:
         lines.append("")
@@ -251,7 +266,62 @@ def render_snapshot(
     return rendered
 
 
-def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
+def _filter_skills_by_highlighted(
+    skills: List[str],
+    highlighted_skills: List[str],
+) -> List[str]:
+    """Filter display skills by the raw highlighted skill names.
+
+    Maps display labels back to raw names for comparison.
+    """
+    # Build reverse mapping from display label to raw name
+    tech_skill_map = {
+        "architecture_and_design": "Architecture & design",
+        "data_structures": "Data structures",
+        "frontend_skills": "Frontend development",
+        "object_oriented_programming": "Object-oriented programming",
+        "security_and_error_handling": "Security & error handling",
+        "testing_and_ci": "Testing & CI",
+        "algorithms": "Algorithms",
+        "backend_development": "Backend development",
+        "clean_code_and_quality": "Clean code & quality",
+        "devops_and_ci_cd": "DevOps & CI/CD",
+        "api_and_backend": "API & backend",
+    }
+    writing_skill_map = {
+        "clarity": "Clear communication",
+        "structure": "Structured writing",
+        "vocabulary": "Strong vocabulary",
+        "argumentation": "Analytical writing",
+        "depth": "Critical thinking",
+        "process": "Revision & editing",
+        "planning": "Planning & organization",
+        "research": "Research integration",
+        "data_collection": "Data collection",
+        "data_analysis": "Data analysis",
+    }
+
+    # Build reverse: display_label -> raw_name
+    label_to_raw = {}
+    for raw, label in tech_skill_map.items():
+        label_to_raw[label] = raw
+    for raw, label in writing_skill_map.items():
+        label_to_raw[label] = raw
+
+    filtered = []
+    for skill in skills:
+        raw_name = label_to_raw.get(skill, skill)
+        if raw_name in highlighted_skills:
+            filtered.append(skill)
+    return filtered
+
+
+def _render_project_block(
+    conn,
+    user_id: int,
+    p: Dict[str, Any],
+    highlighted_skills: List[str] | None = None,
+) -> List[str]:
     lines = [f"\n- {resolve_resume_display_name(p)}"]
 
     # Display key role if available
@@ -293,8 +363,10 @@ def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
             lines.append("  Contributions:")
             lines.append("    • (no contribution bullets available)")
 
-    # Skills
+    # Skills - filter by highlighted_skills if provided
     skills = p.get("skills") or []
+    if highlighted_skills is not None:
+        skills = _filter_skills_by_highlighted(skills, highlighted_skills)
     if skills:
         lines.append("  Skills:")
         lines.append("    • " + ", ".join(skills))

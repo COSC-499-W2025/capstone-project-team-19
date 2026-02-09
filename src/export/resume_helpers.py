@@ -14,6 +14,62 @@ from .shared_helpers import (
 )
 
 # -------------------------
+# Skill filtering helpers
+# -------------------------
+
+def filter_skills_by_highlighted(
+    skills: List[str],
+    highlighted_skills: List[str] | None,
+) -> List[str]:
+    """Filter display skills by raw highlighted skill names.
+
+    Maps display labels back to raw names for comparison.
+    """
+    if highlighted_skills is None:
+        return skills
+    if not skills or not highlighted_skills:
+        return []
+
+    tech_skill_map = {
+        "architecture_and_design": "Architecture & design",
+        "data_structures": "Data structures",
+        "frontend_skills": "Frontend development",
+        "object_oriented_programming": "Object-oriented programming",
+        "security_and_error_handling": "Security & error handling",
+        "testing_and_ci": "Testing & CI",
+        "algorithms": "Algorithms",
+        "backend_development": "Backend development",
+        "clean_code_and_quality": "Clean code & quality",
+        "devops_and_ci_cd": "DevOps & CI/CD",
+        "api_and_backend": "API & backend",
+    }
+    writing_skill_map = {
+        "clarity": "Clear communication",
+        "structure": "Structured writing",
+        "vocabulary": "Strong vocabulary",
+        "argumentation": "Analytical writing",
+        "depth": "Critical thinking",
+        "process": "Revision & editing",
+        "planning": "Planning & organization",
+        "research": "Research integration",
+        "data_collection": "Data collection",
+        "data_analysis": "Data analysis",
+    }
+
+    label_to_raw = {}
+    for raw, label in tech_skill_map.items():
+        label_to_raw[label] = raw
+    for raw, label in writing_skill_map.items():
+        label_to_raw[label] = raw
+
+    filtered: List[str] = []
+    for skill in skills:
+        raw_name = label_to_raw.get(skill, skill)
+        if raw_name in highlighted_skills:
+            filtered.append(skill)
+    return filtered
+
+# -------------------------
 # Resume-only helpers (DOCX)
 # -------------------------
 
@@ -80,6 +136,7 @@ __all__ = [
     "format_date_range",
     "strip_percent_tokens",
     "clean_languages_above_threshold",
+    "filter_skills_by_highlighted",
     # resume helpers
     "add_role_date_line",
     "_project_sort_key",
