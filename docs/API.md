@@ -536,6 +536,70 @@ Handles project ingestion, analysis, classification, and metadata updates.
         }
         ```
 
+- **Project Thumbnails**
+    - **Description**: Upload, view, and delete thumbnail images for projects. Thumbnails are standardized to PNG format and resized to a maximum of 800x800 px.
+
+    - **Upload Thumbnail**
+        - **Endpoint**: `POST /projects/{project_id}/thumbnail`
+        - **Description**: Upload or replace a project's thumbnail image. Accepts PNG, JPG, JPEG, and WEBP formats. Images are automatically converted to PNG and resized if larger than 800x800 px.
+        - **Path Parameters**:
+            - `{project_id}` (integer, required): The `project_summary_id` of the project
+        - **Auth**: `Authorization: Bearer <access_token>`
+        - **Request Body**: `multipart/form-data`
+            - `file` (file, required): Image file (PNG, JPG, JPEG, or WEBP)
+        - **Response Status**: `200 OK`
+        - **Response DTO**: `ThumbnailUploadDTO`
+        - **Response Body**:
+            ```json
+            {
+                "success": true,
+                "data": {
+                    "project_id": 9,
+                    "project_name": "My Project",
+                    "message": "Thumbnail uploaded successfully"
+                },
+                "error": null
+            }
+            ```
+        - **Error Responses**:
+            - `401 Unauthorized`: Missing or invalid Bearer token
+            - `404 Not Found`: Project not found or doesn't belong to user
+            - `422 Unprocessable Entity`: Invalid image file (unsupported format or corrupt image)
+
+    - **Get Thumbnail**
+        - **Endpoint**: `GET /projects/{project_id}/thumbnail`
+        - **Description**: Download the thumbnail image for a project. Returns the image as a PNG file.
+        - **Path Parameters**:
+            - `{project_id}` (integer, required): The `project_summary_id` of the project
+        - **Auth**: `Authorization: Bearer <access_token>`
+        - **Response Status**: `200 OK`
+        - **Response**: Binary image download with MIME type `image/png`
+        - **Response Headers**:
+            - `Content-Type: image/png`
+        - **Error Responses**:
+            - `401 Unauthorized`: Missing or invalid Bearer token
+            - `404 Not Found`: Project not found, or thumbnail not found
+
+    - **Delete Thumbnail**
+        - **Endpoint**: `DELETE /projects/{project_id}/thumbnail`
+        - **Description**: Remove a project's thumbnail image. Deletes both the database record and the image file on disk.
+        - **Path Parameters**:
+            - `{project_id}` (integer, required): The `project_summary_id` of the project
+        - **Auth**: `Authorization: Bearer <access_token>`
+        - **Request Body**: None
+        - **Response Status**: `200 OK`
+        - **Response Body**:
+            ```json
+            {
+                "success": true,
+                "data": null,
+                "error": null
+            }
+            ```
+        - **Error Responses**:
+            - `401 Unauthorized`: Missing or invalid Bearer token
+            - `404 Not Found`: Project not found, or thumbnail not found
+
 ---
 
 ## **Uploads Wizard**
@@ -2023,6 +2087,11 @@ Example:
 
 - **DriveLinkRequest**
     - `links` (List[DriveLinkItem], required)
+
+- **ThumbnailUploadDTO** (used by `POST /projects/{project_id}/thumbnail`)
+    - `project_id` (int, required): The project_summary_id
+    - `project_name` (string, required): Display name of the project
+    - `message` (string, required): Status message (e.g. "Thumbnail uploaded successfully")
 
 - **DeleteResultDTO** (used by `DELETE /projects` and `DELETE /resume`)
   - `deleted_count` (int, required): Number of items deleted
