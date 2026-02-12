@@ -10,7 +10,9 @@ from src.menu.resume.helpers import (
     render_snapshot,
     apply_resume_only_updates,
     resolve_resume_contribution_bullets,
+    recompute_aggregated_skills,
 )
+from src.menu.resume.date_helpers import enrich_snapshot_with_dates
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from src.services.resume_generation import (
     build_resume_snapshot_data,
@@ -24,6 +26,7 @@ from src.services.resume_overrides import (
     apply_manual_overrides_to_resumes,
 )
 import json
+
 
 def list_user_resumes(conn, user_id: int) -> List[Dict[str, Any]]:
     """
@@ -188,3 +191,45 @@ def delete_all_resumes(conn, user_id: int) -> int:
     Returns the count of deleted resumes.
     """
     return delete_all_user_resumes(conn, user_id)
+
+
+def remove_project_from_resume(
+    conn, user_id: int, resume_id: int, project_name: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Remove a single project from a resume snapshot.
+
+    Returns:
+      - Updated resume dict if project was removed and resume still has projects.
+      - {"deleted_resume": True} if the resume was deleted because no projects remained.
+      - None if the resume was not found or the project was not in the resume.
+    """
+    record = get_resume_snapshot(conn, user_id, resume_id)
+    if not record:
+        return None
+
+    try:
+        snapshot = json.loads(record["resume_json"])
+    except json.JSONDecodeError:
+        return None
+
+    projects = snapshot.get("projects") or []
+    original_len = len(projects)
+    new_projects = [p for p in projects if p.get("project_name") != project_name]
+
+    if len(new_projects) == original_len:
+        # Project was not in this resume.
+        return None
+
+    if not new_projects:
+        delete_resume_snapshot(conn, user_id, resume_id)
+        return {"deleted_resume": True}
+
+    snapshot["projects"] = new_projects
+    snapshot["aggregated_skills"] = recompute_aggregated_skills(new_projects)
+    snapshot = enrich_snapshot_with_dates(conn, user_id, snapshot)
+    rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
+    updated_json = json.dumps(snapshot, default=str)
+    update_resume_snapshot(conn, user_id, resume_id, updated_json, rendered)
+
+    return get_resume_by_id(conn, user_id, resume_id)
