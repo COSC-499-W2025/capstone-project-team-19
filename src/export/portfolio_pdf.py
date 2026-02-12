@@ -37,7 +37,7 @@ from reportlab.platypus.flowables import HRFlowable
 from reportlab.lib import utils
 
 from src.insights.rank_projects.rank_project_importance import collect_project_data
-from src.db import get_project_summary_row, get_project_thumbnail_path
+from src.db import get_project_summary_row, get_project_thumbnail_path, get_project_key
 from src.insights.portfolio import (
     format_duration,
     format_activity_line,
@@ -282,7 +282,8 @@ def export_portfolio_to_pdf(
         # ---------------------------
         story.append(Paragraph(str(display_name), ProjectTitleStyle))
 
-        thumb = get_project_thumbnail_path(conn, user_id, project_name)
+        pkey = get_project_key(conn, user_id, project_name)
+        thumb = get_project_thumbnail_path(conn, user_id, pkey) if pkey else None
         if thumb:
             img = _load_image_preserve_aspect(thumb, max_width=2.6 * inch)
             if img:

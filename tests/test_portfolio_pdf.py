@@ -179,6 +179,7 @@ def test_export_portfolio_pdf_with_thumbnail_does_not_crash(monkeypatch, tmp_pat
     monkeypatch.setattr(mod, "get_project_summary_row", lambda *_args, **_kwargs: fake_row)
 
     # Pretend a thumbnail exists
+    monkeypatch.setattr(mod, "get_project_key", lambda *_args, **_kwargs: 1)
     thumb_path = tmp_path / "thumb.png"
     thumb_path.write_text("not-a-real-image")  # doesn't matter; we won't decode it
     monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: str(thumb_path))
@@ -257,6 +258,7 @@ def test_export_portfolio_pdf_thumbnail_removed_still_exports(monkeypatch, tmp_p
     monkeypatch.setattr(mod, "_load_image_preserve_aspect", fake_loader)
 
     # 1) With thumbnail
+    monkeypatch.setattr(mod, "get_project_key", lambda *_args, **_kwargs: 1)
     thumb_path = tmp_path / "thumb.png"
     thumb_path.write_text("not-a-real-image")
     monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: str(thumb_path))
