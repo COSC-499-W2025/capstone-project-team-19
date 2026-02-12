@@ -480,7 +480,7 @@ def build_contribution_bullets(
         if isinstance(pct, (int, float)):
             bullets.append(f"Contributed to {pct:.1f}% of the project deliverables.")
 
-        vk = project.get("version_key") or project.get("classification_id") or get_latest_version_key(conn, user_id, project_name)
+        vk = project.get("version_key") or get_latest_version_key(conn, user_id, project_name)
         row = get_text_activity_contribution(conn, vk) if vk else None
 
         if not row:
