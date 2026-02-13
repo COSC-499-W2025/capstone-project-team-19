@@ -1,7 +1,11 @@
 import pytest
 
 from .test_uploads_wizard import _make_zip_bytes
-from .test_uploads_file_roles import _advance_to_needs_file_roles, _cleanup_upload_artifacts
+from .test_uploads_file_roles import (
+    _advance_to_needs_file_roles,
+    _cleanup_upload_artifacts,
+    _get_project_key,
+)
 
 PROJECT = "ProjectA"
 
@@ -24,22 +28,16 @@ def get_upload_state(client, auth_headers, upload_id: int) -> dict:
     return res.json()["data"].get("state") or {}
 
 
-def get_project_key_from_state(state: dict, project_name: str) -> int:
-    pk = (state.get("dedup_project_keys") or {}).get(project_name)
-    assert pk is not None, f"project_key not found for {project_name} in state"
-    return int(pk)
-
-
 def get_project_key_for_upload(client, auth_headers, upload_id: int, project_name: str) -> int:
     state = get_upload_state(client, auth_headers, upload_id)
-    return get_project_key_from_state(state, project_name)
+    return _get_project_key(state, project_name)
 
 
 def get_files_payload(client, auth_headers, upload_id: int, project: str) -> dict:
     res = client.get(f"/projects/upload/{upload_id}", headers=auth_headers)
     assert res.status_code == 200
     state = res.json()["data"].get("state") or {}
-    project_key = get_project_key_from_state(state, project)
+    project_key = _get_project_key(state, project)
     res = client.get(
         f"/projects/upload/{upload_id}/projects/{project_key}/files",
         headers=auth_headers,
@@ -65,7 +63,7 @@ def post_set_main_file(client, auth_headers, upload_id: int, project: str, main_
     res = client.get(f"/projects/upload/{upload_id}", headers=auth_headers)
     assert res.status_code == 200
     state = res.json()["data"].get("state") or {}
-    project_key = get_project_key_from_state(state, project)
+    project_key = _get_project_key(state, project)
     res = client.post(
         f"/projects/upload/{upload_id}/projects/{project_key}/main-file",
         headers=auth_headers,
@@ -280,7 +278,7 @@ def test_supporting_files_requires_needs_file_roles(client, auth_headers):
     upload = start.json()["data"]
     upload_id = upload["upload_id"]
     state = upload.get("state") or {}
-    project_key = get_project_key_from_state(state, "ProjectA")
+    project_key = _get_project_key(state, "ProjectA")
 
     res = client.post(
         f"/projects/upload/{upload_id}/projects/{project_key}/supporting-text-files",
