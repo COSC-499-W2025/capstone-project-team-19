@@ -238,6 +238,8 @@ from .project_thumbnails import (
     get_project_thumbnail_path,
     delete_project_thumbnail,
     list_thumbnail_projects,
+    store_thumbnail,
+    delete_thumbnail_and_file,
 )
 
 from src.db.project_feedback import (
@@ -354,6 +356,8 @@ __all__ = [
     "get_project_thumbnail_path",
     "delete_project_thumbnail",
     "list_thumbnail_projects",
+    "store_thumbnail",
+    "delete_thumbnail_and_file",
     "upsert_project_feedback",
     "get_project_summary_by_id",
     "get_user_skill_preferences",
