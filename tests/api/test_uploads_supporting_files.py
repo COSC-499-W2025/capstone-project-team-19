@@ -265,7 +265,7 @@ def test_post_supporting_csv_files_rejects_non_csv(client, auth_headers):
 def test_supporting_files_requires_needs_file_roles(client, auth_headers):
     zip_bytes = _make_zip_bytes(
         {
-            "ProjectA/main_report.txt": "hi",
+            "ProjectA/main_report.txt": "hi i am A and I am different",
             "ProjectB/main_report.txt": "hi",
         }
     )

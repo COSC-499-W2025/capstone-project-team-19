@@ -131,14 +131,10 @@ def test_list_project_files_requires_needs_file_roles(client, auth_headers):
     zip_bytes = _make_zip_bytes(
         {
             "ProjectA/readme.txt": "hello but it's A and is different",
-            "ProjectB/readme.txt": "hello and I am B, I am not similar to A",
+            "ProjectB/readme.txt": "hi",
         }
     )
-    start = client.post(
-        "/projects/upload",
-        headers=auth_headers,
-        files={"file": ("two_projects.zip", zip_bytes, "application/zip")},
-    )
+    start = client.post("/projects/upload", headers=auth_headers, files={"file": ("two_projects.zip", zip_bytes, "application/zip")})
     assert start.status_code == 200
     upload = start.json()["data"]
     upload_id = upload["upload_id"]
