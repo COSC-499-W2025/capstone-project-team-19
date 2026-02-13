@@ -10,11 +10,10 @@ from PIL import UnidentifiedImageError
 
 from src.db.project_summaries import get_project_summary_by_id
 from src.db.project_thumbnails import (
-    delete_project_thumbnail,
     get_project_thumbnail_path,
-    upsert_project_thumbnail,
+    store_thumbnail,
+    delete_thumbnail_and_file,
 )
-from src.utils.image_utils import save_standardized_thumbnail, validate_image_path
 
 IMAGES_DIR = Path("./images")
 
@@ -44,13 +43,9 @@ def upload_thumbnail(
             f.write(file.file.read())
 
         try:
-            validate_image_path(tmp_path)
+            store_thumbnail(conn, user_id, project_key, project_name, Path(tmp_path), IMAGES_DIR)
         except UnidentifiedImageError as exc:
             raise ValueError(str(exc)) from exc
-        dst = save_standardized_thumbnail(
-            Path(tmp_path), IMAGES_DIR, user_id, project_name
-        )
-        upsert_project_thumbnail(conn, user_id, project_key, str(dst))
     finally:
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
@@ -96,14 +91,5 @@ def remove_thumbnail(
         return None
 
     project_key = project["project_key"]
-    image_path = get_project_thumbnail_path(conn, user_id, project_key)
-    if image_path is None:
-        return False
-
-    delete_project_thumbnail(conn, user_id, project_key)
-
-    p = Path(image_path)
-    if p.exists() and p.parent.resolve() == IMAGES_DIR.resolve():
-        p.unlink(missing_ok=True)
-
-    return True
+    deleted = delete_thumbnail_and_file(conn, user_id, project_key, IMAGES_DIR)
+    return True if deleted else False
