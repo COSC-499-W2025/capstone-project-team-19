@@ -605,29 +605,10 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
     # 2) If no git metrics (or no top_files), fall back to user_code_contributions
     if not focus_file_paths:
         try:
-            contributed = get_user_contributed_files(
-                conn,
-                user_id=user_id,
-                project_name=project_name,
-                limit=5,   # ensures we stick to top 5
-            )
-
-            file_paths: list[str] = []
-            for row in contributed:
-                if isinstance(row, dict):
-                    path = row.get("file_path") or row.get("path")
-                else:
-                    # assume first column is file_path if it's a tuple/row
-                    path = row[0] if row else None
-                if path:
-                    file_paths.append(path)
-
-            focus_file_paths = file_paths or None
+            contributed = get_user_contributed_files(conn, user_id, project_name)[:5]
+            focus_file_paths = contributed or None
         except Exception as e:
-            print(
-                "[COLLABORATIVE-CODE] Could not load user contributed files; "
-                f"falling back to all code files. Reason: {e}"
-            )
+            print("[COLLABORATIVE-CODE] Could not load user contributed files; falling back to all code files. Reason: {e}")
             focus_file_paths = None
 
     # Extract skills for collaborative code projects
