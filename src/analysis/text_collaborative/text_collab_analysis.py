@@ -142,7 +142,7 @@ def analyze_collaborative_text_project(
     user_sections = [sections[i - 1] for i in indices]
 
     # ---------------------------------------------------------
-    # STEP 2A — Ask for contribution description (like code projects)
+    # STEP 2A — Ask for contribution description
     # ---------------------------------------------------------
     print("\nDescribe your personal contributions to this collaborative text project.")
     print("Write 1-3 sentences. Be specific about sections/content you primarily worked on.")
@@ -322,7 +322,7 @@ def analyze_collaborative_text_project(
             full_main_text, contributed_text
         )
     else:
-        contribution_summary = _manual_contribution_summary_prompt()
+        contribution_summary = contribution_desc or "[No manual contribution summary provided]"
 
     if constants.VERBOSE:
         print("\n" + "="*80)
@@ -408,24 +408,3 @@ def _load_main_text(parsed_files, main_file_name, zip_path, conn, user_id):
 
     path = os.path.join(base_path, match["file_path"])
     return extract_text_file(path, conn, user_id) or ""
-
-
-def _manual_contribution_summary_prompt():
-    """Manual first-person contribution statement."""
-    print("\nLLM consent not granted. Please describe your contributions.\n")
-    print("What types of contribution did you make?")
-    options = [
-        "Writing", "Editing", "Research", "Formatting",
-        "Proofreading", "Data Analysis", "Drafting", "Revising"
-    ]
-    for i, opt in enumerate(options, start=1):
-        print(f"{i}. {opt}")
-
-    nums = input("Enter numbers (comma-separated): ").strip()
-    selected = [options[int(n.strip()) - 1] for n in nums.split(",") if n.strip().isdigit()]
-
-    if not selected:
-        return "I contributed to the project, but did not specify the type of work."
-
-    joined = ", ".join(selected)
-    return f"I contributed by {joined.lower()}."
