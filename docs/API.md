@@ -541,7 +541,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
 
     - **Upload Thumbnail**
         - **Endpoint**: `POST /projects/{project_id}/thumbnail`
-        - **Description**: Upload or replace a project's thumbnail image. Accepts PNG, JPG, JPEG, and WEBP formats. Images are automatically converted to PNG and resized if larger than 800x800 px.
+        - **Description**: Upload or replace a project's thumbnail image. If a thumbnail already exists for the project, it is overwritten (no separate edit/replace endpoint needed). Accepts PNG, JPG, JPEG, and WEBP formats. Images are automatically converted to PNG and resized if larger than 800x800 px.
         - **Path Parameters**:
             - `{project_id}` (integer, required): The `project_summary_id` of the project
         - **Auth**: `Authorization: Bearer <access_token>`
