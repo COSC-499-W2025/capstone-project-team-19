@@ -130,8 +130,8 @@ def test_list_project_files_requires_needs_file_roles(client, auth_headers):
     # Two projects -> reliably lands in needs_classification (not needs_file_roles)
     zip_bytes = _make_zip_bytes(
         {
-            "ProjectA/readme.txt": "hello",
-            "ProjectB/readme.txt": "hello",
+            "ProjectA/readme.txt": "hello but it's A and is different",
+            "ProjectB/readme.txt": "hello and I am B, I am not similar to A",
         }
     )
     start = client.post(

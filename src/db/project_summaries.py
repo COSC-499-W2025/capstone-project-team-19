@@ -106,7 +106,7 @@ def get_project_summaries_list(conn, user_id):
         JOIN projects p
             ON p.project_key = ps.project_key
         WHERE ps.user_id = ?
-        ORDER BY ps.created_at DESC
+        ORDER BY ps.created_at DESC, p.display_name ASC
     """, (user_id,)).fetchall()
 
     return [
