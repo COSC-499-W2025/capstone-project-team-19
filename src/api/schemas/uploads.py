@@ -70,4 +70,3 @@ class ManualProjectSummaryRequestDTO(BaseModel):
 
 class ManualContributionSummaryRequestDTO(BaseModel):
     manual_contribution_summary: str = ""
-    key_role: Optional[str] = None

@@ -48,7 +48,6 @@ def set_manual_contribution_summary(
     upload_id: int,
     project_name: str,
     manual_contribution_summary: str,
-    key_role: str | None = None,
 ) -> dict:
     upload = _require_upload(conn, user_id, upload_id)
     _require_status(upload)
@@ -61,11 +60,6 @@ def set_manual_contribution_summary(
     contributions = dict(state.get("contributions") or {})
     proj = dict(contributions.get(project_name) or {})
     proj["manual_contribution_summary"] = desc
-
-    if key_role is not None:
-        kr = (key_role or "").strip()
-        if kr:
-            proj["key_role"] = kr
 
     contributions[project_name] = proj
 
