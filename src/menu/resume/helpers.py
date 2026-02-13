@@ -283,6 +283,7 @@ def render_snapshot(
 def _filter_skills_by_highlighted(
     skills: List[str],
     highlighted_skills: List[str],
+    order_by_highlighted: bool = False,
 ) -> List[str]:
     """Filter display skills by the raw highlighted skill names.
 
@@ -322,12 +323,26 @@ def _filter_skills_by_highlighted(
     for raw, label in writing_skill_map.items():
         label_to_raw[label] = raw
 
-    filtered = []
+    if not order_by_highlighted:
+        filtered = []
+        for skill in skills:
+            raw_name = label_to_raw.get(skill, skill)
+            if raw_name in highlighted_skills:
+                filtered.append(skill)
+        return filtered
+
+    order_index = {raw: idx for idx, raw in enumerate(highlighted_skills)}
+    ordered: List[tuple[int, str]] = []
+    seen: set[str] = set()
     for skill in skills:
         raw_name = label_to_raw.get(skill, skill)
-        if raw_name in highlighted_skills:
-            filtered.append(skill)
-    return filtered
+        idx = order_index.get(raw_name)
+        if idx is None or skill in seen:
+            continue
+        seen.add(skill)
+        ordered.append((idx, skill))
+    ordered.sort(key=lambda item: item[0])
+    return [skill for _idx, skill in ordered]
 
 
 def _render_project_block(
@@ -380,7 +395,11 @@ def _render_project_block(
     # Skills - filter by highlighted_skills if provided
     skills = p.get("skills") or []
     if highlighted_skills is not None:
-        skills = _filter_skills_by_highlighted(skills, highlighted_skills)
+        skills = _filter_skills_by_highlighted(
+            skills,
+            highlighted_skills,
+            order_by_highlighted=True,
+        )
     if skills:
         lines.append("  Skills:")
         lines.append("    • " + ", ".join(skills))
