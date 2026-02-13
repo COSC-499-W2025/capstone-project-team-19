@@ -11,6 +11,7 @@ from src.services.resumes_service import (
     edit_resume,
     delete_resume,
     delete_all_resumes,
+    remove_project_from_resume,
 )
 
 router = APIRouter(prefix="/resume", tags=["resume"])
@@ -61,6 +62,27 @@ def delete_single_resume(
     if not deleted:
         raise HTTPException(status_code=404, detail="Resume not found")
     return ApiResponse(success=True, data=None, error=None)
+
+
+@router.delete("/{resume_id}/projects", response_model=ApiResponse[ResumeDetailDTO | None])
+def remove_project_from_resume_endpoint(
+    resume_id: int,
+    project_name: str,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    """Remove a single project from a resume. Deletes the resume if no projects remain."""
+    # Check resume exists first so we can give a specific 404 message.
+    resume = get_resume_by_id(conn, user_id, resume_id)
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    result = remove_project_from_resume(conn, user_id, resume_id, project_name)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Project not found in resume")
+    if result.get("deleted_resume"):
+        return ApiResponse(success=True, data=None, error=None)
+    dto = ResumeDetailDTO(**result)
+    return ApiResponse(success=True, data=dto, error=None)
 
 
 @router.post("/generate", response_model=ApiResponse[ResumeDetailDTO], status_code=201)

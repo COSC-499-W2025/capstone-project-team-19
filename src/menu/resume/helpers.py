@@ -646,6 +646,53 @@ def _aggregate_skills(summaries: List[ProjectSummary], highlighted_skills: List[
         "writing_skills": sorted(writing_skills),
     }
 
+# Display-name labels for writing skills.  Used to partition already-mapped
+# skill labels (from resume snapshot JSON) into writing vs technical buckets.
+WRITING_SKILL_LABELS = {
+    "Clear communication",
+    "Structured writing",
+    "Strong vocabulary",
+    "Analytical writing",
+    "Critical thinking",
+    "Revision & editing",
+    "Planning & organization",
+    "Research integration",
+    "Data collection",
+    "Data analysis",
+}
+
+
+def recompute_aggregated_skills(projects: List[Dict[str, Any]]) -> Dict[str, List[str]]:
+    """Rebuild aggregated_skills from a list of snapshot project dicts.
+
+    Unlike ``_aggregate_skills`` (which works on ``ProjectSummary`` objects and
+    maps raw skill keys to display names), this operates on resume-snapshot
+    project entries where skills are already display-name strings.
+    """
+    langs: set[str] = set()
+    frameworks: set[str] = set()
+    tech_skills: set[str] = set()
+    writing_skills: set[str] = set()
+
+    for p in projects:
+        for lang in p.get("languages") or []:
+            langs.add(lang)
+        for fw in p.get("frameworks") or []:
+            frameworks.add(fw)
+        for skill in p.get("skills") or []:
+            if skill in WRITING_SKILL_LABELS:
+                writing_skills.add(skill)
+            else:
+                tech_skills.add(skill)
+
+    return {
+        "languages": sorted(langs),
+        "frameworks": sorted(frameworks),
+        "technical_skills": sorted(tech_skills),
+        "writing_skills": sorted(writing_skills),
+    }
+
+
 def enrich_snapshot_with_contributions(conn, user_id: int, snapshot: Dict[str, Any]) -> Dict[str, Any]:
     snapshot = enrich_snapshot_with_dates(conn, user_id, snapshot)
 

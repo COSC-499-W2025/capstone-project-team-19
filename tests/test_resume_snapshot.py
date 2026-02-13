@@ -826,3 +826,104 @@ class TestKeyRoleInResume:
 
         assert "summary_text" in sections
         assert "key_role" in sections
+
+
+# ============================================================================
+# CLI: _handle_remove_project_from_resume tests
+# ============================================================================
+
+def _seed_resume_with_projects(conn, user_id, name, project_dicts):
+    """Insert a resume snapshot with the given project entries."""
+    from src.menu.resume.helpers import recompute_aggregated_skills
+
+    snapshot = {
+        "projects": project_dicts,
+        "aggregated_skills": recompute_aggregated_skills(project_dicts),
+    }
+    return insert_resume_snapshot(
+        conn, user_id, name, json.dumps(snapshot), "rendered"
+    )
+
+
+def test_cli_remove_project_from_multi_project_resume(monkeypatch, capsys):
+    """CLI: removing one project from a 2-project resume keeps the other."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    projects = [
+        {"project_name": "Alpha", "languages": ["Python"], "frameworks": [], "skills": ["OOP"]},
+        {"project_name": "Beta", "languages": ["Go"], "frameworks": [], "skills": ["Testing"]},
+    ]
+    resume_id = _seed_resume_with_projects(conn, user_id, "MyResume", projects)
+
+    # Select resume 1, project 1 (Alpha), confirm "y"
+    inputs = iter(["1", "1", "y"])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+    result = resume_flow._handle_remove_project_from_resume(conn, user_id)
+    assert result is True
+
+    snap = get_resume_snapshot(conn, user_id, resume_id)
+    data = json.loads(snap["resume_json"])
+    names = [p["project_name"] for p in data["projects"]]
+    assert "Alpha" not in names
+    assert "Beta" in names
+
+    # Skills should be recomputed (OOP gone, Testing remains)
+    assert "Testing" in data["aggregated_skills"]["technical_skills"]
+    assert "OOP" not in data["aggregated_skills"]["technical_skills"]
+
+
+def test_cli_remove_last_project_deletes_resume(monkeypatch, capsys):
+    """CLI: removing the only project deletes the resume entirely."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    projects = [{"project_name": "Solo", "languages": [], "frameworks": [], "skills": []}]
+    resume_id = _seed_resume_with_projects(conn, user_id, "SingleResume", projects)
+
+    inputs = iter(["1", "1", "y"])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+    result = resume_flow._handle_remove_project_from_resume(conn, user_id)
+    assert result is True
+
+    assert list_resumes(conn, user_id) == []
+    out = capsys.readouterr().out
+    assert "deleted" in out.lower()
+
+
+def test_cli_remove_project_cancelled_by_user(monkeypatch, capsys):
+    """CLI: user cancels at the confirmation prompt."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    projects = [{"project_name": "Keep", "languages": [], "frameworks": [], "skills": []}]
+    resume_id = _seed_resume_with_projects(conn, user_id, "Res", projects)
+
+    # Select resume 1, project 1, decline "n"
+    inputs = iter(["1", "1", "n"])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+    result = resume_flow._handle_remove_project_from_resume(conn, user_id)
+    assert result is False
+
+    # Resume should be untouched
+    snap = get_resume_snapshot(conn, user_id, resume_id)
+    data = json.loads(snap["resume_json"])
+    assert len(data["projects"]) == 1
+
+
+def test_cli_remove_project_no_resumes(monkeypatch, capsys):
+    """CLI: prints message when there are no resumes."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+
+    result = resume_flow._handle_remove_project_from_resume(conn, user_id=1)
+    assert result is False
+
+    out = capsys.readouterr().out
+    assert "No saved resumes" in out

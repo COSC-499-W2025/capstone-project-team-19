@@ -1555,6 +1555,42 @@ Manages résumé-specific representations of projects.
     }
     ```
 
+- **Remove Project from Resume**
+  - **Endpoint**: `DELETE /resume/{resume_id}/projects?project_name=<name>`
+  - **Description**: Removes a single project from a résumé snapshot. Recomputes aggregated skills from the remaining projects. If no projects remain after removal, the résumé is deleted entirely.
+  - **Path Parameters**:
+    - `{resume_id}` (integer, required): The ID of the résumé snapshot
+  - **Query Parameters**:
+    - `project_name` (string, required): The name of the project to remove
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Response Status**: `200 OK` on success, `404 Not Found` if résumé doesn't exist or project isn't in the résumé
+  - **Response Body** (project removed, résumé still has other projects):
+    ```json
+    {
+      "success": true,
+      "data": {
+        "id": 1,
+        "name": "My Resume",
+        "projects": [...],
+        "aggregated_skills": {...},
+        "rendered_text": "..."
+      },
+      "error": null
+    }
+    ```
+  - **Response Body** (last project removed, résumé deleted):
+    ```json
+    {
+      "success": true,
+      "data": null,
+      "error": null
+    }
+    ```
+  - **Error Responses**:
+    - `401 Unauthorized`: Missing or invalid Bearer token
+    - `404 Not Found`: `"Resume not found"` or `"Project not found in resume"` (distinct messages)
+    - `422 Unprocessable Entity`: Missing `project_name` query parameter
+
 - **Export Resume to DOCX**
     - **Endpoint**: `GET /resume/{resume_id}/export/docx`
     - **Description**: Exports a résumé snapshot to a Word document (.docx) file.
