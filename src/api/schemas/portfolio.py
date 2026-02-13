@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
 
+from src.api.schemas.skills import SkillPreferenceDTO
+
 
 class PortfolioProjectDTO(BaseModel):
     project_name: str
@@ -33,3 +35,5 @@ class PortfolioEditRequestDTO(BaseModel):
     summary_text: Optional[str] = Field(None, max_length=5000)
     contribution_bullets: Optional[List[str]] = None
     name: Optional[str] = Field(default="Portfolio", max_length=200)
+    skill_preferences: Optional[List[SkillPreferenceDTO]] = None
+    skill_preferences_reset: Optional[bool] = False

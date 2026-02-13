@@ -8,7 +8,11 @@ from src.services.resume_overrides import (
     update_project_manual_overrides,
     apply_manual_overrides_to_resumes,
 )
-from src.services.skill_preferences_service import get_highlighted_skills_for_display
+from src.services.skill_preferences_service import (
+    get_highlighted_skills_for_display,
+    update_skill_preferences,
+    reset_skill_preferences,
+)
 from src.db.projects import get_project_key
 from src.insights.portfolio import (
     format_duration,
@@ -268,6 +272,8 @@ def edit_portfolio(
     summary_text: Optional[str] = None,
     contribution_bullets: Optional[List[str]] = None,
     name: str = "Portfolio",
+    skill_preferences: Optional[List[Dict[str, Any]]] = None,
+    skill_preferences_reset: Optional[bool] = False,
 ) -> Optional[Dict[str, Any]]:
     """
     Edit portfolio wording for a project.
@@ -278,6 +284,48 @@ def edit_portfolio(
     if not summary_row:
         return None
 
+    if scope not in ("portfolio_only", "global"):
+        scope = "portfolio_only"
+
+    pref_context = "portfolio" if scope == "portfolio_only" else "global"
+    pref_context_id = None
+    if skill_preferences_reset:
+        project_key = get_project_key(conn, user_id, project_name)
+        if project_key is None:
+            return None
+        reset_skill_preferences(
+            conn,
+            user_id,
+            context=pref_context,
+            context_id=pref_context_id,
+            project_key=project_key,
+        )
+    elif skill_preferences:
+        project_key = get_project_key(conn, user_id, project_name)
+        if project_key is None:
+            return None
+        normalized_prefs: List[Dict[str, Any]] = []
+        for pref in skill_preferences:
+            data = pref.dict() if hasattr(pref, "dict") else pref
+            if not isinstance(data, dict):
+                continue
+            skill_name = data.get("skill_name")
+            if not skill_name:
+                continue
+            normalized_prefs.append({
+                "skill_name": skill_name,
+                "is_highlighted": data.get("is_highlighted", True),
+                "display_order": data.get("display_order"),
+            })
+        if normalized_prefs:
+            update_skill_preferences(
+                conn,
+                user_id,
+                normalized_prefs,
+                context=pref_context,
+                context_id=pref_context_id,
+                project_key=project_key,
+            )
     # Build updates dict
     updates: Dict[str, Any] = {}
     if display_name is not None:

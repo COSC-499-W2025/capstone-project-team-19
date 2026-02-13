@@ -25,6 +25,11 @@ from src.services.resume_overrides import (
     update_project_manual_overrides,
     apply_manual_overrides_to_resumes,
 )
+from src.services.skill_preferences_service import (
+    update_skill_preferences,
+    reset_skill_preferences,
+)
+from src.db.projects import get_project_key
 import json
 
 
@@ -94,6 +99,8 @@ def edit_resume(
     contribution_bullets: Optional[List[str]] = None,
     contribution_edit_mode: Literal["append", "replace"] = "replace",
     key_role: Optional[str] = None,
+    skill_preferences: Optional[List[Dict[str, Any]]] = None,
+    skill_preferences_reset: Optional[bool] = False,
 ) -> Optional[Dict[str, Any]]:
 
     # Get the resume record
@@ -121,6 +128,8 @@ def edit_resume(
     # For project editing, scope is required
     if scope is None:
         scope = "resume_only"  # Default to resume_only if not specified
+    if scope not in ("resume_only", "global"):
+        scope = "resume_only"
 
     # Find the project entry in the snapshot
     projects = snapshot.get("projects") or []
@@ -132,6 +141,48 @@ def edit_resume(
 
     if not project_entry:
         return None
+
+    # Resolve context for skill preferences
+    pref_context = "resume" if scope == "resume_only" else "global"
+    pref_context_id = resume_id if scope == "resume_only" else None
+
+    if skill_preferences_reset:
+        project_key = get_project_key(conn, user_id, project_name)
+        if project_key is None:
+            return None
+        reset_skill_preferences(
+            conn,
+            user_id,
+            context=pref_context,
+            context_id=pref_context_id,
+            project_key=project_key,
+        )
+    elif skill_preferences:
+        project_key = get_project_key(conn, user_id, project_name)
+        if project_key is None:
+            return None
+        normalized_prefs: List[Dict[str, Any]] = []
+        for pref in skill_preferences:
+            data = pref.dict() if hasattr(pref, "dict") else pref
+            if not isinstance(data, dict):
+                continue
+            skill_name = data.get("skill_name")
+            if not skill_name:
+                continue
+            normalized_prefs.append({
+                "skill_name": skill_name,
+                "is_highlighted": data.get("is_highlighted", True),
+                "display_order": data.get("display_order"),
+            })
+        if normalized_prefs:
+            update_skill_preferences(
+                conn,
+                user_id,
+                normalized_prefs,
+                context=pref_context,
+                context_id=pref_context_id,
+                project_key=project_key,
+            )
 
     # Build updates dict
     updates: Dict[str, Any] = {}
@@ -151,7 +202,7 @@ def edit_resume(
         updates["key_role"] = key_role or None
 
     if not updates:
-        # No field updates, just return existing
+        # No field updates, just return existing (skill prefs may have changed)
         return get_resume_by_id(conn, user_id, resume_id)
 
     if scope == "resume_only":
