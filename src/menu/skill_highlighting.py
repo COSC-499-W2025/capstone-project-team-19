@@ -2,7 +2,7 @@
 src/menu/skill_highlighting.py
 
 Menu for managing skill highlighting preferences.
-Supports per-resume, per-portfolio, and global contexts.
+Supports per-project, per-resume, per-portfolio, and global contexts.
 """
 
 from typing import List, Dict, Any, Optional, Literal
@@ -21,6 +21,7 @@ def manage_skill_highlighting(
     context: Literal["global", "portfolio", "resume"] = "global",
     context_id: Optional[int] = None,
     context_name: Optional[str] = None,
+    project_key: Optional[int] = None,
 ) -> None:
     """
     Interactive menu for managing which skills to highlight.
@@ -32,6 +33,7 @@ def manage_skill_highlighting(
         context: "global", "portfolio", or "resume"
         context_id: Resume ID when context is "resume", None otherwise
         context_name: Name of resume/portfolio for display
+        project_key: Project key to scope skills to a specific project
     """
     context_label = _get_context_label(context, context_name)
     back_label = "Back" if context != "global" else "Back to main menu"
@@ -50,13 +52,13 @@ def manage_skill_highlighting(
         choice = input("\nSelect an option (1-5): ").strip()
 
         if choice == "1":
-            _view_skill_preferences(conn, user_id, context, context_id, context_label)
+            _view_skill_preferences(conn, user_id, context, context_id, context_label, project_key)
         elif choice == "2":
-            _toggle_skill_highlighting(conn, user_id, context, context_id, context_label)
+            _toggle_skill_highlighting(conn, user_id, context, context_id, context_label, project_key)
         elif choice == "3":
-            _set_skill_order(conn, user_id, context, context_id, context_label)
+            _set_skill_order(conn, user_id, context, context_id, context_label, project_key)
         elif choice == "4":
-            _reset_preferences(conn, user_id, context, context_id, context_label)
+            _reset_preferences(conn, user_id, context, context_id, context_label, project_key)
         elif choice == "5":
             break
         else:
@@ -68,8 +70,8 @@ def _get_context_label(
     context_name: Optional[str] = None,
 ) -> str:
     """Get display label for the current context."""
-    if context == "resume" and context_name:
-        return f"Resume: {context_name}"
+    if context_name:
+        return context_name
     elif context == "resume":
         return "This Resume"
     elif context == "portfolio":
@@ -84,9 +86,10 @@ def _view_skill_preferences(
     context: Literal["global", "portfolio", "resume"] = "global",
     context_id: Optional[int] = None,
     context_label: str = "Global",
+    project_key: Optional[int] = None,
 ) -> None:
     """Display current skill preferences."""
-    skills = get_available_skills_with_status(conn, user_id, context, context_id)
+    skills = get_available_skills_with_status(conn, user_id, context, context_id, project_key)
 
     if not skills:
         print("\nNo skills found. Upload and analyze projects first.")
@@ -114,9 +117,9 @@ def _view_skill_preferences(
     if context == "global":
         print("(These preferences apply to all resumes and portfolio unless overridden)")
     elif context == "resume":
-        print("(These preferences apply only to this resume)")
+        print("(These preferences apply only to this project in this resume)")
     elif context == "portfolio":
-        print("(These preferences apply only to the portfolio)")
+        print("(These preferences apply only to this project in the portfolio)")
 
 
 def _toggle_skill_highlighting(
@@ -125,9 +128,10 @@ def _toggle_skill_highlighting(
     context: Literal["global", "portfolio", "resume"] = "global",
     context_id: Optional[int] = None,
     context_label: str = "Global",
+    project_key: Optional[int] = None,
 ) -> None:
     """Toggle highlighting for individual skills."""
-    skills = get_available_skills_with_status(conn, user_id, context, context_id)
+    skills = get_available_skills_with_status(conn, user_id, context, context_id, project_key)
 
     if not skills:
         print("\nNo skills found. Upload and analyze projects first.")
@@ -158,13 +162,11 @@ def _toggle_skill_highlighting(
         return
 
     # Toggle the selected skills and save ALL skills' status
-    # This ensures un-toggled skills are also tracked in the database
     toggled_count = 0
     updates: List[Dict[str, Any]] = []
 
     for idx, skill in enumerate(skills, 1):
         if idx in indices:
-            # Toggle this skill
             updates.append({
                 "skill_name": skill["skill_name"],
                 "is_highlighted": not skill["is_highlighted"],
@@ -172,7 +174,6 @@ def _toggle_skill_highlighting(
             })
             toggled_count += 1
         else:
-            # Keep this skill's current status (ensure it's in DB)
             updates.append({
                 "skill_name": skill["skill_name"],
                 "is_highlighted": skill["is_highlighted"],
@@ -185,9 +186,9 @@ def _toggle_skill_highlighting(
         print(f"Skipping invalid index: {idx}")
 
     if updates:
-        update_skill_preferences(conn, user_id, updates, context, context_id)
+        update_skill_preferences(conn, user_id, updates, context, context_id, project_key)
         print(f"\nToggled {toggled_count} skill(s).")
-        _view_skill_preferences(conn, user_id, context, context_id, context_label)
+        _view_skill_preferences(conn, user_id, context, context_id, context_label, project_key)
 
 
 def _set_skill_order(
@@ -196,9 +197,10 @@ def _set_skill_order(
     context: Literal["global", "portfolio", "resume"] = "global",
     context_id: Optional[int] = None,
     context_label: str = "Global",
+    project_key: Optional[int] = None,
 ) -> None:
     """Set display order for highlighted skills."""
-    skills = get_available_skills_with_status(conn, user_id, context, context_id)
+    skills = get_available_skills_with_status(conn, user_id, context, context_id, project_key)
     highlighted = [s for s in skills if s["is_highlighted"]]
 
     if not highlighted:
@@ -247,9 +249,9 @@ def _set_skill_order(
         })
 
     if updates:
-        update_skill_preferences(conn, user_id, updates, context, context_id)
+        update_skill_preferences(conn, user_id, updates, context, context_id, project_key)
         print(f"\nUpdated display order for {len(updates)} skill(s).")
-        _view_skill_preferences(conn, user_id, context, context_id, context_label)
+        _view_skill_preferences(conn, user_id, context, context_id, context_label, project_key)
 
 
 def _reset_preferences(
@@ -258,6 +260,7 @@ def _reset_preferences(
     context: Literal["global", "portfolio", "resume"] = "global",
     context_id: Optional[int] = None,
     context_label: str = "Global",
+    project_key: Optional[int] = None,
 ) -> None:
     """Reset skill preferences to defaults for this context."""
     if context == "global":
@@ -270,7 +273,7 @@ def _reset_preferences(
     confirm = input(confirm_msg).strip().lower()
 
     if confirm == "y":
-        count = reset_skill_preferences(conn, user_id, context, context_id)
+        count = reset_skill_preferences(conn, user_id, context, context_id, project_key)
         print(success_msg.format(count=count))
     else:
         print("\nReset cancelled.")

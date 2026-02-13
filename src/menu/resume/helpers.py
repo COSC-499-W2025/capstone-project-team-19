@@ -208,11 +208,14 @@ def render_snapshot(
     snapshot: Dict[str, Any],
     print_output: bool = True,
     highlighted_skills: List[str] | None = None,
+    highlighted_skills_by_project: Dict[str, List[str]] | None = None,
 ) -> str:
     """Render a snapshot to text; optionally print to console.
 
     Args:
-        highlighted_skills: If provided, only show skills in this list.
+        highlighted_skills: If provided, only show skills in this list (legacy flat list).
+        highlighted_skills_by_project: If provided, per-project skill filtering
+            (dict mapping project_name -> list of highlighted skill names).
     """
     lines: List[str] = []
 
@@ -232,7 +235,12 @@ def render_snapshot(
         lines.append("")
         lines.append(header)
         for p in group_entries:
-            lines.extend(_render_project_block(conn, user_id, p, highlighted_skills=highlighted_skills))
+            # Determine per-project highlighted skills
+            proj_highlighted = highlighted_skills
+            if highlighted_skills_by_project is not None:
+                proj_name = p.get("project_name", "")
+                proj_highlighted = highlighted_skills_by_project.get(proj_name)
+            lines.extend(_render_project_block(conn, user_id, p, highlighted_skills=proj_highlighted))
 
     agg = snapshot.get("aggregated_skills", {})
     skills_lines = []
@@ -241,14 +249,20 @@ def render_snapshot(
     if agg.get("frameworks"):
         skills_lines.append(f"Frameworks: {', '.join(sorted(set(agg['frameworks'])))}")
 
-    # Filter aggregated skills by highlighted_skills if provided
+    # Filter aggregated skills by the union of all per-project highlighted skills
     tech_skills = agg.get("technical_skills", [])
     writing_skills = agg.get("writing_skills", [])
 
-    if highlighted_skills is not None:
-        # Filter to only include skills that are highlighted
-        tech_skills = _filter_skills_by_highlighted(tech_skills, highlighted_skills)
-        writing_skills = _filter_skills_by_highlighted(writing_skills, highlighted_skills)
+    effective_highlighted = highlighted_skills
+    if highlighted_skills_by_project is not None:
+        all_highlighted: set[str] = set()
+        for skills_list in highlighted_skills_by_project.values():
+            all_highlighted.update(skills_list)
+        effective_highlighted = list(all_highlighted)
+
+    if effective_highlighted is not None:
+        tech_skills = _filter_skills_by_highlighted(tech_skills, effective_highlighted)
+        writing_skills = _filter_skills_by_highlighted(writing_skills, effective_highlighted)
 
     if tech_skills:
         skills_lines.append(f"Technical skills: {', '.join(sorted(set(tech_skills)))}")
