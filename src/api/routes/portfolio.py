@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlite3 import Connection
 
 from src.api.dependencies import get_db, get_current_user_id
+from src.db.project_summaries import get_project_summary_by_id
 from src.api.schemas.common import ApiResponse
 from src.api.schemas.portfolio import PortfolioDetailDTO, PortfolioGenerateRequestDTO, PortfolioEditRequestDTO
 from src.services.portfolio_service import generate_portfolio, edit_portfolio, CorruptProjectDataError
@@ -30,11 +31,21 @@ def post_portfolio_edit(
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
+    project_name = None
+    if request.project_summary_id is not None:
+        row = get_project_summary_by_id(conn, user_id, request.project_summary_id)
+        if row:
+            project_name = row.get("project_name")
+    if project_name is None and request.project_name:
+        project_name = request.project_name
+    if not project_name:
+        raise HTTPException(status_code=400, detail="Either project_summary_id or project_name must be provided")
+
     try:
         result = edit_portfolio(
             conn,
             user_id,
-            project_name=request.project_name,
+            project_name=project_name,
             scope=request.scope,
             display_name=request.display_name,
             summary_text=request.summary_text,

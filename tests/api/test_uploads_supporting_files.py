@@ -24,9 +24,24 @@ def get_upload_state(client, auth_headers, upload_id: int) -> dict:
     return res.json()["data"].get("state") or {}
 
 
+def get_project_key_from_state(state: dict, project_name: str) -> int:
+    pk = (state.get("dedup_project_keys") or {}).get(project_name)
+    assert pk is not None, f"project_key not found for {project_name} in state"
+    return int(pk)
+
+
+def get_project_key_for_upload(client, auth_headers, upload_id: int, project_name: str) -> int:
+    state = get_upload_state(client, auth_headers, upload_id)
+    return get_project_key_from_state(state, project_name)
+
+
 def get_files_payload(client, auth_headers, upload_id: int, project: str) -> dict:
+    res = client.get(f"/projects/upload/{upload_id}", headers=auth_headers)
+    assert res.status_code == 200
+    state = res.json()["data"].get("state") or {}
+    project_key = get_project_key_from_state(state, project)
     res = client.get(
-        f"/projects/upload/{upload_id}/projects/{project}/files",
+        f"/projects/upload/{upload_id}/projects/{project_key}/files",
         headers=auth_headers,
     )
     assert res.status_code == 200
@@ -47,8 +62,12 @@ def get_project_contrib(state: dict, project: str) -> dict:
 
 
 def post_set_main_file(client, auth_headers, upload_id: int, project: str, main_relpath: str) -> dict:
+    res = client.get(f"/projects/upload/{upload_id}", headers=auth_headers)
+    assert res.status_code == 200
+    state = res.json()["data"].get("state") or {}
+    project_key = get_project_key_from_state(state, project)
     res = client.post(
-        f"/projects/upload/{upload_id}/projects/{project}/main-file",
+        f"/projects/upload/{upload_id}/projects/{project_key}/main-file",
         headers=auth_headers,
         json={"relpath": main_relpath},
     )
@@ -105,8 +124,9 @@ def test_post_supporting_text_files_happy_path_persists_and_dedupes(client, auth
 
     selected = [candidates[0], candidates[1], candidates[0]]  # duplicates on purpose
 
+    project_key = get_project_key_for_upload(client, auth_headers, upload_id, PROJECT)
     res = client.post(
-        f"/projects/upload/{upload_id}/projects/{PROJECT}/supporting-text-files",
+        f"/projects/upload/{upload_id}/projects/{project_key}/supporting-text-files",
         headers=auth_headers,
         json={"relpaths": selected},
     )
@@ -133,8 +153,9 @@ def test_post_supporting_text_files_rejects_main_file(client, auth_headers):
     candidates = supporting_text_candidates(files_payload, main_relpath)
     assert candidates
 
+    project_key = get_project_key_for_upload(client, auth_headers, upload_id, PROJECT)
     res = client.post(
-        f"/projects/upload/{upload_id}/projects/{PROJECT}/supporting-text-files",
+        f"/projects/upload/{upload_id}/projects/{project_key}/supporting-text-files",
         headers=auth_headers,
         json={"relpaths": [candidates[0], main_relpath]},
     )
@@ -158,8 +179,9 @@ def test_post_supporting_text_files_invalid_relpath_is_atomic(client, auth_heade
     valid_one = candidates[0]
     invalid_one = valid_one + "__does_not_exist"
 
+    project_key = get_project_key_for_upload(client, auth_headers, upload_id, PROJECT)
     res = client.post(
-        f"/projects/upload/{upload_id}/projects/{PROJECT}/supporting-text-files",
+        f"/projects/upload/{upload_id}/projects/{project_key}/supporting-text-files",
         headers=auth_headers,
         json={"relpaths": [valid_one, invalid_one]},
     )
@@ -178,8 +200,9 @@ def test_post_supporting_text_files_rejects_unsafe_relpath(client, auth_headers)
         client, auth_headers, build_zip_for_supporting_files(PROJECT), PROJECT
     )
 
+    project_key = get_project_key_for_upload(client, auth_headers, upload_id, PROJECT)
     res = client.post(
-        f"/projects/upload/{upload_id}/projects/{PROJECT}/supporting-text-files",
+        f"/projects/upload/{upload_id}/projects/{project_key}/supporting-text-files",
         headers=auth_headers,
         json={"relpaths": ["../evil.txt"]},
     )
@@ -199,8 +222,9 @@ def test_post_supporting_csv_files_happy_path_persists_and_dedupes(client, auth_
 
     selected = [csvs[0], csvs[1], csvs[0]]
 
+    project_key = get_project_key_for_upload(client, auth_headers, upload_id, PROJECT)
     res = client.post(
-        f"/projects/upload/{upload_id}/projects/{PROJECT}/supporting-csv-files",
+        f"/projects/upload/{upload_id}/projects/{project_key}/supporting-csv-files",
         headers=auth_headers,
         json={"relpaths": selected},
     )
@@ -225,8 +249,9 @@ def test_post_supporting_csv_files_rejects_non_csv(client, auth_headers):
 
     non_csv_text = pick_relpath_by_filename(files_payload["all_files"], "reading_notes.txt")
 
+    project_key = get_project_key_for_upload(client, auth_headers, upload_id, PROJECT)
     res = client.post(
-        f"/projects/upload/{upload_id}/projects/{PROJECT}/supporting-csv-files",
+        f"/projects/upload/{upload_id}/projects/{project_key}/supporting-csv-files",
         headers=auth_headers,
         json={"relpaths": [non_csv_text]},
     )
@@ -254,9 +279,11 @@ def test_supporting_files_requires_needs_file_roles(client, auth_headers):
     assert start.status_code == 200
     upload = start.json()["data"]
     upload_id = upload["upload_id"]
+    state = upload.get("state") or {}
+    project_key = get_project_key_from_state(state, "ProjectA")
 
     res = client.post(
-        f"/projects/upload/{upload_id}/projects/ProjectA/supporting-text-files",
+        f"/projects/upload/{upload_id}/projects/{project_key}/supporting-text-files",
         headers=auth_headers,
         json={"relpaths": ["ProjectA/reading_notes.txt"]},
     )

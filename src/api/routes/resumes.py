@@ -4,6 +4,7 @@ from sqlite3 import Connection
 from src.api.dependencies import get_db, get_current_user_id
 from src.api.schemas.common import ApiResponse, DeleteResultDTO
 from src.api.schemas.resumes import ResumeListDTO, ResumeListItemDTO, ResumeDetailDTO, ResumeGenerateRequestDTO, ResumeEditRequestDTO
+from src.db.project_summaries import get_project_summary_by_id
 from src.services.resumes_service import (
     list_user_resumes,
     get_resume_by_id,
@@ -90,11 +91,21 @@ def post_resume_edit(
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
+    project_name = None
+    if request.project_summary_id is not None:
+        row = get_project_summary_by_id(conn, user_id, request.project_summary_id)
+        if row:
+            project_name = row.get("project_name")
+    if project_name is None and request.project_name:
+        project_name = request.project_name
+    if project_name is None and (request.display_name or request.summary_text or request.contribution_bullets or request.key_role):
+        raise HTTPException(status_code=400, detail="Either project_summary_id or project_name must be provided for project edits")
+
     resume = edit_resume(
         conn,
         user_id,
         resume_id,
-        project_name=request.project_name,
+        project_name=project_name,
         scope=request.scope,
         name=request.name,
         display_name=request.display_name,

@@ -39,6 +39,7 @@ class UploadFileItemDTO(BaseModel):
     size_bytes: Optional[int] = None
 
 class UploadProjectFilesDTO(BaseModel):
+    project_key: Optional[int] = None
     project_name: str
     all_files: List[UploadFileItemDTO]
     text_files: List[UploadFileItemDTO]
@@ -58,6 +59,7 @@ class MainFileSectionDTO(BaseModel):
     is_truncated: bool = False
 
 class MainFileSectionsResponseDTO(BaseModel):
+    project_key: Optional[int] = None
     project_name: str
     main_file: str
     sections: List[MainFileSectionDTO]

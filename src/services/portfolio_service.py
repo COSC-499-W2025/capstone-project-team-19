@@ -97,6 +97,7 @@ def build_portfolio_data(
             skills = all_project_skills[:4]
 
         projects.append({
+            "project_summary_id": row.get("project_summary_id"),
             "project_name": project_name,
             "display_name": display_name,
             "project_type": project_type,

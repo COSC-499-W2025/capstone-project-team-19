@@ -66,7 +66,8 @@ def list_main_file_sections(
             }
         )
 
-    return {"project_name": project_name, "main_file": main_file_relpath, "sections": sections}
+    project_key = (state.get("dedup_project_keys") or {}).get(project_name)
+    return {"project_key": project_key, "project_name": project_name, "main_file": main_file_relpath, "sections": sections}
 
 
 def set_main_file_contributed_sections(

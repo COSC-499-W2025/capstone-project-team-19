@@ -513,6 +513,20 @@ def _known_projects_from_layout(layout: dict) -> set[str]:
     return set((layout.get("auto_assignments") or {}).keys()) | set(layout.get("pending_projects") or [])
 
 
+def _resolve_project_key_to_name(upload: dict, project_key: int) -> Optional[str]:
+    """
+    Resolve project_key to project_name for an upload.
+    Uses state.dedup_project_keys (project_name -> project_key); inverts to find name.
+    Returns None if project_key is not in this upload.
+    """
+    state = upload.get("state") or {}
+    dedup = state.get("dedup_project_keys") or {}
+    for pname, pk in dedup.items():
+        if pk == project_key:
+            return pname
+    return None
+
+
 def _rows_for_project_scoped_to_upload(
     conn: sqlite3.Connection,
     user_id: int,
@@ -588,8 +602,12 @@ def list_project_files(conn: sqlite3.Connection, user_id: int, upload_id: int, p
     items = [build_file_item_from_row(Path(ZIP_DATA_DIR), (*r, project_name)) for r in rows]
     buckets = categorize_project_files(items)
 
+    state = upload.get("state") or {}
+    res_project_key = (state.get("dedup_project_keys") or {}).get(project_name)
+
     return {
         "upload_id": upload_id,
+        "project_key": res_project_key,
         "project_name": project_name,
         **buckets,
     }

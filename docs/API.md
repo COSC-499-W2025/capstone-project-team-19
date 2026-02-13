@@ -578,8 +578,10 @@ A typical flow for the first six endpoints:
 4. **Submit classifications**: `POST /projects/upload/{upload_id}/classifications`
 5. **Resolve mixed project types (optional)**: `POST /projects/upload/{upload_id}/project-types`
 6. **Select collaborative text contribution sections (optional, text-collab only)**:
-   - `GET /projects/upload/{upload_id}/projects/{project_name}/text/sections`
-   - `POST /projects/upload/{upload_id}/projects/{project_name}/text/sections`
+   - `GET /projects/upload/{upload_id}/projects/{project_key}/text/sections`
+   - `POST /projects/upload/{upload_id}/projects/{project_key}/text/contributions`
+
+Use `project_key` from `state.dedup_project_keys` (keyed by project name) for each project.
 
 ---
 
@@ -760,12 +762,12 @@ A typical flow for the first six endpoints:
         - `{upload_id}` (integer, required): The ID of the upload session
 
 - **List Main File Sections (Collaborative Text Contribution)**
-    - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project_name}/text/sections`
-    - **Description**: Returns numbered sections derived from the **selected main text file** for the project (from `uploads.state.file_roles[project_name].main_file`). Intended for selecting which parts of the document the user contributed to.
+    - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project_key}/text/sections`
+    - **Description**: Returns numbered sections derived from the **selected main text file** for the project (from `uploads.state.file_roles`). Intended for selecting which parts of the document the user contributed to.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Path Params**:
         - `{upload_id}` (integer, required): The upload session ID
-        - `{project_name}` (string, required): The project name
+        - `{project_key}` (integer, required): The project key from `state.dedup_project_keys`
     - **Query Params**:
         - `max_section_chars` (integer, optional): Truncates each section’s `content` to this many characters.
     - **Response Status**: `200 OK`
@@ -796,12 +798,12 @@ A typical flow for the first six endpoints:
         - `422 Unprocessable Entity` if the main file cannot be extracted or is empty
 
 - **Set Main File Contributed Sections (Collaborative Text Contribution)**
-    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/text/sections`
-    - **Description**: Persists the section IDs the user contributed to into `uploads.state.contributions[project_name].main_section_ids`. IDs are validated against the server-derived section list and stored de-duplicated + sorted.
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_key}/text/contributions`
+    - **Description**: Persists the section IDs the user contributed to into `uploads.state.contributions`. IDs are validated against the server-derived section list and stored de-duplicated + sorted.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Path Params**:
         - `{upload_id}` (integer, required): The upload session ID
-        - `{project_name}` (string, required): The project name
+        - `{project_key}` (integer, required): The project key from `state.dedup_project_keys`
     - **Request DTO**: `SetMainFileSectionsRequestDTO`
     - **Request Body**:
         ```json
@@ -816,14 +818,14 @@ A typical flow for the first six endpoints:
         - `409 Conflict` if the main file is not selected yet for this project
 
 - **Set Supporting Text Files (Collaborative Text Contribution)**
-    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/supporting-text-files`
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_key}/supporting-text-files`
     - **Description**: Stores which **supporting TEXT files** the user contributed to (excluding the selected main file, and excluding `.csv` files).
-        - Writes to: `uploads.state.contributions[project_name].supporting_text_relpaths`
+        - Writes to: `uploads.state.contributions` (keyed by project name)
         - Values are stored **deduplicated + sorted**
     - **Auth**: `Authorization: Bearer <access_token>`
     - **Path Params**:
         - `{upload_id}` (integer, required)
-        - `{project_name}` (string, required)
+        - `{project_key}` (integer, required): From `state.dedup_project_keys`
     - **Request Body**:
         ```json
         {
@@ -843,14 +845,14 @@ A typical flow for the first six endpoints:
 
 
 - **Set Supporting CSV Files (Collaborative Text Contribution)**
-    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/supporting-csv-files`
+    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_key}/supporting-csv-files`
     - **Description**: Stores which **CSV files** the user contributed to.
-        - Writes to: `uploads.state.contributions[project_name].supporting_csv_relpaths`
+        - Writes to: `uploads.state.contributions` (keyed by project name)
         - Values are stored **deduplicated + sorted**
     - **Auth**: `Authorization: Bearer <access_token>`
     - **Path Params**:
         - `{upload_id}` (integer, required)
-        - `{project_name}` (string, required)
+        - `{project_key}` (integer, required): From `state.dedup_project_keys`
     - **Request Body**:
         ```json
         {
@@ -1106,13 +1108,13 @@ Handles Google Drive OAuth authentication and file linking for projects during t
 ---
 
 - **List Project Files**
-  - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project_name}/files`
-  - **Description**: Returns all parsed files for a project within an upload, plus convenience buckets for `text_files` and `csv_files`. Clients should use the returned `relpath` values for subsequent file-role selection calls.
+  - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project_key}/files`
+  - **Description**: Returns all parsed files for a project within an upload, plus convenience buckets for `text_files` and `csv_files`. Clients should use the returned `relpath` values for subsequent file-role selection calls. Use `project_key` from `state.dedup_project_keys`.
   - **Headers**:
     - `X-User-Id` (integer, required)
   - **Path Params**:
     - `upload_id` (integer, required)
-    - `project_name` (string, required)
+    - `project_key` (integer, required): From `state.dedup_project_keys`
   - **Valid Upload Status**:
     - `needs_file_roles`
     - `needs_summaries`
@@ -1152,13 +1154,13 @@ Handles Google Drive OAuth authentication and file linking for projects during t
     - Returns `404 Not Found` if the project is not part of this upload (not present in the upload’s layout).
 
 - **Set Project Main File**
-  - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/main-file`
-  - **Description**: Stores the client-selected main file for a project (by `relpath`) in `uploads.state.file_roles[project_name].main_file`. The relpath must match one of the parsed files for that project.
+  - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_key}/main-file`
+  - **Description**: Stores the client-selected main file for a project (by `relpath`) in `uploads.state.file_roles`. The relpath must match one of the parsed files for that project. Use `project_key` from `state.dedup_project_keys`.
   - **Headers**:
     - `X-User-Id` (integer, required)
   - **Path Params**:
     - `upload_id` (integer, required)
-    - `project_name` (string, required)
+    - `project_key` (integer, required): From `state.dedup_project_keys`
   - **Valid Upload Status**:
     - `needs_file_roles`
   - **Request DTO**: `MainFileRequestDTO`
@@ -1709,6 +1711,7 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
 ### Path Variables
 
 - `{project_id}` (integer): Maps to `project_summary_id` from the `project_summaries` table
+- `{project_key}` (integer): Maps to `project_key` from the `projects` table (used in upload flow)
 - `{resume_id}` (integer): Maps to `id` from the `resume_snapshots` table
 - `{upload_id}` (integer): Maps to `upload_id` from the `uploads` table
 - `{portfolio_id}` (integer): Reserved for future use
@@ -1720,15 +1723,29 @@ The API uses different identifiers depending on the resource. Here's where each 
 | API Parameter                | Database Table      | Database Column      | Description                        |
 | ---------------------------- | ------------------- | -------------------- | ---------------------------------- |
 | `project_id` / `project_ids` | `project_summaries` | `project_summary_id` | Unique ID for a project summary    |
-| `project_name`               | Various tables      | `project_name`       | Text identifier used across tables |
+| `project_summary_id`         | `project_summaries` | `project_summary_id` | Same as above; preferred for edits |
+| `project_key`                | `projects`          | `project_key`        | Internal project key; used in upload paths |
+| `version_key`                | `project_versions`  | `version_key`        | Identifies a specific analysis run/version |
+| `project_name`               | `projects`          | `display_name`       | Display name; for UI only, not for lookups |
 | `resume_id`                  | `resume_snapshots`  | `id`                 | Unique ID for a saved résumé       |
 | `upload_id`                  | `uploads`           | `upload_id`          | Unique ID for an upload session    |
 | `user_id`                    | `users`             | `user_id`            | Unique ID for a user               |
 
-**Note:** There is no generic `project_id` column in the database. Projects are primarily identified by:
+**Note:** Projects and versions are identified by stable keys:
 
-- `project_summary_id` (integer) - Used in API endpoints as `{project_id}`
-- `project_name` (text) - Used within résumé/portfolio data structures
+- `project_summary_id` (integer) - Preferred for resume/portfolio edits
+- `project_key` (integer) - Used in upload flow paths (from `state.dedup_project_keys`)
+- `version_key` (integer) - Per-version metrics; from `state.dedup_version_keys`
+- `project_name` (text) - Display purposes only; avoid for API lookups
+
+### Versioning
+
+Projects can have multiple versions (re-uploads). Each version gets a `version_key`. Upload state exposes:
+
+- `state.dedup_project_keys` – maps `project_name` → `project_key`
+- `state.dedup_version_keys` – maps `project_name` → `version_key`
+
+Use `project_key` in upload paths; the server resolves it to the project for that upload.
 
 ### How to Get Project IDs
 

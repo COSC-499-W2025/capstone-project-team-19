@@ -10,6 +10,7 @@ class ResumeListDTO(BaseModel):
     resumes: List[ResumeListItemDTO]
 
 class ResumeProjectDTO(BaseModel):
+    project_summary_id: Optional[int] = None  # Preferred identifier for edits
     project_name: str
     project_type: Optional[str] = None
     project_mode: Optional[str] = None
@@ -41,7 +42,8 @@ class ResumeGenerateRequestDTO(BaseModel):
 
 class ResumeEditRequestDTO(BaseModel):
     name: Optional[str] = None
-    project_name: Optional[str] = None
+    project_summary_id: Optional[int] = None  # Preferred over project_name for edits
+    project_name: Optional[str] = None  # Deprecated: use project_summary_id instead
     scope: Optional[Literal["resume_only", "global"]] = None
     display_name: Optional[str] = None
     summary_text: Optional[str] = None
