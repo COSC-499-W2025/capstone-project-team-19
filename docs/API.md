@@ -1770,8 +1770,9 @@ Every endpoint must:
 Example:
 
 - **ProjectListItemDTO**
-  - `project_summary_id` (int, required)
-  - `project_name` (string, required)
+  - `project_summary_id` (int, required) – preferred for edits
+  - `project_key` (int, optional) – internal key
+  - `project_name` (string, required) – display only
   - `project_type` (string, optional)
   - `project_mode` (string, optional)
   - `created_at` (string, optional)
@@ -1782,8 +1783,9 @@ Example:
   - `projects` (List[ProjectListItemDTO], required)
 
 - **ProjectDetailDTO** (used by `GET /projects/{project_id}`)
-  - `project_summary_id` (int, required)
-  - `project_name` (string, required)
+  - `project_summary_id` (int, required) – preferred for edits
+  - `project_key` (int, optional) – internal key
+  - `project_name` (string, required) – display only
   - `project_type` (string, optional)
   - `project_mode` (string, optional)
   - `created_at` (string, optional)

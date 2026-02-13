@@ -604,10 +604,12 @@ def list_project_files(conn: sqlite3.Connection, user_id: int, upload_id: int, p
 
     state = upload.get("state") or {}
     res_project_key = (state.get("dedup_project_keys") or {}).get(project_name)
+    res_version_key = (state.get("dedup_version_keys") or {}).get(project_name)
 
     return {
         "upload_id": upload_id,
         "project_key": res_project_key,
+        "version_key": res_version_key,
         "project_name": project_name,
         **buckets,
     }
