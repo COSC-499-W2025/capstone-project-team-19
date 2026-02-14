@@ -1433,7 +1433,7 @@ Manages résumé-specific representations of projects.
     ```json
     {
       "name": "Updated Resume Name",
-      "project_name": "MyProject",
+      "project_summary_id": 123,
       "scope": "resume_only",
       "display_name": "Custom Project Name",
       "summary_text": "Updated project summary...",
@@ -1446,7 +1446,7 @@ Manages résumé-specific representations of projects.
     ```
 
     - `name` (string, optional): New name for the résumé (rename)
-    - `project_name` (string, optional): The text name of the project to edit. If omitted (no "project_name", just "name"), only the résumé name is updated.
+    - `project_summary_id` (integer, optional): Required when editing project fields. Get this from `GET /resume/{resume_id}` response (`projects[].project_summary_id`). If omitted, only the résumé name is updated.
     - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
       - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
       - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
@@ -1478,7 +1478,7 @@ Manages résumé-specific representations of projects.
         }
         ```
         - `name` (string, optional): New name for the résumé (rename)
-        - `project_name` (string, optional): The text name of the project to edit. If omitted (no "project_name", just "name"), only the résumé name is updated.
+        - `project_summary_id` (integer, optional): Required when editing project fields. Get from `GET /resume/{resume_id}` response. If omitted, only name is updated.
         - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
             - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
             - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
@@ -1517,7 +1517,7 @@ Manages résumé-specific representations of projects.
     - **Example: Append new bullets to existing**:
         ```json
         {
-            "project_name": "MyProject",
+            "project_summary_id": 123,
             "scope": "resume_only",
             "contribution_bullets": ["Added new feature Y"],
             "contribution_edit_mode": "append"
@@ -1648,14 +1648,14 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
     - **Request Body**: Uses `PortfolioEditRequestDTO`
         ```json
         {
-            "project_name": "MyProject",
+            "project_summary_id": 123,
             "scope": "portfolio_only",
             "display_name": "Custom Project Name",
             "summary_text": "Updated summary...",
             "contribution_bullets": ["Built feature X", "Improved performance by 50%"]
         }
         ```
-        - `project_name` (string, required): The text name of the project to edit
+        - `project_summary_id` (integer, required): The `project_summary_id` from the portfolio generate response (`projects[].project_summary_id`)
         - `scope` (string, optional): Either `"portfolio_only"` (default) or `"global"`
             - `portfolio_only`: Changes apply only to the portfolio view (stored as `portfolio_overrides`)
             - `global`: Changes apply to all resumes and the portfolio (stored as `manual_overrides` in `project_summaries`, fanned out to all `resume_snapshots`)
@@ -1923,7 +1923,7 @@ Example:
 
 - **ResumeEditRequestDTO**
     - `name` (string, optional): New name for the résumé
-    - `project_name` (string, optional): Text name of the project to edit. If omitted, only name is updated.
+    - `project_summary_id` (integer, optional): Required when editing project fields. Get from `GET /resume/{resume_id}` response. If omitted, only name is updated.
     - `scope` (string, optional): `"resume_only"` (default) or `"global"`. Required when editing a project.
     - `display_name` (string, optional): Custom display name for the project
     - `summary_text` (string, optional): Updated summary text
@@ -1935,7 +1935,7 @@ Example:
     - `name` (string, required): Label for the portfolio
 
 - **PortfolioEditRequestDTO**
-    - `project_name` (string, required): Text name of the project to edit
+    - `project_summary_id` (integer, required): Use from portfolio generate response
     - `scope` (string, optional): `"portfolio_only"` (default) or `"global"`
     - `display_name` (string, optional): Custom display name for the project
     - `summary_text` (string, optional): Updated summary text
@@ -1963,7 +1963,7 @@ Example:
     - `name` (string, required): Label for the portfolio
 
 - **PortfolioEditRequestDTO**
-    - `project_name` (string, required): Text name of the project to edit
+    - `project_summary_id` (integer, required): Use from portfolio generate response
     - `scope` (string, optional): `"portfolio_only"` (default) or `"global"`
     - `display_name` (string, optional): Custom display name for the project
     - `summary_text` (string, optional): Updated summary text

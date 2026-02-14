@@ -31,9 +31,9 @@ def post_portfolio_edit(
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
-    project_name = resolve_project_name_for_edit(conn, user_id, request.project_summary_id, request.project_name)
+    project_name = resolve_project_name_for_edit(conn, user_id, request.project_summary_id)
     if not project_name:
-        raise HTTPException(status_code=400, detail="Either project_summary_id or project_name must be provided")
+        raise HTTPException(status_code=404, detail="Project not found")
 
     try:
         result = edit_portfolio(

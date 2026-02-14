@@ -42,8 +42,7 @@ class ResumeGenerateRequestDTO(BaseModel):
 
 class ResumeEditRequestDTO(BaseModel):
     name: Optional[str] = None
-    project_summary_id: Optional[int] = None  # Preferred over project_name for edits
-    project_name: Optional[str] = None  # Deprecated: use project_summary_id instead
+    project_summary_id: Optional[int] = None  # Required when editing project fields; use from resume detail response
     scope: Optional[Literal["resume_only", "global"]] = None
     display_name: Optional[str] = None
     summary_text: Optional[str] = None
