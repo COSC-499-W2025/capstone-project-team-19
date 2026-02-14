@@ -27,6 +27,7 @@ from src.services.portfolio_service import (
 from src.services import resume_overrides
 from src.export.portfolio_pdf import export_portfolio_to_pdf
 from src.menu.skill_highlighting import manage_skill_highlighting
+from src.db.projects import get_project_key
 
 
 def view_portfolio_menu(conn, user_id: int, username: str) -> None:
@@ -64,12 +65,7 @@ def view_portfolio_menu(conn, user_id: int, username: str) -> None:
                 print("")
                 continue
         elif choice == "5":
-            manage_skill_highlighting(
-                conn,
-                user_id,
-                username,
-                context="portfolio",
-            )
+            _handle_manage_portfolio_skills(conn, user_id, username)
             print("")
             continue
         elif choice == "6":
@@ -85,6 +81,44 @@ def view_portfolio_items(conn, user_id: int, username: str) -> None:
     Backwards-compatible alias for view_portfolio_menu.
     """
     view_portfolio_menu(conn, user_id, username)
+
+
+def _handle_manage_portfolio_skills(conn, user_id: int, username: str) -> None:
+    """Manage skill highlighting preferences for a specific project in the portfolio."""
+    project_scores = collect_project_data(conn, user_id)
+    if not project_scores:
+        print("No projects found. Please analyze some projects first.")
+        return
+
+    print("\nProjects in your portfolio:")
+    for idx, (project_name, _score) in enumerate(project_scores, 1):
+        print(f"{idx}. {project_name}")
+
+    proj_choice = input("Select a project to manage skills (number) or press Enter to cancel: ").strip()
+    if not proj_choice.isdigit():
+        print("Cancelled.")
+        return
+
+    idx = int(proj_choice)
+    if idx < 1 or idx > len(project_scores):
+        print("Invalid selection.")
+        return
+
+    project_name, _ = project_scores[idx - 1]
+
+    project_key = get_project_key(conn, user_id, project_name)
+    if project_key is None:
+        print(f"Project '{project_name}' not found in database.")
+        return
+
+    manage_skill_highlighting(
+        conn,
+        user_id,
+        username,
+        context="portfolio",
+        project_key=project_key,
+        context_name=f"Portfolio > {project_name}",
+    )
 
 
 def _display_portfolio(conn, user_id: int, username: str) -> bool:
