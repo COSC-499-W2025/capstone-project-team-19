@@ -156,7 +156,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
 ### **Endpoints**
 
 - **List Projects**
-  - **Endpoint**: `GET /projects`
+  - **Endpoint**: `GET /`
   - **Description**: Returns a list of all projects belonging to the current user.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Response Status**: `200 OK`
@@ -179,7 +179,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
     }
     ```
 - **GET Project by ID**
-  - **Endpoint**: `GET /projects/{project_id}`
+  - **Endpoint**: `GET /{project_id}`
   - **Description**: Returns detailed information for a specific project, including full analysis data (languages, frameworks, skills, metrics, contributions).
   - **Path Parameters**:
     - `{project_id}` (integer, required): The project_summary_id of the project to retrieve
@@ -217,7 +217,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - Remaining projects are sorted by computed `score` descending
 
   - **Get Project Ranking**
-    - **Endpoint**: `GET /projects/ranking`
+    - **Endpoint**: `GET /ranking`
     - **Description**: Returns all projects in ranked order with computed `score` and (optional) `manual_rank`.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request Body**: None
@@ -250,7 +250,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
       ```
 
   - **Replace Entire Ranking Order**
-    - **Endpoint**: `PUT /projects/ranking`
+    - **Endpoint**: `PUT /ranking`
     - **Description**: Replaces the entire manual ranking order. The request must include **every** project for the user (no extras, no missing). The list order becomes `manual_rank = 1..N`.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request DTO**: `ReplaceProjectRankingRequestDTO`
@@ -267,7 +267,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
       - `404 Not Found` if any `project_id` does not exist / does not belong to the user
 
   - **Patch One Project's Manual Rank**
-    - **Endpoint**: `PATCH /projects/{project_id}/ranking`
+    - **Endpoint**: `PATCH /{project_id}/ranking`
     - **Description**: Sets or clears the manual rank for one project.
     - **Path Parameters**:
       - `{project_id}` (integer, required): The `project_summary_id` of the project to update
@@ -282,7 +282,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
         - Manual dates affect any features that depend on project chronology (e.g., chronological skills, portfolio ordering).
 
     - **List Project Dates**
-        - **Endpoint**: `GET /projects/dates`
+        - **Endpoint**: `GET /dates`
         - **Description**: Returns all projects with their effective dates and whether they come from manual overrides or automatic computation.
         - **Auth**:`Authorization: Bearer <access_token>`
         - **Request Body**: None
@@ -318,7 +318,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
             ```
 
     - **Set / Patch Manual Project Dates**
-        - **Endpoint**: `PATCH /projects/{project_id}/dates`
+        - **Endpoint**: `PATCH /{project_id}/dates`
         - **Description**: Sets or clears the manual start/end dates for a single project.
         - **Path Parameters**:
             - `{project_id}` (integer, required): The `project_summary_id` of the project to update
@@ -363,7 +363,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
             - `404 Not Found` if the project does not exist / does not belong to the user
 
     - **Clear Manual Dates for One Project (Revert to Automatic)**
-        - **Endpoint**: `DELETE /projects/{project_id}/dates`
+        - **Endpoint**: `DELETE /{project_id}/dates`
         - **Description**: Clears manual date overrides for a project (sets them back to automatic behavior).
         - **Path Parameters**:
             - `{project_id}` (integer, required): The `project_summary_id` of the project to clear
@@ -390,7 +390,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
             - `404 Not Found` if the project does not exist / does not belong to the user
 
     - **Reset All Project Dates to Automatic**
-        - **Endpoint**: `POST /projects/dates/reset`
+        - **Endpoint**: `POST /dates/reset`
         - **Description**: Clears all manual date overrides for the current user.
         - **Auth**: `Authorization: Bearer <access_token>`
         - **Request Body**: None
@@ -407,7 +407,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
             ```
 
 - **Delete Project by ID**
-    - **Endpoint**: `DELETE /projects/{project_id}`
+    - **Endpoint**: `DELETE /{project_id}`
     - **Description**: Permanently deletes a specific project and all its associated data (skills, metrics, files, etc.).
     - **Path Parameters**:
         - `{project_id}` (integer, required): The project_summary_id of the project to delete
@@ -418,10 +418,10 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **Example Requests**:
         ```bash
         # Delete project (default, resumes unchanged)
-        DELETE /projects/9
+        DELETE /9
 
         # Delete project and update resumes
-        DELETE /projects/9?refresh_resumes=true
+        DELETE /9?refresh_resumes=true
         ```
     - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
     - **Response Body**:
@@ -440,7 +440,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
       - `404 Not Found` if the project does not exist / does not belong to the user
 
   - **Reset Ranking to Automatic**
-    - **Endpoint**: `POST /projects/ranking/reset`
+    - **Endpoint**: `POST /ranking/reset`
     - **Description**: Clears all manual ranking overrides for the user (reverts to pure computed ranking).
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request Body**: None
@@ -448,7 +448,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **Response DTO**: `ProjectRankingDTO`
 
 - **Delete Project by ID**
-  - **Endpoint**: `DELETE /projects/{project_id}`
+  - **Endpoint**: `DELETE /{project_id}`
   - **Description**: Permanently deletes a specific project and all its associated data (skills, metrics, files, etc.).
   - **Path Parameters**:
     - `{project_id}` (integer, required): The project_summary_id of the project to delete
@@ -464,7 +464,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
     ```
 
 - **Delete All Projects**
-    - **Endpoint**: `DELETE /projects`
+    - **Endpoint**: `DELETE /`
     - **Description**: Permanently deletes all projects belonging to the current user.
     - **Query Parameters**:
         - `refresh_resumes` (boolean, optional): If `true`, also removes deleted projects from any résumé snapshots. Résumés that become empty are deleted. Defaults to `false`.
@@ -473,10 +473,10 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **Example Requests**:
         ```bash
         # Delete all projects (default, resumes unchanged)
-        DELETE /projects
+        DELETE /
 
         # Delete all projects and update resumes
-        DELETE /projects?refresh_resumes=true
+        DELETE /?refresh_resumes=true
         ```
     - **Response Status**: `200 OK`
     - **Response DTO**: `DeleteResultDTO`
@@ -540,7 +540,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **Description**: Upload, view, and delete thumbnail images for projects. Thumbnails are standardized to PNG format and resized to a maximum of 800x800 px.
 
     - **Upload Thumbnail**
-        - **Endpoint**: `POST /projects/{project_id}/thumbnail`
+        - **Endpoint**: `POST /{project_id}/thumbnail`
         - **Description**: Upload or replace a project's thumbnail image. If a thumbnail already exists for the project, it is overwritten (no separate edit/replace endpoint needed). Accepts PNG, JPG, JPEG, and WEBP formats. Images are automatically converted to PNG and resized if larger than 800x800 px.
         - **Path Parameters**:
             - `{project_id}` (integer, required): The `project_summary_id` of the project
@@ -567,7 +567,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
             - `422 Unprocessable Entity`: Invalid image file (unsupported format or corrupt image)
 
     - **Get Thumbnail**
-        - **Endpoint**: `GET /projects/{project_id}/thumbnail`
+        - **Endpoint**: `GET /{project_id}/thumbnail`
         - **Description**: Download the thumbnail image for a project. Returns the image as a PNG file.
         - **Path Parameters**:
             - `{project_id}` (integer, required): The `project_summary_id` of the project
@@ -581,7 +581,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
             - `404 Not Found`: Project not found, or thumbnail not found
 
     - **Delete Thumbnail**
-        - **Endpoint**: `DELETE /projects/{project_id}/thumbnail`
+        - **Endpoint**: `DELETE /{project_id}/thumbnail`
         - **Description**: Remove a project's thumbnail image. Deletes both the database record and the image file on disk.
         - **Path Parameters**:
             - `{project_id}` (integer, required): The `project_summary_id` of the project
@@ -631,19 +631,19 @@ Uploads are tracked as a resumable multi-step “wizard” using an `uploads` ta
 
 A typical flow for the first six endpoints:
 
-1. **Start upload**: `POST /projects/upload`
+1. **Start upload**: `POST /`
    - parses ZIP and computes layout
    - runs dedup:
      - exact duplicates are automatically skipped
      - “ask” cases are stored for UI resolution
      - “new_version” suggestions may be recorded
-2. **Poll/resume**: `GET /projects/upload/{upload_id}`
-3. **Resolve dedup (optional)**: `POST /projects/upload/{upload_id}/dedup/resolve`
-4. **Submit classifications**: `POST /projects/upload/{upload_id}/classifications`
-5. **Resolve mixed project types (optional)**: `POST /projects/upload/{upload_id}/project-types`
+2. **Poll/resume**: `GET /{upload_id}`
+3. **Resolve dedup (optional)**: `POST /{upload_id}/dedup/resolve`
+4. **Submit classifications**: `POST /{upload_id}/classifications`
+5. **Resolve mixed project types (optional)**: `POST /{upload_id}/project-types`
 6. **Select collaborative text contribution sections (optional, text-collab only)**:
-   - `GET /projects/upload/{upload_id}/projects/{project_key}/text/sections`
-   - `POST /projects/upload/{upload_id}/projects/{project_key}/text/contributions`
+   - `GET /{upload_id}/projects/{project_key}/text/sections`
+   - `POST /{upload_id}/projects/{project_key}/text/contributions`
 
 Use `project_key` from `state.dedup_project_keys` (keyed by project name) for each project.
 
@@ -652,7 +652,7 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
 ### **Endpoints**
 
 - **Start Upload**
-  - **Endpoint**: `POST /projects/upload`
+  - **Endpoint**: `POST /`
   - **Description**: Upload a ZIP file, save it to disk, parse the ZIP, and compute the project layout to determine the next wizard step. The server creates an `upload_id` and stores wizard state in the database.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Request Body**: `multipart/form-data`
@@ -660,13 +660,18 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
   - **Response Status**: `200 OK`
 
 - **Get Upload Status (Resume / Poll)**
-    - **Endpoint**: `GET /projects/upload/{upload_id}`
+    - **Endpoint**: `GET /{upload_id}`
     - **Description**: Returns the current upload wizard state for the given `upload_id`. Use this to resume a wizard flow or refresh the UI.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Path Params**:
         - `{upload_id}` (integer, required): The ID of the upload session
     - **Response Status**: `200 OK` on success, `404 Not Found` if upload doesn't exist or belong to user
-    -                 "upload_id": 5,
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "upload_id": 5,
                 "status": "needs_classification",
                 "zip_name": "text_projects.zip",
                 "state": {
@@ -682,13 +687,16 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
                     },
                     "files_info_count": 8
                 }
+            },
+            "error": null
+        }
         ```
 
 - **Resolve Dedup (Optional, New)**
-  - **Endpoint**: `POST /projects/upload/{upload_id}/dedup/resolve`
+  - **Endpoint**: `POST /{upload_id}/dedup/resolve`
   - **Description**: Resolves dedup “ask” cases that were captured during upload parsing. This step happens before classifications and project types.
   - **Headers**:
-    - `Authentication`: Bearer <token>
+    - `Authorization`: Bearer <token>
   - **Path Params**:
     - `upload_id` (integer, required)
   - **Request Body**:
@@ -710,7 +718,7 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
     - On success, `state.dedup_asks` is cleared and `state.dedup_resolved` is stored.
 
 - **Submit Project Classifications**
-  - **Endpoint**: `POST /projects/upload/{upload_id}/classifications`
+  - **Endpoint**: `POST /{upload_id}/classifications`
   - **Description**: Submit the user’s classification choices for projects detected within the uploaded ZIP. This replaces the CLI prompt where users classify each project as `individual` or `collaborative`.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Path Params**:
@@ -726,7 +734,7 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
     ```
 
 - **Submit Project Types (Code vs Text) (Optional)**
-  - **Endpoint**: `POST /projects/upload/{upload_id}/project-types`
+  - **Endpoint**: `POST /{upload_id}/project-types`
   - **Description**: Submit user selections for project type (`code` vs `text`) when a detected project contains both code and text artifacts and requires a choice. The request must use project names exactly as reported in `state.layout.auto_assignments` and `state.layout.pending_projects`.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Path Params**:
@@ -818,22 +826,13 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
         }
       ```
 
-- **Submit Project Types (Code vs Text) (Optional)**
-    - **Endpoint**: `POST /projects/upload/{upload_id}/project-types`
-    - **Description**: Submit user selections for project type (`code` vs `text`) when a detected project contains both code and text artifacts and requires a choice. The request must use project names exactly as reported in `state.layout.auto_assignments` and `state.layout.pending_projects`.
-    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-    - **Path Params**:
-        - `{upload_id}` (integer, required): The ID of the upload session
-
 - **List Main File Sections (Collaborative Text Contribution)**
-    - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project_key}/text/sections`
+    - **Endpoint**: `GET /{upload_id}/projects/{project_key}/text/sections`
     - **Description**: Returns numbered sections derived from the **selected main text file** for the project (from `uploads.state.file_roles`). Intended for selecting which parts of the document the user contributed to.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Path Params**:
         - `{upload_id}` (integer, required): The upload session ID
         - `{project_key}` (integer, required): The project key from `state.dedup_project_keys`
-    - **Query Params**:
-        - `max_section_chars` (integer, optional): Truncates each section’s `content` to this many characters.
     - **Response Status**: `200 OK`
     - **Response DTO**: `MainFileSectionsDTO`
     - **Response Body**:
@@ -862,7 +861,7 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
         - `422 Unprocessable Entity` if the main file cannot be extracted or is empty
 
 - **Set Main File Contributed Sections (Collaborative Text Contribution)**
-    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_key}/text/contributions`
+    - **Endpoint**: `POST /{upload_id}/projects/{project_key}/text/contributions`
     - **Description**: Persists the section IDs the user contributed to into `uploads.state.contributions`. IDs are validated against the server-derived section list and stored de-duplicated + sorted.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Path Params**:
@@ -882,7 +881,7 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
         - `409 Conflict` if the main file is not selected yet for this project
 
 - **Set Supporting Text Files (Collaborative Text Contribution)**
-    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_key}/supporting-text-files`
+    - **Endpoint**: `POST /{upload_id}/projects/{project_key}/supporting-text-files`
     - **Description**: Stores which **supporting TEXT files** the user contributed to (excluding the selected main file, and excluding `.csv` files).
         - Writes to: `uploads.state.contributions` (keyed by project name)
         - Values are stored **deduplicated + sorted**
@@ -909,7 +908,7 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
 
 
 - **Set Supporting CSV Files (Collaborative Text Contribution)**
-    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_key}/supporting-csv-files`
+    - **Endpoint**: `POST /{upload_id}/projects/{project_key}/supporting-csv-files`
     - **Description**: Stores which **CSV files** the user contributed to.
         - Writes to: `uploads.state.contributions` (keyed by project name)
         - Values are stored **deduplicated + sorted**
@@ -943,7 +942,7 @@ Handles GitHub OAuth authentication and repository linking for projects during t
 ### **Endpoints**
 
 - **Start GitHub Connection**
-  - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project}/github/start`
+  - **Endpoint**: `POST /start`
   - **Description**: Initiates GitHub OAuth connection flow for a project. If `connect_now` is `true` and user is not already connected, returns an authorization URL. If `connect_now` is `false`, records that GitHub connection was skipped.
   - **Path Parameters**:
     - `{upload_id}` (integer, required): The upload session ID
@@ -951,9 +950,11 @@ Handles GitHub OAuth authentication and repository linking for projects during t
   - **Headers**:
     - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
   - **Request Body**:
+    ```json
     {
     "connect_now": true
     }
+    ```
   - **Response Status**: `200 OK` on success, `404 Not Found` if upload doesn't exist or belong to user
   - **Response Body**:
     ```json
@@ -968,7 +969,7 @@ Handles GitHub OAuth authentication and repository linking for projects during t
     if user is already connected or connect_now is false, auth_url will be null
 
 - **GitHub OAuth Callback**
-  - **Endpoint**: `GET /auth/github/callback`
+  - **Endpoint**: `GET /github/callback`
   - **Description**: Handles the OAuth callback from GitHub after user authorizes the application. Exchanges the authorization code for an access token and saves it. No authentication required - this is a public callback endpoint.
   - **Query Parameters**:
     - `code` (string, required): Authorization code from GitHub
@@ -989,7 +990,7 @@ Handles GitHub OAuth authentication and repository linking for projects during t
     ```
 
 - **List GitHub Repositories**
-  - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project}/github/repos`
+  - **Endpoint**: `GET /repos`
   - **Description**: Returns a list of the user's GitHub repositories that can be linked to the project. Requires GitHub to be connected first.
   - **Path Parameters**:
     - `{upload_id}` (integer, required): The upload session ID
@@ -1016,7 +1017,7 @@ Handles GitHub OAuth authentication and repository linking for projects during t
     ```
 
 - **Link GitHub Repository**
-  - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project}/github/link`
+  - **Endpoint**: `POST /link`
   - **Description**: Links a GitHub repository to the project. The repository must be accessible by the authenticated user.
   - **Path Parameters**:
     - `{upload_id}` (integer, required): The upload session ID
@@ -1024,9 +1025,11 @@ Handles GitHub OAuth authentication and repository linking for projects during t
   - **Headers**:
     - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
   - **Request Body**:
+    ```json
     {
     "repo_full_name": "owner/repo-name"
     }
+    ```
   - **Response Status**: `200 OK` on success, `400 Bad Request` if GitHub is not connected or repo format is invalid, `404 Not Found` if upload doesn't exist
   - **Response Body**:
     ```json
@@ -1050,7 +1053,7 @@ Handles Google Drive OAuth authentication and file linking for projects during t
 
 ### **Endpoints**
 - **Start Google Drive Connection**
-    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project}/drive/start`
+    - **Endpoint**: `POST /start`
     - **Description**: Initiates Google Drive OAuth connection flow for a project. If `connect_now` is `true` and user is not already connected, returns a Google authorization URL. If `connect_now` is `false`, records that Google Drive connection was skipped.
     - **Path Parameters**:
         - `{upload_id}` (integer, required): The upload session ID
@@ -1077,7 +1080,7 @@ Handles Google Drive OAuth authentication and file linking for projects during t
         If user is already connected or `connect_now` is `false`, `auth_url` will be `null`.
 
 - **Google Drive OAuth Callback**
-    - **Endpoint**: `GET /auth/google/callback`
+    - **Endpoint**: `GET /google/callback`
     - **Description**: Handles the OAuth callback from Google after user authorizes the application. Exchanges the authorization code for access and refresh tokens and saves them. No authentication required — this is a public callback endpoint.
     - **Query Parameters**:
         - `code` (string, required): Authorization code from Google
@@ -1098,7 +1101,7 @@ Handles Google Drive OAuth authentication and file linking for projects during t
         ```
 
 - **List Google Drive Files**
-    - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project}/drive/files`
+    - **Endpoint**: `GET /files`
     - **Description**: Returns a list of the user's Google Drive files (filtered to supported types) that can be linked to the project. Requires Google Drive to be connected first.
     - **Path Parameters**:
         - `{upload_id}` (integer, required): The upload session ID
@@ -1129,7 +1132,7 @@ Handles Google Drive OAuth authentication and file linking for projects during t
         ```
 
 - **Link Google Drive Files**
-    - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project}/drive/link`
+    - **Endpoint**: `POST /link`
     - **Description**: Links one or more Google Drive files to the project's local files. Each link maps a local file name (from the uploaded ZIP) to a Google Drive file. Requires Google Drive to be connected.
     - **Path Parameters**:
         - `{upload_id}` (integer, required): The upload session ID
@@ -1172,10 +1175,9 @@ Handles Google Drive OAuth authentication and file linking for projects during t
 ---
 
 - **List Project Files**
-  - **Endpoint**: `GET /projects/upload/{upload_id}/projects/{project_key}/files`
+  - **Endpoint**: `GET /{upload_id}/projects/{project_key}/files`
   - **Description**: Returns all parsed files for a project within an upload, plus convenience buckets for `text_files` and `csv_files`. Clients should use the returned `relpath` values for subsequent file-role selection calls. Use `project_key` from `state.dedup_project_keys`.
-  - **Headers**:
-    - `X-User-Id` (integer, required)
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Path Params**:
     - `upload_id` (integer, required)
     - `project_key` (integer, required): From `state.dedup_project_keys`
@@ -1218,10 +1220,9 @@ Handles Google Drive OAuth authentication and file linking for projects during t
     - Returns `404 Not Found` if the project is not part of this upload (not present in the upload’s layout).
 
 - **Set Project Main File**
-  - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_key}/main-file`
+  - **Endpoint**: `POST /{upload_id}/projects/{project_key}/main-file`
   - **Description**: Stores the client-selected main file for a project (by `relpath`) in `uploads.state.file_roles`. The relpath must match one of the parsed files for that project. Use `project_key` from `state.dedup_project_keys`.
-  - **Headers**:
-    - `X-User-Id` (integer, required)
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Path Params**:
     - `upload_id` (integer, required)
     - `project_key` (integer, required): From `state.dedup_project_keys`
@@ -1271,7 +1272,7 @@ Handles user consent for internal processing and external integrations.
 ### **Endpoints**
 
 - **Record Internal Processing Consent**
-  - **Endpoint**: `POST /privacy-consent/internal`
+  - **Endpoint**: `POST /internal`
   - **Description**: Records the user's consent for internal data processing
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Request Body**:
@@ -1296,7 +1297,7 @@ Handles user consent for internal processing and external integrations.
     ```
 
 - **Record External Integration Consent**
-  - **Endpoint**: `POST /privacy-consent/external`
+  - **Endpoint**: `POST /external`
   - **Description**: Records the user's consent for external service integrations
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Request Body**:
@@ -1321,7 +1322,7 @@ Handles user consent for internal processing and external integrations.
     ```
 
 - **Get Consent Status**
-  - **Endpoint**: `GET /privacy-consent/status`
+  - **Endpoint**: `GET /status`
   - **Description**: Retrieves the current consent status for the authenticated user (returns the most recent consent for each type)
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Response Status**: `200 OK`
@@ -1349,7 +1350,7 @@ Exposes extracted skills and timelines.
 ### **Endpoints**
 
 - **Get Skills**
-  - **Endpoint**: `GET /skills`
+  - **Endpoint**: `GET /`
   - **Description**: Returns a chronological list of all skills extracted from the user's projects, including skill level, score, and associated project information.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Response Status**: `200 OK`
@@ -1384,7 +1385,7 @@ Manages résumé-specific representations of projects.
 ### **Endpoints**
 
 - **List Resumes**
-  - **Endpoint**: `GET /resume`
+  - **Endpoint**: `GET /`
   - **Description**: Returns a list of all résumé snapshots belonging to the current user.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Response Status**: `200 OK`
@@ -1406,7 +1407,7 @@ Manages résumé-specific representations of projects.
     ```
 
 - **Get Resume by ID**
-  - **Endpoint**: `GET /resume/{resume_id}`
+  - **Endpoint**: `GET /{resume_id}`
   - **Description**: Returns detailed information for a specific résumé snapshot, including all projects, aggregated skills, and rendered text.
   - **Path Parameters**:
     - `{resume_id}` (integer, required): The ID of the résumé snapshot
@@ -1450,7 +1451,7 @@ Manages résumé-specific representations of projects.
   ````
 
 - **Generate Resume**
-  - **Endpoint**: `POST /resume/generate`
+  - **Endpoint**: `POST /generate`
   - **Description**: Creates a new résumé snapshot from the user's projects. If `project_ids` is not provided, automatically selects the top 5 ranked projects. Builds the snapshot, enriches with contribution bullets and dates, and renders the text.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Request Body**: Uses `ResumeGenerateRequestDTO`
@@ -1487,10 +1488,10 @@ Manages résumé-specific representations of projects.
     - `404 Not Found`: User not found
 
 - **Edit Resume**
-  - **Endpoint**: `POST /resume/{resume_id}/edit`
+  - **Endpoint**: `POST /{resume_id}/edit`
   - **Description**: Edits a résumé snapshot. Can rename the résumé, edit project details, or both. Project editing is optional - you can rename a résumé without editing any project.
   - **Path Parameters**:
-    - `{resume_id}` (integer, required): The `id` from `resume_snapshots` table. Get this from `GET /resume` list.
+    - `{resume_id}` (integer, required): The `id` from `resume_snapshots` table. Get this from `GET /` list.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Request Body**: Uses `ResumeEditRequestDTO`
 
@@ -1510,7 +1511,7 @@ Manages résumé-specific representations of projects.
     ```
 
     - `name` (string, optional): New name for the résumé (rename)
-    - `project_summary_id` (integer, optional): Required when editing project fields. Get this from `GET /resume/{resume_id}` response (`projects[].project_summary_id`). If omitted, only the résumé name is updated.
+    - `project_summary_id` (integer, optional): Required when editing project fields. Get this from `GET /{resume_id}` response (`projects[].project_summary_id`). If omitted, only the résumé name is updated.
     - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
       - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
       - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
@@ -1542,7 +1543,7 @@ Manages résumé-specific representations of projects.
         }
         ```
         - `name` (string, optional): New name for the résumé (rename)
-        - `project_summary_id` (integer, optional): Required when editing project fields. Get from `GET /resume/{resume_id}` response. If omitted, only name is updated.
+        - `project_summary_id` (integer, optional): Required when editing project fields. Get from `GET /{resume_id}` response. If omitted, only name is updated.
         - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
             - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
             - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
@@ -1589,7 +1590,7 @@ Manages résumé-specific representations of projects.
         ```
 
 - **Delete Resume by ID**
-  - **Endpoint**: `DELETE /resume/{resume_id}`
+  - **Endpoint**: `DELETE /{resume_id}`
   - **Description**: Permanently deletes a specific résumé snapshot.
   - **Path Parameters**:
     - `{resume_id}` (integer, required): The ID of the résumé snapshot to delete
@@ -1605,7 +1606,7 @@ Manages résumé-specific representations of projects.
     ```
 
 - **Delete All Resumes**
-  - **Endpoint**: `DELETE /resume`
+  - **Endpoint**: `DELETE /`
   - **Description**: Permanently deletes all résumé snapshots belonging to the current user.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Response Status**: `200 OK`
@@ -1622,7 +1623,7 @@ Manages résumé-specific representations of projects.
     ```
 
 - **Remove Project from Resume**
-  - **Endpoint**: `DELETE /resume/{resume_id}/projects?project_name=<name>`
+  - **Endpoint**: `DELETE /{resume_id}/projects?project_name=<name>`
   - **Description**: Removes a single project from a résumé snapshot. Recomputes aggregated skills from the remaining projects. If no projects remain after removal, the résumé is deleted entirely.
   - **Path Parameters**:
     - `{resume_id}` (integer, required): The ID of the résumé snapshot
@@ -1658,10 +1659,10 @@ Manages résumé-specific representations of projects.
     - `422 Unprocessable Entity`: Missing `project_name` query parameter
 
 - **Export Resume to DOCX**
-    - **Endpoint**: `GET /resume/{resume_id}/export/docx`
+    - **Endpoint**: `GET /{resume_id}/export/docx`
     - **Description**: Exports a résumé snapshot to a Word document (.docx) file.
     - **Path Parameters**:
-        - `{resume_id}` (integer, required): The ID of the résumé snapshot to export. Get this from `GET /resume`.
+        - `{resume_id}` (integer, required): The ID of the résumé snapshot to export. Get this from `GET /`.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request Body**: None
     - **Response Status**: `200 OK`
@@ -1674,10 +1675,10 @@ Manages résumé-specific representations of projects.
         - `404 Not Found`: Resume not found or doesn't belong to user
 
 - **Export Resume to PDF**
-    - **Endpoint**: `GET /resume/{resume_id}/export/pdf`
+    - **Endpoint**: `GET /{resume_id}/export/pdf`
     - **Description**: Exports a résumé snapshot to a PDF document.
     - **Path Parameters**:
-        - `{resume_id}` (integer, required): The ID of the résumé snapshot to export. Get this from `GET /resume`.
+        - `{resume_id}` (integer, required): The ID of the résumé snapshot to export. Get this from `GET /`.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request Body**: None
     - **Response Status**: `200 OK`
@@ -1700,7 +1701,7 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
 ### **Endpoints**
 
 - **Generate Portfolio**
-    - **Endpoint**: `POST /portfolio/generate`
+    - **Endpoint**: `POST /generate`
     - **Description**: Generates a portfolio view from all of the user's analyzed projects, ranked by importance. Returns structured project data and a rendered plain-text version. The portfolio is not persisted — it is built on demand from existing project summaries.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request Body**: Uses `PortfolioGenerateRequestDTO`
@@ -1742,7 +1743,7 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
         - `401 Unauthorized`: Missing or invalid Bearer token
 
 - **Edit Portfolio**
-    - **Endpoint**: `POST /portfolio/edit`
+    - **Endpoint**: `POST /edit`
     - **Description**: Edits portfolio wording for a specific project. Changes can be scoped to the portfolio only or applied globally (affecting all resumes and the portfolio). Edits are stored as overrides in `project_summaries.summary_json` — no portfolio snapshot table is needed. Returns the updated portfolio view.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request Body**: Uses `PortfolioEditRequestDTO`
@@ -1779,7 +1780,7 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
         - `404 Not Found`: Project not found
 
 - **Export Portfolio to DOCX**
-    - **Endpoint**: `GET /portfolio/export/docx`
+    - **Endpoint**: `GET /export/docx`
     - **Description**: Exports the user's portfolio to a Word document (.docx) file. Includes all ranked projects with their metadata, summaries, and contribution bullets.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request Body**: None
@@ -1793,7 +1794,7 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
         - `404 Not Found`: No projects found for this user
 
 - **Export Portfolio to PDF**
-    - **Endpoint**: `GET /portfolio/export/pdf`
+    - **Endpoint**: `GET /export/pdf`
     - **Description**: Exports the user's portfolio to a PDF document. Includes all ranked projects with their metadata, summaries, and contribution bullets.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request Body**: None
