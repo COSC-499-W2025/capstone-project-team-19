@@ -55,14 +55,12 @@ class SupportingFilesRequestDTO(BaseModel):
 
 
 class KeyRoleRequestDTO(BaseModel):
-    key_role: str = Field(..., min_length=1, max_length=120)
+    key_role: str = Field(..., max_length=120)
 
     @field_validator("key_role")
     @classmethod
     def normalize_key_role(cls, value: str) -> str:
         normalized = " ".join((value or "").split())
-        if not normalized:
-            raise ValueError("key_role must not be blank")
         return normalized
 
 

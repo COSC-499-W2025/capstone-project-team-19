@@ -14,6 +14,7 @@ from src.api.schemas.uploads import (
     MainFileRequestDTO,
     MainFileSectionsResponseDTO,
     ContributedSectionsRequestDTO,
+    KeyRoleRequestDTO,
 )
 from src.api.schemas.git_identities import (
     GitIdentitiesResponse,
@@ -45,6 +46,7 @@ from src.api.schemas.uploads import SupportingFilesRequestDTO
 from src.services.uploads_supporting_contributions_service import (
     set_project_supporting_text_files,
     set_project_supporting_csv_files,
+    set_project_key_role,
 )
 from src.services.uploads_contribution_service import (
     list_main_file_sections,
@@ -229,6 +231,23 @@ def post_upload_project_supporting_csv_files(
     upload, project_name = _resolve_upload_project(conn, user_id, upload_id, project_key)
     result = set_project_supporting_csv_files(conn, user_id, upload_id, project_name, body.relpaths)
     return ApiResponse(success=True, data=UploadDTO(**result), error=None)
+
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_key:int}/key-role",
+    response_model=ApiResponse[UploadDTO],
+)
+def post_upload_project_key_role(
+    upload_id: int,
+    project_key: int,
+    body: KeyRoleRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload, project_name = _resolve_upload_project(conn, user_id, upload_id, project_key)
+    result = set_project_key_role(conn, user_id, upload_id, project_name, body.key_role)
+    return ApiResponse(success=True, data=UploadDTO(**result), error=None)
+
 
 @router.get(
     "/upload/{upload_id}/projects/{project_key}/git/identities",

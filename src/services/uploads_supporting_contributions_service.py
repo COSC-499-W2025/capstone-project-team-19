@@ -95,6 +95,40 @@ def set_project_supporting_csv_files(
     }
 
 
+def set_project_key_role(
+    conn: sqlite3.Connection,
+    user_id: int,
+    upload_id: int,
+    project_name: str,
+    key_role: str,
+) -> dict:
+    upload = _require_upload(conn, user_id, upload_id)
+    _require_status(upload)
+
+    state = upload.get("state") or {}
+    _require_project_in_upload(state, project_name)
+
+    normalized = " ".join((key_role or "").split())
+
+    contributions = dict(state.get("contributions") or {})
+    proj = dict(contributions.get(project_name) or {})
+    proj["key_role"] = normalized
+    contributions[project_name] = proj
+
+    new_state = patch_upload_state(
+        conn,
+        upload_id,
+        patch={"contributions": contributions},
+        status=upload["status"],
+    )
+    return {
+        "upload_id": upload["upload_id"],
+        "status": upload["status"],
+        "zip_name": upload.get("zip_name"),
+        "state": new_state,
+    }
+
+
 def _require_upload(conn: sqlite3.Connection, user_id: int, upload_id: int) -> dict:
     upload = get_upload_by_id(conn, upload_id)
     if not upload or upload["user_id"] != user_id:
@@ -106,7 +140,7 @@ def _require_status(upload: dict) -> None:
     if upload.get("status") not in _ALLOWED_STATUSES:
         raise HTTPException(
             status_code=409,
-            detail=f"Upload not ready for supporting file selection (status={upload.get('status')})",
+            detail=f"Upload not ready for this action (status={upload.get('status')})",
         )
 
 
@@ -131,6 +165,13 @@ def _normalize_relpaths(relpaths: Iterable[str]) -> set[str]:
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
     return out
+
+
+def _require_project_in_upload(state: dict, project_name: str) -> None:
+    layout = state.get("layout") or {}
+    known_projects = set((layout.get("auto_assignments") or {}).keys()) | set(layout.get("pending_projects") or [])
+    if project_name not in known_projects:
+        raise HTTPException(status_code=404, detail="Project not found in this upload")
 
 
 def _allowed_supporting_text_relpaths(files_payload: dict, main_file_relpath: str) -> set[str]:
