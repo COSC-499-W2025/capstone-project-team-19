@@ -644,6 +644,8 @@ A typical flow for the first six endpoints:
 6. **Select collaborative text contribution sections (optional, text-collab only)**:
    - `GET /projects/upload/{upload_id}/projects/{project_key}/text/sections`
    - `POST /projects/upload/{upload_id}/projects/{project_key}/text/contributions`
+7. **Provide summary metadata before run (when needed)**:
+   - `POST /projects/upload/{upload_id}/projects/{project_key}/key-role`
 
 Use `project_key` from `state.dedup_project_keys` (keyed by project name) for each project.
 
@@ -932,6 +934,41 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
         - `409 Conflict` if upload is not in a file-picking step (e.g. not `needs_file_roles` / `needs_summaries`)
         - `422 Unprocessable Entity` if any relpath is unsafe, or if any relpath is not a `.csv`
         - `404 Not Found` if any relpath does not exist for this project/upload
+
+- **Set Project Key Role**
+  - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_key}/key-role`
+  - **Description**: Stores the user-provided role/title for the project in the upload wizard state.
+    - Writes to: `uploads.state.contributions[project_name].key_role`
+    - Value is whitespace-normalized before storing
+    - Blank input is allowed and clears the stored role (stored as empty string)
+  - **Auth**: `Authorization: Bearer <access_token>`
+  - **Path Params**:
+    - `{upload_id}` (integer, required)
+    - `{project_key}` (integer, required): From `state.dedup_project_keys`
+  - **Valid Upload Status**:
+    - `needs_file_roles`
+    - `needs_summaries`
+    - `analyzing`
+    - `done`
+  - **Request Body**:
+    ```json
+    {
+      "key_role": "Backend Developer"
+    }
+    ```
+    - Clear role:
+    ```json
+    {
+      "key_role": "   "
+    }
+    ```
+  - **Response Status**: `200 OK`
+  - **Response DTO**: `UploadDTO`
+  - **Error Responses**:
+    - `404 Not Found` if upload does not exist/belong to user, or project is not part of this upload
+    - `409 Conflict` if upload status is not valid for this action
+    - `422 Unprocessable Entity` if `key_role` is invalid (e.g., wrong type or exceeds max length)
+
 ---
 
 ## **GitHub Integration**
@@ -1921,8 +1958,10 @@ Example:
   - `status` (string, required)  
     Allowed values:
     - `"started"`
+    - `"needs_dedup"`
     - `"parsed"`
     - `"needs_classification"`
+    - `"needs_project_types"`
     - `"needs_file_roles"`
     - `"needs_summaries"`
     - `"analyzing"`
@@ -1967,6 +2006,12 @@ Example:
 - **SupportingFilesRequest**
     - `relpaths` (List[string], required): relpaths returned by `GET .../files`
 
+- **KeyRoleRequestDTO**
+  - `key_role` (string, required): project role/title
+  - Notes:
+    - whitespace is normalized before storing
+    - max length: `120`
+    - blank input is allowed and treated as clear (`""`)
 
 ### **Skills DTOs**
 
