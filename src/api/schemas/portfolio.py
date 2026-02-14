@@ -5,6 +5,7 @@ from src.api.schemas.skills import SkillPreferenceDTO
 
 
 class PortfolioProjectDTO(BaseModel):
+    project_summary_id: Optional[int] = None  # Preferred identifier for edits
     project_name: str
     display_name: str
     project_type: Optional[str] = None
@@ -29,7 +30,7 @@ class PortfolioGenerateRequestDTO(BaseModel):
 
 
 class PortfolioEditRequestDTO(BaseModel):
-    project_name: str = Field(..., max_length=200)
+    project_summary_id: int
     scope: Optional[Literal["portfolio_only", "global"]] = "portfolio_only"
     display_name: Optional[str] = Field(None, max_length=200)
     summary_text: Optional[str] = Field(None, max_length=5000)

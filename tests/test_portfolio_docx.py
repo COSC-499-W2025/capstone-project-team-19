@@ -159,6 +159,7 @@ def test_export_portfolio_docx_with_thumbnail_does_not_crash(monkeypatch, tmp_pa
         b"\x00\x00\x00\x00IEND\xaeB`\x82"
     )
 
+    monkeypatch.setattr(mod, "get_project_key", lambda *_args, **_kwargs: 1)
     monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: str(thumb_path))
 
     # UPDATED: exporter uses resolvers
@@ -215,6 +216,7 @@ def test_export_portfolio_docx_thumbnail_removed_still_exports(monkeypatch, tmp_
     monkeypatch.setattr(mod, "resolve_portfolio_contribution_bullets", lambda *_args, **_kwargs: ["ok"])
 
     # 1) With thumbnail
+    monkeypatch.setattr(mod, "get_project_key", lambda *_args, **_kwargs: 1)
     thumb_path = tmp_path / "thumb.png"
     thumb_path.write_bytes(
         b"\x89PNG\r\n\x1a\n"

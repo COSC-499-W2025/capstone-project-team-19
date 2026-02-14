@@ -1,34 +1,8 @@
-import json
-from datetime import datetime, timezone
-
 import pytest
 
 from src.db.project_feedback import upsert_project_feedback
-from src.db.project_summaries import save_project_summary, get_project_summary_by_name
 from src.api.auth.security import create_access_token
-
-
-def _iso_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def _seed_project(seed_conn, user_id: int, name: str, project_type: str = "code") -> int:
-    """
-    Create a minimal project_summaries row and return its project_summary_id.
-    """
-    summary_json = json.dumps(
-        {
-            "project_name": name,
-            "project_type": project_type,
-            "project_mode": "individual",
-            "created_at": _iso_now(),
-            "summary_text": f"Summary for {name}",
-        }
-    )
-    save_project_summary(seed_conn, user_id, name, summary_json)
-    row = get_project_summary_by_name(seed_conn, user_id, name)
-    assert row is not None
-    return row["project_summary_id"]
+from tests.api.conftest import seed_project
 
 
 def _seed_feedback(
@@ -83,7 +57,7 @@ def test_feedback_route_requires_int_project_id(client, auth_headers):
 
 
 def test_feedback_project_belongs_to_other_user_returns_404(client, seed_conn, consent_user_id_2, auth_headers):
-    other_user_project_id = _seed_project(seed_conn, consent_user_id_2, "OtherUsersProject")
+    other_user_project_id = seed_project(seed_conn, consent_user_id_2, "OtherUsersProject")
 
     # user 1 requesting user 2's project_id should look like "not found"
     res = client.get(f"/projects/{other_user_project_id}/feedback", headers=auth_headers)
@@ -92,7 +66,7 @@ def test_feedback_project_belongs_to_other_user_returns_404(client, seed_conn, c
 
 
 def test_feedback_project_exists_but_no_feedback_returns_empty_list(client, auth_headers, seed_conn):
-    project_id = _seed_project(seed_conn, 1, "NoFeedbackProject")
+    project_id = seed_project(seed_conn, 1, "NoFeedbackProject")
 
     res = client.get(f"/projects/{project_id}/feedback", headers=auth_headers)
     assert res.status_code == 200
@@ -106,7 +80,7 @@ def test_feedback_project_exists_but_no_feedback_returns_empty_list(client, auth
 
 def test_feedback_project_exists_with_feedback_rows_returns_sorted_items(client, auth_headers, seed_conn):
     project_name = "FeedbackProject"
-    project_id = _seed_project(seed_conn, 1, project_name)
+    project_id = seed_project(seed_conn, 1, project_name)
 
     # Intentionally insert out-of-order. DB query orders by skill_name, file_name, criterion_key.
     _seed_feedback(
@@ -175,7 +149,7 @@ def test_feedback_preflight_options_returns_405_without_cors(client, auth_header
     Edge case: without CORSMiddleware, browsers may send OPTIONS preflight for this route.
     This documents current behavior (405). If you add CORS middleware later, update/remove this test.
     """
-    project_id = _seed_project(seed_conn, 1, "CorsProject")
+    project_id = seed_project(seed_conn, 1, "CorsProject")
     res = client.options(f"/projects/{project_id}/feedback", headers=auth_headers)
     assert res.status_code == 405
 

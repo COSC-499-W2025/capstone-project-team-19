@@ -39,7 +39,9 @@ class UploadFileItemDTO(BaseModel):
     size_bytes: Optional[int] = None
 
 class UploadProjectFilesDTO(BaseModel):
-    project_name: str
+    project_key: Optional[int] = None  # Stable identifier for API calls
+    version_key: Optional[int] = None  # Identifies this upload's version for metrics
+    project_name: str  # Display only
     all_files: List[UploadFileItemDTO]
     text_files: List[UploadFileItemDTO]
     csv_files: List[UploadFileItemDTO]
@@ -58,7 +60,9 @@ class MainFileSectionDTO(BaseModel):
     is_truncated: bool = False
 
 class MainFileSectionsResponseDTO(BaseModel):
-    project_name: str
+    project_key: Optional[int] = None  # Stable identifier for API calls
+    version_key: Optional[int] = None  # Identifies this upload's version
+    project_name: str  # Display only
     main_file: str
     sections: List[MainFileSectionDTO]
 

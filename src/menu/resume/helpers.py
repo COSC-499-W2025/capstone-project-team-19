@@ -151,6 +151,7 @@ def load_project_summaries(conn, user_id: int, get_all_user_project_summaries) -
     for row in rows:
         try:
             summary_dict = json.loads(row["summary_json"])
+            summary_dict["project_id"] = row.get("project_summary_id")
             projects.append(ProjectSummary.from_dict(summary_dict))
         except Exception:
             # Skip malformed entries to avoid breaking the resume flow.
@@ -164,6 +165,7 @@ def build_resume_snapshot(summaries: List[ProjectSummary], highlighted_skills: L
     projects = []
     for ps in summaries:
         entry: Dict[str, Any] = {
+            "project_summary_id": ps.project_id,
             "project_name": ps.project_name,
             "project_type": ps.project_type,
             "project_mode": ps.project_mode,
@@ -513,7 +515,7 @@ def build_contribution_bullets(
         if isinstance(pct, (int, float)):
             bullets.append(f"Contributed to {pct:.1f}% of the project deliverables.")
 
-        vk = project.get("version_key") or project.get("classification_id") or get_latest_version_key(conn, user_id, project_name)
+        vk = project.get("version_key") or get_latest_version_key(conn, user_id, project_name)
         row = get_text_activity_contribution(conn, vk) if vk else None
 
         if not row:

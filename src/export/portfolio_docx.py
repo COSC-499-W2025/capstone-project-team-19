@@ -31,7 +31,7 @@ from docx.shared import Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from src.insights.rank_projects.rank_project_importance import collect_project_data
-from src.db import get_project_summary_row, get_project_thumbnail_path
+from src.db import get_project_summary_row, get_project_thumbnail_path, get_project_key
 from src.insights.portfolio import (
     format_duration,
     format_activity_line,
@@ -129,7 +129,8 @@ def export_portfolio_to_docx(
         doc.add_heading(str(display_name), level=1)
 
         # Thumbnail right after title (left aligned)
-        thumb = get_project_thumbnail_path(conn, user_id, project_name)
+        pkey = get_project_key(conn, user_id, project_name)
+        thumb = get_project_thumbnail_path(conn, user_id, pkey) if pkey else None
         if thumb:
             p = Path(thumb)
             if p.exists():
