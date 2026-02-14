@@ -146,6 +146,15 @@ from .git_identities import (
     save_user_github,
 )
 
+# version evolution
+from .version_evolution import (
+    insert_version_summary,
+    insert_version_skills_from_project,
+    get_version_keys_ordered_for_project,
+    get_version_summary,
+    get_version_skills,
+)
+
 # project summaries
 from .project_summaries import (
     save_project_summary,
@@ -360,6 +369,11 @@ __all__ = [
     "delete_thumbnail_and_file",
     "upsert_project_feedback",
     "get_project_summary_by_id",
+    "insert_version_summary",
+    "insert_version_skills_from_project",
+    "get_version_keys_ordered_for_project",
+    "get_version_summary",
+    "get_version_skills",
     "get_user_skill_preferences",
     "upsert_skill_preference",
     "bulk_upsert_skill_preferences",

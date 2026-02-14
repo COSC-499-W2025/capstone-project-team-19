@@ -140,6 +140,21 @@ def get_version_keys_for_project(conn: sqlite3.Connection, user_id: int, project
     return [int(r[0]) for r in rows]
 
 
+def get_version_counts_for_project_keys(conn: sqlite3.Connection, project_keys: List[int]) -> Dict[int, int]:
+    """Return {project_key: version_count} for the given project_keys."""
+    if not project_keys: return {}
+    placeholders = ",".join("?" * len(project_keys))
+    rows = conn.execute(
+        f"""
+        SELECT project_key, COUNT(*) AS cnt
+        FROM project_versions
+        WHERE project_key IN ({placeholders})
+        GROUP BY project_key
+        """,
+        tuple(project_keys),
+    ).fetchall()
+    return {int(r[0]): int(r[1]) for r in rows}
+
 def get_or_create_version_key_for_project(conn: sqlite3.Connection, user_id: int, project_name: str) -> Optional[int]:
     """
     Return the latest version_key for (user_id, project_name), or create project + one version if missing.

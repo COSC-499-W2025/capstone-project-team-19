@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlite3 import Connection
 
 from src.api.dependencies import get_db, get_current_user_id
@@ -8,7 +8,15 @@ from src.api.schemas.project_ranking import (
     ProjectRankingItemDTO,
     ReplaceProjectRankingRequestDTO,
     PatchProjectRankingRequestDTO,
+    TopProjectItemDTO,
+    TopProjectsDTO,
+    ProjectEvolutionDTO,
+    EvolutionVersionDTO,
+    VersionDiffDTO,
 )
+from src.db import get_project_summary_by_id
+from src.services.project_evolution_service import get_evolution_for_project
+from src.db.projects import get_version_counts_for_project_keys
 from src.services.projects_service import list_projects
 from src.services.project_ranking_service import (
     get_project_ranking,
@@ -40,6 +48,74 @@ def get_projects_ranking(user_id: int = Depends(get_current_user_id), conn: Conn
     rows = get_project_ranking(conn, user_id)
     dto = _build_project_ranking_dto(rows)
     return ApiResponse(success=True, data=dto, error=None)
+
+
+def _truncate_snippet(text: str | None, max_len: int = 120) -> str | None:
+    if not text or not text.strip():
+        return None
+    s = text.strip()
+    if len(s) <= max_len:
+        return s
+    truncated = s[: max_len - 3].rstrip()
+    # Prefer breaking at a word boundary
+    last_space = truncated.rfind(" ")
+    if last_space > max_len // 2:
+        truncated = truncated[: last_space]
+    return truncated + "..."
+
+
+@router.get("/top", response_model=ApiResponse[TopProjectsDTO])
+def get_projects_top(user_id: int = Depends(get_current_user_id), conn: Connection = Depends(get_db), limit: int = Query(default=3, ge=1, description="Number of top projects to return")):
+    rows = get_project_ranking(conn, user_id)
+    top_rows = rows[:limit]
+    project_keys = [r["project_key"] for r in top_rows if r.get("project_key") is not None]
+    version_counts = get_version_counts_for_project_keys(conn, project_keys) if project_keys else {}
+
+    dto = TopProjectsDTO(
+        topProjects=[
+            TopProjectItemDTO(
+                projectId=str(r["project_summary_id"]),
+                title=r["project_name"],
+                rankScore=r["score"],
+                summarySnippet=_truncate_snippet(r.get("summary_text")),
+                versionCount=version_counts.get(r.get("project_key") or 0, 0),
+            )
+            for r in top_rows
+        ]
+    )
+    return ApiResponse(success=True, data=dto, error=None)
+
+@router.get("/{project_id}/evolution", response_model=ApiResponse[ProjectEvolutionDTO])
+def get_project_evolution(
+    project_id: int,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    """Return version evolution for a project (versions, summaries, diffs, skills)."""
+    row = get_project_summary_by_id(conn, user_id, project_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Project not found")
+    project_key = row["project_key"]
+    title = row["project_name"]
+    evolution = get_evolution_for_project(conn, project_key)
+    versions_dto = [
+        EvolutionVersionDTO(
+            versionId=v["versionId"],
+            date=v["date"],
+            summary=v["summary"],
+            diff=VersionDiffDTO(**v["diff"]) if v.get("diff") else None,
+            skills=v["skills"],
+            skillsDetail=v.get("skillsDetail", []),
+        )
+        for v in evolution
+    ]
+    dto = ProjectEvolutionDTO(
+        projectId=str(project_id),
+        title=title,
+        versions=versions_dto,
+    )
+    return ApiResponse(success=True, data=dto, error=None)
+
 
 @router.put("/ranking", response_model=ApiResponse[ProjectRankingDTO])
 def put_projects_ranking(body: ReplaceProjectRankingRequestDTO, user_id: int = Depends(get_current_user_id), conn: Connection = Depends(get_db)):

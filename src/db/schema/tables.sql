@@ -369,6 +369,32 @@ CREATE TABLE IF NOT EXISTS project_skills (
     FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
+-- VERSION EVOLUTION (per-version snapshots for project evolution showcase)
+-- Feeds: evolution API, skills timeline (cross-project), future heatmap
+CREATE TABLE IF NOT EXISTS version_summaries (
+    version_key INTEGER PRIMARY KEY,
+    summary_text TEXT,
+    activity_date TEXT,
+    lines_added INTEGER,
+    lines_deleted INTEGER,
+    total_words INTEGER,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_skills (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    version_key INTEGER NOT NULL,
+    skill_name TEXT NOT NULL,
+    level TEXT NOT NULL,
+    score REAL NOT NULL,
+    UNIQUE(version_key, skill_name),
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_version_skills_version
+    ON version_skills(version_key);
+
 -- USER FILE CONTRIBUTIONS (for collaborative projects)
 -- Tracks which files each user worked on, used to filter skill detection
 
