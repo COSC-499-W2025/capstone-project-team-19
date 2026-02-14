@@ -29,7 +29,6 @@ from src.services.skill_preferences_service import (
     update_skill_preferences,
     reset_skill_preferences,
 )
-from src.db.projects import get_project_key
 import json
 
 
@@ -121,46 +120,16 @@ def edit_resume(
         )
         conn.commit()
 
-    # If no project_name provided, just return after name update
-    if project_name is None:
-        return get_resume_by_id(conn, user_id, resume_id)
-
-    # For project editing, scope is required
-    if scope is None:
-        scope = "resume_only"  # Default to resume_only if not specified
-    if scope not in ("resume_only", "global"):
-        scope = "resume_only"
-
-    # Find the project entry in the snapshot
-    projects = snapshot.get("projects") or []
-    project_entry = None
-    for p in projects:
-        if p.get("project_name") == project_name:
-            project_entry = p
-            break
-
-    if not project_entry:
-        return None
-
-    # Resolve context for skill preferences
-    pref_context = "resume" if scope == "resume_only" else "global"
-    pref_context_id = resume_id if scope == "resume_only" else None
-
+    # Resume-level skill preferences (not per project)
     if skill_preferences_reset:
-        project_key = get_project_key(conn, user_id, project_name)
-        if project_key is None:
-            return None
         reset_skill_preferences(
             conn,
             user_id,
-            context=pref_context,
-            context_id=pref_context_id,
-            project_key=project_key,
+            context="resume",
+            context_id=resume_id,
+            project_key=None,
         )
     elif skill_preferences:
-        project_key = get_project_key(conn, user_id, project_name)
-        if project_key is None:
-            return None
         normalized_prefs: List[Dict[str, Any]] = []
         for pref in skill_preferences:
             data = pref.dict() if hasattr(pref, "dict") else pref
@@ -179,10 +148,24 @@ def edit_resume(
                 conn,
                 user_id,
                 normalized_prefs,
-                context=pref_context,
-                context_id=pref_context_id,
-                project_key=project_key,
+                context="resume",
+                context_id=resume_id,
+                project_key=None,
             )
+    if project_name is None:
+        return get_resume_by_id(conn, user_id, resume_id)
+    if scope is None:
+        scope = "resume_only" 
+    if scope not in ("resume_only", "global"):
+        scope = "resume_only"
+    projects = snapshot.get("projects") or []
+    project_entry = None
+    for p in projects:
+        if p.get("project_name") == project_name:
+            project_entry = p
+            break
+    if not project_entry:
+        return None
 
     # Build updates dict
     updates: Dict[str, Any] = {}

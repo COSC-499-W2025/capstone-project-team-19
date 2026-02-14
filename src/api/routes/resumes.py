@@ -112,8 +112,6 @@ def post_resume_edit(
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
-    if (request.skill_preferences or request.skill_preferences_reset) and not request.project_name:
-        raise HTTPException(status_code=400, detail="project_name is required for skill preferences updates")
     resume = edit_resume(
         conn,
         user_id,
