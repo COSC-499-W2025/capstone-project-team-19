@@ -125,7 +125,7 @@ def format_duration(
     """
     Build a simple 'Duration: start – end' (or single date / N/A) line.
     Priority:
-    - text projects: use text_activity_contribution start/end via project_classifications
+    - text projects: use text_activity_contribution start/end (keyed by version_key)
     - code(collaborative): use code_collaborative_metrics first/last commit
     - code(individual):   use git_individual_metrics first/last commit
     """

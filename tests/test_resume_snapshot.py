@@ -282,7 +282,7 @@ def test_render_snapshot_text_activity_two_stages():
                 "text_type": "Academic writing",
                 "summary_text": "Example summary",
                 "contribution_percent": 50.0,
-                "classification_id": version_key,
+                "version_key": version_key,
                 "languages": [],
                 "frameworks": [],
                 "skills": [],

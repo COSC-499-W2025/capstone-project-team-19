@@ -39,6 +39,7 @@ from src.services.uploads_service import (
     submit_project_types,
     list_project_files,
     set_project_main_file,
+    _resolve_project_key_to_name,
 )
 from src.api.schemas.uploads import SupportingFilesRequestDTO
 from src.services.uploads_supporting_contributions_service import (
@@ -118,92 +119,116 @@ def post_upload_project_types(
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
 
 
+def _resolve_upload_project(
+    conn: Connection,
+    user_id: int,
+    upload_id: int,
+    project_key: int,
+) -> tuple[dict, str]:
+    """Resolve project_key to project_name for an upload. Returns (upload, project_name). Raises 404 if not found."""
+    upload = get_upload_status(conn, user_id, upload_id)
+    if not upload:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    project_name = _resolve_project_key_to_name(upload, project_key)
+    if not project_name:
+        raise HTTPException(status_code=404, detail="Project not found in this upload")
+    return upload, project_name
+
+
 @router.get(
-    "/upload/{upload_id}/projects/{project_name}/files",
+    "/upload/{upload_id}/projects/{project_key:int}/files",
     response_model=ApiResponse[UploadProjectFilesDTO],
 )
 def get_upload_project_files(
     upload_id: int,
-    project_name: str,
+    project_key: int,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
+    upload, project_name = _resolve_upload_project(conn, user_id, upload_id, project_key)
     data = list_project_files(conn, user_id, upload_id, project_name)
     return ApiResponse(success=True, data=UploadProjectFilesDTO(**data), error=None)
 
 
 @router.post(
-    "/upload/{upload_id}/projects/{project_name}/main-file",
+    "/upload/{upload_id}/projects/{project_key:int}/main-file",
     response_model=ApiResponse[UploadDTO],
 )
 def post_upload_project_main_file(
     upload_id: int,
-    project_name: str,
+    project_key: int,
     body: MainFileRequestDTO,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
-    upload = set_project_main_file(conn, user_id, upload_id, project_name, body.relpath)
-    return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+    upload, project_name = _resolve_upload_project(conn, user_id, upload_id, project_key)
+    result = set_project_main_file(conn, user_id, upload_id, project_name, body.relpath)
+    return ApiResponse(success=True, data=UploadDTO(**result), error=None)
+
 
 @router.get(
-    "/upload/{upload_id}/projects/{project_name}/text/sections",
+    "/upload/{upload_id}/projects/{project_key:int}/text/sections",
     response_model=ApiResponse[MainFileSectionsResponseDTO],
 )
-def get_main_file_sections(
+def get_main_file_sections_route(
     upload_id: int,
-    project_name: str,
+    project_key: int,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
+    upload, project_name = _resolve_upload_project(conn, user_id, upload_id, project_key)
     data = list_main_file_sections(conn, user_id, upload_id, project_name)
     if not data:
         raise HTTPException(status_code=404, detail="Main file sections not found")
     return ApiResponse(success=True, data=MainFileSectionsResponseDTO(**data), error=None)
 
+
 @router.post(
-    "/upload/{upload_id}/projects/{project_name}/text/contributions",
+    "/upload/{upload_id}/projects/{project_key:int}/text/contributions",
     response_model=ApiResponse[UploadDTO],
 )
 def post_main_file_contributed_sections(
     upload_id: int,
-    project_name: str,
+    project_key: int,
     body: ContributedSectionsRequestDTO,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
-    data = set_main_file_contributed_sections(conn, user_id, upload_id, project_name, body.selected_section_ids)
-    return ApiResponse(success=True, data=UploadDTO(**data), error=None)
+    upload, project_name = _resolve_upload_project(conn, user_id, upload_id, project_key)
+    result = set_main_file_contributed_sections(conn, user_id, upload_id, project_name, body.selected_section_ids)
+    return ApiResponse(success=True, data=UploadDTO(**result), error=None)
 
 
 @router.post(
-    "/upload/{upload_id}/projects/{project_name}/supporting-text-files",
+    "/upload/{upload_id}/projects/{project_key:int}/supporting-text-files",
     response_model=ApiResponse[UploadDTO],
 )
 def post_upload_project_supporting_text_files(
     upload_id: int,
-    project_name: str,
+    project_key: int,
     body: SupportingFilesRequestDTO,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
-    upload = set_project_supporting_text_files(conn, user_id, upload_id, project_name, body.relpaths)
-    return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+    upload, project_name = _resolve_upload_project(conn, user_id, upload_id, project_key)
+    result = set_project_supporting_text_files(conn, user_id, upload_id, project_name, body.relpaths)
+    return ApiResponse(success=True, data=UploadDTO(**result), error=None)
 
 
 @router.post(
-    "/upload/{upload_id}/projects/{project_name}/supporting-csv-files",
+    "/upload/{upload_id}/projects/{project_key:int}/supporting-csv-files",
     response_model=ApiResponse[UploadDTO],
 )
 def post_upload_project_supporting_csv_files(
     upload_id: int,
-    project_name: str,
+    project_key: int,
     body: SupportingFilesRequestDTO,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
-    upload = set_project_supporting_csv_files(conn, user_id, upload_id, project_name, body.relpaths)
-    return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+    upload, project_name = _resolve_upload_project(conn, user_id, upload_id, project_key)
+    result = set_project_supporting_csv_files(conn, user_id, upload_id, project_name, body.relpaths)
+    return ApiResponse(success=True, data=UploadDTO(**result), error=None)
 
 @router.get(
     "/upload/{upload_id}/projects/{project_key}/git/identities",

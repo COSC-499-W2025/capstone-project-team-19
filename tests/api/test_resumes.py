@@ -206,7 +206,7 @@ def test_generate_resume_without_project_ids_uses_top_ranked(client, auth_header
 def test_edit_resume_requires_user_header(client):
     """Test that POST /resume/{id}/edit requires X-User-Id header"""
     res = client.post("/resume/1/edit", json={
-        "project_name": "Test",
+        "project_summary_id": 1,
         "scope": "resume_only"
     })
     assert res.status_code == 401
@@ -216,7 +216,7 @@ def test_edit_resume_not_found(client, auth_headers):
     """Test editing a resume that doesn't exist"""
     res = client.post(
         "/resume/999/edit",
-        json={"project_name": "Test", "scope": "resume_only"},
+        json={"project_summary_id": 1, "scope": "resume_only"},
         headers=auth_headers
     )
     assert res.status_code == 404
@@ -224,7 +224,7 @@ def test_edit_resume_not_found(client, auth_headers):
 
 
 def test_edit_resume_project_not_found(client, auth_headers, seed_conn):
-    """Test editing a project that doesn't exist in the resume"""
+    """Test editing a project that doesn't exist (invalid project_summary_id)"""
     resume_json = json.dumps({
         "projects": [{"project_name": "ExistingProject"}],
         "aggregated_skills": {}
@@ -234,7 +234,7 @@ def test_edit_resume_project_not_found(client, auth_headers, seed_conn):
 
     res = client.post(
         f"/resume/{resume_id}/edit",
-        json={"project_name": "NonExistentProject", "scope": "resume_only"},
+        json={"project_summary_id": 99999, "scope": "resume_only"},
         headers=auth_headers
     )
     assert res.status_code == 404
@@ -243,6 +243,16 @@ def test_edit_resume_project_not_found(client, auth_headers, seed_conn):
 
 def test_edit_resume_resume_only_scope(client, auth_headers, seed_conn):
     """Test editing a resume with resume_only scope"""
+    save_project_summary(seed_conn, 1, "TestProject", json.dumps({
+        "project_name": "TestProject",
+        "project_type": "code",
+        "project_mode": "individual",
+        "summary_text": "Original",
+        "metrics": {}
+    }))
+    seed_conn.commit()
+    ps_id = get_project_summary_by_name(seed_conn, 1, "TestProject")["project_summary_id"]
+
     resume_json = json.dumps({
         "projects": [{
             "project_name": "TestProject",
@@ -258,7 +268,7 @@ def test_edit_resume_resume_only_scope(client, auth_headers, seed_conn):
     res = client.post(
         f"/resume/{resume_id}/edit",
         json={
-            "project_name": "TestProject",
+            "project_summary_id": ps_id,
             "scope": "resume_only",
             "summary_text": "Updated summary",
             "display_name": "Custom Display Name"
@@ -278,6 +288,15 @@ def test_edit_resume_resume_only_scope(client, auth_headers, seed_conn):
 
 def test_edit_resume_update_name(client, auth_headers, seed_conn):
     """Test renaming a resume"""
+    save_project_summary(seed_conn, 1, "TestProject", json.dumps({
+        "project_name": "TestProject",
+        "project_type": "code",
+        "project_mode": "individual",
+        "metrics": {}
+    }))
+    seed_conn.commit()
+    ps_id = get_project_summary_by_name(seed_conn, 1, "TestProject")["project_summary_id"]
+
     resume_json = json.dumps({
         "projects": [{"project_name": "TestProject"}],
         "aggregated_skills": {}
@@ -289,7 +308,7 @@ def test_edit_resume_update_name(client, auth_headers, seed_conn):
         f"/resume/{resume_id}/edit",
         json={
             "name": "New Name",
-            "project_name": "TestProject",
+            "project_summary_id": ps_id,
             "scope": "resume_only"
         },
         headers=auth_headers
@@ -322,6 +341,15 @@ def test_edit_resume_name_only(client, auth_headers, seed_conn):
 
 def test_edit_resume_contribution_bullets(client, auth_headers, seed_conn):
     """Test editing contribution bullets with replace mode (default)"""
+    save_project_summary(seed_conn, 1, "TestProject", json.dumps({
+        "project_name": "TestProject",
+        "project_type": "code",
+        "project_mode": "individual",
+        "metrics": {}
+    }))
+    seed_conn.commit()
+    ps_id = get_project_summary_by_name(seed_conn, 1, "TestProject")["project_summary_id"]
+
     resume_json = json.dumps({
         "projects": [{
             "project_name": "TestProject",
@@ -337,7 +365,7 @@ def test_edit_resume_contribution_bullets(client, auth_headers, seed_conn):
     res = client.post(
         f"/resume/{resume_id}/edit",
         json={
-            "project_name": "TestProject",
+            "project_summary_id": ps_id,
             "scope": "resume_only",
             "contribution_bullets": bullets
         },
@@ -354,6 +382,15 @@ def test_edit_resume_contribution_bullets(client, auth_headers, seed_conn):
 
 def test_edit_resume_contribution_bullets_append_mode(client, auth_headers, seed_conn):
     """Test editing contribution bullets with append mode"""
+    save_project_summary(seed_conn, 1, "TestProject", json.dumps({
+        "project_name": "TestProject",
+        "project_type": "code",
+        "project_mode": "individual",
+        "metrics": {}
+    }))
+    seed_conn.commit()
+    ps_id = get_project_summary_by_name(seed_conn, 1, "TestProject")["project_summary_id"]
+
     resume_json = json.dumps({
         "projects": [{
             "project_name": "TestProject",
@@ -370,7 +407,7 @@ def test_edit_resume_contribution_bullets_append_mode(client, auth_headers, seed
     res = client.post(
         f"/resume/{resume_id}/edit",
         json={
-            "project_name": "TestProject",
+            "project_summary_id": ps_id,
             "scope": "resume_only",
             "contribution_bullets": new_bullets,
             "contribution_edit_mode": "append"
@@ -401,6 +438,7 @@ def test_edit_resume_global_scope(client, auth_headers, seed_conn):
     })
     save_project_summary(seed_conn, 1, "TestProject", summary_json)
     seed_conn.commit()
+    ps_id = get_project_summary_by_name(seed_conn, 1, "TestProject")["project_summary_id"]
 
     # Create resume with this project
     resume_json = json.dumps({
@@ -417,7 +455,7 @@ def test_edit_resume_global_scope(client, auth_headers, seed_conn):
     res = client.post(
         f"/resume/{resume_id}/edit",
         json={
-            "project_name": "TestProject",
+            "project_summary_id": ps_id,
             "scope": "global",
             "summary_text": "Globally updated summary"
         },

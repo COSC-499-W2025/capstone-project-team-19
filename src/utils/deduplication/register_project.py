@@ -19,7 +19,7 @@ def register_project(conn, user_id: int, display_name: str, project_root: str, u
     new_paths = {rel for rel, _ in entries}
 
     # 1. Check for exact duplicate: content + structure identical
-    dupl_strict = find_existing_version_by_strict_fp(conn, user_id, fp_strict)
+    dupl_strict = find_existing_version_by_strict_fp(conn, user_id, fp_strict, exclude_upload_id=upload_id)
     if dupl_strict:
         project_key, version_key = dupl_strict
         return {"kind": "duplicate", "project_key": project_key, "version_key": version_key}
@@ -40,7 +40,7 @@ def register_project(conn, user_id: int, display_name: str, project_root: str, u
 
     # 2. Check for content-only match: same files, possibly different structure/names
     # This handles cases where files are renamed or restructured
-    dupl_loose = find_existing_version_by_loose_fp(conn, user_id, fp_loose)
+    dupl_loose = find_existing_version_by_loose_fp(conn, user_id, fp_loose, exclude_upload_id=upload_id)
     if dupl_loose:
         project_key, version_key = dupl_loose
         # Content is identical but structure differs - ask user if it's a new version
@@ -57,7 +57,7 @@ def register_project(conn, user_id: int, display_name: str, project_root: str, u
         }
 
     # 3. Compare to existing projects (latest versions)
-    latest = get_latest_versions(conn, user_id)
+    latest = get_latest_versions(conn, user_id, exclude_upload_id=upload_id)
 
     # if user has no projects yet, create a new project snapshot
     if not latest:
