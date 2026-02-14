@@ -133,6 +133,8 @@ def post_resume_edit(
         contribution_bullets=request.contribution_bullets,
         contribution_edit_mode=request.contribution_edit_mode,
         key_role=request.key_role,
+        skill_preferences=request.skill_preferences,
+        skill_preferences_reset=request.skill_preferences_reset,
     )
 
     if not resume:

@@ -103,6 +103,7 @@ def export_resume_record_to_pdf(
     record: Dict[str, Any],
     out_dir: str = "./out",
     highlighted_skills: Optional[List[str]] = None,
+    highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,
 ) -> Path:
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
@@ -262,13 +263,21 @@ def export_resume_record_to_pdf(
 
     add_skill_line("Frameworks", agg.get("frameworks") or [])
 
+    # Compute effective highlighted skills (union of per-project or flat list)
+    effective_highlighted = highlighted_skills
+    if highlighted_skills_by_project is not None:
+        all_hl: set = set()
+        for sl in highlighted_skills_by_project.values():
+            all_hl.update(sl)
+        effective_highlighted = list(all_hl)
+
     tech_skills = filter_skills_by_highlighted(
         agg.get("technical_skills") or [],
-        highlighted_skills,
+        effective_highlighted,
     )
     writing_skills = filter_skills_by_highlighted(
         agg.get("writing_skills") or [],
-        highlighted_skills,
+        effective_highlighted,
     )
 
     add_skill_line("Technical skills", tech_skills)

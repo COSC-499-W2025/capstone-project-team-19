@@ -25,6 +25,11 @@ from src.services.resume_overrides import (
     update_project_manual_overrides,
     apply_manual_overrides_to_resumes,
 )
+from src.services.skill_preferences_service import (
+    update_skill_preferences,
+    reset_skill_preferences,
+    normalize_skill_preferences,
+)
 import json
 
 
@@ -94,6 +99,8 @@ def edit_resume(
     contribution_bullets: Optional[List[str]] = None,
     contribution_edit_mode: Literal["append", "replace"] = "replace",
     key_role: Optional[str] = None,
+    skill_preferences: Optional[List[Dict[str, Any]]] = None,
+    skill_preferences_reset: Optional[bool] = False,
 ) -> Optional[Dict[str, Any]]:
 
     # Get the resume record
@@ -114,22 +121,38 @@ def edit_resume(
         )
         conn.commit()
 
-    # If no project_name provided, just return after name update (name-only edit)
+    # Resume-level skill preferences (not per project)
+    if skill_preferences_reset:
+        reset_skill_preferences(
+            conn,
+            user_id,
+            context="resume",
+            context_id=resume_id,
+            project_key=None,
+        )
+    elif skill_preferences:
+        normalized_prefs = normalize_skill_preferences(skill_preferences)
+        if normalized_prefs:
+            update_skill_preferences(
+                conn,
+                user_id,
+                normalized_prefs,
+                context="resume",
+                context_id=resume_id,
+                project_key=None,
+            )
     if project_name is None:
         return get_resume_by_id(conn, user_id, resume_id)
-
-    # For project editing, scope is required
     if scope is None:
-        scope = "resume_only"  # Default to resume_only if not specified
-
-    # Find the project entry in the snapshot
+        scope = "resume_only" 
+    if scope not in ("resume_only", "global"):
+        scope = "resume_only"
     projects = snapshot.get("projects") or []
     project_entry = None
     for p in projects:
         if p.get("project_name") == project_name:
             project_entry = p
             break
-
     if not project_entry:
         return None
 
@@ -151,7 +174,7 @@ def edit_resume(
         updates["key_role"] = key_role or None
 
     if not updates:
-        # No field updates, just return existing
+        # No field updates, just return existing (skill prefs may have changed)
         return get_resume_by_id(conn, user_id, resume_id)
 
     if scope == "resume_only":

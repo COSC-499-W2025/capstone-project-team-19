@@ -8,7 +8,13 @@ from src.services.resume_overrides import (
     update_project_manual_overrides,
     apply_manual_overrides_to_resumes,
 )
-from src.services.skill_preferences_service import get_highlighted_skills_for_display
+from src.services.skill_preferences_service import (
+    get_highlighted_skills_for_display,
+    update_skill_preferences,
+    reset_skill_preferences,
+    normalize_skill_preferences,
+)
+from src.db.projects import get_project_key
 from src.insights.portfolio import (
     format_duration,
     format_languages,
@@ -44,13 +50,6 @@ def build_portfolio_data(
     if not project_scores:
         return None
 
-    # Get highlighted skills for portfolio context (applies to all projects)
-    highlighted_skills = get_highlighted_skills_for_display(
-        conn=conn,
-        user_id=user_id,
-        context="portfolio",
-        context_id=None,
-    )
     projects: List[Dict[str, Any]] = []
 
     for project_name, score in project_scores:
@@ -84,16 +83,17 @@ def build_portfolio_data(
             if frameworks_line and not frameworks_line.endswith("N/A"):
                 frameworks_list = [f.strip() for f in frameworks_line.replace("Frameworks: ", "").split(",") if f.strip()]
 
-        # Extract skills as list, filtered by user preferences
-        # Get all skills from this project's summary
+        # Extract skills as list, filtered by per-project user preferences
         all_project_skills = get_all_skills_from_summary(summary)
 
-        # Filter by highlighted skills if user has preferences
+        pk = get_project_key(conn, user_id, project_name)
+        highlighted_skills = get_highlighted_skills_for_display(
+            conn=conn, user_id=user_id, context="portfolio", project_key=pk,
+        ) if pk else None
+
         if highlighted_skills:
-            # Only show skills that are both in this project AND highlighted
             skills = [s for s in highlighted_skills if s in all_project_skills][:4]
         else:
-            # No preferences set - use default (top 4 by score)
             skills = all_project_skills[:4]
 
         projects.append({
@@ -123,16 +123,8 @@ def render_portfolio_text(
 ) -> str:
     """
     Build a plain-text rendered portfolio from structured project data.
-    Respects user skill highlighting preferences.
+    Respects per-project skill highlighting preferences.
     """
-    # Get highlighted skills for portfolio context
-    highlighted_skills = get_highlighted_skills_for_display(
-        conn=conn,
-        user_id=user_id,
-        context="portfolio",
-        context_id=None,
-    )
-
     lines: List[str] = []
     lines.append(f"Portfolio — {name}")
     lines.append("=" * 80)
@@ -153,7 +145,12 @@ def render_portfolio_text(
             lines.append(f"  {format_frameworks(summary)}")
         lines.append(f"  {project['activity']}")
 
-        # Use highlighted skills if available
+        # Get per-project highlighted skills
+        pk = get_project_key(conn, user_id, project_name)
+        highlighted_skills = get_highlighted_skills_for_display(
+            conn=conn, user_id=user_id, context="portfolio", project_key=pk,
+        ) if pk else None
+
         for line in format_skills_block(summary, highlighted_skills if highlighted_skills else None):
             lines.append(f"  {line}")
         for line in format_summary_block(project_type, project_mode, summary, conn, user_id, project_name):
@@ -277,6 +274,8 @@ def edit_portfolio(
     summary_text: Optional[str] = None,
     contribution_bullets: Optional[List[str]] = None,
     name: str = "Portfolio",
+    skill_preferences: Optional[List[Dict[str, Any]]] = None,
+    skill_preferences_reset: Optional[bool] = False,
 ) -> Optional[Dict[str, Any]]:
     """
     Edit portfolio wording for a project.
@@ -287,6 +286,36 @@ def edit_portfolio(
     if not summary_row:
         return None
 
+    if scope not in ("portfolio_only", "global"):
+        scope = "portfolio_only"
+
+    pref_context = "portfolio" if scope == "portfolio_only" else "global"
+    pref_context_id = None
+    if skill_preferences_reset:
+        project_key = get_project_key(conn, user_id, project_name)
+        if project_key is None:
+            return None
+        reset_skill_preferences(
+            conn,
+            user_id,
+            context=pref_context,
+            context_id=pref_context_id,
+            project_key=project_key,
+        )
+    elif skill_preferences:
+        project_key = get_project_key(conn, user_id, project_name)
+        if project_key is None:
+            return None
+        normalized_prefs = normalize_skill_preferences(skill_preferences)
+        if normalized_prefs:
+            update_skill_preferences(
+                conn,
+                user_id,
+                normalized_prefs,
+                context=pref_context,
+                context_id=pref_context_id,
+                project_key=project_key,
+            )
     # Build updates dict
     updates: Dict[str, Any] = {}
     if display_name is not None:

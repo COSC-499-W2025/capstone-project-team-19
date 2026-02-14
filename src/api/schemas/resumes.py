@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Any, List, Optional, Dict, Literal
+from src.api.schemas.skills import SkillPreferenceDTO
 
 class ResumeListItemDTO(BaseModel):
     id: int
@@ -49,3 +50,5 @@ class ResumeEditRequestDTO(BaseModel):
     contribution_bullets: Optional[List[str]] = None
     contribution_edit_mode: Optional[Literal["append", "replace"]] = "replace"
     key_role: Optional[str] = None
+    skill_preferences: Optional[List[SkillPreferenceDTO]] = None
+    skill_preferences_reset: Optional[bool] = False

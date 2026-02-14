@@ -11,3 +11,8 @@ class SkillEventDTO(BaseModel):
 
 class SkillsListDTO(BaseModel):
     skills: List[SkillEventDTO]
+
+class SkillPreferenceDTO(BaseModel):
+    skill_name: str
+    is_highlighted: Optional[bool] = True
+    display_order: Optional[int] = None

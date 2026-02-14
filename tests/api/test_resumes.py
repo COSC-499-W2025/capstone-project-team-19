@@ -2,6 +2,7 @@ import json
 import pytest
 from src.db.resumes import insert_resume_snapshot
 from src.db.project_summaries import save_project_summary, get_project_summary_by_name
+from src.db.skill_preferences import get_user_skill_preferences
 
 #TESTS
 # All Resumes tests
@@ -337,6 +338,34 @@ def test_edit_resume_name_only(client, auth_headers, seed_conn):
     body = res.json()
     assert body["success"] is True
     assert body["data"]["name"] == "Renamed Resume"
+
+def test_edit_resume_skill_preferences_without_project_name(client, auth_headers, seed_conn):
+    """Skill preferences can be updated at resume scope without project_name."""
+    resume_json = json.dumps({
+        "projects": [{"project_name": "TestProject"}],
+        "aggregated_skills": {}
+    })
+    resume_id = insert_resume_snapshot(seed_conn, 1, "Test Resume", resume_json)
+    seed_conn.commit()
+
+    res = client.post(
+        f"/resume/{resume_id}/edit",
+        json={
+            "skill_preferences": [
+                {"skill_name": "algorithms", "is_highlighted": False, "display_order": 2}
+            ]
+        },
+        headers=auth_headers
+    )
+    assert res.status_code == 200
+
+    prefs = get_user_skill_preferences(
+        seed_conn, user_id=1, context="resume", context_id=resume_id
+    )
+    assert len(prefs) == 1
+    assert prefs[0]["skill_name"] == "algorithms"
+    assert prefs[0]["is_highlighted"] is False
+    assert prefs[0]["display_order"] == 2
 
 
 def test_edit_resume_contribution_bullets(client, auth_headers, seed_conn):
