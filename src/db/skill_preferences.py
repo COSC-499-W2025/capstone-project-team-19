@@ -10,39 +10,72 @@ def get_user_skill_preferences(
     project_key: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     if context_id is not None:
-        cursor = conn.execute(
-            """
-            SELECT skill_name, is_highlighted, display_order
-            FROM user_skill_preferences
-            WHERE user_id = ? AND context = ? AND context_id = ? AND project_key = ?
-            ORDER BY display_order ASC NULLS LAST, skill_name ASC
-            """,
-            (user_id, context, context_id, project_key)
-        )
+        if project_key is None:
+            cursor = conn.execute(
+                """
+                SELECT skill_name, is_highlighted, display_order
+                FROM user_skill_preferences
+                WHERE user_id = ? AND context = ? AND context_id = ? AND project_key IS NULL
+                ORDER BY display_order ASC NULLS LAST, skill_name ASC
+                """,
+                (user_id, context, context_id)
+            )
+        else:
+            cursor = conn.execute(
+                """
+                SELECT skill_name, is_highlighted, display_order
+                FROM user_skill_preferences
+                WHERE user_id = ? AND context = ? AND context_id = ? AND project_key = ?
+                ORDER BY display_order ASC NULLS LAST, skill_name ASC
+                """,
+                (user_id, context, context_id, project_key)
+            )
     else:
-        cursor = conn.execute(
-            """
-            SELECT skill_name, is_highlighted, display_order
-            FROM user_skill_preferences
-            WHERE user_id = ? AND context = ? AND context_id IS NULL AND project_key = ?
-            ORDER BY display_order ASC NULLS LAST, skill_name ASC
-            """,
-            (user_id, context, project_key)
-        )
+        if project_key is None:
+            cursor = conn.execute(
+                """
+                SELECT skill_name, is_highlighted, display_order
+                FROM user_skill_preferences
+                WHERE user_id = ? AND context = ? AND context_id IS NULL AND project_key IS NULL
+                ORDER BY display_order ASC NULLS LAST, skill_name ASC
+                """,
+                (user_id, context)
+            )
+        else:
+            cursor = conn.execute(
+                """
+                SELECT skill_name, is_highlighted, display_order
+                FROM user_skill_preferences
+                WHERE user_id = ? AND context = ? AND context_id IS NULL AND project_key = ?
+                ORDER BY display_order ASC NULLS LAST, skill_name ASC
+                """,
+                (user_id, context, project_key)
+            )
 
     rows = cursor.fetchall()
 
     # Fallback: if no context-specific prefs, try global
     if not rows and context != "global":
-        cursor = conn.execute(
-            """
-            SELECT skill_name, is_highlighted, display_order
-            FROM user_skill_preferences
-            WHERE user_id = ? AND context = 'global' AND context_id IS NULL AND project_key = ?
-            ORDER BY display_order ASC NULLS LAST, skill_name ASC
-            """,
-            (user_id, project_key)
-        )
+        if project_key is None:
+            cursor = conn.execute(
+                """
+                SELECT skill_name, is_highlighted, display_order
+                FROM user_skill_preferences
+                WHERE user_id = ? AND context = 'global' AND context_id IS NULL AND project_key IS NULL
+                ORDER BY display_order ASC NULLS LAST, skill_name ASC
+                """,
+                (user_id,)
+            )
+        else:
+            cursor = conn.execute(
+                """
+                SELECT skill_name, is_highlighted, display_order
+                FROM user_skill_preferences
+                WHERE user_id = ? AND context = 'global' AND context_id IS NULL AND project_key = ?
+                ORDER BY display_order ASC NULLS LAST, skill_name ASC
+                """,
+                (user_id, project_key)
+            )
         rows = cursor.fetchall()
 
     return [
@@ -65,7 +98,7 @@ def upsert_skill_preference(
     is_highlighted: bool = True,
     display_order: Optional[int] = None,
 ) -> None:
-    if context_id is not None:
+    if context_id is not None and project_key is not None:
         conn.execute(
             """
             INSERT INTO user_skill_preferences
@@ -80,11 +113,23 @@ def upsert_skill_preference(
             (user_id, context, context_id, project_key, skill_name, int(is_highlighted), display_order)
         )
     else:
-        # context_id is NULL — ON CONFLICT doesn't match NULLs, so use manual check
-        row = conn.execute(
-            "SELECT id FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id IS NULL AND project_key = ? AND skill_name = ?",
-            (user_id, context, project_key, skill_name)
-        ).fetchone()
+        # Use manual check when any of the conflict keys can be NULL.
+        if context_id is None:
+            if project_key is None:
+                row = conn.execute(
+                    "SELECT id FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id IS NULL AND project_key IS NULL AND skill_name = ?",
+                    (user_id, context, skill_name)
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT id FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id IS NULL AND project_key = ? AND skill_name = ?",
+                    (user_id, context, project_key, skill_name)
+                ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT id FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id = ? AND project_key IS NULL AND skill_name = ?",
+                (user_id, context, context_id, skill_name)
+            ).fetchone()
 
         if row:
             conn.execute(
@@ -96,9 +141,9 @@ def upsert_skill_preference(
                 """
                 INSERT INTO user_skill_preferences
                     (user_id, context, context_id, project_key, skill_name, is_highlighted, display_order, updated_at)
-                VALUES (?, ?, NULL, ?, ?, ?, ?, datetime('now'))
+                VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
                 """,
-                (user_id, context, project_key, skill_name, int(is_highlighted), display_order)
+                (user_id, context, context_id, project_key, skill_name, int(is_highlighted), display_order)
             )
     conn.commit()
 
@@ -132,15 +177,27 @@ def clear_skill_preferences(
     project_key: Optional[int] = None,
 ) -> int:
     if context_id is not None:
-        cursor = conn.execute(
-            "DELETE FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id = ? AND project_key = ?",
-            (user_id, context, context_id, project_key)
-        )
+        if project_key is None:
+            cursor = conn.execute(
+                "DELETE FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id = ? AND project_key IS NULL",
+                (user_id, context, context_id)
+            )
+        else:
+            cursor = conn.execute(
+                "DELETE FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id = ? AND project_key = ?",
+                (user_id, context, context_id, project_key)
+            )
     else:
-        cursor = conn.execute(
-            "DELETE FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id IS NULL AND project_key = ?",
-            (user_id, context, project_key)
-        )
+        if project_key is None:
+            cursor = conn.execute(
+                "DELETE FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id IS NULL AND project_key IS NULL",
+                (user_id, context)
+            )
+        else:
+            cursor = conn.execute(
+                "DELETE FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id IS NULL AND project_key = ?",
+                (user_id, context, project_key)
+            )
     conn.commit()
     return cursor.rowcount
 
@@ -187,13 +244,25 @@ def has_skill_preferences(
     project_key: Optional[int] = None,
 ) -> bool:
     if context_id is not None:
-        cursor = conn.execute(
-            "SELECT 1 FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id = ? AND project_key = ? LIMIT 1",
-            (user_id, context, context_id, project_key)
-        )
+        if project_key is None:
+            cursor = conn.execute(
+                "SELECT 1 FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id = ? AND project_key IS NULL LIMIT 1",
+                (user_id, context, context_id)
+            )
+        else:
+            cursor = conn.execute(
+                "SELECT 1 FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id = ? AND project_key = ? LIMIT 1",
+                (user_id, context, context_id, project_key)
+            )
     else:
-        cursor = conn.execute(
-            "SELECT 1 FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id IS NULL AND project_key = ? LIMIT 1",
-            (user_id, context, project_key)
-        )
+        if project_key is None:
+            cursor = conn.execute(
+                "SELECT 1 FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id IS NULL AND project_key IS NULL LIMIT 1",
+                (user_id, context)
+            )
+        else:
+            cursor = conn.execute(
+                "SELECT 1 FROM user_skill_preferences WHERE user_id = ? AND context = ? AND context_id IS NULL AND project_key = ? LIMIT 1",
+                (user_id, context, project_key)
+            )
     return cursor.fetchone() is not None

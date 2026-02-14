@@ -117,9 +117,15 @@ def _view_skill_preferences(
     if context == "global":
         print("(These preferences apply to all resumes and portfolio unless overridden)")
     elif context == "resume":
-        print("(These preferences apply only to this project in this resume)")
+        if project_key is None:
+            print("(These preferences apply only to this resume)")
+        else:
+            print("(These preferences apply only to this project in this resume)")
     elif context == "portfolio":
-        print("(These preferences apply only to this project in the portfolio)")
+        if project_key is None:
+            print("(These preferences apply only to the portfolio)")
+        else:
+            print("(These preferences apply only to this project in the portfolio)")
 
 
 def _toggle_skill_highlighting(
@@ -238,7 +244,7 @@ def _set_skill_order(
         print("Invalid skill numbers. Please use numbers from the list above.")
         return
 
-    #place selected skills first, then append remaining in current order.
+    # Normalize: place selected skills first, then append remaining in current order.
     selected_indices = []
     seen = set()
     for idx in new_order:
@@ -253,8 +259,6 @@ def _set_skill_order(
     for idx, skill in enumerate(highlighted, 1):
         if idx not in seen:
             ordered_skills.append(skill)
-
-    # Rewrite display order for all highlighted skills (no duplicates)
     updates: List[Dict[str, Any]] = []
     for display_order, skill in enumerate(ordered_skills, 1):
         updates.append({
