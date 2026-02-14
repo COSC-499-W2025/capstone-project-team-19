@@ -28,6 +28,7 @@ from src.services.resume_overrides import (
 from src.services.skill_preferences_service import (
     update_skill_preferences,
     reset_skill_preferences,
+    normalize_skill_preferences,
 )
 import json
 
@@ -130,19 +131,7 @@ def edit_resume(
             project_key=None,
         )
     elif skill_preferences:
-        normalized_prefs: List[Dict[str, Any]] = []
-        for pref in skill_preferences:
-            data = pref.dict() if hasattr(pref, "dict") else pref
-            if not isinstance(data, dict):
-                continue
-            skill_name = data.get("skill_name")
-            if not skill_name:
-                continue
-            normalized_prefs.append({
-                "skill_name": skill_name,
-                "is_highlighted": data.get("is_highlighted", True),
-                "display_order": data.get("display_order"),
-            })
+        normalized_prefs = normalize_skill_preferences(skill_preferences)
         if normalized_prefs:
             update_skill_preferences(
                 conn,

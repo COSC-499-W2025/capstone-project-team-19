@@ -12,6 +12,7 @@ from src.services.skill_preferences_service import (
     get_highlighted_skills_for_display,
     update_skill_preferences,
     reset_skill_preferences,
+    normalize_skill_preferences,
 )
 from src.db.projects import get_project_key
 from src.insights.portfolio import (
@@ -304,19 +305,7 @@ def edit_portfolio(
         project_key = get_project_key(conn, user_id, project_name)
         if project_key is None:
             return None
-        normalized_prefs: List[Dict[str, Any]] = []
-        for pref in skill_preferences:
-            data = pref.dict() if hasattr(pref, "dict") else pref
-            if not isinstance(data, dict):
-                continue
-            skill_name = data.get("skill_name")
-            if not skill_name:
-                continue
-            normalized_prefs.append({
-                "skill_name": skill_name,
-                "is_highlighted": data.get("is_highlighted", True),
-                "display_order": data.get("display_order"),
-            })
+        normalized_prefs = normalize_skill_preferences(skill_preferences)
         if normalized_prefs:
             update_skill_preferences(
                 conn,

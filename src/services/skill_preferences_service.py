@@ -13,6 +13,26 @@ from src.db.skills import get_skill_events
 from src.db.projects import get_project_key
 
 
+def normalize_skill_preferences(
+    skill_preferences: Optional[List[Dict[str, Any]]],
+) -> List[Dict[str, Any]]:
+    """Normalize skill preference inputs into a consistent dict shape."""
+    normalized: List[Dict[str, Any]] = []
+    for pref in skill_preferences or []:
+        data = pref.dict() if hasattr(pref, "dict") else pref
+        if not isinstance(data, dict):
+            continue
+        skill_name = data.get("skill_name")
+        if not skill_name:
+            continue
+        normalized.append({
+            "skill_name": skill_name,
+            "is_highlighted": data.get("is_highlighted", True),
+            "display_order": data.get("display_order"),
+        })
+    return normalized
+
+
 def get_available_skills_with_status(
     conn: sqlite3.Connection,
     user_id: int,
