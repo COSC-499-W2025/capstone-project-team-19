@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import Any, Dict, Optional, Literal, List
 
 UploadStatus = Literal[
@@ -52,6 +52,20 @@ class MainFileRequestDTO(BaseModel):
 
 class SupportingFilesRequestDTO(BaseModel):
     relpaths: List[str] = []
+
+
+class KeyRoleRequestDTO(BaseModel):
+    key_role: str = Field(..., min_length=1, max_length=120)
+
+    @field_validator("key_role")
+    @classmethod
+    def normalize_key_role(cls, value: str) -> str:
+        normalized = " ".join((value or "").split())
+        if not normalized:
+            raise ValueError("key_role must not be blank")
+        return normalized
+
+
 class MainFileSectionDTO(BaseModel):
     id: int
     title: str
