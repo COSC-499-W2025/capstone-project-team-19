@@ -39,9 +39,7 @@ from src.services.resume_overrides import (
     apply_manual_overrides_to_resumes,
 )
 from src.menu.skill_highlighting import manage_skill_highlighting
-from src.services.skill_preferences_service import get_highlighted_skills_by_project
-
-from src.db.projects import get_project_key
+from src.services.skill_preferences_service import get_highlighted_skills_for_display
 from .date_helpers import enrich_snapshot_with_dates
 
 
@@ -152,20 +150,18 @@ def _handle_view_existing_resume(conn, user_id: int) -> bool:
         print("Unable to load the selected resume.")
         return False
 
-    # Always re-render with current per-project skill preferences applied
+    # Always re-render with current resume-level skill preferences applied
     try:
         snapshot = json.loads(record["resume_json"])
-        projects = snapshot.get("projects", [])
-        project_names = [p.get("project_name", "") for p in projects]
-        highlighted_by_project = get_highlighted_skills_by_project(
-            conn, user_id, project_names, context="resume", context_id=resume_id
+        highlighted_skills = get_highlighted_skills_for_display(
+            conn, user_id, context="resume", context_id=resume_id
         )
         render_snapshot(
             conn,
             user_id,
             snapshot,
             print_output=True,
-            highlighted_skills_by_project=highlighted_by_project,
+            highlighted_skills=highlighted_skills,
         )
     except Exception:
         print("Stored resume is corrupted or unreadable.")
@@ -307,18 +303,15 @@ def _handle_export_resume_docx(conn, user_id: int, username: str) -> bool:
         print("Unable to load the selected resume.")
         return False
 
-    snapshot = json.loads(record["resume_json"])
-    projects = snapshot.get("projects", [])
-    project_names = [p.get("project_name", "") for p in projects]
-    highlighted_by_project = get_highlighted_skills_by_project(
-        conn, user_id, project_names, context="resume", context_id=resume_id
+    highlighted_skills = get_highlighted_skills_for_display(
+        conn, user_id, context="resume", context_id=resume_id
     )
 
     out_file = export_resume_record_to_docx(
         username=username,
         record=record,
         out_dir="./out",
-        highlighted_skills_by_project=highlighted_by_project,
+        highlighted_skills=highlighted_skills,
     )
     print(f"\nSaving resume to {out_file} ...")
     print("✓ Export complete.\n")
@@ -438,18 +431,15 @@ def _handle_export_resume_pdf(conn, user_id: int, username: str) -> bool:
         print("Unable to load the selected resume.")
         return False
 
-    snapshot = json.loads(record["resume_json"])
-    projects = snapshot.get("projects", [])
-    project_names = [p.get("project_name", "") for p in projects]
-    highlighted_by_project = get_highlighted_skills_by_project(
-        conn, user_id, project_names, context="resume", context_id=resume_id
+    highlighted_skills = get_highlighted_skills_for_display(
+        conn, user_id, context="resume", context_id=resume_id
     )
 
     out_file = export_resume_record_to_pdf(
         username=username,
         record=record,
         out_dir="./out",
-        highlighted_skills_by_project=highlighted_by_project,
+        highlighted_skills=highlighted_skills,
     )
     print(f"\nSaving resume to {out_file} ...")
     print("✓ Export complete.\n")
@@ -457,7 +447,7 @@ def _handle_export_resume_pdf(conn, user_id: int, username: str) -> bool:
 
 
 def _handle_manage_resume_skills(conn, user_id: int, username: str) -> bool:
-    """Manage skill highlighting preferences for a specific resume, per project."""
+    """Manage skill highlighting preferences for a specific resume."""
     resumes = list_resumes(conn, user_id)
     if not resumes:
         print("No saved resumes yet. Create one first.")
@@ -481,52 +471,13 @@ def _handle_manage_resume_skills(conn, user_id: int, username: str) -> bool:
     resume_id = resume["id"]
     resume_name = resume["name"]
 
-    # Load projects from resume snapshot
-    record = get_resume_snapshot(conn, user_id, resume_id)
-    if not record:
-        print("Unable to load the selected resume.")
-        return False
-
-    snapshot = json.loads(record["resume_json"])
-    projects = snapshot.get("projects", [])
-
-    if not projects:
-        print("No projects found in this resume.")
-        return False
-
-    # Display projects and let user select
-    print(f"\nProjects in '{resume_name}':")
-    for pidx, p in enumerate(projects, 1):
-        display = resolve_resume_display_name(p)
-        print(f"{pidx}. {display}")
-
-    proj_choice = input("Select a project to manage skills (number) or press Enter to cancel: ").strip()
-    if not proj_choice.isdigit():
-        print("Cancelled.")
-        return False
-
-    p_idx = int(proj_choice)
-    if p_idx < 1 or p_idx > len(projects):
-        print("Invalid selection.")
-        return False
-
-    project_entry = projects[p_idx - 1]
-    project_name = project_entry.get("project_name")
-
-    # Resolve project_key from project_name
-    project_key = get_project_key(conn, user_id, project_name)
-    if project_key is None:
-        print(f"Project '{project_name}' not found in database.")
-        return False
-
     manage_skill_highlighting(
         conn,
         user_id,
         username,
         context="resume",
         context_id=resume_id,
-        context_name=f"Resume: {resume_name} > {project_name}",
-        project_key=project_key,
+        context_name=f"Resume: {resume_name}",
     )
     return True
 

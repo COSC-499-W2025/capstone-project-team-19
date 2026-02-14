@@ -25,6 +25,10 @@ from src.services.resume_overrides import (
     update_project_manual_overrides,
     apply_manual_overrides_to_resumes,
 )
+from src.services.skill_preferences_service import (
+    update_skill_preferences,
+    reset_skill_preferences,
+)
 import json
 
 
@@ -114,13 +118,48 @@ def edit_resume(
         )
         conn.commit()
 
-    # If no project_name provided, just return after name update (name-only edit)
-    if project_name is None:
-        return get_resume_by_id(conn, user_id, resume_id)
-
-    # For project editing, scope is required
+    # Resolve context for skill preferences
     if scope is None:
         scope = "resume_only"  # Default to resume_only if not specified
+
+    pref_context = "resume" if scope == "resume_only" else "global"
+    pref_context_id = resume_id if scope == "resume_only" else None
+
+    if skill_preferences_reset:
+        reset_skill_preferences(
+            conn,
+            user_id,
+            context=pref_context,
+            context_id=pref_context_id,
+            project_key=None,
+        )
+    elif skill_preferences:
+        normalized_prefs: List[Dict[str, Any]] = []
+        for pref in skill_preferences:
+            data = pref.dict() if hasattr(pref, "dict") else pref
+            if not isinstance(data, dict):
+                continue
+            skill_name = data.get("skill_name")
+            if not skill_name:
+                continue
+            normalized_prefs.append({
+                "skill_name": skill_name,
+                "is_highlighted": data.get("is_highlighted", True),
+                "display_order": data.get("display_order"),
+            })
+        if normalized_prefs:
+            update_skill_preferences(
+                conn,
+                user_id,
+                normalized_prefs,
+                context=pref_context,
+                context_id=pref_context_id,
+                project_key=None,
+            )
+
+    # If no project_name provided, just return after name/skill updates
+    if project_name is None:
+        return get_resume_by_id(conn, user_id, resume_id)
 
     # Find the project entry in the snapshot
     projects = snapshot.get("projects") or []
