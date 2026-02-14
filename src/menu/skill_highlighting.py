@@ -238,10 +238,23 @@ def _set_skill_order(
         print("Invalid skill numbers. Please use numbers from the list above.")
         return
 
-    # Update display order
+    # Normalize: place selected skills first, then append remaining in current order.
+    selected_indices = []
+    seen = set()
+    for idx in new_order:
+        if idx in seen:
+            continue
+        seen.add(idx)
+        selected_indices.append(idx)
+
+    ordered_skills: List[Dict[str, Any]] = []
+    for idx in selected_indices:
+        ordered_skills.append(highlighted[idx - 1])
+    for idx, skill in enumerate(highlighted, 1):
+        if idx not in seen:
+            ordered_skills.append(skill)
     updates: List[Dict[str, Any]] = []
-    for display_order, idx in enumerate(new_order, 1):
-        skill = highlighted[idx - 1]
+    for display_order, skill in enumerate(ordered_skills, 1):
         updates.append({
             "skill_name": skill["skill_name"],
             "is_highlighted": True,
