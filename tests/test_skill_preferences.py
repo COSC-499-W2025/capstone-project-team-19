@@ -20,6 +20,7 @@ from src.services.skill_preferences_service import (
     update_skill_preferences,
     get_highlighted_skills_for_display,
     reset_skill_preferences,
+    normalize_skill_preferences,
 )
 
 
@@ -214,6 +215,29 @@ class TestUpdateAndReset:
         count = reset_skill_preferences(conn_with_skills, user_id=1, project_key=1)
         assert count == 1
         assert has_skill_preferences(conn_with_skills, user_id=1, project_key=1) is False
+
+
+class TestNormalizeSkillPreferences:
+    def test_normalizes_and_filters_inputs(self):
+        class PrefObj:
+            def __init__(self, data):
+                self._data = data
+            def dict(self):
+                return self._data
+
+        prefs = normalize_skill_preferences([
+            {"skill_name": "algorithms"},
+            {"skill_name": "api_and_backend", "is_highlighted": False, "display_order": 2},
+            PrefObj({"skill_name": "data_structures", "display_order": 1}),
+            "bad",
+            {"display_order": 3},
+        ])
+
+        assert prefs == [
+            {"skill_name": "algorithms", "is_highlighted": True, "display_order": None},
+            {"skill_name": "api_and_backend", "is_highlighted": False, "display_order": 2},
+            {"skill_name": "data_structures", "is_highlighted": True, "display_order": 1},
+        ]
 
 
 # =============================================================================

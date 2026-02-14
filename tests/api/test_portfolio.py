@@ -1,6 +1,7 @@
 import json
 import pytest
 from src.db.project_summaries import save_project_summary, get_project_summary_by_name
+from src.db.skill_preferences import get_user_skill_preferences
 
 
 def _make_summary_json(project_name, project_type="code", project_mode="individual", **extra):
@@ -256,6 +257,35 @@ class TestPortfolioEdit:
         row = get_project_summary_by_name(seed_conn, 1, "BulletProject")
         summary_dict = json.loads(row["summary_json"])
         assert summary_dict["portfolio_overrides"]["contribution_bullets"] == bullets
+
+    def test_edit_portfolio_skill_preferences(self, client, auth_headers, seed_conn):
+        save_project_summary(
+            seed_conn, 1, "SkillsProject",
+            _make_summary_json("SkillsProject"),
+        )
+        seed_conn.commit()
+
+        res = client.post(
+            "/portfolio/edit",
+            json={
+                "project_name": "SkillsProject",
+                "scope": "portfolio_only",
+                "skill_preferences": [
+                    {"skill_name": "algorithms", "is_highlighted": False, "display_order": 1},
+                ],
+            },
+            headers=auth_headers,
+        )
+        assert res.status_code == 200
+
+        row = get_project_summary_by_name(seed_conn, 1, "SkillsProject")
+        prefs = get_user_skill_preferences(
+            seed_conn, user_id=1, context="portfolio", project_key=row["project_key"]
+        )
+        assert len(prefs) == 1
+        assert prefs[0]["skill_name"] == "algorithms"
+        assert prefs[0]["is_highlighted"] is False
+        assert prefs[0]["display_order"] == 1
 
     def test_edit_global_scope(self, client, auth_headers, seed_conn):
         save_project_summary(
