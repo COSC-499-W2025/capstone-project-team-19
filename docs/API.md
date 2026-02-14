@@ -666,7 +666,12 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
     - **Path Params**:
         - `{upload_id}` (integer, required): The ID of the upload session
     - **Response Status**: `200 OK` on success, `404 Not Found` if upload doesn't exist or belong to user
-    -                 "upload_id": 5,
+    - **Response Body**:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "upload_id": 5,
                 "status": "needs_classification",
                 "zip_name": "text_projects.zip",
                 "state": {
@@ -682,13 +687,16 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
                     },
                     "files_info_count": 8
                 }
+            },
+            "error": null
+        }
         ```
 
 - **Resolve Dedup (Optional, New)**
   - **Endpoint**: `POST /{upload_id}/dedup/resolve`
   - **Description**: Resolves dedup “ask” cases that were captured during upload parsing. This step happens before classifications and project types.
   - **Headers**:
-    - `Authentication`: Bearer <token>
+    - `Authorization`: Bearer <token>
   - **Path Params**:
     - `upload_id` (integer, required)
   - **Request Body**:
@@ -818,13 +826,6 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
         }
       ```
 
-- **Submit Project Types (Code vs Text) (Optional)**
-    - **Endpoint**: `POST /{upload_id}/project-types`
-    - **Description**: Submit user selections for project type (`code` vs `text`) when a detected project contains both code and text artifacts and requires a choice. The request must use project names exactly as reported in `state.layout.auto_assignments` and `state.layout.pending_projects`.
-    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-    - **Path Params**:
-        - `{upload_id}` (integer, required): The ID of the upload session
-
 - **List Main File Sections (Collaborative Text Contribution)**
     - **Endpoint**: `GET /{upload_id}/projects/{project_key}/text/sections`
     - **Description**: Returns numbered sections derived from the **selected main text file** for the project (from `uploads.state.file_roles`). Intended for selecting which parts of the document the user contributed to.
@@ -832,8 +833,6 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
     - **Path Params**:
         - `{upload_id}` (integer, required): The upload session ID
         - `{project_key}` (integer, required): The project key from `state.dedup_project_keys`
-    - **Query Params**:
-        - `max_section_chars` (integer, optional): Truncates each section’s `content` to this many characters.
     - **Response Status**: `200 OK`
     - **Response DTO**: `MainFileSectionsDTO`
     - **Response Body**:
@@ -951,9 +950,11 @@ Handles GitHub OAuth authentication and repository linking for projects during t
   - **Headers**:
     - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
   - **Request Body**:
+    ```json
     {
     "connect_now": true
     }
+    ```
   - **Response Status**: `200 OK` on success, `404 Not Found` if upload doesn't exist or belong to user
   - **Response Body**:
     ```json
@@ -1024,9 +1025,11 @@ Handles GitHub OAuth authentication and repository linking for projects during t
   - **Headers**:
     - `Authorization` (string, required): Bearer token. Format: `Bearer <your-jwt-token>`
   - **Request Body**:
+    ```json
     {
     "repo_full_name": "owner/repo-name"
     }
+    ```
   - **Response Status**: `200 OK` on success, `400 Bad Request` if GitHub is not connected or repo format is invalid, `404 Not Found` if upload doesn't exist
   - **Response Body**:
     ```json
@@ -1174,8 +1177,7 @@ Handles Google Drive OAuth authentication and file linking for projects during t
 - **List Project Files**
   - **Endpoint**: `GET /{upload_id}/projects/{project_key}/files`
   - **Description**: Returns all parsed files for a project within an upload, plus convenience buckets for `text_files` and `csv_files`. Clients should use the returned `relpath` values for subsequent file-role selection calls. Use `project_key` from `state.dedup_project_keys`.
-  - **Headers**:
-    - `X-User-Id` (integer, required)
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Path Params**:
     - `upload_id` (integer, required)
     - `project_key` (integer, required): From `state.dedup_project_keys`
@@ -1220,8 +1222,7 @@ Handles Google Drive OAuth authentication and file linking for projects during t
 - **Set Project Main File**
   - **Endpoint**: `POST /{upload_id}/projects/{project_key}/main-file`
   - **Description**: Stores the client-selected main file for a project (by `relpath`) in `uploads.state.file_roles`. The relpath must match one of the parsed files for that project. Use `project_key` from `state.dedup_project_keys`.
-  - **Headers**:
-    - `X-User-Id` (integer, required)
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Path Params**:
     - `upload_id` (integer, required)
     - `project_key` (integer, required): From `state.dedup_project_keys`
