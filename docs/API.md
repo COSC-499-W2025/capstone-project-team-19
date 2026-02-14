@@ -1422,7 +1422,7 @@ Manages résumé-specific representations of projects.
 
 - **Edit Resume**
   - **Endpoint**: `POST /resume/{resume_id}/edit`
-  - **Description**: Edits a résumé snapshot. Can rename the résumé, edit project details, or both. Project editing is optional - you can rename a résumé without editing any project.
+  - **Description**: Edits a résumé snapshot. Can rename the résumé, edit project details, update resume-level skill highlighting preferences, or any combination. Project editing is optional - you can rename a résumé or update resume-level skill preferences without editing any project.
   - **Path Parameters**:
     - `{resume_id}` (integer, required): The `id` from `resume_snapshots` table. Get this from `GET /resume` list.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
@@ -1444,7 +1444,7 @@ Manages résumé-specific representations of projects.
     ```
 
     - `name` (string, optional): New name for the résumé (rename)
-    - `project_name` (string, optional): The text name of the project to edit. If omitted (no "project_name", just "name"), only the résumé name is updated.
+    - `project_name` (string, optional): The text name of the project to edit. If omitted, only résumé-level updates are applied (e.g., rename and/or skill preferences).
     - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
       - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
       - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
@@ -1454,6 +1454,8 @@ Manages résumé-specific representations of projects.
     - `contribution_edit_mode` (string, optional): How to apply contribution bullets. Defaults to `"replace"`.
       - `"replace"`: Replace all existing bullets with the provided list
       - `"append"`: Keep existing bullets and add the provided bullets to the end
+    - `skill_preferences` (array, optional): Resume-level skill highlighting preferences. Each entry uses `SkillPreferenceDTO`.
+    - `skill_preferences_reset` (boolean, optional): If true, clears all resume-level skill preferences (reverts to defaults).
 
   - **Response Status**: `200 OK` or `404 Not Found`
   - **Response Body**: Uses `ResumeDetailDTO`
@@ -1476,7 +1478,7 @@ Manages résumé-specific representations of projects.
         }
         ```
         - `name` (string, optional): New name for the résumé (rename)
-        - `project_name` (string, optional): The text name of the project to edit. If omitted (no "project_name", just "name"), only the résumé name is updated.
+        - `project_name` (string, optional): The text name of the project to edit. If omitted, only résumé-level updates are applied (e.g., rename and/or skill preferences).
         - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
             - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
             - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
@@ -1487,6 +1489,8 @@ Manages résumé-specific representations of projects.
             - `"replace"`: Replace all existing bullets with the provided list
             - `"append"`: Keep existing bullets and add the provided bullets to the end
         - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead"). Follows the same `scope` rules as other fields.
+        - `skill_preferences` (array, optional): Resume-level skill highlighting preferences. Each entry uses `SkillPreferenceDTO`.
+        - `skill_preferences_reset` (boolean, optional): If true, clears all resume-level skill preferences (reverts to defaults).
     - **Response Status**: `200 OK` or `404 Not Found`
     - **Response Body**: Uses `ResumeDetailDTO`
         ```json
@@ -1677,7 +1681,7 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
 
 - **Edit Portfolio**
     - **Endpoint**: `POST /portfolio/edit`
-    - **Description**: Edits portfolio wording for a specific project. Changes can be scoped to the portfolio only or applied globally (affecting all resumes and the portfolio). Edits are stored as overrides in `project_summaries.summary_json` — no portfolio snapshot table is needed. Returns the updated portfolio view.
+    - **Description**: Edits portfolio wording or skill highlighting for a specific project. Changes can be scoped to the portfolio only or applied globally (affecting all resumes and the portfolio). Edits are stored as overrides in `project_summaries.summary_json` and skill preferences are stored per project — no portfolio snapshot table is needed. Returns the updated portfolio view.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request Body**: Uses `PortfolioEditRequestDTO`
         ```json
@@ -1696,6 +1700,8 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
         - `display_name` (string, optional): Custom display name for the project
         - `summary_text` (string, optional): Updated summary text
         - `contribution_bullets` (array of strings, optional): Custom contribution bullet points
+        - `skill_preferences` (array, optional): Per-project skill highlighting preferences. Each entry uses `SkillPreferenceDTO`.
+        - `skill_preferences_reset` (boolean, optional): If true, clears skill preferences for the specified project.
     - **Response Status**: `200 OK` or `404 Not Found`
     - **Response Body**: Uses `PortfolioDetailDTO` (returns the full updated portfolio)
         ```json
@@ -1898,6 +1904,11 @@ Example:
 - **SkillsListDTO**
   - `skills` (List[SkillEventDTO], required)
 
+- **SkillPreferenceDTO**
+  - `skill_name` (string, required)
+  - `is_highlighted` (boolean, optional): Defaults to true
+  - `display_order` (int, optional): Lower values show first
+
 ### **Resume DTOs**
 
 - **ResumeListItemDTO**
@@ -1940,13 +1951,15 @@ Example:
 
 - **ResumeEditRequestDTO**
     - `name` (string, optional): New name for the résumé
-    - `project_name` (string, optional): Text name of the project to edit. If omitted, only name is updated.
+    - `project_name` (string, optional): Text name of the project to edit. If omitted, only résumé-level updates are applied.
     - `scope` (string, optional): `"resume_only"` (default) or `"global"`. Required when editing a project.
     - `display_name` (string, optional): Custom display name for the project
     - `summary_text` (string, optional): Updated summary text
     - `contribution_bullets` (List[string], optional): Custom contribution bullet points
     - `contribution_edit_mode` (string, optional): `"replace"` (default) or `"append"`
     - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead")
+    - `skill_preferences` (List[SkillPreferenceDTO], optional): Resume-level skill highlighting preferences
+    - `skill_preferences_reset` (boolean, optional): Clear all resume-level preferences (revert to defaults)
 
 - **PortfolioGenerateRequestDTO**
     - `name` (string, required): Label for the portfolio
@@ -1957,6 +1970,8 @@ Example:
     - `display_name` (string, optional): Custom display name for the project
     - `summary_text` (string, optional): Updated summary text
     - `contribution_bullets` (List[string], optional): Custom contribution bullet points
+    - `skill_preferences` (List[SkillPreferenceDTO], optional): Per-project skill highlighting preferences
+    - `skill_preferences_reset` (boolean, optional): Clear preferences for the specified project
 
 - **PortfolioProjectDTO**
     - `project_name` (string, required)
