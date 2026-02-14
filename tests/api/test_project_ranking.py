@@ -9,22 +9,23 @@ def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _seed_project(seed_conn, user_id: int, name: str, skill_score: float) -> int:
-    summary_json = json.dumps(
-        {
-            "project_name": name,
-            "project_type": "code",
-            "project_mode": "individual",
-            "created_at": _iso_now(),
-            "languages": ["Python"],
-            "frameworks": [],
-            "metrics": {
-                "skills_detailed": [
-                    {"score": skill_score, "level": "Advanced"},
-                ]
-            },
-        }
-    )
+def _seed_project(seed_conn, user_id: int, name: str, skill_score: float, summary_text: str | None = None) -> int:
+    summary_data = {
+        "project_name": name,
+        "project_type": "code",
+        "project_mode": "individual",
+        "created_at": _iso_now(),
+        "languages": ["Python"],
+        "frameworks": [],
+        "metrics": {
+            "skills_detailed": [
+                {"score": skill_score, "level": "Advanced"},
+            ]
+        },
+    }
+    if summary_text is not None:
+        summary_data["summary_text"] = summary_text
+    summary_json = json.dumps(summary_data)
     save_project_summary(seed_conn, user_id, name, summary_json)
     return get_project_summary_by_name(seed_conn, user_id, name)["project_summary_id"]
 
@@ -160,3 +161,94 @@ def test_post_projects_ranking_reset_clears_manual_ranks(client, auth_headers, s
     rankings = res2.json()["data"]["rankings"]
     assert all(r["manual_rank"] is None for r in rankings)
 
+
+def test_get_projects_top_returns_exactly_limit_items(client, auth_headers, seed_conn):
+    user_id = 1
+    seed_conn.execute("INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)")
+    seed_conn.commit()
+
+    _seed_project(seed_conn, user_id, "ProjectA", 1.0)
+    _seed_project(seed_conn, user_id, "ProjectB", 0.9)
+    _seed_project(seed_conn, user_id, "ProjectC", 0.8)
+
+    res = client.get("/projects/top?limit=3", headers=auth_headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+    top = body["data"]["topProjects"]
+    assert len(top) == 3
+
+
+def test_get_projects_top_sorted_like_ranking(client, auth_headers, seed_conn):
+    user_id = 1
+    seed_conn.execute("INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)")
+    seed_conn.commit()
+
+    _seed_project(seed_conn, user_id, "ProjectA", 1.0)
+    _seed_project(seed_conn, user_id, "ProjectB", 0.5)
+    _seed_project(seed_conn, user_id, "ProjectC", 0.2)
+
+    ranking_res = client.get("/projects/ranking", headers=auth_headers)
+    top_res = client.get("/projects/top?limit=3", headers=auth_headers)
+    assert top_res.status_code == 200
+
+    rankings = ranking_res.json()["data"]["rankings"]
+    top = top_res.json()["data"]["topProjects"]
+
+    assert [t["title"] for t in top] == [r["project_name"] for r in rankings]
+    assert [t["rankScore"] for t in top] == [r["score"] for r in rankings]
+    assert all(t["rankScore"] >= t2["rankScore"] for t, t2 in zip(top, top[1:]))
+
+
+def test_get_projects_top_response_keys_match_exactly(client, auth_headers, seed_conn):
+    user_id = 1
+    seed_conn.execute("INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)")
+    seed_conn.commit()
+
+    _seed_project(seed_conn, user_id, "ProjectA", 1.0)
+
+    res = client.get("/projects/top?limit=1", headers=auth_headers)
+    assert res.status_code == 200
+    top = res.json()["data"]["topProjects"]
+    assert len(top) == 1
+    item = top[0]
+    assert set(item.keys()) == {"projectId", "title", "rankScore", "summarySnippet", "versionCount"}
+    assert item["versionCount"] >= 0
+
+
+def test_get_projects_top_includes_summary_snippet(client, auth_headers, seed_conn):
+    user_id = 1
+    seed_conn.execute("INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)")
+    seed_conn.commit()
+
+    summary = "A web app for task management with React and FastAPI. Demonstrates full-stack development."
+    _seed_project(seed_conn, user_id, "TaskApp", 0.9, summary_text=summary)
+
+    res = client.get("/projects/top?limit=1", headers=auth_headers)
+    assert res.status_code == 200
+    item = res.json()["data"]["topProjects"][0]
+    assert item["summarySnippet"] is not None
+    assert "task management" in (item["summarySnippet"] or "").lower() or "web app" in (item["summarySnippet"] or "").lower()
+
+
+def test_get_project_evolution_returns_structure(client, auth_headers, seed_conn):
+    user_id = 1
+    seed_conn.execute("INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)")
+    seed_conn.commit()
+
+    pid = _seed_project(seed_conn, user_id, "EvolveProj", 0.8)
+
+    res = client.get(f"/projects/{pid}/evolution", headers=auth_headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+    data = body["data"]
+    assert data["projectId"] == str(pid)
+    assert data["title"] == "EvolveProj"
+    assert "versions" in data
+    assert isinstance(data["versions"], list)
+
+
+def test_get_project_evolution_404_for_unknown(client, auth_headers):
+    res = client.get("/projects/99999/evolution", headers=auth_headers)
+    assert res.status_code == 404

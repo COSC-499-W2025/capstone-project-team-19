@@ -19,6 +19,7 @@ from src.analysis.code_collaborative.code_collaborative_analysis import analyze_
 from src.integrations.google_drive.process_project_files import process_project_files
 from src.db.project_summaries import save_project_summary
 from src.db.skills import get_project_skills
+from src.db.version_evolution import insert_version_summary, insert_version_skills_from_project
 from src.db import get_text_non_llm_metrics, get_latest_version_key
 from src.db.code_metrics import (
     insert_code_complexity_metrics,
@@ -35,6 +36,7 @@ from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
 from src.db import store_code_activity_metrics
+from src.db.code_activity import get_normalized_code_metrics
 from src.db import get_metrics_id, insert_code_collaborative_summary, get_user_contributed_files
 
 try:
@@ -243,6 +245,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=False)
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
+            if vk is not None:
+                _snapshot_version_evolution(conn, user_id, project_name, vk, summary, project_type)
         return True
 
     def run_collaborative_phase():
@@ -312,6 +316,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 )
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
+            if vk is not None:
+                _snapshot_version_evolution(conn, user_id, project_name, vk, summary, project_type)
 
 
         # print summary right after all CODE collab finished
@@ -334,6 +340,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=True)
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
+            if vk is not None:
+                _snapshot_version_evolution(conn, user_id, project_name, vk, summary, project_type)
 
         return True
 
@@ -795,6 +803,44 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
 def _run_skill_extraction_for_all(conn, user_id, assignments):
     for project_name in assignments.keys():
         extract_skills(conn, user_id, project_name)
+
+
+def _snapshot_version_evolution(conn, user_id: int, project_name: str, version_key: int, summary, project_type: str) -> None:
+    """
+    Snapshot per-version data for evolution showcase.
+    Stores summary, diff stats (lines), and skills. Feeds GET /projects/{id}/evolution
+    and future skills timeline / heatmap.
+    """
+    summary_text = getattr(summary, "summary_text", None) or ""
+    activity_date = None
+    lines_added = None
+    lines_deleted = None
+    total_words = None
+
+    if project_type == "code":
+        is_collab = getattr(summary, "project_mode", None) == "collaborative"
+        loc = get_normalized_code_metrics(conn, user_id, project_name, is_collab)
+        if loc:
+            lines_added = loc.get("loc_added")
+            lines_deleted = loc.get("loc_deleted")
+    else:
+        non_llm = get_text_non_llm_metrics(conn, version_key)
+        if non_llm:
+            total_words = non_llm.get("total_words")
+        tac = get_text_activity_contribution(conn, version_key)
+        if tac and tac.get("timestamp_analysis"):
+            activity_date = tac["timestamp_analysis"].get("end_date")
+
+    insert_version_summary(
+        conn,
+        version_key=version_key,
+        summary_text=summary_text or None,
+        activity_date=activity_date,
+        lines_added=lines_added,
+        lines_deleted=lines_deleted,
+        total_words=total_words,
+    )
+    insert_version_skills_from_project(conn, user_id, project_name, version_key)
 
 
 def _load_skills_into_summary(conn, user_id, project_name, summary):
