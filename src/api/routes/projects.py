@@ -14,6 +14,8 @@ from src.api.schemas.uploads import (
     MainFileRequestDTO,
     MainFileSectionsResponseDTO,
     ContributedSectionsRequestDTO,
+    ManualProjectSummaryRequestDTO,
+    ManualContributionSummaryRequestDTO,
 )
 from src.api.schemas.git_identities import (
     GitIdentitiesResponse,
@@ -49,6 +51,10 @@ from src.services.uploads_supporting_contributions_service import (
 from src.services.uploads_contribution_service import (
     list_main_file_sections,
     set_main_file_contributed_sections,
+)
+from src.services.uploads_manual_summaries_service import (
+    set_manual_project_summary,
+    set_manual_contribution_summary,
 )
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -319,3 +325,39 @@ def delete_single_project(
     if not deleted:
         raise HTTPException(status_code=404, detail="Project not found")
     return ApiResponse(success=True, data=None, error=None)
+
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_name}/manual-project-summary",
+    response_model=ApiResponse[UploadDTO],
+)
+def post_manual_project_summary(
+    upload_id: int,
+    project_name: str,
+    body: ManualProjectSummaryRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = set_manual_project_summary(conn, user_id, upload_id, project_name, body.summary_text)
+    return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_name}/manual-contribution-summary",
+    response_model=ApiResponse[UploadDTO],
+)
+def post_manual_contribution_summary(
+    upload_id: int,
+    project_name: str,
+    body: ManualContributionSummaryRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = set_manual_contribution_summary(
+        conn,
+        user_id,
+        upload_id,
+        project_name,
+        body.manual_contribution_summary,    )
+    return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+

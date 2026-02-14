@@ -68,3 +68,9 @@ class MainFileSectionsResponseDTO(BaseModel):
 
 class ContributedSectionsRequestDTO(BaseModel):
     selected_section_ids: List[int]
+
+class ManualProjectSummaryRequestDTO(BaseModel):
+    summary_text: str = ""
+
+class ManualContributionSummaryRequestDTO(BaseModel):
+    manual_contribution_summary: str = ""
