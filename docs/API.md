@@ -936,7 +936,7 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
         - `404 Not Found` if any relpath does not exist for this project/upload
 
 - **Set Project Key Role**
-  - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_key}/key-role`
+  - **Endpoint**: `POST /{upload_id}/projects/{project_key}/key-role`
   - **Description**: Stores the user-provided role/title for the project in the upload wizard state.
     - Writes to: `uploads.state.contributions[project_name].key_role`
     - Value is whitespace-normalized before storing
