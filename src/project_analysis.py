@@ -608,7 +608,9 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
             contributed = get_user_contributed_files(conn, user_id, project_name)[:5]
             focus_file_paths = contributed or None
         except Exception as e:
-            print("[COLLABORATIVE-CODE] Could not load user contributed files; falling back to all code files. Reason: {e}")
+            print("[COLLABORATIVE-CODE] Could not load user contributed files; "
+                f"falling back to all code files. Reason: {e}"
+            )
             focus_file_paths = None
 
     # Extract skills for collaborative code projects
