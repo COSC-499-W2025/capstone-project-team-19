@@ -1,46 +1,51 @@
+import json
+import sqlite3
+
+from src.db import (
+    code_complexity_metrics_exists,
+    extract_complexity_metrics,
+    get_code_collaborative_metrics,
+    get_code_complexity_metrics,
+    get_latest_version_key,
+    get_metrics_id,
+    get_normalized_code_metrics,
+    get_project_key,
+    get_text_activity_contribution,
+    get_text_non_llm_metrics,
+    get_user_contributed_files,
+    get_version_files_count,
+    insert_code_collaborative_summary,
+    insert_code_complexity_metrics,
+    insert_version_skills_from_project,
+    insert_version_summary,
+    save_project_summary,
+    store_code_activity_metrics,
+    update_code_complexity_metrics,
+    get_project_skills,
+    get_files_for_user,
+)
 from src.utils.language_detector import detect_languages
 from src.utils.framework_detector import detect_frameworks
-
-import sqlite3
-import json
-
-# TEXT ANALYSIS imports
+from src.utils.helpers import _fetch_files
+from src.models.project_summary import ProjectSummary
 from src.analysis.text_individual.text_analyze import run_text_pipeline
 from src.analysis.text_individual.csv_analyze import analyze_all_csv
-from src.db import get_latest_version_key, get_text_activity_contribution
+from src.analysis.text_individual.llm_summary import extract_key_role_llm
 from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
-from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
-
-# CODE ANALYSIS imports
 from src.analysis.code_individual.code_llm_analyze import run_code_llm_analysis
 from src.analysis.code_individual.code_non_llm_analysis import run_code_non_llm_analysis, prompt_manual_code_project_summary
-from src.utils.helpers import _fetch_files
-from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
-from src.integrations.google_drive.process_project_files import process_project_files
-from src.db.project_summaries import save_project_summary
-from src.db.skills import get_project_skills
-from src.db.version_evolution import insert_version_summary, insert_version_skills_from_project
-from src.db import get_text_non_llm_metrics, get_latest_version_key
-from src.db.code_metrics import (
-    insert_code_complexity_metrics,
-    update_code_complexity_metrics,
-    code_complexity_metrics_exists,
-    get_code_complexity_metrics
+from src.analysis.code_collaborative.code_collaborative_analysis import (
+    analyze_code_project,
+    print_code_portfolio_summary,
+    set_manual_descs_store,
+    prompt_collab_descriptions,
 )
-from src.db.code_collaborative import get_code_collaborative_metrics
-from src.db.version_evolution import get_version_files_count
-from src.db.code_metrics_helpers import extract_complexity_metrics
-import json
-from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
 from src.analysis.code_collaborative.code_collaborative_analysis_helper import prompt_key_role
-from src.analysis.text_individual.llm_summary import extract_key_role_llm
-from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
-from src.db import store_code_activity_metrics
-from src.db.code_activity import get_normalized_code_metrics
-from src.db import get_metrics_id, insert_code_collaborative_summary, get_user_contributed_files, get_project_key
+from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
+from src.integrations.google_drive.process_project_files import process_project_files
 
 try:
     from src import constants
@@ -135,7 +140,6 @@ def detect_project_type_auto(
     - Returns mixed projects needing user choice
     - NO input() calls
     """
-    from src.db.files import get_files_for_user
     files = get_files_for_user(conn, user_id)
 
     project_counts: dict[str, dict[str, int]] = {}
