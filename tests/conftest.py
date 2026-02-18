@@ -2,7 +2,7 @@ import sys
 import os
 import sqlite3
 import pytest
-import db
+import src.db as db
 import tempfile
 import shutil
 from pathlib import Path

@@ -134,6 +134,15 @@ def get_version_keys_ordered_for_project(conn: sqlite3.Connection, project_key: 
 
 # Cross-version comparison helpers (computed from existing tables)
 
+def get_version_files_count(conn: sqlite3.Connection, version_key: int) -> Optional[int]:
+    """Return the number of files for a version, or None if no row."""
+    row = conn.execute(
+        "SELECT COUNT(*) FROM version_files WHERE version_key = ?",
+        (version_key,),
+    ).fetchone()
+    return int(row[0]) if row else None
+
+
 def get_file_diff_between_versions(conn: sqlite3.Connection, prev_version_key: int, curr_version_key: int) -> Dict[str, Any]:
     """Compare version_files rows to find added/modified/removed files."""
     prev_rows = conn.execute(

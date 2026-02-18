@@ -10,6 +10,7 @@ from src.db import (
     get_latest_external_consent,
     record_project_classification,
     store_parsed_files,
+    get_project_metadata,
 )
 from src.menu import (
     show_start_menu,
@@ -275,9 +276,21 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
         # Persist files once (after dedup tagging)
         store_parsed_files(conn, result, user_id)
 
-        assignments = prompt_for_project_classifications(conn, user_id, zip_path, result, project_name_map=name_map)
+        # Version projects (new_version, ask->new_version) inherit classification/type from DB;
+        # we skip prompting for those.
+        version_project_names = {
+            d["final_name"]
+            for d in (decisions or {}).values()
+            if d.get("kind") in ("new_version", "ask->new_version")
+        }
+
+        assignments = prompt_for_project_classifications(
+            conn, user_id, zip_path, result,
+            project_name_map=name_map,
+            version_project_names=version_project_names,
+        )
         try:
-            detect_project_type(conn, user_id, assignments)
+            detect_project_type(conn, user_id, assignments, version_project_names=version_project_names)
             # if zip file is valid (has folders)
             unchecked_zip = False
         except AttributeError:
@@ -307,8 +320,19 @@ def get_zip_path_from_user():
     return path
 
 
-def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_info: list[dict], project_name_map: dict[str, str] | None = None) -> dict:
-    """Ask the user to classify each detected project as individual or collaborative."""
+def prompt_for_project_classifications(
+    conn,
+    user_id: int,
+    zip_path: str,
+    files_info: list[dict],
+    project_name_map: dict[str, str] | None = None,
+    version_project_names: set[str] | None = None,
+) -> dict:
+    """Ask the user to classify each detected project as individual or collaborative.
+    For version projects (new_version of existing project), classification is loaded from DB
+    and we do not prompt.
+    """
+    version_project_names = version_project_names or set()
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     layout = analyze_project_layout(files_info)
     root_name = layout["root_name"]
@@ -356,6 +380,18 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
 
         auto_assignments = remapped_auto
         pending_projects = remapped_pending
+
+    # Version projects: load classification from DB, do not prompt.
+    auto_assignments = dict(auto_assignments) if auto_assignments else {}
+    for name in version_project_names:
+        classification, project_type = get_project_metadata(conn, user_id, name)
+        if not classification or not project_type:
+            raise ValueError(
+                f"Project '{name}' is a new version of an existing project but has no stored "
+                "classification or project_type. Both must already exist for version projects."
+            )
+        auto_assignments[name] = classification
+        pending_projects = [p for p in pending_projects if p != name]
 
     if not auto_assignments and not pending_projects:
         print("No project folders detected to classify.")

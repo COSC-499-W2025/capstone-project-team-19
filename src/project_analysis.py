@@ -25,7 +25,10 @@ from src.db.code_metrics import (
     insert_code_complexity_metrics,
     update_code_complexity_metrics,
     code_complexity_metrics_exists,
+    get_code_complexity_metrics
 )
+from src.db.code_collaborative import get_code_collaborative_metrics
+from src.db.version_evolution import get_version_files_count
 from src.db.code_metrics_helpers import extract_complexity_metrics
 import json
 from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
@@ -37,7 +40,7 @@ from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
 from src.db import store_code_activity_metrics
 from src.db.code_activity import get_normalized_code_metrics
-from src.db import get_metrics_id, insert_code_collaborative_summary, get_user_contributed_files
+from src.db import get_metrics_id, insert_code_collaborative_summary, get_user_contributed_files, get_project_key
 
 try:
     from src import constants
@@ -87,8 +90,14 @@ def _prompt_contribution_and_key_role(
         summary.contributions["key_role"] = key_role
 
 
-def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
-    result = detect_project_type_auto(conn, user_id, assignments)
+def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str], version_project_names: set[str] | None = None) -> None:
+    """Detect or prompt for project_type (code/text). Skips version projects entirely."""
+    version_project_names = version_project_names or set()
+    assignments_to_process = {k: v for k, v in assignments.items() if k not in version_project_names}
+    if not assignments_to_process:
+        return
+
+    result = detect_project_type_auto(conn, user_id, assignments_to_process)
 
     # Only CLI prompts for mixed projects
     for project_name in result["mixed_projects"]:
@@ -808,8 +817,8 @@ def _run_skill_extraction_for_all(conn, user_id, assignments):
 def _snapshot_version_evolution(conn, user_id: int, project_name: str, version_key: int, summary, project_type: str) -> None:
     """
     Snapshot per-version data for evolution showcase.
-    Stores summary, diff stats (lines), and skills. Feeds GET /projects/{id}/evolution
-    and future skills timeline / heatmap.
+    Stores summary, diff stats (lines), enriched metrics (languages, frameworks, complexity, file count), and skills.
+    Feeds GET /projects/{id}/evolution and future skills timeline / heatmap.
     """
     summary_text = getattr(summary, "summary_text", None) or ""
     activity_date = None
@@ -817,16 +826,52 @@ def _snapshot_version_evolution(conn, user_id: int, project_name: str, version_k
     lines_deleted = None
     total_words = None
 
+    languages = getattr(summary, "languages", None) or []
+    frameworks = getattr(summary, "frameworks", None) or []
+    avg_complexity = None
+    total_files = None
+
     if project_type == "code":
         is_collab = getattr(summary, "project_mode", None) == "collaborative"
         loc = get_normalized_code_metrics(conn, user_id, project_name, is_collab)
         if loc:
             lines_added = loc.get("loc_added")
             lines_deleted = loc.get("loc_deleted")
+
+        if is_collab:
+            # Collaborative: get languages/frameworks from code_collaborative_metrics
+            pk = get_project_key(conn, user_id, project_name)
+            if pk is not None:
+                metrics_row = get_code_collaborative_metrics(conn, user_id, pk)
+                if metrics_row is not None:
+                    languages_json, frameworks_json = metrics_row
+                    if languages_json:
+                        try:
+                            languages = json.loads(languages_json) or []
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    if frameworks_json:
+                        try:
+                            frameworks = json.loads(frameworks_json) or []
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+            # total_files from version_files count (actual files in this version)
+
+            total_files = get_version_files_count(conn, version_key)
+        else:
+            # Individual: get complexity + total_files from non_llm_code_individual
+            complexity = get_code_complexity_metrics(conn, version_key)
+            if complexity:
+                avg_complexity = complexity.get("avg_complexity")
+                total_files = complexity.get("total_files")
+            if not languages and not frameworks:
+                languages = getattr(summary, "languages", None) or []
+                frameworks = getattr(summary, "frameworks", None) or []
     else:
         non_llm = get_text_non_llm_metrics(conn, version_key)
         if non_llm:
             total_words = non_llm.get("total_words")
+            total_files = non_llm.get("doc_count")
         tac = get_text_activity_contribution(conn, version_key)
         if tac and tac.get("timestamp_analysis"):
             activity_date = tac["timestamp_analysis"].get("end_date")
@@ -839,6 +884,10 @@ def _snapshot_version_evolution(conn, user_id: int, project_name: str, version_k
         lines_added=lines_added,
         lines_deleted=lines_deleted,
         total_words=total_words,
+        languages=languages if languages else None,
+        frameworks=frameworks if frameworks else None,
+        avg_complexity=avg_complexity,
+        total_files=total_files,
     )
     insert_version_skills_from_project(conn, user_id, project_name, version_key)
 

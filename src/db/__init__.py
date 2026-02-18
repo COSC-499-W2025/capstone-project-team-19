@@ -153,6 +153,7 @@ from .version_evolution import (
     get_version_keys_ordered_for_project,
     get_version_summary,
     get_version_skills,
+    get_version_files_count,
     get_file_diff_between_versions,
     get_skill_diff_between_versions,
 )
@@ -176,6 +177,7 @@ from .project_summaries import (
 # local git metrics for code collaborative projects
 from .code_collaborative import (
     insert_code_collaborative_metrics,
+    get_code_collaborative_metrics,
     get_metrics_id,
     insert_code_collaborative_summary,
 )
@@ -317,6 +319,7 @@ __all__ = [
     "get_skill_events",
     "update_project_summary_json",
     "insert_code_collaborative_metrics",
+    "get_code_collaborative_metrics",
     "get_metrics_id",
     "insert_code_collaborative_summary",
     "get_all_user_project_summaries",
@@ -376,6 +379,7 @@ __all__ = [
     "get_version_keys_ordered_for_project",
     "get_version_summary",
     "get_version_skills",
+    "get_version_files_count",
     "get_file_diff_between_versions",
     "get_skill_diff_between_versions",
     "get_user_skill_preferences",
