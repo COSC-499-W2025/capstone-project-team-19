@@ -378,6 +378,10 @@ CREATE TABLE IF NOT EXISTS version_summaries (
     lines_added INTEGER,
     lines_deleted INTEGER,
     total_words INTEGER,
+    languages_json TEXT,
+    frameworks_json TEXT,
+    avg_complexity REAL,
+    total_files INTEGER,
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
 );

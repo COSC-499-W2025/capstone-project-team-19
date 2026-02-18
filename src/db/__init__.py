@@ -153,6 +153,8 @@ from .version_evolution import (
     get_version_keys_ordered_for_project,
     get_version_summary,
     get_version_skills,
+    get_file_diff_between_versions,
+    get_skill_diff_between_versions,
 )
 
 # project summaries
@@ -374,6 +376,8 @@ __all__ = [
     "get_version_keys_ordered_for_project",
     "get_version_summary",
     "get_version_skills",
+    "get_file_diff_between_versions",
+    "get_skill_diff_between_versions",
     "get_user_skill_preferences",
     "upsert_skill_preference",
     "bulk_upsert_skill_preferences",

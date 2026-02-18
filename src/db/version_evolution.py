@@ -5,21 +5,47 @@ Per-version evolution data for project evolution showcase.
 Feeds: GET /projects/{id}/evolution, future skills timeline, heatmap.
 """
 
+import json
 import sqlite3
 from typing import Any, Dict, List, Optional
 
 from .projects import get_project_key
 
 
-def insert_version_summary(conn: sqlite3.Connection, version_key: int, summary_text: Optional[str] = None, activity_date: Optional[str] = None, lines_added: Optional[int] = None, lines_deleted: Optional[int] = None, total_words: Optional[int] = None) -> None:
-    """Snapshot version-level summary and diff-related stats."""
+def insert_version_summary(
+    conn: sqlite3.Connection,
+    version_key: int,
+    summary_text: Optional[str] = None,
+    activity_date: Optional[str] = None,
+    lines_added: Optional[int] = None,
+    lines_deleted: Optional[int] = None,
+    total_words: Optional[int] = None,
+    languages: Optional[List[str]] = None,
+    frameworks: Optional[List[str]] = None,
+    avg_complexity: Optional[float] = None,
+    total_files: Optional[int] = None,
+) -> None:
+    """Snapshot version-level summary, diff stats, and enriched metrics."""
     conn.execute(
         """
         INSERT OR REPLACE INTO version_summaries
-            (version_key, summary_text, activity_date, lines_added, lines_deleted, total_words)
-        VALUES (?, ?, ?, ?, ?, ?)
+            (version_key, summary_text, activity_date,
+             lines_added, lines_deleted, total_words,
+             languages_json, frameworks_json, avg_complexity, total_files)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (version_key, summary_text or None, activity_date, lines_added, lines_deleted, total_words),
+        (
+            version_key,
+            summary_text or None,
+            activity_date,
+            lines_added,
+            lines_deleted,
+            total_words,
+            json.dumps(languages) if languages else None,
+            json.dumps(frameworks) if frameworks else None,
+            avg_complexity,
+            total_files,
+        ),
     )
     conn.commit()
 
@@ -53,7 +79,9 @@ def get_version_summary(conn: sqlite3.Connection, version_key: int) -> Optional[
     """Get version_summaries row for a version."""
     row = conn.execute(
         """
-        SELECT summary_text, activity_date, lines_added, lines_deleted, total_words, created_at
+        SELECT summary_text, activity_date, lines_added, lines_deleted,
+               total_words, created_at, languages_json, frameworks_json,
+               avg_complexity, total_files
         FROM version_summaries WHERE version_key = ?
         """,
         (version_key,),
@@ -67,6 +95,10 @@ def get_version_summary(conn: sqlite3.Connection, version_key: int) -> Optional[
         "lines_deleted": row[3],
         "total_words": row[4],
         "created_at": row[5],
+        "languages": json.loads(row[6]) if row[6] else [],
+        "frameworks": json.loads(row[7]) if row[7] else [],
+        "avg_complexity": row[8],
+        "total_files": row[9],
     }
 
 
@@ -98,3 +130,91 @@ def get_version_keys_ordered_for_project(conn: sqlite3.Connection, project_key: 
         (project_key,),
     ).fetchall()
     return [(int(r[0]), r[1] or "") for r in rows]
+
+
+# Cross-version comparison helpers (computed from existing tables)
+
+def get_file_diff_between_versions(conn: sqlite3.Connection, prev_version_key: int, curr_version_key: int) -> Dict[str, Any]:
+    """Compare version_files rows to find added/modified/removed files."""
+    prev_rows = conn.execute(
+        "SELECT relpath, file_hash FROM version_files WHERE version_key = ?",
+        (prev_version_key,),
+    ).fetchall()
+
+    curr_rows = conn.execute(
+        "SELECT relpath, file_hash FROM version_files WHERE version_key = ?",
+        (curr_version_key,),
+    ).fetchall()
+
+    prev_map = {r[0]: r[1] for r in prev_rows}
+    curr_map = {r[0]: r[1] for r in curr_rows}
+
+    added = sorted(p for p in curr_map if p not in prev_map)
+    removed = sorted(p for p in prev_map if p not in curr_map)
+    modified = sorted(
+        p for p in curr_map
+        if p in prev_map and curr_map[p] != prev_map[p]
+    )
+    unchanged_count = sum(
+        1 for p in curr_map
+        if p in prev_map and curr_map[p] == prev_map[p]
+    )
+
+    return {
+        "added": added,
+        "modified": modified,
+        "removed": removed,
+        "unchanged_count": unchanged_count,
+    }
+
+
+def get_skill_diff_between_versions(conn: sqlite3.Connection, prev_version_key: int, curr_version_key: int) -> Dict[str, Any]:
+    """Compare version_skills rows to find new/improved/declined/removed skills."""
+    prev_skills = {
+        r[0]: {"level": r[1], "score": r[2]}
+        for r in conn.execute(
+            "SELECT skill_name, level, score FROM version_skills WHERE version_key = ?",
+            (prev_version_key,),
+        ).fetchall()
+    }
+    curr_skills = {
+        r[0]: {"level": r[1], "score": r[2]}
+        for r in conn.execute(
+            "SELECT skill_name, level, score FROM version_skills WHERE version_key = ?",
+            (curr_version_key,),
+        ).fetchall()
+    }
+
+    new_skills = [
+        {"skill_name": s, **curr_skills[s]}
+        for s in sorted(curr_skills.keys() - prev_skills.keys())
+    ]
+    removed_skills = [
+        {"skill_name": s, **prev_skills[s]}
+        for s in sorted(prev_skills.keys() - curr_skills.keys())
+    ]
+    improved = []
+    declined = []
+    for s in sorted(curr_skills.keys() & prev_skills.keys()):
+        skill_difference = curr_skills[s]["score"] - prev_skills[s]["score"]
+        if skill_difference > 0:
+            improved.append({
+                "skill_name": s,
+                "prev_score": prev_skills[s]["score"],
+                "score": curr_skills[s]["score"],
+                "level": curr_skills[s]["level"],
+            })
+        elif skill_difference < 0:
+            declined.append({
+                "skill_name": s,
+                "prev_score": prev_skills[s]["score"],
+                "score": curr_skills[s]["score"],
+                "level": curr_skills[s]["level"],
+            })
+
+    return {
+        "new": new_skills,
+        "removed": removed_skills,
+        "improved": improved,
+        "declined": declined,
+    }
