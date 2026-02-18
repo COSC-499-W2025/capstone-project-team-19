@@ -195,11 +195,11 @@ def get_skill_diff_between_versions(conn: sqlite3.Connection, prev_version_key: 
     }
 
     new_skills = [
-        {"skill_name": s, **curr_skills[s]}
+        {"skill_name": s, "prev_score": None, "score": curr_skills[s]["score"], "level": curr_skills[s]["level"]}
         for s in sorted(curr_skills.keys() - prev_skills.keys())
     ]
     removed_skills = [
-        {"skill_name": s, **prev_skills[s]}
+        {"skill_name": s, "prev_score": prev_skills[s]["score"], "score": prev_skills[s]["score"], "level": prev_skills[s]["level"]}
         for s in sorted(prev_skills.keys() - curr_skills.keys())
     ]
     improved = []
