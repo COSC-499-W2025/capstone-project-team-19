@@ -37,10 +37,32 @@ class TopProjectsDTO(BaseModel):
     topProjects: List[TopProjectItemDTO]
 
 
+class FileDiffDTO(BaseModel):
+    filesAdded: List[str] = []
+    filesModified: List[str] = []
+    filesRemoved: List[str] = []
+    unchangedCount: int = 0
+
+
+class SkillChangeDTO(BaseModel):
+    skill_name: str
+    level: str
+    score: float
+    prev_score: Optional[float] = None
+
+
+class SkillProgressionDTO(BaseModel):
+    newSkills: List[SkillChangeDTO] = []
+    improvedSkills: List[SkillChangeDTO] = []
+    declinedSkills: List[SkillChangeDTO] = []
+    removedSkills: List[SkillChangeDTO] = []
+
+
 class VersionDiffDTO(BaseModel):
-    added: Optional[int] = None
-    modified: Optional[int] = None
-    removed: Optional[int] = None
+    linesAdded: Optional[int] = None
+    linesModified: Optional[int] = None
+    linesRemoved: Optional[int] = None
+    files: Optional[FileDiffDTO] = None
 
 
 class EvolutionVersionDTO(BaseModel):
@@ -50,6 +72,11 @@ class EvolutionVersionDTO(BaseModel):
     diff: Optional[VersionDiffDTO] = None
     skills: List[str] = []
     skillsDetail: List[Dict[str, Any]] = []
+    skillProgression: Optional[SkillProgressionDTO] = None
+    languages: List[str] = []
+    frameworks: List[str] = []
+    avgComplexity: Optional[float] = None
+    totalFiles: Optional[int] = None
 
 
 class ProjectEvolutionDTO(BaseModel):

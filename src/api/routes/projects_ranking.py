@@ -13,6 +13,9 @@ from src.api.schemas.project_ranking import (
     ProjectEvolutionDTO,
     EvolutionVersionDTO,
     VersionDiffDTO,
+    FileDiffDTO,
+    SkillProgressionDTO,
+    SkillChangeDTO,
 )
 from src.db import get_project_summary_by_id
 from src.services.project_evolution_service import get_evolution_for_project
@@ -85,6 +88,51 @@ def get_projects_top(user_id: int = Depends(get_current_user_id), conn: Connecti
     )
     return ApiResponse(success=True, data=dto, error=None)
 
+def _build_evolution_version_dto(v: dict) -> EvolutionVersionDTO:
+    diff_dto = None
+    raw_diff = v.get("diff")
+    if raw_diff:
+        file_diff = None
+        if raw_diff.get("files"):
+            f = raw_diff["files"]
+            file_diff = FileDiffDTO(
+                filesAdded=f.get("filesAdded", []),
+                filesModified=f.get("filesModified", []),
+                filesRemoved=f.get("filesRemoved", []),
+                unchangedCount=f.get("unchangedCount", 0),
+            )
+        diff_dto = VersionDiffDTO(
+            linesAdded=raw_diff.get("linesAdded"),
+            linesModified=raw_diff.get("linesModified"),
+            linesRemoved=raw_diff.get("linesRemoved"),
+            files=file_diff,
+        )
+
+    sp_dto = None
+    raw_sp = v.get("skillProgression")
+    if raw_sp:
+        sp_dto = SkillProgressionDTO(
+            newSkills=[SkillChangeDTO(**s) for s in raw_sp.get("new", [])],
+            improvedSkills=[SkillChangeDTO(**s) for s in raw_sp.get("improved", [])],
+            declinedSkills=[SkillChangeDTO(**s) for s in raw_sp.get("declined", [])],
+            removedSkills=[SkillChangeDTO(**s) for s in raw_sp.get("removed", [])],
+        )
+
+    return EvolutionVersionDTO(
+        versionId=v["versionId"],
+        date=v["date"],
+        summary=v["summary"],
+        diff=diff_dto,
+        skills=v.get("skills", []),
+        skillsDetail=v.get("skillsDetail", []),
+        skillProgression=sp_dto,
+        languages=v.get("languages", []),
+        frameworks=v.get("frameworks", []),
+        avgComplexity=v.get("avgComplexity"),
+        totalFiles=v.get("totalFiles"),
+    )
+
+
 @router.get("/{project_id}/evolution", response_model=ApiResponse[ProjectEvolutionDTO])
 def get_project_evolution(
     project_id: int,
@@ -98,17 +146,7 @@ def get_project_evolution(
     project_key = row["project_key"]
     title = row["project_name"]
     evolution = get_evolution_for_project(conn, project_key)
-    versions_dto = [
-        EvolutionVersionDTO(
-            versionId=v["versionId"],
-            date=v["date"],
-            summary=v["summary"],
-            diff=VersionDiffDTO(**v["diff"]) if v.get("diff") else None,
-            skills=v["skills"],
-            skillsDetail=v.get("skillsDetail", []),
-        )
-        for v in evolution
-    ]
+    versions_dto = [_build_evolution_version_dto(v) for v in evolution]
     dto = ProjectEvolutionDTO(
         projectId=str(project_id),
         title=title,
