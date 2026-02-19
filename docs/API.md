@@ -896,16 +896,10 @@ A typical flow for the first six endpoints:
     - `{upload_id}` (integer, required): The upload session ID
     - `{project_name}` (string, required): The project name
   - **Request DTO**: `ManualContributionSummaryRequestDTO`
-  - **Request Body (minimum)**:
+  - **Request Body**:
     ```json
     {
-      "manual_contribution_summary": "I implemented ..., fixed ..., added tests ..."
-    }
-    ```
-  - **Request Body (with optional role)**:
-    ```json
-    {
-      "manual_contribution_summary": "I implemented ..., fixed ..., added tests ...",
+      "manual_contribution_summary": "I implemented ..., fixed ..., added tests ..., or keep it empty if you'd like"
     }
     ```
   - **Response Status**: `200 OK`
