@@ -867,7 +867,7 @@ A typical flow for the first six endpoints:
         - `404 Not Found` if any relpath does not exist for this project/upload
 
 - **Manual Project Summary**
-  - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/manual-project-summary`
+  - **Endpoint**: `POST /{upload_id}/projects/{project_name}/manual-project-summary`
   - **Description**: Stores a user-provided manual project summary for this upload session.
     - Writes to: `uploads.state.manual_project_summaries[project_name]`
   - **Auth**: `Authorization: Bearer <access_token>`
@@ -888,7 +888,7 @@ A typical flow for the first six endpoints:
     - `409 Conflict` if upload is not in a summary-allowed status (must be `needs_summaries`, or if enabled: `analyzing`/`done`)
 
 - **Manual Contribution Summary**
-  - **Endpoint**: `POST /projects/upload/{upload_id}/projects/{project_name}/manual-contribution-summary`
+  - **Endpoint**: `POST /{upload_id}/projects/{project_name}/manual-contribution-summary`
   - **Description**: Stores a user-provided manual contribution summary for this upload session.
     - Writes to: `uploads.state.contributions[project_name].manual_contribution_summary`
   - **Auth**: `Authorization: Bearer <access_token>`
