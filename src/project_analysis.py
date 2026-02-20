@@ -1,41 +1,51 @@
+import json
+import sqlite3
+
+from src.db import (
+    code_complexity_metrics_exists,
+    extract_complexity_metrics,
+    get_code_collaborative_metrics,
+    get_code_complexity_metrics,
+    get_latest_version_key,
+    get_metrics_id,
+    get_normalized_code_metrics,
+    get_project_key,
+    get_text_activity_contribution,
+    get_text_non_llm_metrics,
+    get_user_contributed_files,
+    get_version_files_count,
+    insert_code_collaborative_summary,
+    insert_code_complexity_metrics,
+    insert_version_skills_from_project,
+    insert_version_summary,
+    save_project_summary,
+    store_code_activity_metrics,
+    update_code_complexity_metrics,
+    get_project_skills,
+    get_files_for_user,
+)
 from src.utils.language_detector import detect_languages
 from src.utils.framework_detector import detect_frameworks
-
-import sqlite3
-import json
-
-# TEXT ANALYSIS imports
+from src.utils.helpers import _fetch_files
+from src.models.project_summary import ProjectSummary
 from src.analysis.text_individual.text_analyze import run_text_pipeline
 from src.analysis.text_individual.csv_analyze import analyze_all_csv
-from src.db import get_latest_version_key, get_text_activity_contribution
+from src.analysis.text_individual.llm_summary import extract_key_role_llm
 from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
-from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
-
-# CODE ANALYSIS imports
 from src.analysis.code_individual.code_llm_analyze import run_code_llm_analysis
 from src.analysis.code_individual.code_non_llm_analysis import run_code_non_llm_analysis, prompt_manual_code_project_summary
-from src.utils.helpers import _fetch_files
-from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
-from src.integrations.google_drive.process_project_files import process_project_files
-from src.db.project_summaries import save_project_summary
-from src.db.skills import get_project_skills
-from src.db import get_text_non_llm_metrics, get_latest_version_key
-from src.db.code_metrics import (
-    insert_code_complexity_metrics,
-    update_code_complexity_metrics,
-    code_complexity_metrics_exists,
+from src.analysis.code_collaborative.code_collaborative_analysis import (
+    analyze_code_project,
+    print_code_portfolio_summary,
+    set_manual_descs_store,
+    prompt_collab_descriptions,
 )
-from src.db.code_metrics_helpers import extract_complexity_metrics
-import json
-from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
 from src.analysis.code_collaborative.code_collaborative_analysis_helper import prompt_key_role
-from src.analysis.text_individual.llm_summary import extract_key_role_llm
-from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
-from src.db import store_code_activity_metrics
-from src.db import get_metrics_id, insert_code_collaborative_summary, get_user_contributed_files
+from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
+from src.integrations.google_drive.process_project_files import process_project_files
 
 try:
     from src import constants
@@ -85,8 +95,14 @@ def _prompt_contribution_and_key_role(
         summary.contributions["key_role"] = key_role
 
 
-def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
-    result = detect_project_type_auto(conn, user_id, assignments)
+def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str], version_project_names: set[str] | None = None) -> None:
+    """Detect or prompt for project_type (code/text). Skips version projects entirely."""
+    version_project_names = version_project_names or set()
+    assignments_to_process = {k: v for k, v in assignments.items() if k not in version_project_names}
+    if not assignments_to_process:
+        return
+
+    result = detect_project_type_auto(conn, user_id, assignments_to_process)
 
     # Only CLI prompts for mixed projects
     for project_name in result["mixed_projects"]:
@@ -124,7 +140,6 @@ def detect_project_type_auto(
     - Returns mixed projects needing user choice
     - NO input() calls
     """
-    from src.db.files import get_files_for_user
     files = get_files_for_user(conn, user_id)
 
     project_counts: dict[str, dict[str, int]] = {}
@@ -243,6 +258,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=False)
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
+            if vk is not None:
+                _snapshot_version_evolution(conn, user_id, project_name, vk, summary, project_type)
         return True
 
     def run_collaborative_phase():
@@ -312,6 +329,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 )
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
+            if vk is not None:
+                _snapshot_version_evolution(conn, user_id, project_name, vk, summary, project_type)
 
 
         # print summary right after all CODE collab finished
@@ -334,6 +353,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=True)
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
+            if vk is not None:
+                _snapshot_version_evolution(conn, user_id, project_name, vk, summary, project_type)
 
         return True
 
@@ -795,6 +816,84 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
 def _run_skill_extraction_for_all(conn, user_id, assignments):
     for project_name in assignments.keys():
         extract_skills(conn, user_id, project_name)
+
+
+def _snapshot_version_evolution(conn, user_id: int, project_name: str, version_key: int, summary, project_type: str) -> None:
+    """
+    Snapshot per-version data for evolution showcase.
+    Stores summary, diff stats (lines), enriched metrics (languages, frameworks, complexity, file count), and skills.
+    Feeds GET /projects/{id}/evolution and future skills timeline / heatmap.
+    """
+    summary_text = getattr(summary, "summary_text", None) or ""
+    activity_date = None
+    lines_added = None
+    lines_deleted = None
+    total_words = None
+
+    languages = getattr(summary, "languages", None) or []
+    frameworks = getattr(summary, "frameworks", None) or []
+    avg_complexity = None
+    total_files = None
+
+    if project_type == "code":
+        is_collab = getattr(summary, "project_mode", None) == "collaborative"
+        loc = get_normalized_code_metrics(conn, user_id, project_name, is_collab)
+        if loc:
+            lines_added = loc.get("loc_added")
+            lines_deleted = loc.get("loc_deleted")
+
+        if is_collab:
+            # Collaborative: get languages/frameworks from code_collaborative_metrics
+            pk = get_project_key(conn, user_id, project_name)
+            if pk is not None:
+                metrics_row = get_code_collaborative_metrics(conn, user_id, pk)
+                if metrics_row is not None:
+                    languages_json, frameworks_json = metrics_row
+                    if languages_json:
+                        try:
+                            languages = json.loads(languages_json) or []
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    if frameworks_json:
+                        try:
+                            frameworks = json.loads(frameworks_json) or []
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+            # total_files from version_files count (actual files in this version)
+
+            total_files = get_version_files_count(conn, version_key)
+        else:
+            # Individual: get complexity + total_files from non_llm_code_individual
+            complexity = get_code_complexity_metrics(conn, version_key)
+            if complexity:
+                avg_complexity = complexity.get("avg_complexity")
+                total_files = complexity.get("total_files")
+            if not languages and not frameworks:
+                languages = getattr(summary, "languages", None) or []
+                frameworks = getattr(summary, "frameworks", None) or []
+    else:
+        non_llm = get_text_non_llm_metrics(conn, version_key)
+        if non_llm:
+            total_words = non_llm.get("total_words")
+            total_files = non_llm.get("doc_count")
+        tac = get_text_activity_contribution(conn, version_key)
+        if tac and tac.get("timestamp_analysis"):
+            activity_date = tac["timestamp_analysis"].get("end_date")
+
+    insert_version_summary(
+        conn,
+        version_key=version_key,
+        summary_text=summary_text or None,
+        activity_date=activity_date,
+        lines_added=lines_added,
+        lines_deleted=lines_deleted,
+        total_words=total_words,
+        languages=languages if languages else None,
+        frameworks=frameworks if frameworks else None,
+        avg_complexity=avg_complexity,
+        total_files=total_files,
+    )
+    insert_version_skills_from_project(conn, user_id, project_name, version_key)
 
 
 def _load_skills_into_summary(conn, user_id, project_name, summary):

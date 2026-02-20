@@ -51,11 +51,14 @@ def collect_project_ranking_rows(conn, user_id, respect_manual_ranking: bool = T
             if project_key is not None:
                 manual_rank = get_project_rank(conn, user_id, project_key)
 
+        summary_text = summary_dict.get("summary_text") or ""
         project_scores.append({
             "project_summary_id": row.get("project_summary_id"),
+            "project_key": row.get("project_key"),
             "project_name": project_name,
             "score": auto_score,
             "manual_rank": manual_rank,
+            "summary_text": summary_text,
         })
 
     # Sort: manual rankings first (ascending), then auto-score (descending)
