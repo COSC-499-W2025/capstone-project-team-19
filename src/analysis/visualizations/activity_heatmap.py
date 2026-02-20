@@ -18,6 +18,8 @@ import os
 import re
 import sqlite3
 from typing import Dict, Iterable, List, Literal, Optional, Sequence, Tuple
+from src.utils.parsing import CODE_EXTENSIONS as PARSING_CODE_EXTENSIONS
+from src.utils.parsing import TEXT_EXTENSIONS as PARSING_TEXT_EXTENSIONS
 
 import numpy as np
 
@@ -44,20 +46,6 @@ HeatmapMode = Literal["snapshot", "diff"]
 EXCLUDE_DIRS_DEFAULT = {
     "node_modules", ".venv", "venv", "__pycache__", ".git", ".idea", ".vscode",
     "dist", "build", "target", "out",
-}
-
-CODE_EXTS = {
-    ".py", ".java", ".js", ".jsx", ".ts", ".tsx",
-    ".c", ".h", ".cpp", ".hpp",
-    ".go", ".rs", ".cs", ".kt", ".swift",
-    ".php", ".rb", ".scala", ".sql",
-    ".html", ".css",
-    ".md", ".rst",
-}
-
-TEXT_EXTS = {
-    ".doc", ".docx", ".pdf", ".txt", ".md", ".rtf", ".odt", ".tex",
-    ".csv", ".xls", ".xlsx",
 }
 
 
@@ -182,10 +170,10 @@ def _filter_paths_for_project_type(paths: Iterable[str], project_type: str, excl
         e = _ext(p)
 
         if project_type == "code":
-            if e and e in CODE_EXTS:
+            if e and e in PARSING_CODE_EXTENSIONS:
                 out.append(p)
         else:
-            if e and e in TEXT_EXTS:
+            if e and e in PARSING_TEXT_EXTENSIONS:
                 out.append(p)
 
     return out
