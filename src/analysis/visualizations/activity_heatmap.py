@@ -24,8 +24,10 @@ from src.utils.parsing import TEXT_EXTENSIONS as PARSING_TEXT_EXTENSIONS
 import numpy as np
 
 import matplotlib
-matplotlib.use("Agg")  # headless
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap, BoundaryNorm
+from matplotlib.patches import Patch
 
 from src.db.projects import get_project_key
 from src.db.version_evolution import (
@@ -43,6 +45,7 @@ from src.analysis.activity_type.text.activity_type import (
 
 HeatmapMode = Literal["snapshot", "diff"]
 
+# these are common "ignore" directories that would add noise to the activity classification and are not relevant to the analysis
 EXCLUDE_DIRS_DEFAULT = {
     "node_modules", ".venv", "venv", "__pycache__", ".git", ".idea", ".vscode",
     "dist", "build", "target", "out",
@@ -260,36 +263,89 @@ def build_project_activity_heatmap_matrix(
     title = f"{project_name} • Activity vs Version ({mode}, {value_label})"
     return mat, y_labels, col_labels, title
 
-
 def render_heatmap_png(
     matrix: np.ndarray,
-    row_labels: Sequence[str],
-    col_labels: Sequence[str],
+    row_labels,
+    col_labels,
     title: str,
     *,
     dpi: int = 180,
 ) -> bytes:
     n_rows, n_cols = matrix.shape
-    fig_w = max(6.0, min(18.0, 0.55 * n_cols + 2.5))
-    fig_h = max(4.0, min(12.0, 0.45 * n_rows + 2.0))
 
+    # --- GitHub light theme palette (0 + 4 greens) ---
+    github_colors = ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"]
+    cmap = ListedColormap(github_colors)
+
+    data = np.array(matrix, dtype=float)
+
+    # Build bucket boundaries (0 is its own bucket, rest based on quantiles of non-zero values)
+    nz = data[data > 0]
+    if nz.size == 0:
+        bounds = [0.0, 1e-9, 1.0, 2.0, 3.0, 4.0]  # arbitrary; everything will map to 0 anyway
+    else:
+        q = np.quantile(nz, [0.25, 0.50, 0.75, 0.90])
+        bounds = [0.0, 1e-9, float(q[0]), float(q[1]), float(q[2]), float(nz.max()) + 1e-9]
+
+        # Ensure strictly increasing bounds (avoid edge cases when values are uniform)
+        for i in range(2, len(bounds)):
+            if bounds[i] <= bounds[i - 1]:
+                bounds[i] = bounds[i - 1] + 1e-9
+
+    norm = BoundaryNorm(bounds, cmap.N, clip=True)
+
+    # Size tuned for tiles
+    fig_w = max(6.0, min(18.0, 0.60 * n_cols + 2.5))
+    fig_h = max(4.0, min(12.0, 0.55 * n_rows + 2.0))
     fig, ax = plt.subplots(figsize=(fig_w, fig_h), dpi=dpi)
-    im = ax.imshow(matrix, aspect="auto")
+
+    # Draw tiles with "gaps"
+    x = np.arange(n_cols + 1)
+    y = np.arange(n_rows + 1)
+    ax.pcolormesh(
+        x, y, data,
+        cmap=cmap,
+        norm=norm,
+        edgecolors="white",
+        linewidth=1.0,
+        antialiased=True,
+    )
+    ax.invert_yaxis()              # top row at top
+    ax.set_aspect("auto")
 
     ax.set_title(title)
 
-    ax.set_xticks(np.arange(n_cols))
+    # Center tick labels in each tile
+    ax.set_xticks(np.arange(n_cols) + 0.5)
     ax.set_xticklabels(list(col_labels), rotation=45, ha="right")
-
-    ax.set_yticks(np.arange(n_rows))
+    ax.set_yticks(np.arange(n_rows) + 0.5)
     ax.set_yticklabels(list(row_labels))
 
-    ax.set_xticks(np.arange(-0.5, n_cols, 1), minor=True)
-    ax.set_yticks(np.arange(-0.5, n_rows, 1), minor=True)
-    ax.grid(which="minor", linestyle="-", linewidth=0.3)
-    ax.tick_params(which="minor", bottom=False, left=False)
+    # GitHub-ish minimal axes
+    ax.tick_params(length=0)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
-    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    # Small "Less → More" legend (like GitHub)
+    legend_items = [
+        Patch(facecolor=github_colors[0], edgecolor="none", label="Less"),
+        Patch(facecolor=github_colors[1], edgecolor="none", label=""),
+        Patch(facecolor=github_colors[2], edgecolor="none", label=""),
+        Patch(facecolor=github_colors[3], edgecolor="none", label=""),
+        Patch(facecolor=github_colors[4], edgecolor="none", label="More"),
+    ]
+    ax.legend(
+        handles=legend_items,
+        loc="upper left",
+        bbox_to_anchor=(0.0, -0.16),
+        ncol=5,
+        frameon=False,
+        handlelength=1.0,
+        handleheight=1.0,
+        columnspacing=0.8,
+        borderaxespad=0.0,
+    )
+
     fig.tight_layout()
 
     buf = io.BytesIO()
