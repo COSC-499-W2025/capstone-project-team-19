@@ -34,11 +34,12 @@ http://localhost:8000
 7. [Skills](#skills)
 8. [Resume](#resume)
 9. [Portfolio](#portfolio)
-10. [Path Variables](#path-variables)
-11. [DTO References](#dto-references)
-12. [Best Practices](#best-practices)
-13. [Error Codes](#error-codes)
-14. [Example Error Response](#example-error-response)
+10. [Activity Heatmap](#activity-heatmap)
+11. [Path Variables](#path-variables)
+12. [DTO References](#dto-references)
+13. [Best Practices](#best-practices)
+14. [Error Codes](#error-codes)
+15. [Example Error Response](#example-error-response)
 
 ---
 
@@ -1954,6 +1955,72 @@ To get `project_summary_id` values for use in endpoints like `POST /resume/gener
 
 ---
 
+## **Activity Heatmap**
+Displays a heatmap of **activity type vs version** for a project.
+
+- **Notes**
+  - `mode=diff` (default): each version column shows **only files changed in that version** (added + modified vs previous version).
+  - `mode=snapshot`: each version column shows **all files present in that version**.
+  - If `normalize=true`, values are **percent per version column**:
+    - `% = (files in that activity) / (total files counted for that version) * 100`
+    - Each version column sums to ~100% (unless that version has 0 eligible files).
+
+
+### **Endpoints**
+- **Get Activity Heatmap Info**
+    - **Endpoint**: `GET /projects/{project_name}/activity-heatmap`
+    - **Description**: Generates (or reuses cached) heatmap and returns metadata + a `png_url` to fetch the image.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Path Parameters**:
+      - `{project_name}` (string, required): Project display name
+    - **Query Parameters**:
+      - `mode` (string, optional): `"diff"` or `"snapshot"`. Defaults to `"diff"`.
+      - `normalize` (boolean, optional): Defaults to `true` (percent). If `false`, values are raw counts.
+      - `include_unclassified_text` (boolean, optional): Defaults to `true` (text projects only).
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `ActivityHeatmapInfoDTO`
+    - **Response Body**:
+      ```json
+      {
+        "success": true,
+        "data": {
+          "project_name": "My Project",
+          "mode": "diff",
+          "normalize": true,
+          "include_unclassified_text": true,
+          "png_url": "/projects/My Project/activity-heatmap.png?mode=diff&normalize=true&include_unclassified_text=true"
+        },
+        "error": null
+      }
+      ```
+    - **Error Responses**:
+      - `401 Unauthorized` if missing/invalid/expired token
+      - `404 Not Found` if project doesn't exist or doesn't belong to user
+      - `400 Bad Request` if project has no versions
+
+- **Get Activity Heatmap PNG**
+    - **Endpoint**: `GET /projects/{project_name}/activity-heatmap.png`
+    - **Description**: Returns the heatmap image as a PNG (`image/png`). Uses cached artifact when available.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Path Parameters**:
+      - `{project_name}` (string, required): Project display name 
+    - **Query Parameters**:
+      - `mode` (string, optional): `"diff"` or `"snapshot"`. Defaults to `"diff"`.
+      - `normalize` (boolean, optional): Defaults to `true`.
+      - `include_unclassified_text` (boolean, optional): Defaults to `true` (text projects only).
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary image download with MIME type `image/png`
+    - **Response Headers**:
+      - `Content-Type: image/png`
+    - **Error Responses**:
+      - `401 Unauthorized` if missing/invalid/expired token
+      - `404 Not Found` if project doesn't exist or doesn't belong to user
+      - `400 Bad Request` if project has no versions
+
+---
+
 ## **DTO References**
 
 DTOs (Data Transfer Objects) are defined using Pydantic models in `src/api/schemas/`.
@@ -2300,6 +2367,15 @@ Example:
 - **DeleteResultDTO** (used by `DELETE /projects` and `DELETE /resume`)
   - `deleted_count` (int, required): Number of items deleted
 
+
+### **Activity Heatmap DTOs**
+
+- **ActivityHeatmapInfoDTO** (used by `GET /projects/{project_name}/activity-heatmap`)
+  - `project_name` (string, required)
+  - `mode` (string, required): `"diff"` or `"snapshot"`
+  - `normalize` (boolean, required): `true` = percent per version column, `false` = raw counts
+  - `include_unclassified_text` (boolean, required): text projects only
+  - `png_url` (string, required): relative URL to fetch the PNG
 ---
 
 ## **Best Practices**
