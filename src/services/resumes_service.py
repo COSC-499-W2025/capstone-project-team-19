@@ -29,6 +29,11 @@ from src.services.skill_preferences_service import (
     update_skill_preferences,
     reset_skill_preferences,
     normalize_skill_preferences,
+    get_highlighted_skills_for_display,
+)
+from src.db.skill_preferences import (
+    has_skill_preferences,
+    get_all_user_skills,
 )
 import json
 
@@ -43,16 +48,31 @@ def get_resume_by_id(conn, user_id: int, resume_id: int) -> Optional[Dict[str, A
     """
     Service method for retrieving a resume by its ID.
     Parses resume_json and flattens it into the response.
+    Filters aggregated_skills based on user skill preferences.
     """
     record = get_resume_snapshot(conn, user_id, resume_id)
     if not record:
         return None
-    
+
     try:
         snapshot = json.loads(record["resume_json"])
     except json.JSONDecodeError:
         snapshot = {}
-    
+
+    # Apply skill preference filtering if user has any preferences
+    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
+       has_skill_preferences(conn, user_id, "global"):
+        highlighted = set(get_highlighted_skills_for_display(
+            conn, user_id, context="resume", context_id=resume_id
+        ))
+        agg = snapshot.get("aggregated_skills", {})
+        agg["technical_skills"] = [s for s in agg.get("technical_skills", []) if s in highlighted]
+        agg["writing_skills"] = [s for s in agg.get("writing_skills", []) if s in highlighted]
+        snapshot["aggregated_skills"] = agg
+        for project in snapshot.get("projects", []):
+            if "skills" in project:
+                project["skills"] = [s for s in project["skills"] if s in highlighted]
+
     # Combine DB fields with parsed JSON
     return {
         "id": record["id"],
@@ -122,6 +142,7 @@ def edit_resume(
         conn.commit()
 
     # Resume-level skill preferences (not per project)
+    prefs_changed = False
     if skill_preferences_reset:
         reset_skill_preferences(
             conn,
@@ -130,9 +151,15 @@ def edit_resume(
             context_id=resume_id,
             project_key=None,
         )
+        prefs_changed = True
     elif skill_preferences:
         normalized_prefs = normalize_skill_preferences(skill_preferences)
         if normalized_prefs:
+            # Validate skill names against actual user skills
+            valid_skills = set(get_all_user_skills(conn, user_id))
+            invalid = [p["skill_name"] for p in normalized_prefs if p["skill_name"] not in valid_skills]
+            if invalid:
+                raise ValueError(f"Invalid skill name(s): {', '.join(invalid)}")
             update_skill_preferences(
                 conn,
                 user_id,
@@ -141,6 +168,16 @@ def edit_resume(
                 context_id=resume_id,
                 project_key=None,
             )
+            prefs_changed = True
+
+    # Re-render with updated skill preferences
+    if prefs_changed:
+        highlighted = get_highlighted_skills_for_display(
+            conn, user_id, context="resume", context_id=resume_id
+        )
+        rendered = render_snapshot(conn, user_id, snapshot, print_output=False, highlighted_skills=highlighted)
+        updated_json = json.dumps(snapshot, default=str)
+        update_resume_snapshot(conn, user_id, resume_id, updated_json, rendered)
     if project_name is None:
         return get_resume_by_id(conn, user_id, resume_id)
     if scope is None:

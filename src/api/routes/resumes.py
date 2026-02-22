@@ -121,21 +121,24 @@ def post_resume_edit(
     elif request.display_name or request.summary_text or request.contribution_bullets or request.key_role:
         raise HTTPException(status_code=400, detail="project_summary_id is required for project edits")
 
-    resume = edit_resume(
-        conn,
-        user_id,
-        resume_id,
-        project_name=project_name,
-        scope=request.scope,
-        name=request.name,
-        display_name=request.display_name,
-        summary_text=request.summary_text,
-        contribution_bullets=request.contribution_bullets,
-        contribution_edit_mode=request.contribution_edit_mode,
-        key_role=request.key_role,
-        skill_preferences=request.skill_preferences,
-        skill_preferences_reset=request.skill_preferences_reset,
-    )
+    try:
+        resume = edit_resume(
+            conn,
+            user_id,
+            resume_id,
+            project_name=project_name,
+            scope=request.scope,
+            name=request.name,
+            display_name=request.display_name,
+            summary_text=request.summary_text,
+            contribution_bullets=request.contribution_bullets,
+            contribution_edit_mode=request.contribution_edit_mode,
+            key_role=request.key_role,
+            skill_preferences=request.skill_preferences,
+            skill_preferences_reset=request.skill_preferences_reset,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     if not resume:
         raise HTTPException(status_code=404, detail="Resume or project not found")
