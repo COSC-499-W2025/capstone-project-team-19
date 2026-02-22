@@ -14,6 +14,7 @@ from src.services.skill_preferences_service import (
     reset_skill_preferences,
     normalize_skill_preferences,
 )
+from src.db.skill_preferences import get_project_skill_names
 from src.db.projects import get_project_key
 from src.insights.portfolio import (
     format_duration,
@@ -308,6 +309,10 @@ def edit_portfolio(
             return None
         normalized_prefs = normalize_skill_preferences(skill_preferences)
         if normalized_prefs:
+            valid_skills = set(get_project_skill_names(conn, user_id, project_key))
+            invalid = [p["skill_name"] for p in normalized_prefs if p["skill_name"] not in valid_skills]
+            if invalid:
+                raise ValueError(f"Invalid skill name(s): {', '.join(invalid)}")
             update_skill_preferences(
                 conn,
                 user_id,

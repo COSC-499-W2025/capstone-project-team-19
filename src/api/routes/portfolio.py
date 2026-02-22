@@ -50,6 +50,8 @@ def post_portfolio_edit(
         )
     except CorruptProjectDataError:
         raise HTTPException(status_code=500, detail="Project data is corrupted")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     if not result:
         raise HTTPException(status_code=404, detail="Project not found")

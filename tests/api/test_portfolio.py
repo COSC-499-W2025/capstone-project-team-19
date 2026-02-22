@@ -1,6 +1,7 @@
 import json
 import pytest
 from src.db.project_summaries import save_project_summary, get_project_summary_by_name
+from src.db.skills import insert_project_skill
 from src.db.skill_preferences import get_user_skill_preferences
 
 
@@ -266,12 +267,14 @@ class TestPortfolioEdit:
             seed_conn, 1, "SkillsProject",
             _make_summary_json("SkillsProject"),
         )
+        insert_project_skill(seed_conn, 1, "SkillsProject", "algorithms", "Intermediate", 0.8, json.dumps([]))
         seed_conn.commit()
+        ps_id = get_project_summary_by_name(seed_conn, 1, "SkillsProject")["project_summary_id"]
 
         res = client.post(
             "/portfolio/edit",
             json={
-                "project_name": "SkillsProject",
+                "project_summary_id": ps_id,
                 "scope": "portfolio_only",
                 "skill_preferences": [
                     {"skill_name": "algorithms", "is_highlighted": False, "display_order": 1},
