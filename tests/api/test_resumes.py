@@ -3,6 +3,7 @@ import pytest
 from src.db.resumes import insert_resume_snapshot
 from src.db.project_summaries import save_project_summary, get_project_summary_by_name
 from src.db.skill_preferences import get_user_skill_preferences
+from src.db.skills import insert_project_skill
 
 #TESTS
 # All Resumes tests
@@ -345,6 +346,7 @@ def test_edit_resume_skill_preferences_without_project_name(client, auth_headers
         "projects": [{"project_name": "TestProject"}],
         "aggregated_skills": {}
     })
+    insert_project_skill(seed_conn, 1, "TestProject", "algorithms", "Intermediate", 0.8, json.dumps([]))
     resume_id = insert_resume_snapshot(seed_conn, 1, "Test Resume", resume_json)
     seed_conn.commit()
 
