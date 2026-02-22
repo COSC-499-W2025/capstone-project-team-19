@@ -250,7 +250,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
       ```
 
   - **Get Top Projects**
-    - **Endpoint**: `GET /projects/top`
+    - **Endpoint**: `GET /top`
     - **Description**: Returns the top N projects in ranked order, with summary snippets and version counts. Useful for dashboards and "top projects" displays.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Query Parameters**:
@@ -278,7 +278,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
       ```
 
   - **Get Project Evolution**
-    - **Endpoint**: `GET /projects/{project_id}/evolution`
+    - **Endpoint**: `GET /{project_id}/evolution`
     - **Description**: Returns version-by-version evolution for a project: summaries, file-level diffs, skill progression, languages, frameworks, and metrics. Projects with multiple uploads (versions) will show how the project evolved over time.
     - **Path Parameters**:
       - `{project_id}` (integer, required): The `project_summary_id` of the project
