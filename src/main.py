@@ -4,6 +4,7 @@ from src.utils.deduplication.integration import run_deduplication_for_projects, 
 from src.db import (
     connect,
     init_schema,
+    create_upload,
     get_user_by_username,
     get_or_create_user,
     get_latest_consent,
@@ -247,11 +248,16 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
             continue
         processed_zip_path = zip_path
 
-        # Run deduplication check
+        # Create upload record before dedup so same-upload projects don't match each other
         zip_name = os.path.splitext(os.path.basename(zip_path))[0]
         target_dir = os.path.join(ZIP_DATA_DIR, zip_name)
+        upload_id = create_upload(
+            conn, user_id, zip_name=zip_name, zip_path=zip_path, status="needs_dedup"
+        )
         layout = analyze_project_layout(result)
-        skipped_projects, decisions = run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout)
+        skipped_projects, decisions = run_deduplication_for_projects_detailed(
+            conn, user_id, target_dir, layout, upload_id=upload_id
+        )
         # Filter out skipped projects from result
         if skipped_projects:
             result = [f for f in result if f.get("project_name") not in skipped_projects]

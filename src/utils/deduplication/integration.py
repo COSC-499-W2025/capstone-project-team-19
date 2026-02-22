@@ -182,11 +182,15 @@ def run_deduplication_for_projects(conn, user_id, target_dir, layout):
     return skipped
 
 
-def run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout):
+def run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout, *, upload_id: int | None = None):
     """
     Run deduplication for all projects in layout.
     Returns (skipped_projects, decisions_by_original_project_name).
     decisions include final_name + version_key when available.
+
+    When upload_id is provided, projects from the current upload are excluded from
+    version matching, preventing same-upload projects from being treated as new versions
+    of each other.
     """
     root_name = layout.get("root_name")
     all_projects = set(layout.get("auto_assignments", {}).keys())
@@ -222,7 +226,9 @@ def run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout):
             continue
 
         try:
-            result = register_project(conn, user_id, project_name, project_dir)
+            result = register_project(
+                conn, user_id, project_name, project_dir, upload_id=upload_id
+            )
             decision = handle_dedup_result_with_version(conn, user_id, result, project_name)
             if decision.get("action") == "skip":
                 skipped.add(project_name)

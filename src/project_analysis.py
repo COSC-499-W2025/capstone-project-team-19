@@ -601,8 +601,11 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
 
     metrics = analyze_code_project(conn, user_id, project_name, zip_path, summary, version_key=version_key)
 
-    # activity-type summary for collaborative code
-    activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
+    # activity-type summary for collaborative code (version-scoped when version_key given)
+    vk = version_key or get_latest_version_key(conn, user_id, project_name)
+    activity_summary = build_activity_summary(
+        conn, user_id=user_id, project_name=project_name, version_key=vk
+    )
     if constants.VERBOSE:
         print("\n[COLLABORATIVE-CODE] Activity type summary:")
     print(format_activity_summary(activity_summary))
@@ -634,12 +637,14 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
             )
             focus_file_paths = None
 
-    # Extract skills for collaborative code projects
-    extract_skills(conn, user_id, project_name)
+    # Extract skills for collaborative code projects (version-scoped when version_key given)
+    extract_skills(conn, user_id, project_name, version_key=version_key)
 
 
     if current_ext_consent == 'accepted':
-        parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
+        parsed_files = _fetch_files(
+            conn, user_id, project_name, only_text=False, version_key=version_key
+        )
         if parsed_files:
             print(f"\n[COLLABORATIVE-CODE] Running LLM-based summary for '{project_name}'...")
             llm_results = run_code_llm_analysis(
@@ -715,8 +720,11 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     # --- Run main code + Git analysis ---
     analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=False, version_key=version_key)
 
-    # --- Activity-type summary (individual) ---
-    activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
+    # --- Activity-type summary (individual, version-scoped when version_key given) ---
+    vk = version_key or get_latest_version_key(conn, user_id, project_name)
+    activity_summary = build_activity_summary(
+        conn, user_id=user_id, project_name=project_name, version_key=vk
+    )
     print()  # spacing
     print(format_activity_summary(activity_summary))
     print()
@@ -726,8 +734,8 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
         # store raw counts so you can reuse later in UI / JSON
         summary.metrics["activity_type"] = activity_summary.per_activity
 
-    # Extract skills for code projects
-    extract_skills(conn, user_id, project_name)
+    # Extract skills for code projects (version-scoped when version_key given)
+    extract_skills(conn, user_id, project_name, version_key=version_key)
 
     # --- Run LLM summary LAST, and only once ---
     if current_ext_consent == "accepted":

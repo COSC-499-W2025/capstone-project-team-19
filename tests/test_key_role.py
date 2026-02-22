@@ -52,7 +52,7 @@ def _setup_code_analysis_mocks(monkeypatch):
     )
     monkeypatch.setattr("src.project_analysis.format_activity_summary", lambda x: "")
     monkeypatch.setattr("src.project_analysis.store_code_activity_metrics", lambda *args: None)
-    monkeypatch.setattr("src.project_analysis.extract_skills", lambda *args: None)
+    monkeypatch.setattr("src.project_analysis.extract_skills", lambda *args, **kwargs: None)
     monkeypatch.setattr(
         "src.project_analysis.prompt_manual_code_project_summary",
         lambda proj: "Manual summary"
