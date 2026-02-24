@@ -22,7 +22,8 @@ def run_text_pipeline(
     version_key: int | None = None,
     consent: str = "rejected",
     csv_metadata=None,
-    suppress_print=False
+    suppress_print=False,
+    main_file_relpath: str | None = None,
 ):
     """
     Text project analysis with:
@@ -136,7 +137,20 @@ def run_text_pipeline(
         files_sorted = sorted(files, key=lambda x: x["file_name"])
 
         # --- Select main file ---
-        main_file = _select_main_file(files_sorted, base_path)
+        main_file = None
+        if isinstance(main_file_relpath, str) and main_file_relpath.strip():
+            main_file = _select_main_file_from_relpath(files_sorted, main_file_relpath)
+            if main_file is None:
+                # API-safe fallback when relpath was provided but could not be matched
+                if constants.VERBOSE:
+                    print(
+                        f"[TEXT] Provided main_file_relpath '{main_file_relpath}' "
+                        "did not match project files; falling back to largest file."
+                    )
+                main_file = _select_largest_file(files_sorted, base_path)
+
+        if main_file is None:
+            main_file = _select_main_file(files_sorted, base_path)
 
         # --- Activity type analysis (only for individual mode) ---
         if not suppress_print:
@@ -255,6 +269,30 @@ def _select_main_file(files_sorted, base_path):
         return files_sorted[int(choice) - 1]
 
     # fallback: largest file on disk
+    return _select_largest_file(files_sorted, base_path)
+
+
+def _normalize_relpath_like(value: str) -> str:
+    return (value or "").replace("\\", "/").lstrip("./")
+
+
+def _select_main_file_from_relpath(files_sorted, main_file_relpath: str):
+    target = _normalize_relpath_like(main_file_relpath)
+    if not target:
+        return None
+
+    for f in files_sorted:
+        file_path = _normalize_relpath_like(f.get("file_path", ""))
+        if (
+            file_path == target
+            or file_path.endswith("/" + target)
+            or target.endswith("/" + file_path)
+        ):
+            return f
+    return None
+
+
+def _select_largest_file(files_sorted, base_path):
     return max(
         files_sorted,
         key=lambda f: os.path.getsize(os.path.join(base_path, f["file_path"])),

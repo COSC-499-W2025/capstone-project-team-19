@@ -23,6 +23,7 @@ def analyze_collaborative_text_project(
     external_consent,
     summary_obj,  # ProjectSummary instance
     version_key: int | None = None,
+    main_file_relpath: str | None = None,
 ):
     """
     Collaborative TEXT project analysis flow.
@@ -48,7 +49,8 @@ def analyze_collaborative_text_project(
         project_name=project_name,
         version_key=version_key,
         consent=external_consent,
-        suppress_print=True
+        suppress_print=True,
+        main_file_relpath=main_file_relpath,
     )
 
     if not pipeline_result:

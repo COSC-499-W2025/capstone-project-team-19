@@ -165,3 +165,37 @@ def test_main_file_extraction_fails(mock_csv, mock_extract, mock_input,
     captured = capsys.readouterr()
     assert "Could not extract text" in captured.out
 
+
+@patch("src.analysis.text_individual.text_analyze.extract_text_file", return_value="Some content")
+@patch("src.analysis.text_individual.text_analyze.analyze_all_csv", return_value={"files": []})
+@patch("src.analysis.text_individual.text_analyze.prompt_manual_summary", return_value="Summary.")
+@patch("src.analysis.text_individual.text_analyze.extract_text_skills", return_value={"skills": [], "buckets": {}, "overall_score": 0})
+def test_main_file_relpath_bypasses_prompt(
+    mock_skills, mock_summary, mock_csv, mock_extract, tmp_path, monkeypatch
+):
+    parsed = [
+        {"file_path": "ProjectA/a.txt", "file_name": "a.txt", "file_type": "text"},
+        {"file_path": "ProjectA/b.txt", "file_name": "b.txt", "file_type": "text"},
+    ]
+
+    base = tmp_path / "zip_data" / "Archive" / "ProjectA"
+    os.makedirs(base, exist_ok=True)
+    (base / "a.txt").write_text("aaa")
+    (base / "b.txt").write_text("bbb")
+
+    # If prompt path is reached, this test should fail.
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("input() should not be called")),
+    )
+
+    result = run_text_pipeline(
+        parsed_files=parsed,
+        zip_path=str(tmp_path / "Archive.zip"),
+        conn=None,
+        user_id=1,
+        project_name="ProjectA",
+        main_file_relpath="ProjectA/b.txt",
+    )
+
+    assert result["main_file"] == "b.txt"

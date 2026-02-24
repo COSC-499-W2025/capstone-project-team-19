@@ -371,6 +371,124 @@ def test_send_to_analysis_calls_correct_flows_non_verbose(monkeypatch, capsys):
     assert called["collab"]
 
 
+def test_send_to_analysis_non_interactive_runs_without_prompts(monkeypatch, capsys):
+    from src import constants
+    constants.VERBOSE = False
+
+    conn = setup_in_memory_db()
+    user_id = 1
+
+    insert_classification(conn, user_id, "projText", "individual", "text")
+    insert_classification(conn, user_id, "projCode", "collaborative", "code")
+
+    called = {"text": False, "collab": False}
+
+    monkeypatch.setattr(
+        "src.project_analysis.run_individual_analysis",
+        lambda *a, **kw: called.__setitem__("text", True),
+    )
+    monkeypatch.setattr(
+        "src.project_analysis.get_individual_contributions",
+        lambda *a, **kw: called.__setitem__("collab", True),
+    )
+
+    # In non-interactive mode, phase-level input prompts must not run.
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("input() should not be called")),
+    )
+
+    from src.project_analysis import send_to_analysis
+    send_to_analysis(
+        conn,
+        user_id,
+        {"projText": "individual", "projCode": "collaborative"},
+        "accepted",
+        "/tmp/fake.zip",
+        interactive=False,
+    )
+
+    out = capsys.readouterr().out
+    assert "All requested analyses completed." in out
+    assert called["text"] is True
+    assert called["collab"] is True
+
+
+def test_send_to_analysis_non_interactive_scope_individual_only(monkeypatch):
+    conn = setup_in_memory_db()
+    user_id = 1
+
+    insert_classification(conn, user_id, "projText", "individual", "text")
+    insert_classification(conn, user_id, "projCode", "collaborative", "code")
+
+    called = {"text": False, "collab": False}
+
+    monkeypatch.setattr(
+        "src.project_analysis.run_individual_analysis",
+        lambda *a, **kw: called.__setitem__("text", True),
+    )
+    monkeypatch.setattr(
+        "src.project_analysis.get_individual_contributions",
+        lambda *a, **kw: called.__setitem__("collab", True),
+    )
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("input() should not be called")),
+    )
+
+    from src.project_analysis import send_to_analysis
+    send_to_analysis(
+        conn,
+        user_id,
+        {"projText": "individual", "projCode": "collaborative"},
+        "accepted",
+        "/tmp/fake.zip",
+        interactive=False,
+        run_scope="individual",
+    )
+
+    assert called["text"] is True
+    assert called["collab"] is False
+
+
+def test_send_to_analysis_passes_main_file_from_analysis_context(monkeypatch):
+    conn = setup_in_memory_db()
+    user_id = 1
+
+    insert_classification(conn, user_id, "projText", "individual", "text")
+
+    captured = {"main_file_relpath": None}
+
+    def _mock_run_individual_analysis(*args, **kwargs):
+        captured["main_file_relpath"] = kwargs.get("main_file_relpath")
+
+    monkeypatch.setattr("src.project_analysis.run_individual_analysis", _mock_run_individual_analysis)
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("input() should not be called")),
+    )
+
+    from src.project_analysis import send_to_analysis
+    send_to_analysis(
+        conn,
+        user_id,
+        {"projText": "individual"},
+        "accepted",
+        "/tmp/fake.zip",
+        interactive=False,
+        analysis_context={
+            "projects": [
+                {
+                    "project_name": "projText",
+                    "file_roles": {"main_file": "projText/final_report.txt"},
+                }
+            ]
+        },
+    )
+
+    assert captured["main_file_relpath"] == "projText/final_report.txt"
+
+
 def test_get_individual_contributions_branches_verbose(monkeypatch, capsys, tmp_path):
     from src import constants
     constants.VERBOSE = True
@@ -438,4 +556,3 @@ def test_run_individual_analysis_branches(monkeypatch):
 
     assert called["text"]
     assert called["code"]
-

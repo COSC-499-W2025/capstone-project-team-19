@@ -169,7 +169,18 @@ def detect_project_type_auto(
     }
 
 
-def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, version_keys: dict[str, int] | None = None):
+def send_to_analysis(
+    conn,
+    user_id,
+    assignments,
+    current_ext_consent,
+    zip_path,
+    version_keys: dict[str, int] | None = None,
+    *,
+    interactive: bool = True,
+    run_scope: str = "all",
+    analysis_context: dict | None = None,
+):
     """
     Routes each project to the appropriate analysis flow based on its classification and type.
     Collaborative projects trigger contribution analysis.
@@ -179,17 +190,16 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
         - Skips projects that do not have a project_type or classification (this should rarely, if ever, happen)
         - Calls downstream analysis functions for each project depending on its type
 
-    Always offer INDIVIDUAL first, then (optionally) COLLABORATIVE.
-    Flow:
-      1) "Run individual analysis now?"  -> if yes, run all individual projects
-      2) "Run collaborative analysis now?" -> if yes, run all collaborative projects
-      3) otherwise exit
+    interactive=True (CLI): prompts user before each phase.
+    interactive=False (API): runs phases deterministically with no phase prompts.
 
-    After each phase (or set of prompts), ask:
-    "Do you want to exit analysis now? (y/n)"
-    If user answers 'n'/'no', automatically run the remaining (unrun) phase(s),
-    starting with INDIVIDUAL if still pending.
+    run_scope controls which phases to execute:
+      - "all" (default): individual then collaborative
+      - "individual": only individual phase
+      - "collaborative": only collaborative phase
     """
+    if run_scope not in {"all", "individual", "collaborative"}:
+        raise ValueError("run_scope must be one of: all, individual, collaborative")
 
     # Partition projects and attach their detected types
     individual = []
@@ -217,9 +227,23 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
         else:
             print(f"Unknown classification '{classification}' for '{project_name}', skipping.")
 
-    if not individual and not collaborative:
+    has_any = bool(individual) or bool(collaborative)
+    if not has_any:
         print("No projects to analyze.")
         return
+
+    context_projects = (analysis_context or {}).get("projects") or []
+    context_by_name = {
+        p.get("project_name"): p
+        for p in context_projects
+        if isinstance(p, dict) and p.get("project_name")
+    }
+
+    def _context_main_file(project_name: str) -> str | None:
+        proj = context_by_name.get(project_name) or {}
+        roles = proj.get("file_roles") or {}
+        main_file = roles.get("main_file")
+        return main_file if isinstance(main_file, str) and main_file.strip() else None
 
     def run_individual_phase():
         if not individual:
@@ -236,7 +260,17 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 project_type=project_type,
                 project_mode="individual"
             )
-            run_individual_analysis(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary, version_key=vk)
+            run_individual_analysis(
+                conn,
+                user_id,
+                project_name,
+                project_type,
+                current_ext_consent,
+                zip_path,
+                summary,
+                version_key=vk,
+                main_file_relpath=_context_main_file(project_name),
+            )
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
             if project_type == "text":
@@ -259,16 +293,26 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
         # capture manual PROJECT summaries for collab code when LLM is disabled
         manual_project_summaries: dict[str, str] = {}
         if code_collab and current_ext_consent != "accepted":
-            for name, _ptype in code_collab:
-                manual_project_summaries[name] = prompt_manual_code_project_summary(name)
+            if interactive:
+                for name, _ptype in code_collab:
+                    manual_project_summaries[name] = prompt_manual_code_project_summary(name)
+            else:
+                for name, _ptype in code_collab:
+                    manual_project_summaries[name] = "[No manual project summary provided]"
 
 
         # ask once for user descriptions for CODE collab projects (non-LLM path)
         if code_collab:
-            # prompt_collab_descriptions expects list[(project_name, something)];
-            # it only uses the project_name, so second value can be anything.
-            projects_for_desc = [(name, "") for (name, _ptype) in code_collab]
-            project_descs = prompt_collab_descriptions(projects_for_desc, current_ext_consent)
+            if interactive:
+                # prompt_collab_descriptions expects list[(project_name, something)];
+                # it only uses the project_name, so second value can be anything.
+                projects_for_desc = [(name, "") for (name, _ptype) in code_collab]
+                project_descs = prompt_collab_descriptions(projects_for_desc, current_ext_consent)
+            else:
+                project_descs = {
+                    name: "[No manual contribution summary provided]"
+                    for (name, _ptype) in code_collab
+                }
             set_manual_descs_store(project_descs)
         else:
             # no code collab → clear any previous state
@@ -299,6 +343,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 zip_path,
                 summary,
                 version_key=vk,
+                main_file_relpath=_context_main_file(project_name),
             )
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
@@ -327,7 +372,17 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 project_type=project_type,
                 project_mode="collaborative"
             )
-            get_individual_contributions(conn, user_id, project_name, project_type, current_ext_consent, zip_path, summary, version_key=vk)
+            get_individual_contributions(
+                conn,
+                user_id,
+                project_name,
+                project_type,
+                current_ext_consent,
+                zip_path,
+                summary,
+                version_key=vk,
+                main_file_relpath=_context_main_file(project_name),
+            )
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
             if project_type == "text":
@@ -337,9 +392,24 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
 
         return True
 
-    # Track pending phases
-    pending_individual = bool(individual)
-    pending_collab = bool(collaborative)
+    # Track pending phases (respect scope)
+    pending_individual = bool(individual) and run_scope in {"all", "individual"}
+    pending_collab = bool(collaborative) and run_scope in {"all", "collaborative"}
+
+    if not (pending_individual or pending_collab):
+        print(f"No projects to analyze for scope '{run_scope}'.")
+        return
+
+    # API/non-interactive mode: deterministic execution, no phase prompts.
+    if not interactive:
+        if pending_individual:
+            run_individual_phase()
+            pending_individual = False
+        if pending_collab:
+            run_collaborative_phase()
+            pending_collab = False
+        print("\nAll requested analyses completed.")
+        return
 
     # ---- Initial prompts (individual first) ----
     if pending_individual:
@@ -397,6 +467,7 @@ def get_individual_contributions(
     zip_path,
     summary=None,
     version_key: int | None = None,
+    main_file_relpath: str | None = None,
 ):
     """
     Analyze collaborative projects to get specific user contributions in a collaborative project.
@@ -406,7 +477,16 @@ def get_individual_contributions(
         print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' ({project_type})")
 
     if project_type == "text":
-        analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path, version_key=version_key)
+        analyze_text_contributions(
+            conn,
+            user_id,
+            project_name,
+            current_ext_consent,
+            summary,
+            zip_path,
+            version_key=version_key,
+            main_file_relpath=main_file_relpath,
+        )
     elif project_type == "code":
         analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key)
     else:
@@ -422,20 +502,39 @@ def run_individual_analysis(
     zip_path,
     summary=None,
     version_key: int | None = None,
+    main_file_relpath: str | None = None,
 ):
     """
     Run full analysis on an individual project, depending on project_type.
     """
     
     if project_type == "text":
-        run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key)
+        run_text_analysis(
+            conn,
+            user_id,
+            project_name,
+            current_ext_consent,
+            zip_path,
+            summary,
+            version_key=version_key,
+            main_file_relpath=main_file_relpath,
+        )
     elif project_type == "code":
         run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key)
     else:
         print(f"[INDIVIDUAL] Unknown project type for '{project_name}', skipping.")
 
 
-def analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path, version_key: int | None = None):
+def analyze_text_contributions(
+    conn,
+    user_id,
+    project_name,
+    current_ext_consent,
+    summary,
+    zip_path,
+    version_key: int | None = None,
+    main_file_relpath: str | None = None,
+):
     """
     Analyze collaborative text projects with optional Google Drive connection.
     If Google Drive is skipped or fails → fallback to collaborative manual text flow.
@@ -482,6 +581,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
             external_consent=current_ext_consent,
             summary_obj=summary,
             version_key=version_key,
+            main_file_relpath=main_file_relpath,
         )
         return
 
@@ -491,7 +591,15 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     if not result['success']:
         print("\n[TEXT-COLLAB] Google Drive connection failed → falling back to manual mode.\n")
         analyze_collaborative_text_project(
-            conn, user_id, project_name, parsed_files, zip_path, current_ext_consent, summary, version_key=version_key
+            conn,
+            user_id,
+            project_name,
+            parsed_files,
+            zip_path,
+            current_ext_consent,
+            summary,
+            version_key=version_key,
+            main_file_relpath=main_file_relpath,
         )
         return
 
@@ -502,7 +610,15 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     if not drive_service or not docs_service:
         print("\n[TEXT-COLLAB] Google Drive connected but incomplete services → fallback to manual.\n")
         analyze_collaborative_text_project(
-            conn, user_id, project_name, parsed_files, zip_path, current_ext_consent, summary, version_key=version_key
+            conn,
+            user_id,
+            project_name,
+            parsed_files,
+            zip_path,
+            current_ext_consent,
+            summary,
+            version_key=version_key,
+            main_file_relpath=main_file_relpath,
         )
         return
 
@@ -570,6 +686,7 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
         external_consent=current_ext_consent,
         summary_obj=summary,
         version_key=version_key,
+        main_file_relpath=main_file_relpath,
     )
 
 
@@ -663,12 +780,32 @@ def analyze_code_contributions(conn, user_id, project_name, current_ext_consent,
             summary.summary_text = prompt_manual_code_project_summary(project_name)
 
 
-def run_text_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
+def run_text_analysis(
+    conn,
+    user_id,
+    project_name,
+    current_ext_consent,
+    zip_path,
+    summary,
+    version_key: int | None = None,
+    main_file_relpath: str | None = None,
+):
     parsed_files = _fetch_files(conn, user_id, project_name, only_text=True, version_key=version_key)
     if not parsed_files:
         print(f"[INDIVIDUAL-TEXT] No text files found for '{project_name}'.")
         return
-    analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=True, summary=summary, version_key=version_key)
+    analyze_files(
+        conn,
+        user_id,
+        project_name,
+        current_ext_consent,
+        parsed_files,
+        zip_path,
+        only_text=True,
+        summary=summary,
+        version_key=version_key,
+        main_file_relpath=main_file_relpath,
+    )
 
     # --- Individual text project contribution description and key role ---
     _prompt_contribution_and_key_role(project_name, current_ext_consent, summary, verb="wrote")
@@ -734,7 +871,18 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
     _prompt_contribution_and_key_role(project_name, current_ext_consent, summary, verb="built")
 
 
-def analyze_files(conn, user_id, project_name, external_consent, parsed_files, zip_path, only_text, summary=None, version_key: int | None = None):
+def analyze_files(
+    conn,
+    user_id,
+    project_name,
+    external_consent,
+    parsed_files,
+    zip_path,
+    only_text,
+    summary=None,
+    version_key: int | None = None,
+    main_file_relpath: str | None = None,
+):
     vk = version_key or get_latest_version_key(conn, user_id, project_name)
 
     if only_text:
@@ -768,7 +916,8 @@ def analyze_files(conn, user_id, project_name, external_consent, parsed_files, z
             project_name=project_name,
             version_key=version_key,
             consent=external_consent,
-            csv_metadata=csv_metadata
+            csv_metadata=csv_metadata,
+            main_file_relpath=main_file_relpath,
         )
         
         # ------------------------------
