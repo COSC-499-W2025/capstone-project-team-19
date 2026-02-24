@@ -184,27 +184,13 @@ def detect_project_type_auto(
     }
 
 
-def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, version_keys: dict[str, int] | None = None):
+def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, version_keys: dict[str, int] | None = None, version_keys_for_analysis: list[tuple[str, int]] | None = None):
     """
     Routes each project to the appropriate analysis flow based on its classification and type.
-    Collaborative projects trigger contribution analysis.
-    Individual projects go directly into standard analysis.
-
-    Notes:
-        - Skips projects that do not have a project_type or classification (this should rarely, if ever, happen)
-        - Calls downstream analysis functions for each project depending on its type
-
-    Always offer INDIVIDUAL first, then (optionally) COLLABORATIVE.
-    Flow:
-      1) "Run individual analysis now?"  -> if yes, run all individual projects
-      2) "Run collaborative analysis now?" -> if yes, run all collaborative projects
-      3) otherwise exit
-
-    After each phase (or set of prompts), ask:
-    "Do you want to exit analysis now? (y/n)"
-    If user answers 'n'/'no', automatically run the remaining (unrun) phase(s),
-    starting with INDIVIDUAL if still pending.
+    When version_keys_for_analysis is provided, runs analysis and snapshots for every (project_name, version_key) so each version gets its own skills/summary for progression.
     """
+    version_keys = version_keys or {}
+    version_keys_for_analysis = version_keys_for_analysis or []
 
     # Partition projects and attach their detected types
     individual = []
@@ -236,16 +222,41 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
         print("No projects to analyze.")
         return
 
+    # Build (project_name, project_type, version_key) tasks; when version_keys_for_analysis
+    # is set, one task per version (oldest first) so each version gets analyzed and snapshotted.
+    individual_tasks: list[tuple[str, str, int | None]] = []
+    collaborative_tasks: list[tuple[str, str, int | None]] = []
+    if version_keys_for_analysis:
+        individual_set = {(n, t) for n, t in individual}
+        collaborative_set = {(n, t) for n, t in collaborative}
+        for project_name, vk in version_keys_for_analysis:
+            row = conn.execute(
+                "SELECT project_type FROM projects WHERE user_id = ? AND display_name = ?",
+                (user_id, project_name),
+            ).fetchone()
+            if not row or not row[0]:
+                continue
+            ptype = row[0]
+            if (project_name, ptype) in individual_set:
+                individual_tasks.append((project_name, ptype, vk))
+            elif (project_name, ptype) in collaborative_set:
+                collaborative_tasks.append((project_name, ptype, vk))
+    else:
+        for project_name, project_type in individual:
+            individual_tasks.append((project_name, project_type, version_keys.get(project_name)))
+        for project_name, project_type in collaborative:
+            collaborative_tasks.append((project_name, project_type, version_keys.get(project_name)))
+
     def run_individual_phase():
-        if not individual:
+        if not individual_tasks:
             if constants.VERBOSE:
                 print("\n[INDIVIDUAL] No individual projects.")
             return False
         if constants.VERBOSE:
             print("\n[INDIVIDUAL] Running individual projects...")
-        for project_name, project_type in individual:
-            print(f"  → {project_name} ({project_type})")
-            vk = (version_keys or {}).get(project_name)
+        for project_name, project_type, vk in individual_tasks:
+            label = f" (version {vk})" if vk is not None and len(individual_tasks) > 1 else ""
+            print(f"  → {project_name} ({project_type}){label}")
             summary = ProjectSummary(
                 project_name=project_name,
                 project_type=project_type,
@@ -263,28 +274,30 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
         return True
 
     def run_collaborative_phase():
-        if not collaborative:
+        if not collaborative_tasks:
             print("\n[COLLABORATIVE] No collaborative projects.")
             return False
         if constants.VERBOSE:
             print("\n[COLLABORATIVE] Running collaborative projects...")
 
         # split: code first, then text
-        code_collab = [(n, t) for (n, t) in collaborative if t == "code"]
-        text_collab = [(n, t) for (n, t) in collaborative if t == "text"]
+        code_collab = [(n, t, vk) for (n, t, vk) in collaborative_tasks if t == "code"]
+        text_collab = [(n, t, vk) for (n, t, vk) in collaborative_tasks if t == "text"]
+        
+        # Prompt once per project (not per version) for manual summaries and contribution descriptions
+        unique_code_names = list(dict.fromkeys(name for name, _t, _vk in code_collab))
         
         # capture manual PROJECT summaries for collab code when LLM is disabled
         manual_project_summaries: dict[str, str] = {}
         if code_collab and current_ext_consent != "accepted":
-            for name, _ptype in code_collab:
+            for name in unique_code_names:
                 manual_project_summaries[name] = prompt_manual_code_project_summary(name)
 
 
-        # ask once for user descriptions for CODE collab projects (non-LLM path)
+        # ask once per project for contribution descriptions (not once per version)
         if code_collab:
             # prompt_collab_descriptions expects list[(project_name, something)];
-            # it only uses the project_name, so second value can be anything.
-            projects_for_desc = [(name, "") for (name, _ptype) in code_collab]
+            projects_for_desc = [(name, "") for name in unique_code_names]
             project_descs = prompt_collab_descriptions(projects_for_desc, current_ext_consent)
             set_manual_descs_store(project_descs)
         else:
@@ -292,9 +305,10 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
             set_manual_descs_store({})
 
                 # 1) run all CODE collab
-        for project_name, project_type in code_collab:
-            print(f"  → {project_name} ({project_type})")
-            vk = (version_keys or {}).get(project_name)
+        github_prompted: set[str] = set()  # ask "Enhance with GitHub?" only once per project
+        for project_name, project_type, vk in code_collab:
+            label = f" (version {vk})" if vk is not None and len(collaborative_tasks) > 1 else ""
+            print(f"  → {project_name} ({project_type}){label}")
             summary = ProjectSummary(
                 project_name=project_name,
                 project_type=project_type,
@@ -307,6 +321,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 if proj_summary:
                     summary.summary_text = proj_summary
 
+            skip_github = project_name in github_prompted
             get_individual_contributions(
                 conn,
                 user_id,
@@ -316,7 +331,9 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 zip_path,
                 summary,
                 version_key=vk,
+                skip_github_prompt=skip_github,
             )
+            github_prompted.add(project_name)
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
             if project_type == "text":
@@ -338,9 +355,9 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
             print_code_portfolio_summary()
 
         # 2) run all TEXT collab
-        for project_name, project_type in text_collab:
-            print(f"  → {project_name} ({project_type})")
-            vk = (version_keys or {}).get(project_name)
+        for project_name, project_type, vk in text_collab:
+            label = f" (version {vk})" if vk is not None and len(collaborative_tasks) > 1 else ""
+            print(f"  → {project_name} ({project_type}){label}")
             summary = ProjectSummary(
                 project_name=project_name,
                 project_type=project_type,
@@ -359,8 +376,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
         return True
 
     # Track pending phases
-    pending_individual = bool(individual)
-    pending_collab = bool(collaborative)
+    pending_individual = bool(individual_tasks)
+    pending_collab = bool(collaborative_tasks)
 
     # ---- Initial prompts (individual first) ----
     if pending_individual:
@@ -418,6 +435,8 @@ def get_individual_contributions(
     zip_path,
     summary=None,
     version_key: int | None = None,
+    *,
+    skip_github_prompt: bool = False,
 ):
     """
     Analyze collaborative projects to get specific user contributions in a collaborative project.
@@ -429,7 +448,7 @@ def get_individual_contributions(
     if project_type == "text":
         analyze_text_contributions(conn, user_id, project_name, current_ext_consent, summary, zip_path, version_key=version_key)
     elif project_type == "code":
-        analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key)
+        analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key, skip_github_prompt=skip_github_prompt)
     else:
         print(f"[COLLABORATIVE] Unknown project type for '{project_name}', skipping.")
 
@@ -594,12 +613,12 @@ def analyze_text_contributions(conn, user_id, project_name, current_ext_consent,
     )
 
 
-def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
+def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None, *, skip_github_prompt: bool = False):
     """Collaborative code analysis: Git data + LLM summary."""
     if constants.VERBOSE:
         print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' (code)")
 
-    metrics = analyze_code_project(conn, user_id, project_name, zip_path, summary, version_key=version_key)
+    metrics = analyze_code_project(conn, user_id, project_name, zip_path, summary, version_key=version_key, skip_github_prompt=skip_github_prompt)
 
     # activity-type summary for collaborative code (version-scoped when version_key given)
     vk = version_key or get_latest_version_key(conn, user_id, project_name)

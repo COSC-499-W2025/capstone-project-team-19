@@ -248,7 +248,7 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
             continue
         processed_zip_path = zip_path
 
-        # Create upload record before dedup so same-upload projects don't match each other
+        # Create upload record before dedup so new versions are linked to this upload
         zip_name = os.path.splitext(os.path.basename(zip_path))[0]
         target_dir = os.path.join(ZIP_DATA_DIR, zip_name)
         upload_id = create_upload(
@@ -262,32 +262,54 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
         if skipped_projects:
             result = [f for f in result if f.get("project_name") not in skipped_projects]
 
-        # Apply dedup renames + attach version_key for storage
+        # Apply dedup renames + attach version_key for storage.
+        # Each file gets the version_key of its original folder (version_key_by_orig)
+        # so multi-version uploads store files under the correct version.
         name_map: dict[str, str] = {}
-        version_keys = {}
+        version_keys: dict[str, int] = {}
+        version_key_by_orig: dict[str, int] = {}
         for orig_name, decision in (decisions or {}).items():
             final = decision.get("final_name")
             vk = decision.get("version_key")
             if final:
                 name_map[orig_name] = final
                 if isinstance(vk, int):
-                    version_keys[final] = vk
+                    version_keys[final] = vk  # latest per project (for backward compat)
+                    version_key_by_orig[orig_name] = vk
 
         for f in result:
             orig = f.get("project_name")
             if orig in name_map:
                 f["project_name"] = name_map[orig]
-                f["version_key"] = version_keys.get(name_map[orig])
+                f["version_key"] = version_key_by_orig.get(orig)
+
+        # One (project_name, version_key) per version for analysis; oldest first for correct progression.
+        version_keys_for_analysis: list[tuple[str, int]] = sorted(
+            [
+                (d["final_name"], d["version_key"])
+                for d in (decisions or {}).values()
+                if d.get("final_name") and isinstance(d.get("version_key"), int)
+            ],
+            key=lambda x: x[1],
+        )
 
         # Persist files once (after dedup tagging)
         store_parsed_files(conn, result, user_id)
 
         # Version projects (new_version, ask->new_version) inherit classification/type from DB;
-        # we skip prompting for those.
+        # we skip prompting for those. Only do that when the project already existed before this
+        # upload (has metadata in DB). When the "base" project was created in this same upload,
+        # we still need to prompt for classification once, then both base and version get it.
+        projects_created_this_upload = {
+            d["final_name"]
+            for d in (decisions or {}).values()
+            if d.get("kind") in ("new_project", "ask->new_project")
+        }
         version_project_names = {
             d["final_name"]
             for d in (decisions or {}).values()
             if d.get("kind") in ("new_version", "ask->new_version")
+            and d["final_name"] not in projects_created_this_upload
         }
 
         assignments = prompt_for_project_classifications(
@@ -314,6 +336,7 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
             external_consent_status,
             processed_zip_path,
             version_keys=version_keys,
+            version_keys_for_analysis=version_keys_for_analysis,
         )  # takes projects and sends them into the analysis flow
     else:
         if assignments:

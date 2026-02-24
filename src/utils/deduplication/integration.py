@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 from src.utils.deduplication.register_project import register_project
 from src.db.deduplication import insert_project, insert_project_version, insert_version_files
@@ -188,9 +189,9 @@ def run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout, *
     Returns (skipped_projects, decisions_by_original_project_name).
     decisions include final_name + version_key when available.
 
-    When upload_id is provided, projects from the current upload are excluded from
-    version matching, preventing same-upload projects from being treated as new versions
-    of each other.
+    Projects from the same upload are compared to each other as well as to
+    previously uploaded projects, so duplicates or new versions within one
+    upload can be detected.
     """
     root_name = layout.get("root_name")
     all_projects = set(layout.get("auto_assignments", {}).keys())
@@ -198,6 +199,14 @@ def run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout, *
 
     if not all_projects:
         return set(), {}
+
+    # Process in natural order (e.g. 1.1 before 1.2) so the "base" version is created first
+    # and later folders can be detected as new versions of it.
+    def _natural_sort_key(name: str):
+        segments = re.split(r"(\d+)", name)
+        return [int(s) if s.isdigit() else s.lower() for s in segments if s]
+
+    project_list = sorted(all_projects, key=_natural_sort_key)
 
     if root_name:
         base_path = os.path.join(target_dir, root_name)
@@ -207,7 +216,7 @@ def run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout, *
     skipped: set[str] = set()
     decisions: dict[str, dict] = {}
 
-    for project_name in all_projects:
+    for project_name in project_list:
         candidates = [
             os.path.join(base_path, project_name),
             os.path.join(target_dir, project_name),
