@@ -80,3 +80,19 @@ class MainFileSectionsResponseDTO(BaseModel):
 
 class ContributedSectionsRequestDTO(BaseModel):
     selected_section_ids: List[int]
+
+
+RunScope = Literal["all", "individual", "collaborative"]
+
+
+class UploadRunRequestDTO(BaseModel):
+    scope: RunScope = "all"
+    force_rerun: bool = False
+
+
+class UploadRunResponseDTO(BaseModel):
+    upload_id: int
+    status: UploadStatus
+    scope: RunScope
+    accepted: bool
+    message: str

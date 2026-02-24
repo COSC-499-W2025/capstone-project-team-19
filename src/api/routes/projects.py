@@ -15,6 +15,8 @@ from src.api.schemas.uploads import (
     MainFileSectionsResponseDTO,
     ContributedSectionsRequestDTO,
     KeyRoleRequestDTO,
+    UploadRunRequestDTO,
+    UploadRunResponseDTO,
 )
 from src.api.schemas.git_identities import (
     GitIdentitiesResponse,
@@ -119,6 +121,33 @@ def post_upload_project_types(
 ):
     upload = submit_project_types(conn, user_id, upload_id, body.project_types)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.post("/upload/{upload_id}/run", response_model=ApiResponse[UploadRunResponseDTO])
+def post_upload_run(
+    upload_id: int,
+    body: UploadRunRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    """
+    Analysis run endpoint contract.
+
+    Execution wiring is added in follow-up changes. For now this endpoint validates
+    upload ownership and returns an explicit contract response for frontend integration.
+    """
+    upload = get_upload_status(conn, user_id, upload_id)
+    if upload is None:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    data = UploadRunResponseDTO(
+        upload_id=upload_id,
+        status=upload["status"],
+        scope=body.scope,
+        accepted=False,
+        message="Run endpoint contract is available. Analysis execution is not wired yet.",
+    )
+    return ApiResponse(success=True, data=data, error=None)
 
 
 def _resolve_upload_project(
