@@ -54,6 +54,7 @@ from src.services.uploads_contribution_service import (
     list_main_file_sections,
     set_main_file_contributed_sections,
 )
+from src.services.uploads_run_service import validate_upload_run_readiness
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -136,17 +137,14 @@ def post_upload_run(
     Execution wiring is added in follow-up changes. For now this endpoint validates
     upload ownership and returns an explicit contract response for frontend integration.
     """
-    upload = get_upload_status(conn, user_id, upload_id)
-    if upload is None:
-        raise HTTPException(status_code=404, detail="Upload not found")
-
-    data = UploadRunResponseDTO(
-        upload_id=upload_id,
-        status=upload["status"],
+    readiness = validate_upload_run_readiness(
+        conn,
+        user_id,
+        upload_id,
         scope=body.scope,
-        accepted=False,
-        message="Run endpoint contract is available. Analysis execution is not wired yet.",
+        force_rerun=body.force_rerun,
     )
+    data = UploadRunResponseDTO(**readiness)
     return ApiResponse(success=True, data=data, error=None)
 
 
