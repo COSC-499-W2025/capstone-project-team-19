@@ -86,11 +86,18 @@ def analyze_code_project(conn: sqlite3.Connection,
                          project_name: str,
                          zip_path: str,
                          summary=None,
-                         version_key: int | None = None) -> Optional[dict]:
+                         version_key: int | None = None,
+                         contribution_inputs: dict | None = None,
+                         github_inputs: dict | None = None,
+                         interactive: bool = True) -> Optional[dict]:
     # 1) get base dirs from the uploaded zip
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
     # Capture any pre-collected manual description (non-LLM path)
     desc = get_manual_desc(project_name)
+    contribution_inputs = contribution_inputs or {}
+    github_inputs = github_inputs or {}
+    if not desc:
+        desc = str(contribution_inputs.get("manual_contribution_summary") or "").strip()
 
     # Debug: show basic context for this project run
     if constants.VERBOSE:
@@ -115,7 +122,15 @@ def analyze_code_project(conn: sqlite3.Connection,
         _handle_no_git_repo(conn, user_id, project_name)
 
         # Still allow GitHub-only enhancement even without local repo_dir
-        _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
+        _enhance_with_github(
+            conn,
+            user_id,
+            project_name,
+            repo_dir,
+            summary,
+            interactive=interactive,
+            github_inputs=github_inputs,
+        )
 
         # Populate whatever we can so the project summary isn't empty
         _apply_basic_summary_without_git(
@@ -125,6 +140,8 @@ def analyze_code_project(conn: sqlite3.Connection,
             zip_path=zip_path,
             summary=summary,
             desc=desc,
+            interactive=interactive,
+            contribution_inputs=contribution_inputs,
         )
         store_contributions_without_git(conn, user_id, project_name, desc, debug=DEBUG, version_key=version_key)
         print("=" * 80)
@@ -138,7 +155,15 @@ def analyze_code_project(conn: sqlite3.Connection,
             print(f"[debug] using repo_dir={repo_dir}")
 
     # Enhance with GitHub metrics (if user says yes)
-    repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
+    repo_metrics = _enhance_with_github(
+        conn,
+        user_id,
+        project_name,
+        repo_dir,
+        summary,
+        interactive=interactive,
+        github_inputs=github_inputs,
+    )
 
     # 3) identity table + load user aliases
     ensure_user_github_table(conn)
@@ -148,6 +173,9 @@ def analyze_code_project(conn: sqlite3.Connection,
         authors = collect_repo_authors(repo_dir)
         if not authors:
             print(f"\n[skip] {project_name}: no authors found in Git history.")
+            return None
+        if not interactive:
+            print("\n[skip] No git identities configured for API mode.")
             return None
         sel_emails, sel_names = prompt_user_identity_choice(authors)
         if not sel_emails and not sel_names:
@@ -172,13 +200,16 @@ def analyze_code_project(conn: sqlite3.Connection,
         external_consent = get_latest_external_consent(conn, user_id)
 
         if external_consent != "accepted":
-            try:
-                user_desc = input(
-                    f"Describe your contribution to '{project_name}': "
-                )
-            except EOFError:
-                user_desc = ""
-            desc = (user_desc or "").strip()
+            if interactive:
+                try:
+                    user_desc = input(
+                        f"Describe your contribution to '{project_name}': "
+                    )
+                except EOFError:
+                    user_desc = ""
+                desc = (user_desc or "").strip()
+            else:
+                desc = str(contribution_inputs.get("manual_contribution_summary") or "").strip()
             
     desc_clean = (desc or "").strip()
     if desc_clean:
@@ -216,11 +247,16 @@ def analyze_code_project(conn: sqlite3.Connection,
 
         # 7.3) Extract or prompt for key role
         external_consent = get_latest_external_consent(conn, user_id)
+        preset_role = str(contribution_inputs.get("key_role") or "").strip()
 
-        if external_consent == "accepted" and desc_clean:
+        if preset_role:
+            key_role = preset_role
+        elif external_consent == "accepted" and desc_clean:
             key_role = extract_key_role_llm(desc_clean)
-        else:
+        elif interactive:
             key_role = prompt_key_role(project_name)
+        else:
+            key_role = ""
 
         if key_role:
             summary.contributions["key_role"] = key_role
@@ -299,16 +335,34 @@ def _handle_no_git_repo(conn, user_id, project_name):
     return None
 
 
-def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None):
-    ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
-    if ans not in {"y", "yes"}:
-        return
-    
+def _enhance_with_github(
+    conn,
+    user_id,
+    project_name,
+    repo_dir,
+    summary=None,
+    *,
+    interactive: bool = True,
+    github_inputs: dict | None = None,
+):
+    if interactive:
+        ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
+        if ans not in {"y", "yes"}:
+            return
+    else:
+        g = github_inputs or {}
+        wants_github = bool(g.get("connected")) or bool(g.get("repo_linked"))
+        if not wants_github:
+            return
+
     try:
         token = get_github_token(conn, user_id)
         github_user = None
 
         if not token:
+            if not interactive:
+                print("[GitHub] No token available in API mode. Skipping GitHub enhancement.")
+                return
             token = github_oauth(conn, user_id)
             if not token:
                 print("[GitHub] Auth cancelled or failed. Continuing without GitHub.")
@@ -320,6 +374,9 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None):
             github_user = get_authenticated_user(token)
 
         if not ensure_repo_link(conn, user_id, project_name, token):
+            if not interactive:
+                print("[GitHub] Repo is not linked. Skipping GitHub enhancement in API mode.")
+                return
             select_and_store_repo(conn, user_id, project_name, token)
 
         # get repo url
@@ -389,6 +446,9 @@ def _apply_basic_summary_without_git(
     zip_path: str,
     summary,
     desc: str | None,
+    *,
+    interactive: bool = True,
+    contribution_inputs: dict | None = None,
 ) -> None:
     """
     Populate summary fields when no local Git repository is available.
@@ -396,7 +456,8 @@ def _apply_basic_summary_without_git(
     if summary is None:
         return
 
-    clean_desc = (desc or "").strip()
+    contribution_inputs = contribution_inputs or {}
+    clean_desc = (desc or "").strip() or str(contribution_inputs.get("manual_contribution_summary") or "").strip()
     if clean_desc:
         summary.contributions["manual_contribution_summary"] = clean_desc
         summary.contributions["non_llm_contribution_summary"] = clean_desc
@@ -411,11 +472,16 @@ def _apply_basic_summary_without_git(
 
     # Extract or prompt for key role (same logic as git path)
     external_consent = get_latest_external_consent(conn, user_id)
+    preset_role = str(contribution_inputs.get("key_role") or "").strip()
 
-    if external_consent == "accepted" and clean_desc:
+    if preset_role:
+        key_role = preset_role
+    elif external_consent == "accepted" and clean_desc:
         key_role = extract_key_role_llm(clean_desc)
-    else:
+    elif interactive:
         key_role = prompt_key_role(project_name)
+    else:
+        key_role = ""
 
     if key_role:
         summary.contributions["key_role"] = key_role

@@ -48,6 +48,9 @@ def _prompt_contribution_and_key_role(
     current_ext_consent: str | None,
     summary,
     verb: str = "built",
+    *,
+    contribution_inputs: dict | None = None,
+    interactive: bool = True,
 ) -> None:
     """
     Prompt user for contribution description and extract/prompt for key role.
@@ -63,12 +66,17 @@ def _prompt_contribution_and_key_role(
     if summary is None:
         return
 
+    contribution_inputs = contribution_inputs or {}
+
     # Prompt for contribution description
-    print(f"\nDescribe what you {verb}/accomplished in this project (1-3 sentences):")
-    try:
-        contribution_desc = input(f"Your work on '{project_name}': ").strip()
-    except EOFError:
-        contribution_desc = ""
+    if interactive:
+        print(f"\nDescribe what you {verb}/accomplished in this project (1-3 sentences):")
+        try:
+            contribution_desc = input(f"Your work on '{project_name}': ").strip()
+        except EOFError:
+            contribution_desc = ""
+    else:
+        contribution_desc = str(contribution_inputs.get("manual_contribution_summary") or "").strip()
 
     if contribution_desc:
         summary.contributions["manual_contribution_summary"] = contribution_desc
@@ -76,10 +84,15 @@ def _prompt_contribution_and_key_role(
         summary.contributions["manual_contribution_summary"] = "[No description provided]"
 
     # Extract or prompt for key role
-    if current_ext_consent == "accepted" and contribution_desc:
+    preset_role = str(contribution_inputs.get("key_role") or "").strip()
+    if preset_role:
+        key_role = preset_role
+    elif current_ext_consent == "accepted" and contribution_desc:
         key_role = extract_key_role_llm(contribution_desc)
-    else:
+    elif interactive:
         key_role = prompt_key_role(project_name)
+    else:
+        key_role = ""
 
     if key_role:
         summary.contributions["key_role"] = key_role
@@ -245,6 +258,21 @@ def send_to_analysis(
         main_file = roles.get("main_file")
         return main_file if isinstance(main_file, str) and main_file.strip() else None
 
+    def _context_contributions(project_name: str) -> dict:
+        proj = context_by_name.get(project_name) or {}
+        contrib = proj.get("contributions") or {}
+        return contrib if isinstance(contrib, dict) else {}
+
+    def _context_drive(project_name: str) -> dict:
+        proj = context_by_name.get(project_name) or {}
+        drive = proj.get("google_drive") or {}
+        return drive if isinstance(drive, dict) else {}
+
+    def _context_github(project_name: str) -> dict:
+        proj = context_by_name.get(project_name) or {}
+        github = proj.get("github") or {}
+        return github if isinstance(github, dict) else {}
+
     def run_individual_phase():
         if not individual:
             if constants.VERBOSE:
@@ -270,6 +298,9 @@ def send_to_analysis(
                 summary,
                 version_key=vk,
                 main_file_relpath=_context_main_file(project_name),
+                contribution_inputs=_context_contributions(project_name),
+                github_inputs=_context_github(project_name),
+                interactive=interactive,
             )
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
@@ -344,6 +375,10 @@ def send_to_analysis(
                 summary,
                 version_key=vk,
                 main_file_relpath=_context_main_file(project_name),
+                contribution_inputs=_context_contributions(project_name),
+                drive_inputs=_context_drive(project_name),
+                github_inputs=_context_github(project_name),
+                interactive=interactive,
             )
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
@@ -382,6 +417,10 @@ def send_to_analysis(
                 summary,
                 version_key=vk,
                 main_file_relpath=_context_main_file(project_name),
+                contribution_inputs=_context_contributions(project_name),
+                drive_inputs=_context_drive(project_name),
+                github_inputs=_context_github(project_name),
+                interactive=interactive,
             )
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
@@ -468,6 +507,10 @@ def get_individual_contributions(
     summary=None,
     version_key: int | None = None,
     main_file_relpath: str | None = None,
+    contribution_inputs: dict | None = None,
+    drive_inputs: dict | None = None,
+    github_inputs: dict | None = None,
+    interactive: bool = True,
 ):
     """
     Analyze collaborative projects to get specific user contributions in a collaborative project.
@@ -486,9 +529,23 @@ def get_individual_contributions(
             zip_path,
             version_key=version_key,
             main_file_relpath=main_file_relpath,
+            contribution_inputs=contribution_inputs,
+            drive_inputs=drive_inputs,
+            interactive=interactive,
         )
     elif project_type == "code":
-        analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key)
+        analyze_code_contributions(
+            conn,
+            user_id,
+            project_name,
+            current_ext_consent,
+            zip_path,
+            summary,
+            version_key=version_key,
+            contribution_inputs=contribution_inputs,
+            github_inputs=github_inputs,
+            interactive=interactive,
+        )
     else:
         print(f"[COLLABORATIVE] Unknown project type for '{project_name}', skipping.")
 
@@ -503,6 +560,9 @@ def run_individual_analysis(
     summary=None,
     version_key: int | None = None,
     main_file_relpath: str | None = None,
+    contribution_inputs: dict | None = None,
+    github_inputs: dict | None = None,
+    interactive: bool = True,
 ):
     """
     Run full analysis on an individual project, depending on project_type.
@@ -518,9 +578,22 @@ def run_individual_analysis(
             summary,
             version_key=version_key,
             main_file_relpath=main_file_relpath,
+            contribution_inputs=contribution_inputs,
+            interactive=interactive,
         )
     elif project_type == "code":
-        run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key=version_key)
+        run_code_analysis(
+            conn,
+            user_id,
+            project_name,
+            current_ext_consent,
+            zip_path,
+            summary,
+            version_key=version_key,
+            contribution_inputs=contribution_inputs,
+            github_inputs=github_inputs,
+            interactive=interactive,
+        )
     else:
         print(f"[INDIVIDUAL] Unknown project type for '{project_name}', skipping.")
 
@@ -534,6 +607,9 @@ def analyze_text_contributions(
     zip_path,
     version_key: int | None = None,
     main_file_relpath: str | None = None,
+    contribution_inputs: dict | None = None,
+    drive_inputs: dict | None = None,
+    interactive: bool = True,
 ):
     """
     Analyze collaborative text projects with optional Google Drive connection.
@@ -551,22 +627,31 @@ def analyze_text_contributions(
         print(f"[TEXT-COLLAB] No text files found for '{project_name}'. Cannot analyze.")
         return
 
-    while True:
-        choice = input(
-            "\nThis project is TEXT-based.\n"
-            "Do you want to connect Google Drive to analyze revision history? (y/n): "
-        ).strip().lower()
+    if interactive:
+        while True:
+            choice = input(
+                "\nThis project is TEXT-based.\n"
+                "Do you want to connect Google Drive to analyze revision history? (y/n): "
+            ).strip().lower()
 
-        print()
+            print()
 
-        if choice in {"y", "yes"}:
-            use_drive = True
-            break
-        elif choice in {"n", "no"}:
+            if choice in {"y", "yes"}:
+                use_drive = True
+                break
+            elif choice in {"n", "no"}:
+                use_drive = False
+                break
+            else:
+                print("Please enter 'y' or 'n'.")
+    else:
+        d = drive_inputs or {}
+        use_drive = bool(d.get("connected")) or (int(d.get("linked_files_count") or 0) > 0)
+        if use_drive:
+            # Current Drive setup flow relies on interactive local OAuth.
+            # Keep API runs deterministic by using manual contribution mode.
+            print("[TEXT-COLLAB] Drive-linked analysis is skipped in API mode; using manual contribution mode.")
             use_drive = False
-            break
-        else:
-            print("Please enter 'y' or 'n'.")
 
     # Manual contribution mode
     if not use_drive:
@@ -582,6 +667,8 @@ def analyze_text_contributions(
             summary_obj=summary,
             version_key=version_key,
             main_file_relpath=main_file_relpath,
+            contribution_inputs=contribution_inputs,
+            interactive=interactive,
         )
         return
 
@@ -600,6 +687,8 @@ def analyze_text_contributions(
             summary,
             version_key=version_key,
             main_file_relpath=main_file_relpath,
+            contribution_inputs=contribution_inputs,
+            interactive=interactive,
         )
         return
 
@@ -619,6 +708,8 @@ def analyze_text_contributions(
             summary,
             version_key=version_key,
             main_file_relpath=main_file_relpath,
+            contribution_inputs=contribution_inputs,
+            interactive=interactive,
         )
         return
 
@@ -687,15 +778,38 @@ def analyze_text_contributions(
         summary_obj=summary,
         version_key=version_key,
         main_file_relpath=main_file_relpath,
+        contribution_inputs=contribution_inputs,
+        interactive=interactive,
     )
 
 
-def analyze_code_contributions(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
+def analyze_code_contributions(
+    conn,
+    user_id,
+    project_name,
+    current_ext_consent,
+    zip_path,
+    summary,
+    version_key: int | None = None,
+    contribution_inputs: dict | None = None,
+    github_inputs: dict | None = None,
+    interactive: bool = True,
+):
     """Collaborative code analysis: Git data + LLM summary."""
     if constants.VERBOSE:
         print(f"[COLLABORATIVE] Preparing contribution analysis for '{project_name}' (code)")
 
-    metrics = analyze_code_project(conn, user_id, project_name, zip_path, summary, version_key=version_key)
+    metrics = analyze_code_project(
+        conn,
+        user_id,
+        project_name,
+        zip_path,
+        summary,
+        version_key=version_key,
+        contribution_inputs=contribution_inputs,
+        github_inputs=github_inputs,
+        interactive=interactive,
+    )
 
     # activity-type summary for collaborative code
     activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
@@ -789,7 +903,12 @@ def run_text_analysis(
     summary,
     version_key: int | None = None,
     main_file_relpath: str | None = None,
+    contribution_inputs: dict | None = None,
+    interactive: bool = True,
 ):
+    contribution_inputs = contribution_inputs or {}
+    manual_project_summary = str(contribution_inputs.get("manual_project_summary") or "").strip() or None
+
     parsed_files = _fetch_files(conn, user_id, project_name, only_text=True, version_key=version_key)
     if not parsed_files:
         print(f"[INDIVIDUAL-TEXT] No text files found for '{project_name}'.")
@@ -805,14 +924,36 @@ def run_text_analysis(
         summary=summary,
         version_key=version_key,
         main_file_relpath=main_file_relpath,
+        interactive=interactive,
+        manual_summary_override=manual_project_summary,
     )
 
     # --- Individual text project contribution description and key role ---
-    _prompt_contribution_and_key_role(project_name, current_ext_consent, summary, verb="wrote")
+    _prompt_contribution_and_key_role(
+        project_name,
+        current_ext_consent,
+        summary,
+        verb="wrote",
+        contribution_inputs=contribution_inputs,
+        interactive=interactive,
+    )
 
 
-def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path, summary, version_key: int | None = None):
+def run_code_analysis(
+    conn,
+    user_id,
+    project_name,
+    current_ext_consent,
+    zip_path,
+    summary,
+    version_key: int | None = None,
+    contribution_inputs: dict | None = None,
+    github_inputs: dict | None = None,
+    interactive: bool = True,
+):
     """Runs full analysis on individual code projects (static metrics + Git + optional LLM)."""
+    contribution_inputs = contribution_inputs or {}
+
     languages = detect_languages(conn, user_id, project_name, version_key=version_key)
     print(f"Languages detected in {project_name}: {languages}")
 
@@ -829,7 +970,18 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
         return
 
     # --- Run main code + Git analysis ---
-    analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=False, version_key=version_key)
+    analyze_files(
+        conn,
+        user_id,
+        project_name,
+        current_ext_consent,
+        parsed_files,
+        zip_path,
+        only_text=False,
+        version_key=version_key,
+        interactive=interactive,
+        github_inputs=github_inputs,
+    )
 
     # --- Activity-type summary (individual) ---
     activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
@@ -865,10 +1017,21 @@ def run_code_analysis(conn, user_id, project_name, current_ext_consent, zip_path
 
         # capture manual project summary
         if summary is not None and not getattr(summary, "summary_text", None):
-            summary.summary_text = prompt_manual_code_project_summary(project_name)
+            if interactive:
+                summary.summary_text = prompt_manual_code_project_summary(project_name)
+            else:
+                manual_project_summary = str(contribution_inputs.get("manual_project_summary") or "").strip()
+                summary.summary_text = manual_project_summary or "[No manual project summary provided]"
 
     # --- Individual project contribution description and key role ---
-    _prompt_contribution_and_key_role(project_name, current_ext_consent, summary, verb="built")
+    _prompt_contribution_and_key_role(
+        project_name,
+        current_ext_consent,
+        summary,
+        verb="built",
+        contribution_inputs=contribution_inputs,
+        interactive=interactive,
+    )
 
 
 def analyze_files(
@@ -882,6 +1045,9 @@ def analyze_files(
     summary=None,
     version_key: int | None = None,
     main_file_relpath: str | None = None,
+    interactive: bool = True,
+    manual_summary_override: str | None = None,
+    github_inputs: dict | None = None,
 ):
     vk = version_key or get_latest_version_key(conn, user_id, project_name)
 
@@ -918,6 +1084,8 @@ def analyze_files(
             consent=external_consent,
             csv_metadata=csv_metadata,
             main_file_relpath=main_file_relpath,
+            interactive=interactive,
+            manual_summary_override=manual_summary_override,
         )
         
         # ------------------------------
@@ -930,7 +1098,14 @@ def analyze_files(
 
     else:
         # --- Run non-LLM code analysis (static + Git metrics) ---
-        code_analysis_result = run_code_non_llm_analysis(conn, user_id, project_name, zip_path)
+        code_analysis_result = run_code_non_llm_analysis(
+            conn,
+            user_id,
+            project_name,
+            zip_path,
+            interactive=interactive,
+            github_inputs=github_inputs,
+        )
         if code_analysis_result and vk:
             complexity_data = code_analysis_result.get('complexity_data')
             if complexity_data and complexity_data.get('summary'):

@@ -127,3 +127,64 @@ def test_analyze_collaborative_text_project(
     assert result["overall_score"] == mock_skill_output["overall_score"]
 
     print("\n[Test Completed] Collaborative text pipeline passed!\n")
+
+
+def test_analyze_collaborative_text_project_non_interactive_uses_state_inputs(
+    mock_parsed_files, mock_pipeline_result, mock_skill_output, monkeypatch
+):
+    summary_obj = FakeSummary()
+
+    def fake_extract_text_file(path, conn, user_id):
+        if "main_report" in path:
+            return "Introduction\nThis is intro.\nMethods\nThis is methods."
+        if "first_draft" in path:
+            return "Draft content here."
+        if "outline" in path:
+            return "Outline content here."
+        return ""
+
+    contribution_inputs = {
+        "main_section_ids": [1, 2],
+        "supporting_text_relpaths": ["project/first_draft.docx"],
+        "supporting_csv_relpaths": ["project/data.csv"],
+        "manual_contribution_summary": "I drafted introduction and methods sections.",
+        "key_role": "Lead Author",
+    }
+
+    with (
+        patch(
+            "src.analysis.text_collaborative.text_collab_analysis.run_text_pipeline",
+            return_value=mock_pipeline_result,
+        ),
+        patch(
+            "src.analysis.text_collaborative.text_collab_analysis.extract_text_skills",
+            return_value=mock_skill_output,
+        ),
+        patch(
+            "src.analysis.text_collaborative.text_collab_analysis._load_main_text",
+            side_effect=lambda pf, fn, zp, c, u: fake_extract_text_file(fn, c, u),
+        ),
+    ):
+        monkeypatch.setattr(
+            "builtins.input",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("input() should not be called")),
+        )
+
+        analyze_collaborative_text_project(
+            conn=None,
+            user_id=123,
+            project_name="PlantGrowth",
+            parsed_files=mock_parsed_files,
+            zip_path="/fake/zip/path.zip",
+            external_consent="rejected",
+            summary_obj=summary_obj,
+            contribution_inputs=contribution_inputs,
+            interactive=False,
+        )
+
+    result = summary_obj.contributions["text_collab"]
+    assert summary_obj.contributions["manual_contribution_summary"] == contribution_inputs["manual_contribution_summary"]
+    assert summary_obj.contributions["key_role"] == contribution_inputs["key_role"]
+    assert result["contribution_summary"] == contribution_inputs["manual_contribution_summary"]
+    assert result["percent_of_document"] > 0
+    assert result["overall_score"] == mock_skill_output["overall_score"]

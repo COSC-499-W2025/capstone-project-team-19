@@ -28,7 +28,15 @@ try:
 except ModuleNotFoundError:
     import constants
 
-def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_path: str) -> Dict:
+def analyze_git_individual_project(
+    conn,
+    user_id: int,
+    project_name: str,
+    zip_path: str,
+    *,
+    interactive: bool = True,
+    github_inputs: dict | None = None,
+) -> Dict:
     """
     Analyze git repository for an individual project.
 
@@ -89,7 +97,13 @@ def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_pa
             print("=" * 80)
 
         # Offer GitHub connection option / gracefully skip
-        return _handle_no_git_repo(conn, user_id, project_name)
+        return _handle_no_git_repo(
+            conn,
+            user_id,
+            project_name,
+            interactive=interactive,
+            github_inputs=github_inputs,
+        )
 
     if constants.VERBOSE:
         print(f"\n{'='*80}")
@@ -113,12 +127,25 @@ def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_pa
     }
 
 
-def _handle_no_git_repo(conn, user_id: int, project_name: str) -> Optional[Dict]:
+def _handle_no_git_repo(
+    conn,
+    user_id: int,
+    project_name: str,
+    *,
+    interactive: bool = True,
+    github_inputs: dict | None = None,
+) -> Optional[Dict]:
     """
     Handle case when no local git repository is found.
     Offers to connect to GitHub to link a remote repository.
     """
     token = get_github_token(conn, user_id)
+
+    if not interactive:
+        wants_github = bool((github_inputs or {}).get("connected")) or bool((github_inputs or {}).get("repo_linked"))
+        if constants.VERBOSE and wants_github and not token:
+            print("[info] GitHub enhancement requested but no token is available; skipping in API mode.")
+        return None
 
     # User has token already, allow linking without re-authentication
     if token:

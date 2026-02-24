@@ -24,6 +24,8 @@ def run_text_pipeline(
     csv_metadata=None,
     suppress_print=False,
     main_file_relpath: str | None = None,
+    interactive: bool = True,
+    manual_summary_override: str | None = None,
 ):
     """
     Text project analysis with:
@@ -200,7 +202,12 @@ def run_text_pipeline(
         if consent == "accepted":
             summary = generate_text_llm_summary(main_text)
         else:
-            summary = prompt_manual_summary(main_file["file_name"])
+            if isinstance(manual_summary_override, str):
+                summary = manual_summary_override.strip() or "[No manual project summary provided]"
+            elif interactive:
+                summary = prompt_manual_summary(main_file["file_name"])
+            else:
+                summary = "[No manual project summary provided]"
             
         # === COLLABORATIVE MODE: skip printing + skip skill detectors ===
         if suppress_print:

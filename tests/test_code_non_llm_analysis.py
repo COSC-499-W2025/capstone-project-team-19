@@ -48,7 +48,7 @@ def test_run_code_non_llm_analysis_both_successful(tmp_sqlite_conn, monkeypatch,
 
     # Patch the analyzer functions
     monkeypatch.setattr(cnlla, 'analyze_code_complexity', lambda conn, user_id, pn, zp: mock_complexity_data)
-    monkeypatch.setattr(cnlla, 'analyze_git_individual_project', lambda conn, user_id, pn, zp: mock_git_data)
+    monkeypatch.setattr(cnlla, 'analyze_git_individual_project', lambda *args, **kwargs: mock_git_data)
 
     # Mock the storage functions
     monkeypatch.setattr(cnlla, 'extract_git_metrics', lambda data: (50, '2024-01-01', '2024-06-01', 150, 2.3, 10.0, 1, 1000, 500, 500, 20, 50, 5, 1.0, '2024-03-15', 5, '2024-03', 25))
@@ -92,7 +92,7 @@ def test_run_code_non_llm_analysis_no_complexity_data(tmp_sqlite_conn, monkeypat
     }
 
     monkeypatch.setattr(cnlla, 'analyze_code_complexity', lambda conn, user_id, pn, zp: None)
-    monkeypatch.setattr(cnlla, 'analyze_git_individual_project', lambda conn, user_id, pn, zp: mock_git_data)
+    monkeypatch.setattr(cnlla, 'analyze_git_individual_project', lambda *args, **kwargs: mock_git_data)
 
     # Mock the storage functions
     monkeypatch.setattr(cnlla, 'extract_git_metrics', lambda data: (10, None, None, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, None, None, None, None))
@@ -136,7 +136,7 @@ def test_run_code_non_llm_analysis_no_git_repo(tmp_sqlite_conn, monkeypatch, cap
     }
 
     monkeypatch.setattr(cnlla, 'analyze_code_complexity', lambda conn, user_id, pn, zp: mock_complexity_data)
-    monkeypatch.setattr(cnlla, 'analyze_git_individual_project', lambda conn, user_id, pn, zp: mock_git_data)
+    monkeypatch.setattr(cnlla, 'analyze_git_individual_project', lambda *args, **kwargs: mock_git_data)
 
     display_git_called = False
 
@@ -158,7 +158,7 @@ def test_run_code_non_llm_analysis_both_empty(tmp_sqlite_conn, monkeypatch, caps
     Should handle gracefully without crashing.
     """
     monkeypatch.setattr(cnlla, 'analyze_code_complexity', lambda conn, user_id, pn, zp: None)
-    monkeypatch.setattr(cnlla, 'analyze_git_individual_project', lambda conn, user_id, pn, zp: None)
+    monkeypatch.setattr(cnlla, 'analyze_git_individual_project', lambda *args, **kwargs: None)
 
     display_complexity_called = False
     display_git_called = False
@@ -194,9 +194,9 @@ def test_run_code_non_llm_analysis_passes_correct_params(tmp_sqlite_conn, monkey
         complexity_params = (conn, user_id, project_name, zip_path)
         return {'summary': {'total_files': 1}}
 
-    def mock_analyze_git(conn, user_id, project_name, zip_path):
+    def mock_analyze_git(conn, user_id, project_name, zip_path, **kwargs):
         nonlocal git_params
-        git_params = (conn, user_id, project_name, zip_path)
+        git_params = (conn, user_id, project_name, zip_path, kwargs)
         return {'has_git': True}
 
     monkeypatch.setattr(cnlla, 'analyze_code_complexity', mock_analyze_complexity)
@@ -230,3 +230,4 @@ def test_run_code_non_llm_analysis_passes_correct_params(tmp_sqlite_conn, monkey
     assert git_params[1] == test_user_id
     assert git_params[2] == test_project
     assert git_params[3] == test_zip
+    assert git_params[4]["interactive"] is True

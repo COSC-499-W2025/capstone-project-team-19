@@ -489,6 +489,54 @@ def test_send_to_analysis_passes_main_file_from_analysis_context(monkeypatch):
     assert captured["main_file_relpath"] == "projText/final_report.txt"
 
 
+def test_send_to_analysis_passes_individual_inputs_from_analysis_context(monkeypatch):
+    conn = setup_in_memory_db()
+    user_id = 1
+
+    insert_classification(conn, user_id, "projText", "individual", "text")
+
+    captured = {
+        "contribution_inputs": None,
+        "github_inputs": None,
+        "interactive": None,
+    }
+
+    def _mock_run_individual_analysis(*args, **kwargs):
+        captured["contribution_inputs"] = kwargs.get("contribution_inputs")
+        captured["github_inputs"] = kwargs.get("github_inputs")
+        captured["interactive"] = kwargs.get("interactive")
+
+    monkeypatch.setattr("src.project_analysis.run_individual_analysis", _mock_run_individual_analysis)
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("input() should not be called")),
+    )
+
+    from src.project_analysis import send_to_analysis
+    send_to_analysis(
+        conn,
+        user_id,
+        {"projText": "individual"},
+        "rejected",
+        "/tmp/fake.zip",
+        interactive=False,
+        analysis_context={
+            "projects": [
+                {
+                    "project_name": "projText",
+                    "file_roles": {"main_file": "projText/final_report.txt"},
+                    "contributions": {"manual_contribution_summary": "I wrote the final report."},
+                    "github": {"connected": False, "repo_linked": False},
+                }
+            ]
+        },
+    )
+
+    assert captured["interactive"] is False
+    assert captured["contribution_inputs"]["manual_contribution_summary"] == "I wrote the final report."
+    assert captured["github_inputs"]["connected"] is False
+
+
 def test_get_individual_contributions_branches_verbose(monkeypatch, capsys, tmp_path):
     from src import constants
     constants.VERBOSE = True
