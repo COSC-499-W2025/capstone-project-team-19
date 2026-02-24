@@ -51,7 +51,7 @@ def test_upload_run_contract_happy_path_ready_code_upload(client, auth_headers):
     assert data["upload_id"] == upload_id
     assert data["scope"] == "all"
     assert data["accepted"] is True
-    assert isinstance(data["message"], str) and data["message"]
+    assert "Context prepared for 1 project(s)." in data["message"]
 
 
 def test_upload_run_ownership_check_returns_404(client, auth_headers, consent_user_id_2):

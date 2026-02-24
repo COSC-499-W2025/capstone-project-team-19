@@ -54,7 +54,10 @@ from src.services.uploads_contribution_service import (
     list_main_file_sections,
     set_main_file_contributed_sections,
 )
-from src.services.uploads_run_service import validate_upload_run_readiness
+from src.services.uploads_run_service import (
+    build_upload_analysis_context,
+    validate_upload_run_readiness,
+)
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -143,6 +146,16 @@ def post_upload_run(
         upload_id,
         scope=body.scope,
         force_rerun=body.force_rerun,
+    )
+    context = build_upload_analysis_context(
+        conn,
+        user_id,
+        upload_id,
+        scope=body.scope,
+    )
+    readiness["message"] = (
+        "Upload is ready for analysis run. "
+        f"Context prepared for {len(context.get('projects') or [])} project(s)."
     )
     data = UploadRunResponseDTO(**readiness)
     return ApiResponse(success=True, data=data, error=None)

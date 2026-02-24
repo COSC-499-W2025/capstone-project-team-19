@@ -4,6 +4,14 @@ from sqlite3 import Connection
 
 from fastapi import HTTPException
 
+from src.db import (
+    ensure_user_github_table,
+    get_latest_consent,
+    get_latest_external_consent,
+    get_project_drive_files,
+    get_project_repo,
+    load_user_github,
+)
 from src.db.projects import get_project_for_upload_by_key
 from src.db.uploads import get_upload_by_id
 
@@ -125,4 +133,101 @@ def validate_upload_run_readiness(
         "scope": scope,
         "accepted": True,
         "message": "Upload is ready for analysis run.",
+    }
+
+
+def build_upload_analysis_context(
+    conn: Connection,
+    user_id: int,
+    upload_id: int,
+    *,
+    scope: str,
+) -> dict:
+    """
+    Build a normalized analysis context from uploads.state + DB.
+
+    This context is API-safe (no prompt dependencies) and intended for the
+    run/execution pipeline introduced in follow-up steps.
+    """
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    state = upload.get("state") or {}
+    classifications = state.get("classifications") or {}
+    project_keys = state.get("dedup_project_keys") or {}
+    version_keys = state.get("dedup_version_keys") or {}
+    contributions = state.get("contributions") or {}
+    file_roles = state.get("file_roles") or {}
+
+    if scope == "all":
+        target_projects = list(classifications.keys())
+    else:
+        target_projects = [name for name, cls in classifications.items() if cls == scope]
+
+    ensure_user_github_table(conn)
+    identities = load_user_github(conn, user_id)
+
+    projects_context = []
+    for project_name in target_projects:
+        project_key = project_keys.get(project_name)
+        version_key = version_keys.get(project_name)
+        row = (
+            get_project_for_upload_by_key(conn, user_id, int(project_key), upload_id)
+            if isinstance(project_key, int)
+            else None
+        )
+
+        project_contrib = contributions.get(project_name) or {}
+        project_roles = file_roles.get(project_name) or {}
+        github_state = state.get(f"github_{project_name}") or {}
+        drive_state = state.get(f"drive_{project_name}") or {}
+
+        repo_url = get_project_repo(conn, user_id, project_name, provider="github")
+        drive_links = get_project_drive_files(conn, user_id, project_name)
+
+        projects_context.append(
+            {
+                "project_name": project_name,
+                "project_key": project_key if isinstance(project_key, int) else None,
+                "version_key": version_key if isinstance(version_key, int) else None,
+                "classification": (row or {}).get("classification", classifications.get(project_name)),
+                "project_type": (row or {}).get("project_type"),
+                "file_roles": {
+                    "main_file": (project_roles.get("main_file") or None),
+                },
+                "contributions": {
+                    "main_section_ids": list(project_contrib.get("main_section_ids") or []),
+                    "supporting_text_relpaths": list(project_contrib.get("supporting_text_relpaths") or []),
+                    "supporting_csv_relpaths": list(project_contrib.get("supporting_csv_relpaths") or []),
+                    "key_role": project_contrib.get("key_role") or None,
+                    "manual_contribution_summary": project_contrib.get("manual_contribution_summary") or None,
+                },
+                "github": {
+                    "connected": bool(github_state.get("connected")),
+                    "skipped": bool(github_state.get("skipped")),
+                    "repo_linked": bool(repo_url),
+                    "repo_url": repo_url,
+                },
+                "google_drive": {
+                    "connected": bool(drive_state.get("connected")),
+                    "skipped": bool(drive_state.get("skipped")),
+                    "linked_files_count": len(drive_links),
+                },
+            }
+        )
+
+    return {
+        "upload_id": upload_id,
+        "status": upload["status"],
+        "scope": scope,
+        "consent": {
+            "internal": get_latest_consent(conn, user_id),
+            "external": get_latest_external_consent(conn, user_id),
+        },
+        "git_identities": {
+            "emails": sorted(list(identities.get("emails") or [])),
+            "names": sorted(list(identities.get("names") or [])),
+        },
+        "projects": projects_context,
     }
