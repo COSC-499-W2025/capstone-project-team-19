@@ -405,18 +405,6 @@ def build_contribution_bullets(
         metrics = get_normalized_code_metrics(conn, user_id, project_name, is_collab)
         activities = get_code_activity_percents(conn, user_id, project_name, source="combined") or {}
 
-        if not metrics:
-            return ["(no metrics found in code_collaborative_metrics / git_individual_metrics)"]
-
-        # Guard against missing keys
-        total_commits = int(metrics.get("total_commits") or 0)
-        your_commits = int(metrics.get("your_commits") or 0)
-        loc_added = int(metrics.get("loc_added") or 0)
-        loc_deleted = int(metrics.get("loc_deleted") or 0)
-        loc_net = int(metrics.get("loc_net") or 0)
-
-        share = (your_commits / total_commits * 100.0) if total_commits > 0 else 0.0
-
         activity_label = {
             "feature_coding": "feature implementation",
             "refactoring": "refactoring",
@@ -433,6 +421,46 @@ def build_contribution_bullets(
         )
         top_acts = [(k, v) for k, v in ranked if v > 0.0][:3]
         workflows = ", ".join(activity_label.get(k, k.replace("_", " ")) for k, _ in top_acts) if top_acts else "core development"
+
+        if not metrics:
+            # No git metrics (project uploaded without .git directory).
+            # Use activity breakdown from file-based analysis instead.
+            if activities and top_acts:
+                bullets.append(
+                    f"Developed across {workflows} workflows based on file-level analysis."
+                )
+            feat = float(activities.get("feature_coding") or 0.0)
+            refac = float(activities.get("refactoring") or 0.0)
+            debug = float(activities.get("debugging") or 0.0)
+            test = float(activities.get("testing") or 0.0)
+            doc = float(activities.get("documentation") or 0.0)
+
+            if feat > 0.0:
+                bullets.append(
+                    f"Focused {feat:.1f}% of development effort on feature implementation, translating requirements into production-ready code."
+                )
+            if refac > 0.0:
+                bullets.append(
+                    f"Allocated {refac:.1f}% of contributions to refactoring, improving readability, modularity, and long-term maintainability."
+                )
+            if debug > 0.0:
+                bullets.append(
+                    f"Dedicated {debug:.1f}% of activity to debugging, identifying root causes and resolving runtime and logic issues."
+                )
+            if (test + doc) > 0.0:
+                bullets.append(
+                    f"Contributed to testing and documentation ({(test + doc):.1f}% combined), supporting code reliability and team onboarding."
+                )
+            return bullets
+
+        # Guard against missing keys
+        total_commits = int(metrics.get("total_commits") or 0)
+        your_commits = int(metrics.get("your_commits") or 0)
+        loc_added = int(metrics.get("loc_added") or 0)
+        loc_deleted = int(metrics.get("loc_deleted") or 0)
+        loc_net = int(metrics.get("loc_net") or 0)
+
+        share = (your_commits / total_commits * 100.0) if total_commits > 0 else 0.0
 
         if is_collab:
             bullets.append(
