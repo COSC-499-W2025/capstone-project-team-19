@@ -7,7 +7,8 @@
 - [Week 1 (Jan 5-11)](#term-2-week-1-monday-january-5---sunday-january-11)
 - [Week 2 (Jan 12-18)](#term-2-week-2-monday-january-12---sunday-january-18)
 - [Week 3 (Jan 19-25)](#term-2-week-3-monday-january-19---sunday-january-25)
-- [Week 4 + 5 (Jan 26 - Feb8)](#term-2-week-4-5-monday-january-26---sunday-february-8)
+- [Week 4 + 5 (Jan 26 - Feb 8)](#term-2-week-4-5-monday-january-26---sunday-february-8)
+- [Week 6 + 7 (Feb 9 - Mar 1)](#term-2-week-6-7-monday-february-9---sunday-march-1)
 
 ### Term 1
 
@@ -685,3 +686,51 @@ Next week, the team will focus on completing the remaining work for project vers
 | GitHub Username | Screenshots                                                                |
 | --------------- | -------------------------------------------------------------------------- |
 | `johaneshp`     | ![In progress tasks for Johanes](screenshots/InProgress-Johanes-week5.png) |
+
+
+## (Term 2 Week 6-7) Monday February 9 - Sunday March 1
+
+**Connection to previous week:**  
+
+### Coding tasks
+
+### Testing or debugging tasks
+
+### Reviewing or collaboration tasks
+
+### Issues or blockers
+
+### Plan / goals for next week
+
+
+### Burnup chart
+
+![Burnup chart for Feb 9 - Mar 1]()
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshots                                                                                                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara]() <br> ![Completed tasks for Adara]()         |
+| `ammaarkhan`    | ![Completed tasks for Ammaar]() <br> ![Completed tasks for Ammaar]()     |
+| `ivonanicetin`  | ![Completed tasks for Ivona]() <br> ![Completed tasks for Ivona]()     |
+| `johaneshp`     | ![Completed tasks for Johanes]() <br> ![Completed tasks for Johanes]() |
+| `salmavkh`      | ![Completed tasks for Salma]() <br> ![Completed tasks for Salma]()         |
+| `taoTimTim`     | ![Completed tasks for Timmi]() <br> ![Completed tasks for Timmi]()         |
+
+### Table view of under review tasks by username
+
+| GitHub Username | Screenshots                                                                |
+| --------------- | -------------------------------------------------------------------------- |
+|      |  |
