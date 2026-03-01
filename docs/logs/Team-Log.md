@@ -692,16 +692,36 @@ Next week, the team will focus on completing the remaining work for project vers
 
 **Connection to previous week:**  
 
+In week 4-5, we were still implementing the API endpoints, both the required ones and the additional endpoints our system needs for our features and architecture. We planned to finish implementing the endpoints in week 6 and 7, and over reading break, specifically focusing on project versioning, heatmaps, timelines/evolutions, and finalizing the project upload flow. 
+
 ### Coding tasks
 
+- #447 - Remove project from resume API https://github.com/COSC-499-W2025/capstone-project-team-19/pull/477
+- #480 - Thumbnail API Endpoint https://github.com/COSC-499-W2025/capstone-project-team-19/pull/480
+- #481 - Final project versioning migration https://github.com/COSC-499-W2025/capstone-project-team-19/pull/481
+- #492 - key role api endpoint https://github.com/COSC-499-W2025/capstone-project-team-19/pull/492
+- #483 - Skill highlight behavior update https://github.com/COSC-499-W2025/capstone-project-team-19/pull/483
+- #485 - Api/skill highlighting https://github.com/COSC-499-W2025/capstone-project-team-19/pull/485
+- #486 - Api/summaries https://github.com/COSC-499-W2025/capstone-project-team-19/pull/486
+- #490 - Top projects and evolution https://github.com/COSC-499-W2025/capstone-project-team-19/pull/490
+- #497 - Feature/activity heatmap https://github.com/COSC-499-W2025/capstone-project-team-19/pull/497
+- #498 - Api/activity heatmap https://github.com/COSC-499-W2025/capstone-project-team-19/pull/498
+- #499 - api/skill-timeline https://github.com/COSC-499-W2025/capstone-project-team-19/pull/499
+- #509 - Add run analysis readiness https://github.com/COSC-499-W2025/capstone-project-team-19/pull/509
+- #510 - Add run analysis execution https://github.com/COSC-499-W2025/capstone-project-team-19/pull/510
+
+
 ### Testing or debugging tasks
+
+- #493 - Updated API.md https://github.com/COSC-499-W2025/capstone-project-team-19/pull/493
+- #505 - Fix resume contribution bullets for projects with .git https://github.com/COSC-499-W2025/capstone-project-team-19/pull/505
+- #506 - Add test zip files and update readme https://github.com/COSC-499-W2025/capstone-project-team-19/pull/506
 
 ### Reviewing or collaboration tasks
 
 ### Issues or blockers
 
 ### Plan / goals for next week
-
 
 ### Burnup chart
 
