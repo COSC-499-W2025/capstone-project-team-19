@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from src.db import get_latest_consent
 from src.db.uploads import get_upload_by_id
 
 
@@ -31,7 +32,8 @@ def run_analysis_preflight(
             detail={"invalid_scope": scope, "allowed_scopes": sorted(list(_SCOPE_VALUES))},
         )
 
-    errors, warnings = evaluate_run_readiness(upload, scope_norm)
+    internal_consent = get_latest_consent(conn, user_id)
+    errors, warnings = evaluate_run_readiness(upload, scope_norm, internal_consent=internal_consent)
     if errors:
         raise HTTPException(
             status_code=409,
@@ -49,7 +51,12 @@ def run_analysis_preflight(
     }
 
 
-def evaluate_run_readiness(upload: dict, scope: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def evaluate_run_readiness(
+    upload: dict,
+    scope: str,
+    *,
+    internal_consent: str | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     errors: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
 
@@ -65,6 +72,9 @@ def evaluate_run_readiness(upload: dict, scope: str) -> tuple[list[dict[str, Any
     if status == "analyzing":
         errors.append({"code": "analysis_in_progress"})
         return errors, warnings
+
+    if (internal_consent or "").strip().lower() != "accepted":
+        errors.append({"code": "missing_internal_consent"})
 
     dedup_asks = state.get("dedup_asks") or {}
     if isinstance(dedup_asks, dict) and dedup_asks:

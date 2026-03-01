@@ -1,9 +1,29 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from src.db.uploads import create_upload
 
 
-def _create_upload(seed_conn, *, user_id: int, status: str, state: dict) -> int:
+def _set_internal_consent(seed_conn, *, user_id: int, status: str = "accepted") -> None:
+    seed_conn.execute(
+        "INSERT INTO consent_log(user_id, status, timestamp) VALUES (?, ?, ?)",
+        (user_id, status, datetime.now(timezone.utc).isoformat()),
+    )
+    seed_conn.commit()
+
+
+def _create_upload(
+    seed_conn,
+    *,
+    user_id: int,
+    status: str,
+    state: dict,
+    seed_internal_consent: bool = True,
+) -> int:
+    if seed_internal_consent:
+        _set_internal_consent(seed_conn, user_id=user_id, status="accepted")
+
     return create_upload(
         seed_conn,
         user_id=user_id,
@@ -183,3 +203,29 @@ def test_run_preflight_returns_404_for_missing_upload(client, auth_headers):
     )
     assert res.status_code == 404
     assert res.json()["detail"] == "Upload not found"
+
+
+def test_run_preflight_blocks_missing_internal_consent(client, auth_headers, seed_conn):
+    upload_id = _create_upload(
+        seed_conn,
+        user_id=1,
+        status="needs_file_roles",
+        state={
+            "dedup_project_keys": {"BuddyCart": 1},
+            "classifications": {"BuddyCart": "individual"},
+            "project_types_auto": {"BuddyCart": "code"},
+            "project_types_mixed": [],
+            "project_types_unknown": [],
+        },
+        seed_internal_consent=False,
+    )
+
+    res = client.post(
+        f"/projects/upload/{upload_id}/run",
+        headers=auth_headers,
+        json={"scope": "all", "force_rerun": False},
+    )
+    assert res.status_code == 409
+    body = res.json()
+    assert body["detail"]["message"] == "Upload state is incomplete for analysis run"
+    assert {"code": "missing_internal_consent"} in body["detail"]["errors"]
