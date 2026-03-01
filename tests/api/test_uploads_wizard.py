@@ -170,3 +170,55 @@ def test_submit_project_types_unknown_project_is_422(client, auth_headers):
         json={"project_types": {"NotAProject": "text"}},
     )
     assert res.status_code == 422
+
+
+def test_submit_project_types_clears_unresolved_lists(client, auth_headers):
+    zip_bytes = _make_zip_bytes(
+        {
+            "ProjectA/readme.txt": "hello",
+            "ProjectA/main.py": "print('hi')",
+        }
+    )
+
+    start = client.post(
+        "/projects/upload",
+        headers=auth_headers,
+        files={"file": ("test.zip", zip_bytes, "application/zip")},
+    ).json()
+    upload = start["data"]
+    upload_id = upload["upload_id"]
+
+    if upload["status"] == "needs_dedup":
+        asks = (upload.get("state") or {}).get("dedup_asks") or {}
+        decisions = {k: "new_project" for k in asks.keys()}
+        resolved = client.post(
+            f"/projects/upload/{upload_id}/dedup/resolve",
+            headers=auth_headers,
+            json={"decisions": decisions},
+        )
+        assert resolved.status_code == 200
+        upload = resolved.json()["data"]
+
+    if upload["status"] == "needs_classification":
+        classified = client.post(
+            f"/projects/upload/{upload_id}/classifications",
+            headers=auth_headers,
+            json={"assignments": {"ProjectA": "individual"}},
+        )
+        assert classified.status_code == 200
+        upload = classified.json()["data"]
+
+    assert upload["status"] == "needs_project_types"
+
+    res = client.post(
+        f"/projects/upload/{upload_id}/project-types",
+        headers=auth_headers,
+        json={"project_types": {"ProjectA": "code"}},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+    assert body["data"]["status"] == "needs_file_roles"
+    assert body["data"]["state"]["project_types_manual"]["ProjectA"] == "code"
+    assert body["data"]["state"]["project_types_mixed"] == []
+    assert body["data"]["state"]["project_types_unknown"] == []

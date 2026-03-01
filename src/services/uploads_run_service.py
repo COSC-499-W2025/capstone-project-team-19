@@ -150,6 +150,7 @@ def _projects_in_scope(known_projects: set[str], classifications: dict[str, str]
 
 def _resolved_project_types(state: dict, projects_in_scope: list[str]) -> tuple[dict[str, str], list[str]]:
     resolved: dict[str, str] = {}
+    manual_resolved: set[str] = set()
 
     project_types_auto = state.get("project_types_auto") or {}
     if isinstance(project_types_auto, dict):
@@ -164,6 +165,7 @@ def _resolved_project_types(state: dict, projects_in_scope: list[str]) -> tuple[
             ptype_norm = (project_type or "").strip().lower()
             if isinstance(project_name, str) and project_name and ptype_norm in _PROJECT_TYPE_VALUES:
                 resolved[project_name] = ptype_norm
+                manual_resolved.add(project_name)
 
     unresolved_from_state = set()
     mixed = state.get("project_types_mixed") or []
@@ -175,7 +177,7 @@ def _resolved_project_types(state: dict, projects_in_scope: list[str]) -> tuple[
 
     unresolved = []
     for project_name in projects_in_scope:
-        if project_name in unresolved_from_state:
+        if project_name in unresolved_from_state and project_name not in manual_resolved:
             unresolved.append(project_name)
             continue
         if resolved.get(project_name) not in _PROJECT_TYPE_VALUES:

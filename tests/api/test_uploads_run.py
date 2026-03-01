@@ -85,6 +85,30 @@ def test_run_preflight_blocks_unresolved_project_types(client, auth_headers, see
     ]
 
 
+def test_run_preflight_manual_type_overrides_stale_mixed_list(client, auth_headers, seed_conn):
+    upload_id = _create_upload(
+        seed_conn,
+        user_id=1,
+        status="needs_file_roles",
+        state={
+            "dedup_project_keys": {"capstone-project-team-19": 1},
+            "classifications": {"capstone-project-team-19": "collaborative"},
+            "project_types_auto": {},
+            "project_types_manual": {"capstone-project-team-19": "code"},
+            "project_types_mixed": ["capstone-project-team-19"],
+            "project_types_unknown": [],
+        },
+    )
+
+    res = client.post(
+        f"/projects/upload/{upload_id}/run",
+        headers=auth_headers,
+        json={"scope": "all", "force_rerun": False},
+    )
+    assert res.status_code == 200
+    assert res.json()["data"]["ready"] is True
+
+
 def test_run_preflight_scope_filters_missing_main_file(client, auth_headers, seed_conn):
     upload_id = _create_upload(
         seed_conn,
