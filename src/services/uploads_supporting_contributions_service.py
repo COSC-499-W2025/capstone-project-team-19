@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from src.db.uploads import get_upload_by_id, patch_upload_state
 from src.services.uploads_service import list_project_files
 from src.services.uploads_file_roles_util import safe_relpath
+from src.services.uploads_run_state_service import merge_project_run_inputs
 
 
 _ALLOWED_STATUSES = {"needs_file_roles", "needs_summaries", "analyzing", "done"}
@@ -47,6 +48,17 @@ def set_project_supporting_text_files(
     contributions[project_name] = proj
 
     new_state = patch_upload_state(conn, upload_id, patch={"contributions": contributions}, status=upload["status"])
+    merge_project_run_inputs(
+        conn,
+        upload_id,
+        project_name,
+        {
+            "manual_inputs": {
+                "supporting_text_files_count": len(selected),
+                "supporting_text_files_set": len(selected) > 0,
+            }
+        },
+    )
     return {
         "upload_id": upload["upload_id"],
         "status": upload["status"],
@@ -87,6 +99,17 @@ def set_project_supporting_csv_files(
     contributions[project_name] = proj
 
     new_state = patch_upload_state(conn, upload_id, patch={"contributions": contributions}, status=upload["status"])
+    merge_project_run_inputs(
+        conn,
+        upload_id,
+        project_name,
+        {
+            "manual_inputs": {
+                "supporting_csv_files_count": len(selected),
+                "supporting_csv_files_set": len(selected) > 0,
+            }
+        },
+    )
     return {
         "upload_id": upload["upload_id"],
         "status": upload["status"],
@@ -120,6 +143,16 @@ def set_project_key_role(
         upload_id,
         patch={"contributions": contributions},
         status=upload["status"],
+    )
+    merge_project_run_inputs(
+        conn,
+        upload_id,
+        project_name,
+        {
+            "manual_inputs": {
+                "key_role_set": bool(normalized),
+            }
+        },
     )
     return {
         "upload_id": upload["upload_id"],

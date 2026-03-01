@@ -13,6 +13,7 @@ from src.db import (
     save_user_github,
     get_project_for_upload_by_key,
 )
+from src.services.uploads_run_state_service import merge_project_run_inputs
 from src.utils.helpers import is_git_repo
 from src.utils.parsing import ZIP_DATA_DIR
 
@@ -56,14 +57,13 @@ def _resolve_api_repo_dir(
     return None
 
 
-def _build_options(
-    repo_dir: str,
+def _build_options_from_authors(
+    authors: List[Tuple[str, str, int]],
     allow_collaborators: bool,
 ) -> List[GitIdentityOptionDTO]:
     if not allow_collaborators:
         return []
 
-    authors = collect_repo_authors(repo_dir)
     if not authors:
         return []
 
@@ -111,10 +111,29 @@ def get_git_identities(
         classification=classification,
     )
     if not repo_dir:
+        merge_project_run_inputs(
+            conn,
+            upload_id,
+            project_name,
+            {
+                "capabilities": {
+                    "git": {
+                        "repo_detected": False,
+                        "commit_count_hint": 0,
+                        "author_count_hint": 0,
+                        "multi_author_hint": False,
+                    }
+                }
+            },
+        )
         raise HTTPException(status_code=404, detail="No local Git repo found for this project")
 
     allow_collaborators = classification == "collaborative"
-    options = _build_options(repo_dir, allow_collaborators)
+    authors = collect_repo_authors(repo_dir) or []
+    options = _build_options_from_authors(authors, allow_collaborators)
+    commit_count_hint = int(sum((a[2] or 0) for a in authors))
+    author_count_hint = len(authors)
+    multi_author_hint = author_count_hint > 1
 
     ensure_user_github_table(conn)
     aliases = load_user_github(conn, user_id)
@@ -125,6 +144,23 @@ def get_git_identities(
             selected_indices.append(opt.index)
         elif opt.name and opt.name.strip().lower() in aliases["names"]:
             selected_indices.append(opt.index)
+
+    merge_project_run_inputs(
+        conn,
+        upload_id,
+        project_name,
+        {
+            "capabilities": {
+                "git": {
+                    "repo_detected": True,
+                    "commit_count_hint": commit_count_hint,
+                    "author_count_hint": author_count_hint,
+                    "multi_author_hint": multi_author_hint,
+                    "selected_identity_indices": sorted(selected_indices),
+                }
+            }
+        },
+    )
 
     return options, selected_indices
 
@@ -174,10 +210,45 @@ def save_git_identities(
         classification=classification,
     )
     if not repo_dir:
+        merge_project_run_inputs(
+            conn,
+            upload_id,
+            project_name,
+            {
+                "capabilities": {
+                    "git": {
+                        "repo_detected": False,
+                        "commit_count_hint": 0,
+                        "author_count_hint": 0,
+                        "multi_author_hint": False,
+                    }
+                }
+            },
+        )
         raise HTTPException(status_code=404, detail="No local Git repo found for this project")
 
-    options = _build_options(repo_dir, allow_collaborators=True)
+    authors = collect_repo_authors(repo_dir) or []
+    options = _build_options_from_authors(authors, allow_collaborators=True)
+    commit_count_hint = int(sum((a[2] or 0) for a in authors))
+    author_count_hint = len(authors)
+    multi_author_hint = author_count_hint > 1
     if not options:
+        merge_project_run_inputs(
+            conn,
+            upload_id,
+            project_name,
+            {
+                "capabilities": {
+                    "git": {
+                        "repo_detected": True,
+                        "commit_count_hint": commit_count_hint,
+                        "author_count_hint": author_count_hint,
+                        "multi_author_hint": multi_author_hint,
+                        "selected_identity_indices": [],
+                    }
+                }
+            },
+        )
         raise HTTPException(status_code=404, detail="No git identities found for this project")
 
     max_idx = len(options)
@@ -210,5 +281,22 @@ def save_git_identities(
             selected_indices_out.append(opt.index)
         elif opt.name and opt.name.strip().lower() in aliases["names"]:
             selected_indices_out.append(opt.index)
+
+    merge_project_run_inputs(
+        conn,
+        upload_id,
+        project_name,
+        {
+            "capabilities": {
+                "git": {
+                    "repo_detected": True,
+                    "commit_count_hint": commit_count_hint,
+                    "author_count_hint": author_count_hint,
+                    "multi_author_hint": multi_author_hint,
+                    "selected_identity_indices": sorted(selected_indices_out),
+                }
+            }
+        },
+    )
 
     return options, selected_indices_out
