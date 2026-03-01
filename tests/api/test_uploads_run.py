@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-
 from src.db.uploads import create_upload
 
 
@@ -261,7 +260,7 @@ def test_run_preflight_collaborative_scope_with_no_projects_returns_409(client, 
         json={"scope": "collaborative", "force_rerun": False},
     )
     assert res.status_code == 409
-    assert res.json()["detail"]["errors"] == [{"code": "no_projects_in_scope", "scope": "collaborative"}]
+    assert res.json()["detail"]["errors"] == [{"code": "no_projects_for_scope", "scope": "collaborative"}]
 
 
 def test_run_preflight_returns_404_for_missing_upload(client, auth_headers):
@@ -482,3 +481,102 @@ def test_run_preflight_returns_missing_drive_links_warning_for_collab_text(clien
     assert res.status_code == 200
     warnings = res.json()["data"]["warnings"]
     assert {"code": "missing_drive_links", "project": "paper"} in warnings
+
+
+def test_run_tracks_completion_by_scope_and_sets_done_only_after_all_scopes(client, auth_headers, seed_conn, monkeypatch, tmp_path):
+    zip_path = tmp_path / "ready.zip"
+    zip_path.write_bytes(b"placeholder")
+
+    upload_id = _create_upload(
+        seed_conn,
+        user_id=1,
+        status="needs_file_roles",
+        state={
+            "zip_path": str(zip_path),
+            "dedup_project_keys": {"BuddyCart": 1, "paper": 2},
+            "dedup_version_keys": {"BuddyCart": 11, "paper": 12},
+            "classifications": {"BuddyCart": "individual", "paper": "collaborative"},
+            "project_types_auto": {"BuddyCart": "code", "paper": "text"},
+            "project_types_mixed": [],
+            "project_types_unknown": [],
+            "file_roles": {"paper": {"main_file": "ready/paper/main.pdf"}},
+        },
+    )
+
+    monkeypatch.setattr(
+        "src.services.uploads_run_service.has_executable_files_for_scope",
+        lambda *args, **kwargs: True,
+    )
+    monkeypatch.setattr(
+        "src.services.uploads_run_service.execute_upload_scope_analysis",
+        lambda *args, **kwargs: {"executed_count": 2},
+    )
+
+    res_ind = client.post(
+        f"/projects/upload/{upload_id}/run",
+        headers=auth_headers,
+        json={"scope": "individual", "force_rerun": False},
+    )
+    assert res_ind.status_code == 200
+
+    state_after_ind = client.get(f"/projects/upload/{upload_id}", headers=auth_headers).json()["data"]
+    assert state_after_ind["status"] == "needs_file_roles"
+    completed = (state_after_ind["state"].get("run_state") or {}).get("completed_scopes") or []
+    assert completed == ["individual"]
+
+    res_collab = client.post(
+        f"/projects/upload/{upload_id}/run",
+        headers=auth_headers,
+        json={"scope": "collaborative", "force_rerun": False},
+    )
+    assert res_collab.status_code == 200
+
+    state_after_collab = client.get(f"/projects/upload/{upload_id}", headers=auth_headers).json()["data"]
+    assert state_after_collab["status"] == "done"
+    completed = sorted((state_after_collab["state"].get("run_state") or {}).get("completed_scopes") or [])
+    assert completed == ["collaborative", "individual"]
+
+
+def test_run_blocks_scope_rerun_without_force(client, auth_headers, seed_conn, monkeypatch, tmp_path):
+    zip_path = tmp_path / "ready2.zip"
+    zip_path.write_bytes(b"placeholder")
+
+    upload_id = _create_upload(
+        seed_conn,
+        user_id=1,
+        status="needs_file_roles",
+        state={
+            "zip_path": str(zip_path),
+            "run_state": {"completed_scopes": ["individual"]},
+            "dedup_project_keys": {"BuddyCart": 1},
+            "dedup_version_keys": {"BuddyCart": 11},
+            "classifications": {"BuddyCart": "individual"},
+            "project_types_auto": {"BuddyCart": "code"},
+            "project_types_mixed": [],
+            "project_types_unknown": [],
+        },
+    )
+
+    monkeypatch.setattr(
+        "src.services.uploads_run_service.has_executable_files_for_scope",
+        lambda *args, **kwargs: True,
+    )
+    monkeypatch.setattr(
+        "src.services.uploads_run_service.execute_upload_scope_analysis",
+        lambda *args, **kwargs: {"executed_count": 1},
+    )
+
+    blocked = client.post(
+        f"/projects/upload/{upload_id}/run",
+        headers=auth_headers,
+        json={"scope": "individual", "force_rerun": False},
+    )
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"] == {"code": "scope_already_completed", "scope": "individual"}
+
+    forced = client.post(
+        f"/projects/upload/{upload_id}/run",
+        headers=auth_headers,
+        json={"scope": "individual", "force_rerun": True},
+    )
+    assert forced.status_code == 200

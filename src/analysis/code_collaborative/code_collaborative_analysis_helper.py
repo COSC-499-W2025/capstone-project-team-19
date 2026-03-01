@@ -914,4 +914,4 @@ def print_portfolio_summary(all_metrics: list[dict]) -> None:
     print(f"Top languages overall: {top_langs}")
     print(f"Top frameworks: {top_fws}")
     if top_keywords:
-        print(f"Top keywords from your descriptions: {', '.join(top_keywords)}")
+        print(f"Top contributions keywords from your descriptions: {', '.join(top_keywords)}")

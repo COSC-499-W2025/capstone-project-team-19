@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
 
 from src.db import get_latest_consent, get_latest_external_consent
-from src.db.uploads import get_upload_by_id
+from src.db.uploads import get_upload_by_id, set_upload_state
+from src.services.uploads_run_execute_service import (
+    execute_upload_scope_analysis,
+    has_executable_files_for_scope,
+)
 
 
 _SCOPE_VALUES = {"all", "individual", "collaborative"}
@@ -50,6 +56,90 @@ def run_analysis_preflight(
             },
         )
 
+    state = upload.get("state") or {}
+    known_projects = _known_projects(state)
+    classifications, _ = _classifications(state)
+    projects_in_scope = _projects_in_scope(known_projects, classifications, scope_norm)
+    resolved_types, _ = _resolved_project_types(state, projects_in_scope)
+
+    run_state = state.get("run_state") or {}
+    if not isinstance(run_state, dict):
+        run_state = {}
+    completed_scopes = {
+        s for s in (run_state.get("completed_scopes") or []) if s in _CLASSIFICATION_VALUES
+    }
+    target_scopes = _target_completion_scopes(scope_norm, classifications)
+    if target_scopes and target_scopes.issubset(completed_scopes) and not force_rerun:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "scope_already_completed", "scope": scope_norm},
+        )
+
+    # Some unit tests create synthetic uploads with no persisted files.
+    # For real uploads, executable artifacts exist and we run the pipeline.
+    zip_path = (state.get("zip_path") or upload.get("zip_path") or "").strip()
+    should_execute = bool(zip_path) and Path(zip_path).exists() and has_executable_files_for_scope(
+        conn,
+        user_id,
+        state=state,
+        projects_in_scope=projects_in_scope,
+    )
+
+    if should_execute:
+        started_state = dict(state)
+        started_run_state = dict(run_state)
+        started_run_state.update(
+            {
+                "last_requested_scope": scope_norm,
+                "last_started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            }
+        )
+        started_state["run_state"] = started_run_state
+        set_upload_state(conn, upload_id, started_state, status="analyzing")
+
+        try:
+            execute_upload_scope_analysis(
+                conn,
+                user_id,
+                upload=upload,
+                projects_in_scope=projects_in_scope,
+                classifications=classifications,
+                resolved_types=resolved_types,
+                external_consent=external_consent,
+            )
+        except Exception as exc:
+            failed_state = dict(started_state)
+            failed_run_state = dict(failed_state.get("run_state") or {})
+            failed_run_state["last_error"] = str(exc)
+            failed_run_state["last_failed_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            failed_state["run_state"] = failed_run_state
+            set_upload_state(conn, upload_id, failed_state, status="failed")
+            raise HTTPException(
+                status_code=500,
+                detail={"code": "analysis_execution_failed", "message": "Run execution failed"},
+            ) from exc
+
+        completed_scopes |= target_scopes
+        required_scopes = {
+            cls
+            for cls in classifications.values()
+            if cls in _CLASSIFICATION_VALUES
+        }
+        is_done = bool(required_scopes) and required_scopes.issubset(completed_scopes)
+
+        final_state = dict(started_state)
+        final_run_state = dict(final_state.get("run_state") or {})
+        final_run_state.update(
+            {
+                "completed_scopes": sorted(completed_scopes),
+                "last_completed_scope": scope_norm,
+                "last_completed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "last_warnings": warnings,
+            }
+        )
+        final_state["run_state"] = final_run_state
+        set_upload_state(conn, upload_id, final_state, status="done" if is_done else "needs_file_roles")
+
     return {
         "upload_id": upload_id,
         "scope": scope_norm,
@@ -78,7 +168,7 @@ def evaluate_run_readiness(
         return errors, warnings
 
     if status == "analyzing":
-        errors.append({"code": "analysis_in_progress"})
+        errors.append({"code": "already_analyzing"})
         return errors, warnings
     
     if status not in _RUNNABLE_STATUSES:
@@ -120,7 +210,7 @@ def evaluate_run_readiness(
 
     projects_in_scope = _projects_in_scope(known_projects, classifications, scope)
     if not projects_in_scope:
-        errors.append({"code": "no_projects_in_scope", "scope": scope})
+        errors.append({"code": "no_projects_for_scope", "scope": scope})
         return errors, warnings
 
     resolved_types, unresolved_type_projects = _resolved_project_types(state, projects_in_scope)
@@ -148,6 +238,18 @@ def evaluate_run_readiness(
     )
 
     return errors, warnings
+
+
+def _target_completion_scopes(scope: str, classifications: dict[str, str]) -> set[str]:
+    if scope == "all":
+        return {
+            cls
+            for cls in classifications.values()
+            if cls in _CLASSIFICATION_VALUES
+        }
+    if scope in _CLASSIFICATION_VALUES:
+        return {scope}
+    return set()
 
 
 def _known_projects(state: dict) -> set[str]:
