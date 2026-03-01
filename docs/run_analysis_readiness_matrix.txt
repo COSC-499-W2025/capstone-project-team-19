@@ -1,0 +1,124 @@
+RUN ANALYSIS READINESS MATRIX (STRICT OFF)
+Version: 2026-03-01
+
+Policy
+- Strict mode: OFF
+- Missing capability inputs (git identity, GitHub/Drive links, manual summaries, key role) are warnings, not blockers.
+- Only hard prerequisites block /run.
+
+===============================================================================
+1) Scope Targeting
+===============================================================================
+Scope          | Target Projects
+---------------+--------------------------------------------------------------
+all            | classification = individual + collaborative
+individual     | classification = individual only
+collaborative  | classification = collaborative only
+
+===============================================================================
+2) Global Readiness Rules (before per-project checks)
+===============================================================================
+Rule                                                                 | Level
+---------------------------------------------------------------------+-------------------------
+Upload exists and belongs to current user                            | BLOCKER (404)
+Upload status is runnable (needs_file_roles/needs_summaries/legacy)  | BLOCKER (409)
+Upload is not already analyzing                                      | BLOCKER (409)
+Internal consent is accepted                                         | BLOCKER (422)
+Classifications present and valid                                    | BLOCKER (422)
+dedup_project_keys present                                           | BLOCKER (422)
+dedup_version_keys present                                           | BLOCKER (422)
+Unresolved project types are empty                                   | BLOCKER (422)
+Requested scope has at least one project                             | BLOCKER (422)
+Requested scope is not already completed                             | BLOCKER (409)
+
+Error code mapping:
+- upload_not_found
+- upload_not_ready
+- already_analyzing
+- missing_internal_consent
+- missing_classifications / invalid_classifications
+- missing_project_keys / missing_version_keys
+- unresolved_project_types
+- no_projects_for_scope
+- scope_already_completed
+
+===============================================================================
+3) Per-Project Rules (applies only to projects in requested scope)
+===============================================================================
+Columns: Classification | Project Type | Condition | Level | Code
+
+individual | code | local .git not found                             | WARNING | no_git_repo_detected
+individual | code | .git found but no commits                         | WARNING | no_git_commits_found
+individual | code | github state is unset                             | WARNING | github_not_configured
+individual | code | github state is skipped                           | WARNING | github_skipped
+individual | code | repo not linked                                   | WARNING | missing_github_link
+individual | code | external consent not accepted (LLM disabled)      | WARNING | llm_disabled
+individual | code | manual project/contribution summary missing       | WARNING | missing_manual_summary
+individual | code | key role missing                                  | WARNING | missing_key_role
+
+individual | text | main_file missing                                 | BLOCKER | missing_main_file
+individual | text | contribution sections missing                     | WARNING | missing_contribution_sections
+individual | text | supporting files missing                          | WARNING | missing_supporting_files
+individual | text | drive state is unset                              | WARNING | drive_not_configured
+individual | text | drive state is skipped                            | WARNING | drive_skipped
+individual | text | external consent not accepted (LLM disabled)      | WARNING | llm_disabled
+individual | text | manual summary missing                            | WARNING | missing_manual_summary
+individual | text | key role missing                                  | WARNING | missing_key_role
+
+collaborative | code | local .git not found                           | WARNING | no_git_repo_detected
+collaborative | code | .git found and no commits                       | WARNING | no_git_commits_found
+collaborative | code | .git found + multi-author + no identities      | WARNING*| missing_git_identities
+collaborative | code | github state is unset                           | WARNING | github_not_configured
+collaborative | code | github state is skipped                         | WARNING | github_skipped
+collaborative | code | repo not linked                                 | WARNING | missing_github_link
+collaborative | code | external consent not accepted (LLM disabled)    | WARNING | llm_disabled
+collaborative | code | manual contribution summary missing             | WARNING | missing_manual_contribution_summary
+collaborative | code | key role missing                                | WARNING | missing_key_role
+
+collaborative | text | main_file missing                               | BLOCKER | missing_main_file
+collaborative | text | contribution sections missing                   | WARNING | missing_contribution_sections
+collaborative | text | supporting files missing                        | WARNING | missing_supporting_files
+collaborative | text | drive state is unset                            | WARNING | drive_not_configured
+collaborative | text | drive state is skipped                          | WARNING | drive_skipped
+collaborative | text | no linked Drive files while Drive chosen        | WARNING | missing_drive_links
+collaborative | text | external consent not accepted (LLM disabled)    | WARNING | llm_disabled
+collaborative | text | manual contribution summary missing             | WARNING | missing_manual_contribution_summary
+collaborative | text | key role missing                                | WARNING | missing_key_role
+
+*Note for strict-off:
+- missing_git_identities remains WARNING by policy. If strict mode is enabled later,
+  this specific rule can be promoted to BLOCKER.
+
+===============================================================================
+4) Execution-Phase Guardrails
+===============================================================================
+These are runtime guards after readiness passes:
+- Missing classifications at execution: BLOCKER (422)
+- Missing zip_path at execution: BLOCKER (422)
+- Unhandled runtime failure: BLOCKER (500)
+
+Recommended runtime warning capture (state/response):
+- warnings[] should be persisted in last_run and/or returned in response for UI messaging.
+
+===============================================================================
+5) Integration State Interpretation
+===============================================================================
+State value     | Meaning
+----------------+------------------------------------------------------
+connected       | OAuth/token is connected
+repo_linked     | GitHub repo linked for project
+linked_files>0  | Drive files linked for project
+skipped         | User explicitly skipped integration
+unset           | User has not made integration decision yet
+
+===============================================================================
+6) Response Contract
+===============================================================================
+Condition                                           | HTTP | Contract
+----------------------------------------------------+------+--------------------------------------------
+Any blocker in readiness matrix                     | 422  | detail.message + detail.errors[]
+Scope already completed                             | 409  | detail (scope_already_completed)
+Already analyzing / upload status not runnable      | 409  | detail
+No blockers, warnings present                       | 200  | run accepted + warnings[] (recommended)
+No blockers, no warnings                            | 200  | run accepted
+

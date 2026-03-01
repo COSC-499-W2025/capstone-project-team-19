@@ -646,6 +646,9 @@ A typical flow for the first six endpoints:
    - `POST /{upload_id}/projects/{project_key}/text/contributions`
 7. **Provide summary metadata before run (when needed)**:
    - `POST /{upload_id}/projects/{project_key}/key-role`
+8. **Run readiness preflight**:
+   - `POST /{upload_id}/run`
+   - For full readiness matrix details (blockers/warnings by scope and project type), refer to `docs/run_analysis_readiness_matrix.txt`.
 
 Use `project_key` from `state.dedup_project_keys` (keyed by project name) for each project.
 
@@ -759,6 +762,7 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
       - **Error Responses**:
         - `401 Unauthorized` if missing or invalid Bearer token
         - `404 Not Found` if the project does not belong to this upload
+
         - `404 Not Found` if no local Git repo is found for the project
         - `409 Conflict` if the project is not a code project
       - **Response Status**: `200 OK`
@@ -827,6 +831,27 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
         "error": null
         }
       ```
+
+- **Run Analysis (Readiness Preflight)**
+  - **Endpoint**: `POST /{upload_id}/run`
+  - **Description**: Validates whether upload state is ready to run analysis for the requested scope (`all`, `individual`, or `collaborative`). This endpoint is contract/readiness validation.
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Path Params**:
+    - `{upload_id}` (integer, required)
+  - **Request Body**:
+    ```json
+    {
+      "scope": "all",
+      "force_rerun": false
+    }
+    ```
+  - **Response Status**:
+    - `200 OK` if ready
+    - `409 Conflict` if upload state is incomplete
+    - `422 Unprocessable Entity` for invalid scope
+    - `404 Not Found` if upload does not exist or does not belong to the user
+  - **Readiness Matrix Reference**:
+    - Full matrix documentation is maintained in `docs/run_analysis_readiness_matrix.txt`.
 
 - **List Main File Sections (Collaborative Text Contribution)**
     - **Endpoint**: `GET /{upload_id}/projects/{project_key}/text/sections`
