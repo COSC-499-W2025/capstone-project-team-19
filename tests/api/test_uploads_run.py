@@ -580,3 +580,79 @@ def test_run_blocks_scope_rerun_without_force(client, auth_headers, seed_conn, m
         json={"scope": "individual", "force_rerun": True},
     )
     assert forced.status_code == 200
+
+
+def test_run_check_mode_reports_readiness_and_never_executes(
+    client, auth_headers, seed_conn, monkeypatch, tmp_path
+):
+    blocked_upload_id = _create_upload(
+        seed_conn,
+        user_id=1,
+        status="needs_file_roles",
+        state={
+            "dedup_project_keys": {"capstone-project-team-19": 1},
+            "dedup_version_keys": {"capstone-project-team-19": 11},
+            "classifications": {"capstone-project-team-19": "collaborative"},
+            "project_types_auto": {},
+            "project_types_manual": {},
+            "project_types_mixed": ["capstone-project-team-19"],
+            "project_types_unknown": [],
+        },
+    )
+    blocked = client.post(
+        f"/projects/upload/{blocked_upload_id}/run",
+        headers=auth_headers,
+        json={"scope": "all", "force_rerun": False, "mode": "check"},
+    )
+    assert blocked.status_code == 200
+    blocked_body = blocked.json()["data"]
+    assert blocked_body["ready"] is False
+    assert blocked_body["errors"] == [
+        {"code": "unresolved_project_types", "projects": ["capstone-project-team-19"]}
+    ]
+
+    zip_path = tmp_path / "ready.zip"
+    zip_path.write_bytes(b"placeholder")
+
+    ready_upload_id = _create_upload(
+        seed_conn,
+        user_id=1,
+        status="needs_file_roles",
+        state={
+            "zip_path": str(zip_path),
+            "dedup_project_keys": {"BuddyCart": 1},
+            "dedup_version_keys": {"BuddyCart": 11},
+            "classifications": {"BuddyCart": "individual"},
+            "project_types_auto": {"BuddyCart": "code"},
+            "project_types_mixed": [],
+            "project_types_unknown": [],
+        },
+    )
+
+    monkeypatch.setattr(
+        "src.services.uploads_run_service.has_executable_files_for_scope",
+        lambda *args, **kwargs: True,
+    )
+    called = {"execute": 0}
+
+    def _fake_execute(*args, **kwargs):
+        called["execute"] += 1
+
+    monkeypatch.setattr(
+        "src.services.uploads_run_service.execute_upload_scope_analysis",
+        _fake_execute,
+    )
+
+    ready = client.post(
+        f"/projects/upload/{ready_upload_id}/run",
+        headers=auth_headers,
+        json={"scope": "individual", "force_rerun": False, "mode": "check"},
+    )
+    assert ready.status_code == 200
+    ready_body = ready.json()["data"]
+    assert ready_body["ready"] is True
+    assert ready_body["errors"] == []
+    assert called["execute"] == 0
+
+    upload = client.get(f"/projects/upload/{ready_upload_id}", headers=auth_headers).json()["data"]
+    assert upload["status"] == "needs_file_roles"

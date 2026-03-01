@@ -646,8 +646,9 @@ A typical flow for the first six endpoints:
    - `POST /{upload_id}/projects/{project_key}/text/contributions`
 7. **Provide summary metadata before run (when needed)**:
    - `POST /{upload_id}/projects/{project_key}/key-role`
-8. **Run readiness preflight**:
+8. **Run analysis (readiness + execution)**:
    - `POST /{upload_id}/run`
+   - Use `mode=check` for readiness-only, or `mode=run` to execute after readiness passes.
    - For full readiness matrix details (blockers/warnings by scope and project type), refer to `docs/run_analysis_readiness_matrix.txt`.
 
 Use `project_key` from `state.dedup_project_keys` (keyed by project name) for each project.
@@ -832,9 +833,9 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
         }
       ```
 
-- **Run Analysis (Readiness Preflight)**
+- **Run Analysis**
   - **Endpoint**: `POST /{upload_id}/run`
-  - **Description**: Validates whether upload state is ready to run analysis for the requested scope (`all`, `individual`, or `collaborative`). This endpoint is contract/readiness validation.
+  - **Description**: Supports readiness check and execution for the requested scope (`all`, `individual`, or `collaborative`).
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Path Params**:
     - `{upload_id}` (integer, required)
@@ -842,14 +843,17 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
     ```json
     {
       "scope": "all",
-      "force_rerun": false
+      "force_rerun": false,
+      "mode": "run"
     }
     ```
   - **Response Status**:
-    - `200 OK` if ready
-    - `409 Conflict` if upload state is incomplete
-    - `422 Unprocessable Entity` for invalid scope
+    - `200 OK` for `mode="check"` (returns `ready`, `warnings`, `errors`; no execution)
+    - `200 OK` for `mode="run"` if readiness passes
+    - `409 Conflict` if upload state is incomplete or scope is already completed without force rerun
+    - `422 Unprocessable Entity` for invalid scope/mode
     - `404 Not Found` if upload does not exist or does not belong to the user
+    - `500 Internal Server Error` if runtime execution fails after readiness passes
   - **Readiness Matrix Reference**:
     - Full matrix documentation is maintained in `docs/run_analysis_readiness_matrix.txt`.
 
