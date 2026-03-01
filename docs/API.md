@@ -1374,7 +1374,7 @@ Exposes extracted skills and timelines.
     ```
 
 - **Get Skill Timeline**
-  - **Endpoint**: `GET /skills/timeline`
+  - **Endpoint**: `GET /timeline`
   - **Description**: Returns a chronological skill evolution timeline with cumulative scores computed using diminishing returns. Skills are grouped by date, and undated skills are listed separately. A `current_totals` section folds undated skills into the final cumulative score.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
   - **Response Status**: `200 OK`
