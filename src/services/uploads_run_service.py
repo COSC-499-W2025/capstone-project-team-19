@@ -5,13 +5,14 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from src.db import get_latest_consent
+from src.db import get_latest_consent, get_latest_external_consent
 from src.db.uploads import get_upload_by_id
 
 
 _SCOPE_VALUES = {"all", "individual", "collaborative"}
 _PROJECT_TYPE_VALUES = {"code", "text"}
 _CLASSIFICATION_VALUES = {"individual", "collaborative"}
+_RUNNABLE_STATUSES = {"needs_file_roles", "needs_summaries", "done"}
 
 
 def run_analysis_preflight(
@@ -33,7 +34,13 @@ def run_analysis_preflight(
         )
 
     internal_consent = get_latest_consent(conn, user_id)
-    errors, warnings = evaluate_run_readiness(upload, scope_norm, internal_consent=internal_consent)
+    external_consent = get_latest_external_consent(conn, user_id)
+    errors, warnings = evaluate_run_readiness(
+        upload,
+        scope_norm,
+        internal_consent=internal_consent,
+        external_consent=external_consent,
+    )
     if errors:
         raise HTTPException(
             status_code=409,
@@ -56,6 +63,7 @@ def evaluate_run_readiness(
     scope: str,
     *,
     internal_consent: str | None = None,
+    external_consent: str | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     errors: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
@@ -72,6 +80,10 @@ def evaluate_run_readiness(
     if status == "analyzing":
         errors.append({"code": "analysis_in_progress"})
         return errors, warnings
+    
+    if status not in _RUNNABLE_STATUSES:
+        errors.append({"code": "upload_not_ready", "status": status})
+        return errors, warnings
 
     if (internal_consent or "").strip().lower() != "accepted":
         errors.append({"code": "missing_internal_consent"})
@@ -85,7 +97,23 @@ def evaluate_run_readiness(
         errors.append({"code": "no_projects_detected"})
         return errors, warnings
 
-    classifications = _classifications(state)
+    dedup_project_keys = state.get("dedup_project_keys") or {}
+    if not isinstance(dedup_project_keys, dict):
+        dedup_project_keys = {}
+    missing_project_keys = sorted([p for p in known_projects if not isinstance(dedup_project_keys.get(p), int)])
+    if missing_project_keys:
+        errors.append({"code": "missing_project_keys", "projects": missing_project_keys})
+
+    dedup_version_keys = state.get("dedup_version_keys") or {}
+    if not isinstance(dedup_version_keys, dict):
+        dedup_version_keys = {}
+    missing_version_keys = sorted([p for p in known_projects if not isinstance(dedup_version_keys.get(p), int)])
+    if missing_version_keys:
+        errors.append({"code": "missing_version_keys", "projects": missing_version_keys})
+
+    classifications, invalid_classifications = _classifications(state)
+    if invalid_classifications:
+        errors.append({"code": "invalid_classifications", "projects": sorted(invalid_classifications)})
     missing_classifications = sorted([p for p in known_projects if p not in classifications])
     if missing_classifications:
         errors.append({"code": "missing_classifications", "projects": missing_classifications})
@@ -106,6 +134,18 @@ def evaluate_run_readiness(
             errors.append({"code": "missing_main_file", "project": missing_main_file_projects[0]})
         else:
             errors.append({"code": "missing_main_file", "projects": missing_main_file_projects})
+
+    if errors:
+        return errors, warnings
+
+    _populate_project_warnings(
+        state=state,
+        projects_in_scope=projects_in_scope,
+        classifications=classifications,
+        resolved_types=resolved_types,
+        external_consent=external_consent,
+        warnings=warnings,
+    )
 
     return errors, warnings
 
@@ -136,11 +176,12 @@ def _known_projects(state: dict) -> set[str]:
     return projects
 
 
-def _classifications(state: dict) -> dict[str, str]:
+def _classifications(state: dict) -> tuple[dict[str, str], set[str]]:
     out: dict[str, str] = {}
+    invalid: set[str] = set()
     classifications = state.get("classifications") or {}
     if not isinstance(classifications, dict):
-        return out
+        return out, invalid
 
     for project_name, classification in classifications.items():
         if not isinstance(project_name, str) or not project_name.strip():
@@ -148,7 +189,9 @@ def _classifications(state: dict) -> dict[str, str]:
         cls_norm = (classification or "").strip().lower()
         if cls_norm in _CLASSIFICATION_VALUES:
             out[project_name] = cls_norm
-    return out
+        else:
+            invalid.add(project_name)
+    return out, invalid
 
 
 def _projects_in_scope(known_projects: set[str], classifications: dict[str, str], scope: str) -> list[str]:
@@ -210,3 +253,158 @@ def _missing_main_file_projects(state: dict, text_projects: list[str]) -> list[s
         if not isinstance(main_file, str) or not main_file.strip():
             missing.append(project_name)
     return sorted(missing)
+
+
+def _populate_project_warnings(
+    *,
+    state: dict,
+    projects_in_scope: list[str],
+    classifications: dict[str, str],
+    resolved_types: dict[str, str],
+    external_consent: str | None,
+    warnings: list[dict[str, Any]],
+) -> None:
+    llm_enabled = (external_consent or "").strip().lower() == "accepted"
+
+    for project_name in projects_in_scope:
+        classification = classifications.get(project_name)
+        project_type = resolved_types.get(project_name)
+        if classification not in _CLASSIFICATION_VALUES or project_type not in _PROJECT_TYPE_VALUES:
+            continue
+
+        run_inputs = _project_run_inputs(state, project_name)
+        git = run_inputs["capabilities"]["git"]
+        github = run_inputs["integrations"]["github"]
+        drive = run_inputs["integrations"]["drive"]
+        manual = run_inputs["manual_inputs"]
+
+        if project_type == "code":
+            repo_detected = git.get("repo_detected")
+            commit_count_hint = int(git.get("commit_count_hint") or 0)
+            multi_author_hint = bool(git.get("multi_author_hint"))
+            selected_identity_indices = git.get("selected_identity_indices") or []
+
+            if repo_detected is False:
+                _add_warning(warnings, "no_git_repo_detected", project_name)
+            elif repo_detected is True and commit_count_hint <= 0:
+                _add_warning(warnings, "no_git_commits_found", project_name)
+
+            if classification == "collaborative" and repo_detected is True and multi_author_hint and not selected_identity_indices:
+                _add_warning(warnings, "missing_git_identities", project_name)
+
+            gh_state = (github.get("state") or "unset").strip().lower()
+            if gh_state == "unset":
+                _add_warning(warnings, "github_not_configured", project_name)
+            elif gh_state == "skipped":
+                _add_warning(warnings, "github_skipped", project_name)
+
+            if not bool(github.get("repo_linked")):
+                _add_warning(warnings, "missing_github_link", project_name)
+
+            if not llm_enabled:
+                _add_warning(warnings, "llm_disabled", project_name)
+
+            if classification == "collaborative":
+                if not bool(manual.get("manual_contribution_summary_set")):
+                    _add_warning(warnings, "missing_manual_contribution_summary", project_name)
+            else:
+                if not bool(manual.get("manual_project_summary_set")):
+                    _add_warning(warnings, "missing_manual_summary", project_name)
+
+            if not bool(manual.get("key_role_set")):
+                _add_warning(warnings, "missing_key_role", project_name)
+
+        elif project_type == "text":
+            if not bool(manual.get("contribution_sections_set")):
+                _add_warning(warnings, "missing_contribution_sections", project_name)
+
+            has_supporting = bool(manual.get("supporting_text_files_set")) or bool(manual.get("supporting_csv_files_set"))
+            if not has_supporting:
+                _add_warning(warnings, "missing_supporting_files", project_name)
+
+            drive_state = (drive.get("state") or "unset").strip().lower()
+            if drive_state == "unset":
+                _add_warning(warnings, "drive_not_configured", project_name)
+            elif drive_state == "skipped":
+                _add_warning(warnings, "drive_skipped", project_name)
+
+            if classification == "collaborative" and drive_state == "connected" and int(drive.get("linked_files_count") or 0) <= 0:
+                _add_warning(warnings, "missing_drive_links", project_name)
+
+            if not llm_enabled:
+                _add_warning(warnings, "llm_disabled", project_name)
+
+            if classification == "collaborative":
+                if not bool(manual.get("manual_contribution_summary_set")):
+                    _add_warning(warnings, "missing_manual_contribution_summary", project_name)
+            else:
+                if not bool(manual.get("manual_project_summary_set")):
+                    _add_warning(warnings, "missing_manual_summary", project_name)
+
+            if not bool(manual.get("key_role_set")):
+                _add_warning(warnings, "missing_key_role", project_name)
+
+
+def _project_run_inputs(state: dict, project_name: str) -> dict[str, Any]:
+    run_inputs = state.get("run_inputs") or {}
+    if not isinstance(run_inputs, dict):
+        run_inputs = {}
+    projects = run_inputs.get("projects") or {}
+    if not isinstance(projects, dict):
+        projects = {}
+    project_inputs = projects.get(project_name) or {}
+    if not isinstance(project_inputs, dict):
+        project_inputs = {}
+    return _deep_merge(_project_input_defaults(), project_inputs)
+
+
+def _project_input_defaults() -> dict[str, Any]:
+    return {
+        "capabilities": {
+            "git": {
+                "repo_detected": None,
+                "commit_count_hint": 0,
+                "author_count_hint": 0,
+                "multi_author_hint": False,
+                "selected_identity_indices": [],
+            }
+        },
+        "integrations": {
+            "github": {
+                "state": "unset",
+                "repo_linked": False,
+                "repo_full_name": None,
+            },
+            "drive": {
+                "state": "unset",
+                "linked_files_count": 0,
+            },
+        },
+        "manual_inputs": {
+            "key_role_set": False,
+            "manual_project_summary_set": False,
+            "manual_contribution_summary_set": False,
+            "contribution_sections_set": False,
+            "contribution_sections_count": 0,
+            "supporting_text_files_set": False,
+            "supporting_text_files_count": 0,
+            "supporting_csv_files_set": False,
+            "supporting_csv_files_count": 0,
+        },
+    }
+
+
+def _deep_merge(base: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
+    out = dict(base or {})
+    for key, value in (incoming or {}).items():
+        if isinstance(value, dict) and isinstance(out.get(key), dict):
+            out[key] = _deep_merge(out[key], value)
+        else:
+            out[key] = value
+    return out
+
+
+def _add_warning(warnings: list[dict[str, Any]], code: str, project_name: str) -> None:
+    item = {"code": code, "project": project_name}
+    if item not in warnings:
+        warnings.append(item)
