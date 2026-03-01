@@ -803,6 +803,7 @@ def run_text_analysis(
         allow_prompts=allow_prompts,
         text_main_file_relpath=(api_inputs or {}).get("main_file_relpath"),
         manual_project_summary=(api_inputs or {}).get("manual_project_summary"),
+        api_inputs=api_inputs,
     )
 
     # --- Individual text project contribution description and key role ---
@@ -846,7 +847,18 @@ def run_code_analysis(
         return
 
     # --- Run main code + Git analysis ---
-    analyze_files(conn, user_id, project_name, current_ext_consent, parsed_files, zip_path, only_text=False, version_key=version_key)
+    analyze_files(
+        conn,
+        user_id,
+        project_name,
+        current_ext_consent,
+        parsed_files,
+        zip_path,
+        only_text=False,
+        version_key=version_key,
+        allow_prompts=allow_prompts,
+        api_inputs=api_inputs,
+    )
 
     # --- Activity-type summary (individual) ---
     activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
@@ -916,6 +928,7 @@ def analyze_files(
     allow_prompts: bool = True,
     text_main_file_relpath: str | None = None,
     manual_project_summary: str | None = None,
+    api_inputs: dict | None = None,
 ):
     vk = version_key or get_latest_version_key(conn, user_id, project_name)
 
@@ -966,7 +979,14 @@ def analyze_files(
 
     else:
         # --- Run non-LLM code analysis (static + Git metrics) ---
-        code_analysis_result = run_code_non_llm_analysis(conn, user_id, project_name, zip_path)
+        code_analysis_result = run_code_non_llm_analysis(
+            conn,
+            user_id,
+            project_name,
+            zip_path,
+            allow_prompts=allow_prompts,
+            api_inputs=api_inputs,
+        )
         if code_analysis_result and vk:
             complexity_data = code_analysis_result.get('complexity_data')
             if complexity_data and complexity_data.get('summary'):

@@ -27,6 +27,8 @@ def run_analysis_preflight(
     upload_id: int,
     scope: str,
     force_rerun: bool = False,
+    *,
+    mode: str = "run",
 ) -> dict:
     upload = get_upload_by_id(conn, upload_id)
     if not upload or upload["user_id"] != user_id:
@@ -38,6 +40,7 @@ def run_analysis_preflight(
             status_code=422,
             detail={"invalid_scope": scope, "allowed_scopes": sorted(list(_SCOPE_VALUES))},
         )
+    mode_norm = "check" if (mode or "").strip().lower() == "check" else "run"
 
     internal_consent = get_latest_consent(conn, user_id)
     external_consent = get_latest_external_consent(conn, user_id)
@@ -47,15 +50,6 @@ def run_analysis_preflight(
         internal_consent=internal_consent,
         external_consent=external_consent,
     )
-    if errors:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "message": "Upload state is incomplete for analysis run",
-                "errors": errors,
-            },
-        )
-
     state = upload.get("state") or {}
     known_projects = _known_projects(state)
     classifications, _ = _classifications(state)
@@ -69,7 +63,32 @@ def run_analysis_preflight(
         s for s in (run_state.get("completed_scopes") or []) if s in _CLASSIFICATION_VALUES
     }
     target_scopes = _target_completion_scopes(scope_norm, classifications)
-    if target_scopes and target_scopes.issubset(completed_scopes) and not force_rerun:
+    scope_already_completed = bool(
+        target_scopes and target_scopes.issubset(completed_scopes) and not force_rerun
+    )
+
+    if mode_norm == "check":
+        check_errors = list(errors)
+        if scope_already_completed:
+            check_errors.append({"code": "scope_already_completed", "scope": scope_norm})
+        return {
+            "upload_id": upload_id,
+            "scope": scope_norm,
+            "ready": len(check_errors) == 0,
+            "warnings": warnings,
+            "errors": check_errors,
+        }
+
+    if errors:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Upload state is incomplete for analysis run",
+                "errors": errors,
+            },
+        )
+
+    if scope_already_completed:
         raise HTTPException(
             status_code=409,
             detail={"code": "scope_already_completed", "scope": scope_norm},
@@ -145,6 +164,7 @@ def run_analysis_preflight(
         "scope": scope_norm,
         "ready": True,
         "warnings": warnings,
+        "errors": [],
     }
 
 

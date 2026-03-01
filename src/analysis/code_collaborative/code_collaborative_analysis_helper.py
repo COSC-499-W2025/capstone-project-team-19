@@ -99,6 +99,7 @@ def resolve_repo_for_project(
     )
 
     # Expected layout: analysis/zip_data/<zip_name>/<zip_name>/...
+    # Upload flow also commonly uses: analysis/zip_data/<zip_name>/<inner_root>/...
     base_root = os.path.join(analysis_zip_data_dir, zip_name)
     nested_root = os.path.join(base_root, zip_name)
 
@@ -121,6 +122,22 @@ def resolve_repo_for_project(
                 os.path.join(base_root, project_name),
             ]
         )
+        # Upload-flow inner root(s): one level under base_root (exclude __MACOSX)
+        try:
+            for child in os.listdir(base_root):
+                if child == "__MACOSX":
+                    continue
+                child_path = os.path.join(base_root, child)
+                if not os.path.isdir(child_path):
+                    continue
+                candidate_roots.extend(
+                    [
+                        os.path.join(child_path, "collaborative", project_name),
+                        os.path.join(child_path, project_name),
+                    ]
+                )
+        except OSError:
+            pass
 
     # Filter out any __MACOSX junk
     def _is_macos_junk(p: str) -> bool:
