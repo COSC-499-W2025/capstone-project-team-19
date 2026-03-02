@@ -51,23 +51,19 @@ pip install -r requirements.txt
 
 ### 4. Configure Environment Variables
 
-Copy the example environment file and update it with your configuration:
+Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-**Important:** Make sure to add a secure `JWT_SECRET` value to your `.env` file. You can generate a secure random string using:
+Then generate and set a `JWT_SECRET` (required for running the API):
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-Then add it to your `.env`:
-
-```
-JWT_SECRET=<your_generated_secure_string>
-```
+Paste the output into your `.env` as the value for `JWT_SECRET`. All other variables in `.env` are for optional integrations and can be left as-is. See [Environment Variables and OAuth Setup](#environment-variables-and-oauth-setup) for details.
 
 ### 5. Run Tests
 Ensure you are in the main directory `/capstone-project-team-19`.
@@ -76,9 +72,11 @@ Ensure you are in the main directory `/capstone-project-team-19`.
 pytest tests
 ```
 
-If everything is set up correctly, you should see the tests pass.
+This runs the automated unit and integration test suite. If everything is set up correctly, you should see the tests pass.
 
-### 5. Run the system
+To test the system end-to-end with sample projects, see the [Test Data](#test-data) section below for manual CLI walkthroughs using the files in `test-data/`.
+
+### 6. Run the system
 
 This project can be run in **one of two modes** - choose the one that fits your needs:
 
@@ -256,18 +254,20 @@ A template file (`.env.example`) is provided and should be copied directly.
     ```
     (On Windows, create the `.env` file manually or use `copy .env.example .env`.)
 
-2. Ensure all variables below are present in `.env`:
-    ```env
-    GROQ_API_KEY=<your-api-key>
-    GITHUB_CLIENT_ID=""
-    GITHUB_CLIENT_SECRET=<your-new-client-secret>
-    
-    GITHUB_REDIRECT_URI=http://localhost:8000/auth/github/callback
-    DEVICE_CODE_URL="https://github.com/login/device/code"
-    TOKEN_URL="https://github.com/login/oauth/access_token"
+2. Generate and set a `JWT_SECRET` (required for running the API):
+    ```bash
+    python -c "import secrets; print(secrets.token_urlsafe(32))"
     ```
-    The values for GROQ_API_KEY and GITHUB_CLIENT_ID may be left empty.
-    The URL values are required and should not be modified.
+    Paste the output into your `.env`:
+    ```env
+    JWT_SECRET=<your_generated_secure_string>
+    ```
+
+3. The remaining variables in `.env.example` are for **optional** integrations and can be left as-is:
+    - `GROQ_API_KEY` — LLM summarization (leave empty to use manual summaries instead)
+    - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` — GitHub OAuth (leave empty to skip GitHub analysis)
+    - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — Google Drive (leave empty to skip Drive analysis)
+    - `DEVICE_CODE_URL`, `TOKEN_URL`, `GITHUB_REDIRECT_URI`, `GOOGLE_REDIRECT_URI` — URL constants, do not modify
 
 > **Security Note**
 > The `.env` file may contain sensitive information and is ignored by Git via `.gitignore`.
