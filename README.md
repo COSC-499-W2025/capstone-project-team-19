@@ -416,7 +416,7 @@ The flow starts when the user login, and choose one of the 11 menu:
 
    The file type detector and project structure classifier will determine the path of the analysis whether it goes to code/text analysis and individual/collaborative analysis. 
 
-   Before analysis, uploaded ZIP is fingerprinted to detect if it's a re-upload or a new version
+   Before analysis, uploaded ZIP is hashed to detect if it's a re-upload or a new version
 
    Re-uploads are stored as new versions under the same project, not as duplicates
    
