@@ -193,9 +193,11 @@ def build_activity_summary(
     ]
 
     if scope == Scope.COLLABORATIVE:
-        # Restrict to files the user actually contributed to
+        # Restrict to files the user actually contributed to.
+        # Normalize backslashes (Windows) to forward slashes before extracting
+        # the basename so the comparison works on all platforms.
         contributed_filenames = set(
-            p.split("/")[-1]  # safety in case path appears
+            p.replace("\\", "/").split("/")[-1]
             for p in get_user_contributed_files(conn, user_id, project_name)
         )
 
