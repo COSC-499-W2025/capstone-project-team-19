@@ -753,7 +753,7 @@ The plan is to begin implementing the frontend. A PR for setting up React and Vi
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-week6.png) <br> ![Completed tasks for Adara](screenshots/Completed-Adara-week7.png)         |
 | `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-week6.png) <br> ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-week7.png)     |
-| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-week7.png)                                                                                  |
+| `ivonanicetin`  |                                                                                |
 | `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-week6.png) <br> ![Completed tasks for Johanes](screenshots/Completed-Johanes-week7.png) |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-week6.png) <br> ![Completed tasks for Salma](screenshots/Completed-Salma-week7.png)         |
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-week6.png) <br> ![Completed tasks for Timmi](screenshots/Completed-Timmi-week7.png)         |
