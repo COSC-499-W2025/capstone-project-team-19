@@ -303,27 +303,27 @@ def delete_single_project(
 
 
 @router.post(
-    "/upload/{upload_id}/projects/{project_name}/manual-project-summary",
+    "/upload/{upload_id}/projects/{project_key:int}/manual-project-summary",
     response_model=ApiResponse[UploadDTO],
 )
 def post_manual_project_summary(
     upload_id: int,
-    project_name: str,
+    project_key: int,
     body: ManualProjectSummaryRequestDTO,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
-    upload = set_manual_project_summary(conn, user_id, upload_id, project_name, body.summary_text)
+    upload = set_manual_project_summary(conn, user_id, upload_id, project_key, body.summary_text)
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
 
 
 @router.post(
-    "/upload/{upload_id}/projects/{project_name}/manual-contribution-summary",
+    "/upload/{upload_id}/projects/{project_key:int}/manual-contribution-summary",
     response_model=ApiResponse[UploadDTO],
 )
 def post_manual_contribution_summary(
     upload_id: int,
-    project_name: str,
+    project_key: int,
     body: ManualContributionSummaryRequestDTO,
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
@@ -332,7 +332,7 @@ def post_manual_contribution_summary(
         conn,
         user_id,
         upload_id,
-        project_name,
-        body.manual_contribution_summary,    )
+        project_key,
+        body.manual_contribution_summary,
+    )
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
-
