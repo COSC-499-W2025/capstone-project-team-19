@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 6 & 8 (Feb 9 - Mar 1)](#t2-week-6--8-monday-9th-february---sunday-1st-march)
 - [Week 4 & 5 (Jan 26 – Feb 8)](#t2-week-4--5-monday-26th-january---sunday-8th-february)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-19th---sunday-25th-january)
 - [Week 2 (Jan 12-18)](#t2-week-2-monday-12th---sunday-18th-january)
@@ -233,3 +234,30 @@ The past two weeks I worked on four PRs: [464](https://github.com/COSC-499-W2025
 **Reviewing / collaboration tasks:** I reviewed 8 PRs total: [463](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/463), [461](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/461), [455](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/455), [436](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/436), [434](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/434), [428](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/428), [424](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/424), and [420](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/420): for a few of them ([463](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/463), [424](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/424), [434](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/434)) I mainly did end-to-end testing and confirmed the flow was solid, and for the others I focused on catching issues like flagging that skills highlight preferences were updating in the CLI but not reflected in portfolio PDF/DOCX exports because the export path was bypassing the highlighted-skills filtering logic ([461](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/461)), pointing out that our current UNIQUE constraint still allows duplicate GitHub identities due to NULL behavior and suggesting partial unique indexes + a clearer `project_key` param name to avoid future version/versioning confusion ([455](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/455)), calling out redundant DB fetches inside a loop to cut unnecessary queries ([436](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/436)), recommending wrapping multi-step rank updates in a transaction so we don’t end up with half-shifted ranks if something errors mid-way ([428](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/428)), and suggesting small refactors + test hardening (using real entrypoints instead of hardcoded asserts) to keep the codebase maintainable and make the tests actually protect against regressions ([420](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/420)).
 
 **Plan for next week:** Next week I’ll continue extending the upload API to cover the summary CLI endpoints and also the final run analysis endpoint.
+
+
+## (T2 Week 6 & 8) Monday 9th February - Sunday 1st March
+
+![Screenshot of tasks done from this sprint](./screenshots/Adara-Feb9-Mar1.png)
+
+Week recap
+
+The past sprints, I worked on 3 PRs, prepared for the class presentation, divided tasks for the video demo, and made the video demo. The first PR is [486](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/486), which adds the manual summary step to the uploads wizard (to match the CLI flow). I added two POST endpoints: **POST** `/projects/upload/{upload_id}/projects/{project_key}/manual-project-summary` (stores `summary_text` under `uploads.state.manual_project_summaries[project_key]`) and **POST** `/projects/upload/{upload_id}/projects/{project_key}/manual-contribution-summary` (stores `manual_contribution_summary` under `uploads.state.contributions[project_key].manual_contribution_summary`). I also updated the wizard flow so that after the final file-role picking step (supporting file selection), the upload transitions from `needs_file_roles` → `needs_summaries` with the CSV-optional logic handled correctly, and refactored upload project routes to consistently use `project_key` (with per-upload key→name resolution). I also refactored the source of summary as our existing system had redundant CLI requests for the users.
+
+The second one is [497](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/497), where I added a CLI-only Activity Heatmap that generates a PNG showing activity type vs project version (v1…vN) for both code and text projects. The output is a matrix of activity types (rows) vs versions (columns), rendered as a GitHub-style tile heatmap and cached under `data/artifacts/heatmaps/` so reruns are fast and deterministic. I also added a prompt to choose between **diff** vs **snapshot** heatmap modes.
+
+The key difference between the two heatmap modes is what each version column represents:
+- **snapshot**: counts all eligible files that exist at that version (so it shows what the project “looks like” by v1/v2/v3)
+- **diff**: counts only files that changed in that version (added + modified vs the previous version; v1 uses all files), so it shows what kind of work happened in each iteration
+
+In the third one, [498](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/498), I added API support for the Activity Heatmap so clients can fetch either a small JSON info payload or the PNG directly. I kept both endpoints since it’s not fully clear yet which one the frontend we would prefer (we might want to change the visualization configurations, hence why we have one endpoint that returns the heatmap json):
+- **GET** `/projects/{project_name}/activity-heatmap` → returns an `ActivityHeatmapInfoDTO` including a `png_url`
+- **GET** `/projects/{project_name}/activity-heatmap.png` → returns the PNG directly (`image/png`) using the cached artifact path when available
+
+I also started working on PR [500](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/500) (not ready for review yet) where I scaffolded the frontend using React + Vite, added the basic project structure and env-based API config, and wired it to our existing FastAPI backend with a small API client wrapper (including JWT Authorization header support). This was not part of the Milestone 2 requirements so we prioritized on getting other relevant PRs reviewed and merged.
+
+**Testing:** I added a API test that creates a small upload ZIP, advances to `needs_summaries`, hits both summary endpoints, and asserts the summary fields are persisted back into upload state in the DB. For the heatmap work, I added pytest coverage for the CLI heatmap generator (code + text positive cases + a no-versions negative case), and an endpoint test for the API heatmap PNG route that asserts `200 OK` + `Content-Type: image/png` + valid PNG header bytes, plus a negative test that asserts `404` when the project is not found.
+
+**Reviewing / collaboration tasks:** I reviewed 9 PRs in total, ensuring the changes work as expected and requesting changes along with suggested solutions when necessary.
+
+**Plan for next week:** I will complete the frontend setup PR, and continue to implement the rest of the frontend features with the team.
