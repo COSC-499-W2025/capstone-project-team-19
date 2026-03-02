@@ -49,10 +49,15 @@ def extract_skills(
             # Filter files to only include those the user contributed to
             original_count = len(files)
 
-            # Match by filename (basename) since file_path formats might differ
+            # Match by filename (basename) since file_path formats might differ.
+            # Normalize backslashes (Windows) before extracting basename so
+            # the comparison works on all platforms.
+            def _basename(p: str) -> str:
+                return p.replace("\\", "/").split("/")[-1]
+
             files = [
                 f for f in files
-                if any(os.path.basename(f.get("file_path", "")) == os.path.basename(contrib_path)
+                if any(_basename(f.get("file_path", "")) == _basename(contrib_path)
                        for contrib_path in contributed_files)
             ]
 
