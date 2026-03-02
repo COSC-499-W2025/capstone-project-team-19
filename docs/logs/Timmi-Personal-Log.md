@@ -259,3 +259,34 @@ This log covers both week 4 and week 5.
 In [PR #450](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/450), I started a much larger refactor to prepare for project versions. Before this, the system relied heavily on the project name through the `project_classifications` table. But once we started adding multiple versions of projects (which can all have the same name), we didn’t really have a clean way to identify which version we needed or track differences between them. This refactor was the start of migrating toward a stable project identity based on IDs instead of names. I continued this work in [PR #456](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/456), where I removed the remaining reliance on `project_name` and migrated the system to use `project_key` instead. With this change, we can more easily find specific versions of a project, analyze them separately, and support the timelines and heatmaps we need for Milestone 3.
 
 Next week, I want to continue the project versioning implementation by removing legacy code that is no longer up to date with the switch to `project_key`. I’ll also be starting the logic for building timelines, heatmaps, and project progression data, and I’d like to implement the API endpoints for those visuals as well.
+
+## (Term 2 Week 6-7) Monday February 9 - Sunday March 1
+
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Feb9-Mar1.png)
+
+**Coding Tasks**
+
+In [PR #490](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/490) I implemented the project evolution API needed for Milestone 3’s “Top 3 Projects Showcase.” This PR adds two main endpoints:
+- GET /projects/top – returns the top N ranked projects with snippets and version counts
+- GET /projects/{project_id}/evolution – returns version evolution data including summaries, diffs, skills, languages, frameworks, and file changes
+
+The goal of this work was to make project progression visible and structured. Instead of treating projects as static uploads, this allows the system to illustrate how a project evolves across versions. I also updated the upload flow so that when a user uploads a new version of an existing project, the classification and project type are inherited from the previous version rather than re-prompting the user. This keeps version uploads consistent and avoids redundant input.
+
+This PR also required cleaning up some database imports in project-analysis to make the codebase more consistent
+
+**Refactoring / Project Versioning**
+
+In [PR #481](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/481) I completed the migration to a stable project identifier system. Previously, many API paths and lookups relied on project_name, which worked when projects were unique, but became fragile once we introduced multiple versions of the same project.
+
+This PR finalizes the transition to using `project_key`, `project_summary_id`, and `version_key` for API paths and payloads. `project_name` is now used for display purposes.
+
+This required updating multiple DTOs, modifying API routes to use `project_key:int` instead of `project_name`, and centralizing shared logic for resolving project names during edits. 
+
+I also addressed a bug in this PR by removing an invalid limit attribute that was being used incorrectly in context.
+
+Because of the schema updates, this PR requires recreating the local database (`local_storage.db`) to ensure the tables match the new structure.
+
+
+**Plan for Next Week**
+
+Next week, I plan on beginning to implement the frontend UI. I don't know yet which pages I will be assigned, the team will discuss this in our weekly Monday meeting. I will also begin structuring the frontend HTTP requests needed to call the backend API endpoints.
