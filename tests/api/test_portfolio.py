@@ -168,14 +168,14 @@ class TestPortfolioEdit:
 
     def test_requires_auth(self, client):
         res = client.post("/portfolio/edit", json={
-            "project_name": "Test",
+            "project_summary_id": 1,
         })
         assert res.status_code == 401
 
     def test_project_not_found(self, client, auth_headers):
         res = client.post(
             "/portfolio/edit",
-            json={"project_name": "NonExistent"},
+            json={"project_summary_id": 99999},
             headers=auth_headers,
         )
         assert res.status_code == 404
@@ -187,11 +187,12 @@ class TestPortfolioEdit:
             _make_summary_json("EditProject"),
         )
         seed_conn.commit()
+        ps_id = get_project_summary_by_name(seed_conn, 1, "EditProject")["project_summary_id"]
 
         res = client.post(
             "/portfolio/edit",
             json={
-                "project_name": "EditProject",
+                "project_summary_id": ps_id,
                 "scope": "portfolio_only",
                 "display_name": "Fancy Name",
             },
@@ -218,11 +219,12 @@ class TestPortfolioEdit:
             _make_summary_json("SummaryProject"),
         )
         seed_conn.commit()
+        ps_id = get_project_summary_by_name(seed_conn, 1, "SummaryProject")["project_summary_id"]
 
         res = client.post(
             "/portfolio/edit",
             json={
-                "project_name": "SummaryProject",
+                "project_summary_id": ps_id,
                 "scope": "portfolio_only",
                 "summary_text": "New portfolio summary",
             },
@@ -240,12 +242,13 @@ class TestPortfolioEdit:
             _make_summary_json("BulletProject"),
         )
         seed_conn.commit()
+        ps_id = get_project_summary_by_name(seed_conn, 1, "BulletProject")["project_summary_id"]
 
         bullets = ["Built the auth system", "Optimized queries"]
         res = client.post(
             "/portfolio/edit",
             json={
-                "project_name": "BulletProject",
+                "project_summary_id": ps_id,
                 "scope": "portfolio_only",
                 "contribution_bullets": bullets,
             },
@@ -263,11 +266,12 @@ class TestPortfolioEdit:
             _make_summary_json("GlobalProject"),
         )
         seed_conn.commit()
+        ps_id = get_project_summary_by_name(seed_conn, 1, "GlobalProject")["project_summary_id"]
 
         res = client.post(
             "/portfolio/edit",
             json={
-                "project_name": "GlobalProject",
+                "project_summary_id": ps_id,
                 "scope": "global",
                 "summary_text": "Global summary update",
                 "display_name": "Global Display",
@@ -296,10 +300,11 @@ class TestPortfolioEdit:
             _make_summary_json("NoChangeProject"),
         )
         seed_conn.commit()
+        ps_id = get_project_summary_by_name(seed_conn, 1, "NoChangeProject")["project_summary_id"]
 
         res = client.post(
             "/portfolio/edit",
-            json={"project_name": "NoChangeProject"},
+            json={"project_summary_id": ps_id},
             headers=auth_headers,
         )
         assert res.status_code == 200
@@ -323,11 +328,12 @@ class TestPortfolioEdit:
         }
         save_project_summary(seed_conn, 1, "ClearProject", json.dumps(summary))
         seed_conn.commit()
+        ps_id = get_project_summary_by_name(seed_conn, 1, "ClearProject")["project_summary_id"]
 
         res = client.post(
             "/portfolio/edit",
             json={
-                "project_name": "ClearProject",
+                "project_summary_id": ps_id,
                 "scope": "portfolio_only",
                 "display_name": "",
             },
@@ -348,11 +354,12 @@ class TestPortfolioEdit:
             _make_summary_json("DefaultScope"),
         )
         seed_conn.commit()
+        ps_id = get_project_summary_by_name(seed_conn, 1, "DefaultScope")["project_summary_id"]
 
         res = client.post(
             "/portfolio/edit",
             json={
-                "project_name": "DefaultScope",
+                "project_summary_id": ps_id,
                 "display_name": "Scoped Name",
             },
             headers=auth_headers,

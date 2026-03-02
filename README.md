@@ -341,6 +341,15 @@ If no Groq API key is provided, the system will fall back to local-only analysis
 4. **Zip the folder**
    - From the **root**, compress it into a `.zip`.
 
+## Project Versioning
+
+The system supports multiple versions of the same project (e.g., re-uploads). When you upload a ZIP:
+
+- **Re-upload of identical content** – Automatically skipped (no duplicate analysis).
+- **Re-upload with changes** – You can choose: **skip**, **new project** (treat as separate), or **new version** (add as a new run of the same project).
+- Each version gets a `version_key`; files and metrics are stored per version.
+- In the API, use `project_key` and `version_key` from `state.dedup_project_keys` and `state.dedup_version_keys` when working with upload flow.
+
 ## System Architecture Diagram
 
 ![System Architecture Diagram](docs/plan/Updated-System-Architecture-Diagram.png)

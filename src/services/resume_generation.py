@@ -27,6 +27,7 @@ def load_project_summaries_by_ids(
             continue
         try:
             summary_dict = json.loads(row["summary_json"])
+            summary_dict["project_id"] = row.get("project_summary_id")
             summaries.append(ProjectSummary.from_dict(summary_dict))
         except Exception:
             continue

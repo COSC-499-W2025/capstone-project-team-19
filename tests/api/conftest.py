@@ -1,4 +1,5 @@
 # tests/api/conftest.py
+import json
 import os
 import sqlite3
 import pytest
@@ -14,6 +15,7 @@ import src.db as db
 from src.api.main import app
 from src.api.dependencies import get_db, get_jwt_secret
 from src.api.auth.security import hash_password, create_access_token
+from src.db.project_summaries import save_project_summary, get_project_summary_by_name
 
 TEST_JWT_SECRET = "test-secret-key-for-testing"
 
@@ -247,3 +249,34 @@ def insert_classification(seed_conn):
         return project_key
 
     return _insert
+
+
+def seed_project(
+    conn,
+    user_id: int,
+    name: str,
+    *,
+    project_type: str = "code",
+    project_mode: str = "individual",
+    summary_text: str | None = None,
+    languages: list[str] | None = None,
+    frameworks: list[str] | None = None,
+) -> int:
+    """Create a minimal project summary and return its project_summary_id.
+
+    Shared across all API test files to avoid duplication.
+    """
+    payload: dict = {
+        "project_name": name,
+        "project_type": project_type,
+        "project_mode": project_mode,
+        "summary_text": summary_text or f"Summary for {name}",
+    }
+    if languages is not None:
+        payload["languages"] = languages
+    if frameworks is not None:
+        payload["frameworks"] = frameworks
+    save_project_summary(conn, user_id, name, json.dumps(payload))
+    row = get_project_summary_by_name(conn, user_id, name)
+    assert row is not None
+    return row["project_summary_id"]

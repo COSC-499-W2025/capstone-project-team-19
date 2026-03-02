@@ -12,6 +12,7 @@ from src.api.routes import (
     consent_router,
     portfolio_router,
     export_router,
+    thumbnails_router,
 )
 from src.api.auth.routes import router as auth_router
 
@@ -34,3 +35,4 @@ app.include_router(github_router)
 app.include_router(google_drive_router)
 app.include_router(portfolio_router)
 app.include_router(export_router)
+app.include_router(thumbnails_router)

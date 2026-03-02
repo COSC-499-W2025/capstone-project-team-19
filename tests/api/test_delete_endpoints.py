@@ -1,27 +1,8 @@
 """Tests for DELETE API endpoints for projects and resumes."""
 import json
 from src.db.resumes import insert_resume_snapshot, list_resumes, get_resume_snapshot
-from src.db.project_summaries import save_project_summary, get_project_summary_by_name, get_project_summary_by_id
-
-
-# ============================================================================
-# Helper Functions
-# ============================================================================
-
-def create_test_project(conn, user_id, name, project_type="code", project_mode="individual"):
-    """Create a test project and return its ID."""
-    summary_json = json.dumps({
-        "project_name": name,
-        "project_type": project_type,
-        "project_mode": project_mode,
-        "languages": ["Python"],
-        "summary_text": f"Test project: {name}",
-        "metrics": {}
-    })
-    save_project_summary(conn, user_id, name, summary_json)
-    conn.commit()
-    project = get_project_summary_by_name(conn, user_id, name)
-    return project["project_summary_id"]
+from src.db.project_summaries import get_project_summary_by_name, get_project_summary_by_id
+from tests.api.conftest import seed_project
 
 
 def create_test_resume(conn, user_id, name):
@@ -108,7 +89,7 @@ def test_delete_project_not_found_returns_404(client, auth_headers):
 
 def test_delete_project_success(client, auth_headers, seed_conn):
     """Test successfully deleting a project."""
-    project_id = create_test_project(seed_conn, 1, "TestProject")
+    project_id = seed_project(seed_conn, 1, "TestProject")
 
     res = client.delete(f"/projects/{project_id}", headers=auth_headers)
     assert_delete_single_success(res)
@@ -119,10 +100,10 @@ def test_delete_project_success(client, auth_headers, seed_conn):
 
 def test_delete_project_also_deletes_dedup_tables(client, auth_headers, seed_conn):
     """Test that deleting a project also removes data from projects/project_versions/version_files tables."""
-    project_id = create_test_project(seed_conn, 1, "TestProjectDedup")
+    project_id = seed_project(seed_conn, 1, "TestProjectDedup")
 
     # Also insert into deduplication tables (project_versions, version_files).
-    # `create_test_project()` already ensures a `projects` row exists (canonical).
+    # `seed_project()` already ensures a `projects` row exists (canonical).
     row = seed_conn.execute(
         "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
         (1, "TestProjectDedup"),
@@ -179,7 +160,7 @@ def test_delete_project_also_deletes_dedup_tables(client, auth_headers, seed_con
 
 def test_delete_project_cleans_up_rankings_and_thumbnails(client, auth_headers, seed_conn):
     """Test that deleting a project also removes project_rankings and project_thumbnails."""
-    project_id = create_test_project(seed_conn, 1, "TestProjectRanked")
+    project_id = seed_project(seed_conn, 1, "TestProjectRanked")
     project = get_project_summary_by_id(seed_conn, 1, project_id)
     project_key = project["project_key"]
 
@@ -227,7 +208,7 @@ def test_delete_all_projects_cleans_dedup_tables(client, auth_headers, seed_conn
     # Create multiple projects with dedup data
     for i in range(2):
         name = f"BulkProject{i}"
-        create_test_project(seed_conn, 1, name)
+        seed_project(seed_conn, 1, name)
         row = seed_conn.execute(
             "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
             (1, name),
@@ -265,7 +246,7 @@ def test_delete_all_projects_cleans_orphaned_dedup_data(client, auth_headers, se
     leaving data in projects/project_versions but not in project_summaries.
     """
     # Create a normal project (has both project_summaries and projects table entry)
-    create_test_project(seed_conn, 1, "NormalProject")
+    seed_project(seed_conn, 1, "NormalProject")
     row = seed_conn.execute(
         "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
         (1, "NormalProject"),
@@ -319,7 +300,7 @@ def test_delete_all_projects_cleans_orphaned_dedup_data(client, auth_headers, se
 def test_delete_project_wrong_user(client, auth_headers, seed_conn):
     """Test that a user cannot delete another user's project."""
     create_other_user(seed_conn)
-    project_id = create_test_project(seed_conn, 2, "OtherUserProject")
+    project_id = seed_project(seed_conn, 2, "OtherUserProject")
 
     # Try to delete with user 1's auth (should 404 since user 1 can't see it)
     res = client.delete(f"/projects/{project_id}", headers=auth_headers)
@@ -335,7 +316,7 @@ def test_delete_project_wrong_user(client, auth_headers, seed_conn):
 
 def test_delete_project_refresh_resumes_default_false(client, auth_headers, seed_conn):
     """Test that refresh_resumes defaults to false, leaving resumes unchanged."""
-    project_id = create_test_project(seed_conn, 1, "ProjectInResume")
+    project_id = seed_project(seed_conn, 1, "ProjectInResume")
     resume_id = create_test_resume_with_projects(seed_conn, 1, "MyResume", ["ProjectInResume", "OtherProject"])
 
     # Delete without refresh_resumes param (defaults to false)
@@ -351,8 +332,8 @@ def test_delete_project_refresh_resumes_default_false(client, auth_headers, seed
 
 def test_delete_project_refresh_resumes_true_updates_resume(client, auth_headers, seed_conn):
     """Test that refresh_resumes=true removes project from multi-project resume."""
-    project_id = create_test_project(seed_conn, 1, "ProjectToRemove")
-    create_test_project(seed_conn, 1, "ProjectToKeep")
+    project_id = seed_project(seed_conn, 1, "ProjectToRemove")
+    seed_project(seed_conn, 1, "ProjectToKeep")
     resume_id = create_test_resume_with_projects(seed_conn, 1, "MyResume", ["ProjectToRemove", "ProjectToKeep"])
 
     # Delete with refresh_resumes=true
@@ -369,7 +350,7 @@ def test_delete_project_refresh_resumes_true_updates_resume(client, auth_headers
 
 def test_delete_project_refresh_resumes_true_deletes_empty_resume(client, auth_headers, seed_conn):
     """Test that refresh_resumes=true deletes resume when it becomes empty."""
-    project_id = create_test_project(seed_conn, 1, "OnlyProject")
+    project_id = seed_project(seed_conn, 1, "OnlyProject")
     resume_id = create_test_resume_with_projects(seed_conn, 1, "SingleProjectResume", ["OnlyProject"])
 
     # Verify resume exists
@@ -385,7 +366,7 @@ def test_delete_project_refresh_resumes_true_deletes_empty_resume(client, auth_h
 
 def test_delete_project_refresh_resumes_true_no_resumes(client, auth_headers, seed_conn):
     """Test that refresh_resumes=true works when user has no resumes."""
-    project_id = create_test_project(seed_conn, 1, "ProjectNoResume")
+    project_id = seed_project(seed_conn, 1, "ProjectNoResume")
 
     # Delete with refresh_resumes=true (no resumes exist)
     res = client.delete(f"/projects/{project_id}?refresh_resumes=true", headers=auth_headers)
@@ -397,7 +378,7 @@ def test_delete_project_refresh_resumes_true_no_resumes(client, auth_headers, se
 
 def test_delete_project_refresh_resumes_true_project_not_in_resume(client, auth_headers, seed_conn):
     """Test that refresh_resumes=true works when project isn't in any resume."""
-    project_id = create_test_project(seed_conn, 1, "ProjectNotInResume")
+    project_id = seed_project(seed_conn, 1, "ProjectNotInResume")
     resume_id = create_test_resume_with_projects(seed_conn, 1, "UnrelatedResume", ["DifferentProject"])
 
     # Delete with refresh_resumes=true
@@ -431,7 +412,7 @@ def test_delete_all_projects_success(client, auth_headers, seed_conn):
     """Test successfully deleting all projects."""
     # Create multiple projects
     for i in range(3):
-        create_test_project(seed_conn, 1, f"Project{i}")
+        seed_project(seed_conn, 1, f"Project{i}")
 
     # Verify they exist
     for i in range(3):
@@ -449,9 +430,9 @@ def test_delete_all_projects_success(client, auth_headers, seed_conn):
 def test_delete_all_projects_only_deletes_own_projects(client, auth_headers, seed_conn):
     """Test that delete all only deletes the authenticated user's projects."""
     # Create projects for both users
-    create_test_project(seed_conn, 1, "User1Project")
+    seed_project(seed_conn, 1, "User1Project")
     create_other_user(seed_conn)
-    create_test_project(seed_conn, 2, "User2Project")
+    seed_project(seed_conn, 2, "User2Project")
 
     # Delete all as user 1
     res = client.delete("/projects", headers=auth_headers)
@@ -470,8 +451,8 @@ def test_delete_all_projects_only_deletes_own_projects(client, auth_headers, see
 
 def test_delete_all_projects_refresh_resumes_default_false(client, auth_headers, seed_conn):
     """Test that refresh_resumes defaults to false, leaving resumes unchanged."""
-    create_test_project(seed_conn, 1, "Project1")
-    create_test_project(seed_conn, 1, "Project2")
+    seed_project(seed_conn, 1, "Project1")
+    seed_project(seed_conn, 1, "Project2")
     resume_id = create_test_resume_with_projects(seed_conn, 1, "MyResume", ["Project1", "Project2"])
 
     # Delete all without refresh_resumes param (defaults to false)
@@ -488,8 +469,8 @@ def test_delete_all_projects_refresh_resumes_default_false(client, auth_headers,
 
 def test_delete_all_projects_refresh_resumes_true_deletes_resumes(client, auth_headers, seed_conn):
     """Test that refresh_resumes=true deletes resumes that become empty."""
-    create_test_project(seed_conn, 1, "ProjectA")
-    create_test_project(seed_conn, 1, "ProjectB")
+    seed_project(seed_conn, 1, "ProjectA")
+    seed_project(seed_conn, 1, "ProjectB")
     resume_id = create_test_resume_with_projects(seed_conn, 1, "MyResume", ["ProjectA", "ProjectB"])
 
     # Verify resume exists
@@ -518,12 +499,12 @@ def test_delete_all_projects_refresh_resumes_true_no_projects(client, auth_heade
 def test_delete_all_projects_refresh_resumes_isolation(client, auth_headers, seed_conn):
     """Test that refresh_resumes=true only affects current user's resumes."""
     # Create projects and resumes for user 1
-    create_test_project(seed_conn, 1, "User1Project")
+    seed_project(seed_conn, 1, "User1Project")
     resume_id_1 = create_test_resume_with_projects(seed_conn, 1, "User1Resume", ["User1Project"])
 
     # Create projects and resumes for user 2
     create_other_user(seed_conn)
-    create_test_project(seed_conn, 2, "User2Project")
+    seed_project(seed_conn, 2, "User2Project")
     resume_id_2 = create_test_resume_with_projects(seed_conn, 2, "User2Resume", ["User2Project"])
 
     # Delete all as user 1 with refresh_resumes=true

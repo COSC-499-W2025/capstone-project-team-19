@@ -8,6 +8,12 @@ from src.utils.parsing import ZIP_DATA_DIR
 from .test_uploads_wizard import _make_zip_bytes
 
 
+def _get_project_key(state: dict, project_name: str) -> int:
+    pk = (state.get("dedup_project_keys") or {}).get(project_name)
+    assert pk is not None, f"project_key not found for {project_name}"
+    return int(pk)
+
+
 def _cleanup_upload_artifacts(upload_state: dict) -> None:
     zip_path = (upload_state or {}).get("zip_path")
     if not zip_path:
@@ -124,37 +130,37 @@ def test_list_project_files_requires_needs_file_roles(client, auth_headers):
     # Two projects -> reliably lands in needs_classification (not needs_file_roles)
     zip_bytes = _make_zip_bytes(
         {
-            "ProjectA/readme.txt": "hello",
-            "ProjectB/readme.txt": "hello",
+            "ProjectA/readme.txt": "hello but it's A and is different",
+            "ProjectB/readme.txt": "hi",
         }
     )
-    start = client.post(
-        "/projects/upload",
-        headers=auth_headers,
-        files={"file": ("two_projects.zip", zip_bytes, "application/zip")},
-    )
+    start = client.post("/projects/upload", headers=auth_headers, files={"file": ("two_projects.zip", zip_bytes, "application/zip")})
     assert start.status_code == 200
     upload = start.json()["data"]
     upload_id = upload["upload_id"]
 
     # Not in needs_file_roles yet -> should 409
+    state = upload.get("state") or {}
+    project_key = _get_project_key(state, "ProjectA")
     res = client.get(
-        f"/projects/upload/{upload_id}/projects/ProjectA/files",
+        f"/projects/upload/{upload_id}/projects/{project_key}/files",
         headers=auth_headers,
     )
     assert res.status_code == 409
 
-    _cleanup_upload_artifacts((upload.get("state") or {}))
+    _cleanup_upload_artifacts(state)
 
 
 def test_list_files_then_set_main_file_happy_path(client, auth_headers):
     zip_bytes = _make_zip_bytes({"ProjectA/readme.txt": "hello"})
     upload = _advance_to_needs_file_roles(client, auth_headers, zip_bytes)
     upload_id = upload["upload_id"]
+    state = upload.get("state") or {}
+    project_key = _get_project_key(state, "ProjectA")
 
     # (5) list files
     res = client.get(
-        f"/projects/upload/{upload_id}/projects/ProjectA/files",
+        f"/projects/upload/{upload_id}/projects/{project_key}/files",
         headers=auth_headers,
     )
     assert res.status_code == 200
@@ -171,7 +177,7 @@ def test_list_files_then_set_main_file_happy_path(client, auth_headers):
 
     # (6) set main file
     res2 = client.post(
-        f"/projects/upload/{upload_id}/projects/ProjectA/main-file",
+        f"/projects/upload/{upload_id}/projects/{project_key}/main-file",
         headers=auth_headers,
         json={"relpath": chosen},
     )
@@ -189,9 +195,11 @@ def test_set_main_file_rejects_unsafe_relpath(client, auth_headers):
     zip_bytes = _make_zip_bytes({"ProjectA/readme.txt": "hello"})
     upload = _advance_to_needs_file_roles(client, auth_headers, zip_bytes)
     upload_id = upload["upload_id"]
+    state = upload.get("state") or {}
+    project_key = _get_project_key(state, "ProjectA")
 
     res = client.post(
-        f"/projects/upload/{upload_id}/projects/ProjectA/main-file",
+        f"/projects/upload/{upload_id}/projects/{project_key}/main-file",
         headers=auth_headers,
         json={"relpath": "../evil.txt"},
     )

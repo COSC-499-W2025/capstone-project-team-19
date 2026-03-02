@@ -13,8 +13,8 @@ import json
 import pytest
 
 from src.db.resumes import insert_resume_snapshot
-from src.db.project_summaries import save_project_summary
 from src.api.auth.security import create_access_token
+from tests.api.conftest import seed_project
 
 
 TEST_JWT_SECRET = "test-secret-key-for-testing"
@@ -46,19 +46,6 @@ def _seed_resume(seed_conn, user_id: int, name: str = "Test Resume") -> int:
         },
     })
     return insert_resume_snapshot(seed_conn, user_id, name, resume_json)
-
-
-def _seed_project(seed_conn, user_id: int, name: str = "Test Project") -> None:
-    """Create a minimal project summary for portfolio export."""
-    summary_json = json.dumps({
-        "project_name": name,
-        "project_type": "code",
-        "project_mode": "individual",
-        "summary_text": "A test project for portfolio.",
-        "languages": ["Python 80%"],
-        "frameworks": ["FastAPI"],
-    })
-    save_project_summary(seed_conn, user_id, name, summary_json)
 
 
 # ------------------------------------------------------------------------------
@@ -158,7 +145,7 @@ def test_portfolio_export_pdf_no_projects(client, auth_headers, consent_user_id_
 
 def test_portfolio_export_docx_with_project(client, auth_headers, seed_conn, consent_user_id_1):
     """Portfolio export includes seeded project."""
-    _seed_project(seed_conn, consent_user_id_1, "My Portfolio Project")
+    seed_project(seed_conn, consent_user_id_1, "My Portfolio Project")
 
     res = client.get("/portfolio/export/docx", headers=auth_headers)
     assert res.status_code == 200
@@ -168,7 +155,7 @@ def test_portfolio_export_docx_with_project(client, auth_headers, seed_conn, con
 
 def test_portfolio_export_pdf_with_project(client, auth_headers, seed_conn, consent_user_id_1):
     """Portfolio export includes seeded project."""
-    _seed_project(seed_conn, consent_user_id_1, "My Portfolio Project")
+    seed_project(seed_conn, consent_user_id_1, "My Portfolio Project")
 
     res = client.get("/portfolio/export/pdf", headers=auth_headers)
     assert res.status_code == 200

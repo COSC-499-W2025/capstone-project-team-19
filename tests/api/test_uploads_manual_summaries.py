@@ -8,7 +8,6 @@ PROJECT = "ProjectA"
 
 
 def build_zip_no_csv(project: str = PROJECT) -> bytes:
-    # No CSVs on purpose -> supporting TEXT selection should be enough to advance to needs_summaries
     return _make_zip_bytes(
         {
             f"{project}/main_report.txt": "Main report content.\nIntro...\n",
@@ -23,9 +22,9 @@ def get_upload_state(client, auth_headers, upload_id: int) -> dict:
     return res.json()["data"].get("state") or {}
 
 
-def get_files_payload(client, auth_headers, upload_id: int, project: str) -> dict:
+def get_files_payload(client, auth_headers, upload_id: int, project_key: int) -> dict:
     res = client.get(
-        f"/projects/upload/{upload_id}/projects/{project}/files",
+        f"/projects/upload/{upload_id}/projects/{project_key}/files",
         headers=auth_headers,
     )
     assert res.status_code == 200
@@ -43,9 +42,10 @@ def pick_relpath_by_filename(files: list[dict], filename: str) -> str:
 
 def _advance_to_needs_file_roles_collab_text(client, auth_headers, zip_bytes: bytes) -> dict:
     """
-    Same as test_uploads_file_roles._advance_to_needs_file_roles, but:
-      - classify as collaborative (so summaries are required)
-      - ensure project type is text if project-types step appears
+    Start upload then advance until needs_file_roles, ensuring:
+      - projects are classified as collaborative
+      - project types are set to text when required
+    Returns the UploadDTO dict.
     """
     res = client.post(
         "/projects/upload",
@@ -56,7 +56,6 @@ def _advance_to_needs_file_roles_collab_text(client, auth_headers, zip_bytes: by
     upload = res.json()["data"]
     upload_id = upload["upload_id"]
 
-    # resolve dedup if needed
     if upload["status"] == "needs_dedup":
         asks = (upload.get("state") or {}).get("dedup_asks") or {}
         decisions = {k: "new_project" for k in asks.keys()}
@@ -68,11 +67,10 @@ def _advance_to_needs_file_roles_collab_text(client, auth_headers, zip_bytes: by
         assert res_d.status_code == 200
         upload = res_d.json()["data"]
 
-    # classify as collaborative
     if upload["status"] == "needs_classification":
         layout = (upload.get("state") or {}).get("layout") or {}
         known = set(layout.get("pending_projects") or []) | set((layout.get("auto_assignments") or {}).keys())
-        assignments = {p: "collaborative" for p in known} or {"ProjectA": "collaborative"}
+        assignments = {p: "collaborative" for p in known} or {PROJECT: "collaborative"}
 
         res2 = client.post(
             f"/projects/upload/{upload_id}/classifications",
@@ -82,11 +80,10 @@ def _advance_to_needs_file_roles_collab_text(client, auth_headers, zip_bytes: by
         assert res2.status_code == 200
         upload = res2.json()["data"]
 
-    # if it needs project types, force text
     if upload["status"] == "needs_project_types":
         state = upload.get("state") or {}
         needs = set(state.get("project_types_mixed") or []) | set(state.get("project_types_unknown") or [])
-        project_types = {p: "text" for p in needs} or {"ProjectA": "text"}
+        project_types = {p: "text" for p in needs} or {PROJECT: "text"}
 
         res3 = client.post(
             f"/projects/upload/{upload_id}/project-types",
@@ -100,26 +97,40 @@ def _advance_to_needs_file_roles_collab_text(client, auth_headers, zip_bytes: by
     return upload
 
 
-def setup_upload_to_needs_summaries_no_csv(client, auth_headers, zip_bytes: bytes, project: str = PROJECT) -> int:
+def _get_project_key_for_test(seed_conn, user_id: int, project_name: str) -> int:
+    pk = get_project_key(seed_conn, user_id, project_name)
+    assert isinstance(pk, int)
+    return pk
+
+
+def setup_upload_to_needs_summaries_no_csv(
+    client,
+    auth_headers,
+    seed_conn,
+    zip_bytes: bytes,
+    project_name: str = PROJECT,
+) -> tuple[int, int]:
     """
     Advances the wizard to needs_summaries for a collaborative text project with NO CSV files:
     - upload -> needs_file_roles (collaborative)
     - set main file
-    - set main section ids (empty list to mark step complete)
+    - set contributed sections (empty list to mark step complete)
     - set supporting text files -> should transition status -> needs_summaries
-    Returns upload_id
+    Returns (upload_id, project_key)
     """
     upload = _advance_to_needs_file_roles_collab_text(client, auth_headers, zip_bytes)
     upload_id = upload["upload_id"]
 
-    files_payload = get_files_payload(client, auth_headers, upload_id, project)
+    project_key = _get_project_key_for_test(seed_conn, 1, project_name)
+
+    files_payload = get_files_payload(client, auth_headers, upload_id, project_key)
 
     main_relpath = pick_relpath_by_filename(files_payload["all_files"], "main_report.txt")
     supporting_relpath = pick_relpath_by_filename(files_payload["all_files"], "reading_notes.txt")
 
     # set main file
     res_main = client.post(
-        f"/projects/upload/{upload_id}/projects/{project}/main-file",
+        f"/projects/upload/{upload_id}/projects/{project_key}/main-file",
         headers=auth_headers,
         json={"relpath": main_relpath},
     )
@@ -127,34 +138,32 @@ def setup_upload_to_needs_summaries_no_csv(client, auth_headers, zip_bytes: byte
 
     # mark sections step complete (required for needs_summaries transition for collab text)
     res_sections = client.post(
-        f"/projects/upload/{upload_id}/projects/{project}/text/contributions",
+        f"/projects/upload/{upload_id}/projects/{project_key}/text/contributions",
         headers=auth_headers,
         json={"selected_section_ids": []},
     )
     assert res_sections.status_code == 200
 
-    # set supporting text files -> should move to needs_summaries (no CSVs exist)
+    # supporting text -> should move to needs_summaries (no CSVs exist)
     res_support = client.post(
-        f"/projects/upload/{upload_id}/projects/{project}/supporting-text-files",
+        f"/projects/upload/{upload_id}/projects/{project_key}/supporting-text-files",
         headers=auth_headers,
         json={"relpaths": [supporting_relpath]},
     )
     assert res_support.status_code == 200
     assert res_support.json()["data"]["status"] == "needs_summaries"
 
-    return upload_id
+    # sanity: the transition patch should exist now
+    state = res_support.json()["data"].get("state") or {}
+    assert "summaries_required_project_keys" in state
 
-
-def _get_project_key_for_test(seed_conn, user_id: int, project_name: str) -> int:
-    pk = get_project_key(seed_conn, user_id, project_name)
-    assert isinstance(pk, int)
-    return pk
+    return upload_id, project_key
 
 
 def test_post_manual_project_summary_happy_path_persists(client, auth_headers, seed_conn):
-    upload_id = setup_upload_to_needs_summaries_no_csv(client, auth_headers, build_zip_no_csv(PROJECT), PROJECT)
-
-    project_key = _get_project_key_for_test(seed_conn, 1, PROJECT)
+    upload_id, project_key = setup_upload_to_needs_summaries_no_csv(
+        client, auth_headers, seed_conn, build_zip_no_csv(PROJECT), PROJECT
+    )
     pk_str = str(project_key)
 
     text = "Built X, improved Y."
@@ -177,9 +186,9 @@ def test_post_manual_project_summary_happy_path_persists(client, auth_headers, s
 
 
 def test_post_manual_contribution_summary_happy_path_persists(client, auth_headers, seed_conn):
-    upload_id = setup_upload_to_needs_summaries_no_csv(client, auth_headers, build_zip_no_csv(PROJECT), PROJECT)
-
-    project_key = _get_project_key_for_test(seed_conn, 1, PROJECT)
+    upload_id, project_key = setup_upload_to_needs_summaries_no_csv(
+        client, auth_headers, seed_conn, build_zip_no_csv(PROJECT), PROJECT
+    )
     pk_str = str(project_key)
 
     desc = "I owned the API + tests."

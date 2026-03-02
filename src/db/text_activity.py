@@ -20,7 +20,7 @@ def store_text_activity_contribution(
 
     Args:
         conn: Database connection
-        classification_id: Foreign key to project_classifications table
+        version_key: Foreign key to project_versions table
         activity_data: Dictionary returned from get_activity_contribution_data()
                       containing timestamp_analysis, activity_classification,
                       timeline, and summary
@@ -137,7 +137,7 @@ def get_text_activity_contribution(
 
     Args:
         conn: Database connection
-        classification_id: Foreign key to project_classifications table
+        version_key: Foreign key to project_versions table
 
     Returns:
         Dictionary with activity contribution data or None if not found

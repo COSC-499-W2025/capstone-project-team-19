@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Tuple
 from src.db import (
     get_project_metadata,
     get_files_for_project,
+    get_files_for_version,
     get_user_contributed_files,
     get_project_repo,
     has_github_account,
@@ -161,6 +162,7 @@ def build_activity_summary(
     conn: sqlite3.Connection,
     user_id: int,
     project_name: str,
+    version_key: int | None = None,
 ) -> ActivitySummary:
     """
     Main entry: fetch classification, files, optional PRs and return ActivitySummary.
@@ -169,6 +171,8 @@ def build_activity_summary(
     - For collaborative projects, file events are restricted to files the user actually
       contributed to (via user_file_contributions)
     - For individual projects, all files for this user + project are used
+    - When version_key is provided, files are fetched for that version only (avoids
+      wrong paths when multiple versions are in a single upload)
     """
     # 1) Classification → scope
     classification, _project_type = get_project_metadata(conn, user_id, project_name)
@@ -176,8 +180,11 @@ def build_activity_summary(
 
     events: List[ActivityEvent] = []
 
-    # 2) File-based events
-    all_files_raw = get_files_for_project(conn, user_id, project_name, only_text=False)
+    # 2) File-based events (version-scoped when version_key given)
+    if version_key is not None:
+        all_files_raw = get_files_for_version(conn, user_id, version_key, only_text=False)
+    else:
+        all_files_raw = get_files_for_project(conn, user_id, project_name, only_text=False)
 
     # Filter out dependency/vendor directories
     all_files = [
@@ -186,9 +193,11 @@ def build_activity_summary(
     ]
 
     if scope == Scope.COLLABORATIVE:
-        # Restrict to files the user actually contributed to
+        # Restrict to files the user actually contributed to.
+        # Normalize backslashes (Windows) to forward slashes before extracting
+        # the basename so the comparison works on all platforms.
         contributed_filenames = set(
-            p.split("/")[-1]  # safety in case path appears
+            p.replace("\\", "/").split("/")[-1]
             for p in get_user_contributed_files(conn, user_id, project_name)
         )
 

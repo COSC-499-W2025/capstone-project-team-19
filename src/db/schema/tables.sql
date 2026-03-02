@@ -369,6 +369,36 @@ CREATE TABLE IF NOT EXISTS project_skills (
     FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
+-- VERSION EVOLUTION (per-version snapshots for project evolution showcase)
+-- Feeds: evolution API, skills timeline (cross-project), future heatmap
+CREATE TABLE IF NOT EXISTS version_summaries (
+    version_key INTEGER PRIMARY KEY,
+    summary_text TEXT,
+    activity_date TEXT,
+    lines_added INTEGER,
+    lines_deleted INTEGER,
+    total_words INTEGER,
+    languages_json TEXT,
+    frameworks_json TEXT,
+    avg_complexity REAL,
+    total_files INTEGER,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_skills (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    version_key INTEGER NOT NULL,
+    skill_name TEXT NOT NULL,
+    level TEXT NOT NULL,
+    score REAL NOT NULL,
+    UNIQUE(version_key, skill_name),
+    FOREIGN KEY (version_key) REFERENCES project_versions(version_key) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_version_skills_version
+    ON version_skills(version_key);
+
 -- USER FILE CONTRIBUTIONS (for collaborative projects)
 -- Tracks which files each user worked on, used to filter skill detection
 
@@ -695,19 +725,21 @@ CREATE TABLE IF NOT EXISTS project_thumbnails (
 );
 
 -- USER SKILL PREFERENCES (for skills highlighting feature)
--- Allows users to select which skills to highlight in portfolio/resume
+-- Allows users to select which skills to highlight in portfolio/resume per project
 CREATE TABLE IF NOT EXISTS user_skill_preferences (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     context TEXT NOT NULL CHECK (context IN ('global', 'portfolio', 'resume')),
     context_id INTEGER,  -- NULL for global/portfolio, resume_id for resume-specific
+    project_key INTEGER,  -- NULL for legacy/global, project_key for per-project
     skill_name TEXT NOT NULL,
     is_highlighted INTEGER DEFAULT 1,  -- 1=show, 0=hide
     display_order INTEGER,  -- manual ordering (lower = higher priority)
     updated_at TEXT DEFAULT (datetime('now')),
-    UNIQUE(user_id, context, context_id, skill_name),
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    UNIQUE(user_id, context, context_id, project_key, skill_name),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_skill_preferences_user_context
-    ON user_skill_preferences(user_id, context, context_id);
+    ON user_skill_preferences(user_id, context, context_id, project_key);
