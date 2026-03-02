@@ -19,7 +19,7 @@ def normalize_skill_preferences(
     """Normalize skill preference inputs into a consistent dict shape."""
     normalized: List[Dict[str, Any]] = []
     for pref in skill_preferences or []:
-        data = pref.dict() if hasattr(pref, "dict") else pref
+        data = pref.model_dump() if hasattr(pref, "model_dump") else (pref.dict() if hasattr(pref, "dict") else pref)
         if not isinstance(data, dict):
             continue
         skill_name = data.get("skill_name")
