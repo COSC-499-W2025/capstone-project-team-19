@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Weeks 6 & 8 (Feb 9-Mar 1)](#t2-weeks-6--8-monday-february-9---sunday-march-1)
 - [Weeks 4-5 (Jan 26-Feb 8)](#t2-weeks-4-5-monday-january-26---sunday-february-8)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12-18)](#t2-week-2-monday-january-12---sunday-january-18)
@@ -224,3 +225,33 @@ For my second feature PR ([#447](https://github.com/COSC-499-W2025/capstone-proj
 For PR reviews, I reviewed Timmi's feedback endpoints PR ([#442](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/442)) which implements the project feedback API endpoint. I noticed `feedback_id` was always null because the SELECT query didn't include it from the table. I reviewed Timmi's project date endpoints PR ([#445](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/445)) which implements endpoints for retrieving and modifying project dates. I found three issues: `str()` on `KeyError` adding extra quotes to the 404 message, `get_all_manual_dates()` called inside a `for` loop running N times instead of once, and an unused `request` parameter. I reviewed Johannes's portfolio API PR ([#436](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/436)) which implements portfolio generate and edit endpoints. I found a hardcoded portfolio name in the edit response, missing input validation allowing unlimited-length display names, and a misleading 404 on JSON parse failures that should be a 500. I also reviewed Ivona's Google Drive API endpoints and web OAuth PR ([#463](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/463)) which implements four Google Drive API endpoints with a new web OAuth flow. I found that merging main caused a test failure crashing the server; Ivona fixed it and I tested all four routes.
 
 Next week's focus: I'll address feedback on the refresh resume parameter PR and wrap up remaining API work for the milestone.
+
+## (T2 Weeks 6 & 8) Monday February 9 - Sunday March 1
+
+![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Feb9-Mar1.png)
+
+Week recap: In week 6, I worked on two feature PRs and reviewed one PR. In week 8, I worked on four PRs (two bug fixes and two documentation updates), reviewed one PR, and helped Adara with Postman screenshots for our API endpoints.
+
+Week 6:
+
+For my first feature PR ([#477](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/477)), I implemented the ability to remove a single project from a resume snapshot without deleting the project itself or the entire resume. After removal, aggregated skills are recomputed from the remaining projects, and if the last project is removed the resume is deleted entirely. This addresses the gap identified in PR #440 where deleted projects had no way to be removed from existing resumes.
+
+For my second feature PR ([#480](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/480)), I added REST API endpoints for managing project thumbnails (upload, view, delete) and fixed a bug where thumbnails were not appearing in portfolio exports (DOCX/PDF).
+
+For PR reviews, I reviewed Timmi's project versioning migration PR ([#481](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/481)) which completes the migration from `project_name` to `project_key`, `project_summary_id`, and `version_key` for API lookups. I caught a missing `f` prefix on a print statement where `{e}` was printing literally instead of the exception value.
+
+Week 8:
+
+For my first PR ([#505](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/505)), I fixed a bug where creating a resume for code projects uploaded without a `.git` directory showed a debug error message instead of meaningful contribution bullets. The fix makes `build_contribution_bullets()` fall back to file-level activity breakdown data when git-based metrics are unavailable. Timmi found a cross-platform file path issue on Windows during review.
+
+For my second PR ([#506](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/506)), I added M2 test data files (three test zips covering versioning/deduplication and all project type combinations) and updated the README with a "Test Data" section including directory trees, CLI instructions, and suggested answers for TAs.
+
+For my third PR ([#515](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/515)), I updated README.md and docs/API.md for M2 submission. I clarified setup instructions, updated the DFD description and WBS table, and cleaned up duplicated sections and broken formatting in API documentation.
+
+For my fourth PR ([#514](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/514)), I fixed the feedback endpoint returning an empty array due to a `project_key` vs `project_name` type mismatch, and fixed the test helper that had the same bug masking the issue.
+
+For PR reviews, I reviewed Salma's run analysis readiness PR ([#509](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/509)) which finalizes the API-first upload wizard flow up to the `/run` readiness endpoint with a readiness matrix for blockers/warnings, consent blocking, and project-type state resolution fixes. I tested with pytest (all 1044 passing) and manually walked through the full upload wizard flow via curl.
+
+I also helped Adara with Postman screenshots for our API endpoints for the video demo.
+
+Next week's focus: Start working on front-end pages and finish up any remaining API endpoints to ensure the front end works as intended.
