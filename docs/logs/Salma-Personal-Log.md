@@ -4,6 +4,7 @@
 
 ### Term 2
 
+- [T2 Weeks 6–8 (Feb 9–Mar 1)](#t2-weeks-6-8-monday-february-9---sunday-march-1)
 - [Weeks 4–5 (Jan 26–Feb 8)](#t2-weeks-4-5-monday-january-26---sunday-february-8)
 - [Week 3 (Jan 19–25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12–18)](#t2-week-2-monday-january-12---sunday-january-18)
