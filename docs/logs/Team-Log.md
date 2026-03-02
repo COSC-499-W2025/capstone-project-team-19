@@ -7,7 +7,8 @@
 - [Week 1 (Jan 5-11)](#term-2-week-1-monday-january-5---sunday-january-11)
 - [Week 2 (Jan 12-18)](#term-2-week-2-monday-january-12---sunday-january-18)
 - [Week 3 (Jan 19-25)](#term-2-week-3-monday-january-19---sunday-january-25)
-- [Week 4 + 5 (Jan 26 - Feb8)](#term-2-week-4-5-monday-january-26---sunday-february-8)
+- [Week 4 + 5 (Jan 26 - Feb 8)](#term-2-week-4-5-monday-january-26---sunday-february-8)
+- [Week 6 + 7 (Feb 9 - Mar 1)](#term-2-week-6-7-monday-february-9---sunday-march-1)
 
 ### Term 1
 
@@ -685,3 +686,81 @@ Next week, the team will focus on completing the remaining work for project vers
 | GitHub Username | Screenshots                                                                |
 | --------------- | -------------------------------------------------------------------------- |
 | `johaneshp`     | ![In progress tasks for Johanes](screenshots/InProgress-Johanes-week5.png) |
+
+
+## (Term 2 Week 6-7) Monday February 9 - Sunday March 1
+
+**Connection to previous week:**  
+
+In week 4-5, we were still implementing the API endpoints, both the required ones and the additional endpoints our system needs for our features and architecture. We planned to finish implementing the endpoints in week 6 and 7, and over reading break, specifically focusing on project versioning, heatmaps, timelines/evolutions, and finalizing the project upload flow. 
+
+### Coding tasks
+
+This week focused heavily on finalizing project versioning and building out the core analytics layer that powers the Insights page (ranked projects, skill timelines, and activity heatmaps).
+
+The final project versioning migration was completed in [PR #481](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/481), solidifying the database refactor required to properly support multiple project versions, evolution tracking, and time-based insights. Building on this foundation, ranked projects and project evolution logic were implemented in [PR #490](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/490), enabling the system to evaluate projects based on contribution and progression data.
+
+Activity visualization support was implemented through the feature/activity heatmap in [PR #497](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/497), with its corresponding API endpoints completed in [PR #498](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/498). The skill timeline endpoint was added in [PR #499](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/499), allowing chronological tracking of skill growth across projects and versions. Skill highlighting behavior was refined in [PR #483](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/483) and [PR #485](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/485) to ensure important skills are shown consistently across analytics views and providing flexibility in skill highlighting per project, rather than overall skills.
+
+Summary related endpoints were finalized in [PR #486](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/486), allowing the user to provide summaries manually during upload. Thumbnail support was added in [PR #480](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/480), allowing the thumbnails to be displayed in the users portfolio.
+
+Resume functionality was further refined with the ability to remove a project from a resume via API and CLI in [PR #477](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/477). A dedicated key role endpoint was implemented in [PR #492](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/492), this supports the project key role in the upload process via the wizard API we have built.
+
+Finally, analysis execution flow was completed through readiness validation and execution endpoints in [PR #509](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/509) and [PR #510](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/510). These PRs ensure the system verifies required inputs and state before running analytics, ensuring that all necessary inputs from the user are correctly retrieved.
+
+Minor fixes and integration adjustments were addressed throughout these PRs to maintain schema consistency and align backend behavior with frontend requirements.
+
+### Testing or debugging tasks
+
+This week included documentation updates and targeted fixes to improve reliability and clarity across the system.
+
+The API documentation was updated in [PR #493](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/493) to fix multiple incorrect sections, such as incorrect JSON responses, duplication, and making request-bodies consistent with each other. This PR additionally fixed some inconsistencies in the API documentation regarding endpoint URLs, for example the **Projects* section contained multiple endpoints that had the path `/projects` in the endpoint URL making the endpoint appear to be `/projects/projects` when really it only started with `/projects`.
+
+A bug affecting resume contribution bullets for projects containing .git directories was resolved in [PR #505](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/505). The issue caused  contribution bullet point generation in certain code projects to be empty. An issue was discovered during the review of this PR regarding the filepaths, more specifically how Mac and Windows handle filepaths differently, this was resolved in this same PR.
+
+To support testing and reproducibility of versioning and analysis workflows, structured test ZIP files were added in [PR #506](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/506), along with updates to the README to document proper testing procedures. This is a requirement for Milestone 2.
+
+### Reviewing or collaboration tasks
+
+This week involved reviewing and integrating multiple interdependent analytics and versioning PRs, requiring careful coordination to ensure consistency in the codebase. Since many features (heatmaps, skill timelines, ranked projects, summaries) rely on the finalized project versioning structure, a few PRs branched off it and needed rebasing once it got reviewed. This did not cause many issues, but did require a more collaborative process amongst the team.
+
+### Issues or blockers
+
+No real issues or blockers were found this week. The team worked really well together to ensure all the milestone 2 requirements would be met, and we collaborated a ton to finish the video demo, wireframes, and final architecture and documentation.
+
+### Plan / goals for next week
+
+The plan is to begin implementing the frontend. A PR for setting up React and Vite has already been started [PR #500](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/500), it just needs to be completed. Once that is done and merged, we will split the pages amongst each other and start building the UI. We will also need to implement the code for the HTTP endpoints to call the backend APIs, most likely we will create those as we need them while building the frontend.
+
+### Burnup chart
+
+![Burnup chart for Feb 9 - Mar 1](screenshots/week6-7_T2-burnupchart.png)
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshots                                                                                                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-week6.png) <br> ![Completed tasks for Adara](screenshots/Completed-Adara-week7.png)         |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-week6.png) <br> ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-week7.png)     |
+| `ivonanicetin`  |                                                                                |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-week6.png) <br> ![Completed tasks for Johanes](screenshots/Completed-Johanes-week7.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-week6.png) <br> ![Completed tasks for Salma](screenshots/Completed-Salma-week7.png)         |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-week6.png) <br> ![Completed tasks for Timmi](screenshots/Completed-Timmi-week7.png)         |
+
+
+### Table view of under review tasks by username
+
+| GitHub Username | Screenshots                                                                |
+| --------------- | -------------------------------------------------------------------------- |
+| `AdaraPutri`    | ![Uncompleted tasks for Adara](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/500) | 
