@@ -1005,7 +1005,6 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
     - `422 Unprocessable Entity` if any relpath is unsafe (e.g. contains `..`) or if the list includes the main file or any `.csv`
     - `404 Not Found` if any relpath does not exist for this project/upload
 
-
 - **Set Supporting CSV Files (Collaborative Text Contribution)**
     - **Endpoint**: `POST /{upload_id}/projects/{project_key}/supporting-csv-files`
     - **Description**: Stores which **CSV files** the user contributed to.
@@ -1065,7 +1064,48 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
     - `409 Conflict` if upload status is not valid for this action
     - `422 Unprocessable Entity` if `key_role` is invalid (e.g., wrong type or exceeds max length)
 
----
+- **Manual Project Summary**
+  - **Endpoint**: `POST /{upload_id}/projects/{project_name}/manual-project-summary`
+  - **Description**: Stores a user-provided manual project summary for this upload session.
+    - Writes to: `uploads.state.manual_project_summaries[project_name]`
+  - **Auth**: `Authorization: Bearer <access_token>`
+  - **Path Params**:
+    - `{upload_id}` (integer, required): The upload session ID
+    - `{project_name}` (string, required): The project name
+  - **Request DTO**: `ManualProjectSummaryRequestDTO`
+  - **Request Body**:
+    ```json
+    {
+      "summary_text": "Built a pipeline to ..., improved ..., shipped ..."
+    }
+    ```
+  - **Response Status**: `200 OK`
+  - **Response DTO**: `UploadDTO`
+  - **Error Responses**:
+    - `404 Not Found` if upload or project is not found / does not belong to user
+    - `409 Conflict` if upload is not in a summary-allowed status (must be `needs_summaries`, or if enabled: `analyzing`/`done`)
+
+- **Manual Contribution Summary**
+  - **Endpoint**: `POST /{upload_id}/projects/{project_name}/manual-contribution-summary`
+  - **Description**: Stores a user-provided manual contribution summary for this upload session.
+    - Writes to: `uploads.state.contributions[project_name].manual_contribution_summary`
+  - **Auth**: `Authorization: Bearer <access_token>`
+  - **Path Params**:
+    - `{upload_id}` (integer, required): The upload session ID
+    - `{project_name}` (string, required): The project name
+  - **Request DTO**: `ManualContributionSummaryRequestDTO`
+  - **Request Body**:
+    ```json
+    {
+      "manual_contribution_summary": "I implemented ..., fixed ..., added tests ..., or keep it empty if you'd like"
+    }
+    ```
+  - **Response Status**: `200 OK`
+  - **Response DTO**: `UploadDTO`
+  - **Error Responses**:
+    - `404 Not Found` if upload or project is not found / does not belong to user
+    - `409 Conflict` if upload is not in a summary-allowed status (must be `needs_summaries`, or if enabled: `analyzing`/`done`)
+
 
 ## **GitHub Integration**
 
@@ -2243,12 +2283,20 @@ Example:
 - **SupportingFilesRequest**
     - `relpaths` (List[string], required): relpaths returned by `GET .../files`
 
+<<<<<<< HEAD
+- **ManualProjectSummaryRequestDTO**
+  - `summary_text` (string, required): User-provided manual project summary text
+
+- **ManualContributionSummaryRequestDTO**
+  - `manual_contribution_summary` (string, required): User-provided manual contribution summary text (what you did)
+=======
 - **KeyRoleRequestDTO**
   - `key_role` (string, required): project role/title
   - Notes:
     - whitespace is normalized before storing
     - max length: `120`
     - blank input is allowed and treated as clear (`""`)
+>>>>>>> origin/main
 
 ### **Skills DTOs**
 
