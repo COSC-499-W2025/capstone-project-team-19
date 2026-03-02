@@ -9,6 +9,11 @@ import json
 
 from src.utils.extension_catalog import get_languages_for_extension
 from src.utils.helpers import ensure_table 
+from src.db.git_identities import (
+    ensure_user_github_table,
+    load_user_github,
+    save_user_github,
+)
 # zip_paths stays in the main file because only the entrypoint needs it
 
 import re
@@ -35,26 +40,48 @@ def resolve_repo_for_project(
 
     Rules:
     - Only consider projects marked as (classification='collaborative', project_type='code')
-      in project_classifications for this user + zip_name.
+      in projects metadata for this user + zip_name.
     - Only look under:  ./src/analysis/zip_data/<zip_name>/<zip_name>/
       and require the directory name to match `project_name`.
     """
 
     # 0) Check classification first: only collaborative + code projects
     try:
+        # Primary: upload-scoped check (works for API upload flow where pv.upload_id is set)
         row = conn.execute(
             """
             SELECT 1
-            FROM project_classifications
-            WHERE user_id      = ?
-              AND zip_name     = ?
-              AND project_name = ?
-              AND project_type = 'code'
-              AND classification = 'collaborative'
+            FROM projects p
+            JOIN project_versions pv
+              ON pv.project_key = p.project_key
+            LEFT JOIN uploads u
+              ON u.upload_id = pv.upload_id
+            WHERE p.user_id = ?
+              AND p.display_name = ?
+              AND p.project_type = 'code'
+              AND p.classification = 'collaborative'
+              AND u.zip_name = ?
+            ORDER BY pv.version_key DESC
             LIMIT 1
             """,
-            (user_id, zip_name, project_name),
+            (user_id, project_name, zip_name),
         ).fetchone()
+
+        # Fallback: CLI flow often creates versions with pv.upload_id = NULL, so the uploads join cannot match on zip_name. 
+        # In that case, treat the project-level metadata as authoritative.
+        if not row:
+            row = conn.execute(
+                """
+                SELECT 1
+                FROM projects p
+                WHERE p.user_id = ?
+                  AND p.display_name = ?
+                  AND p.project_type = 'code'
+                  AND p.classification = 'collaborative'
+                LIMIT 1
+                """,
+                (user_id, project_name),
+            ).fetchone()
     except Exception:
         row = None
 
@@ -62,7 +89,7 @@ def resolve_repo_for_project(
         if DEBUG:
             print(
                 f"[debug] {project_name}: not marked collaborative/code in "
-                "project_classifications; skipping repo resolution"
+                "projects metadata; skipping repo resolution"
             )
         return None
 
@@ -150,53 +177,6 @@ def _match_git_path(db_path: str, git_paths: set[str]) -> str | None:
             return gp
     return None
 
-
-
-# ------------------------------------------------------------
-# 2. user_github table + identity
-# ------------------------------------------------------------
-def ensure_user_github_table(conn: sqlite3.Connection) -> None:
-    ensure_table(
-        conn,
-        "user_github",
-        """
-        CREATE TABLE IF NOT EXISTS user_github (
-            user_id     INTEGER NOT NULL,
-            email       TEXT,
-            name        TEXT,
-            created_at  TEXT DEFAULT (datetime('now')),
-            UNIQUE(user_id, email, name)
-        )
-        """,
-    )
-
-
-def load_user_github(conn: sqlite3.Connection, user_id: int) -> Dict[str, set]:
-    emails, names = set(), set()
-    cur = conn.execute("SELECT email, name FROM user_github WHERE user_id = ?", (user_id,))
-    for em, nm in cur.fetchall():
-        if em:
-            emails.add(em.strip().lower())
-        if nm:
-            names.add(nm.strip().lower())
-    return {"emails": emails, "names": names}
-
-
-def save_user_github(conn: sqlite3.Connection, user_id: int, emails: List[str], names: List[str]) -> None:
-    cur = conn.cursor()
-    for em in set(e.strip().lower() for e in emails if e.strip()):
-        cur.execute(
-            "INSERT OR IGNORE INTO user_github(user_id, email, name) VALUES (?, ?, NULL)",
-            (user_id, em),
-        )
-    for nm in set(n.strip() for n in names if n.strip()):
-        cur.execute(
-            "INSERT OR IGNORE INTO user_github(user_id, email, name) VALUES (?, NULL, ?)",
-            (user_id, nm),
-        )
-    conn.commit()
-    
-    print("\nSaved your identity for future runs")
 
 
 def collect_repo_authors(repo_dir: str) -> List[Tuple[str, str, int]]:

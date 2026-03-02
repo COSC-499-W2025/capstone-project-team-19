@@ -3,6 +3,7 @@ from typing import Any, List, Optional, Dict
 
 class ProjectListItemDTO(BaseModel):
     project_summary_id: int
+    project_key: Optional[int] = None
     project_name: str
     project_type: Optional[str] = None
     project_mode: Optional[str] = None
@@ -13,6 +14,7 @@ class ProjectListDTO(BaseModel):
 
 class ProjectDetailDTO(BaseModel):
     project_summary_id: int
+    project_key: Optional[int] = None
     project_name: str
     project_type: Optional[str] = None
     project_mode: Optional[str] = None

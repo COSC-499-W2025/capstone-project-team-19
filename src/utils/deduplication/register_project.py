@@ -5,6 +5,7 @@ from src.db import (
     find_existing_version_by_strict_fp,
     find_existing_version_by_loose_fp,
     get_latest_versions,
+    get_project_key,
     get_hash_set_for_version,
     get_relpath_set_for_version,
     insert_project,
@@ -22,6 +23,20 @@ def register_project(conn, user_id: int, display_name: str, project_root: str, u
     if dupl_strict:
         project_key, version_key = dupl_strict
         return {"kind": "duplicate", "project_key": project_key, "version_key": version_key}
+
+    # 1b. Project names are unique per user (projects.user_id + display_name).
+    # If this name already exists, we must treat this upload as a new version of that project.
+    existing_name_pk = get_project_key(conn, user_id, display_name)
+    if existing_name_pk is not None:
+        with conn:
+            vk = insert_project_version(conn, int(existing_name_pk), upload_id, fp_strict, fp_loose)
+            insert_version_files(conn, vk, entries)
+        return {
+            "kind": "new_version",
+            "project_key": int(existing_name_pk),
+            "version_key": vk,
+            "forced_by_name": True,
+        }
 
     # 2. Check for content-only match: same files, possibly different structure/names
     # This handles cases where files are renamed or restructured

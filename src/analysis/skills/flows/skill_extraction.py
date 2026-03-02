@@ -8,7 +8,7 @@ This file must:
 
 import sqlite3
 import os
-from src.db import get_project_metadata, has_contribution_data, get_user_contributed_files
+from src.db import get_project_metadata, get_latest_version_key, has_contribution_data, get_user_contributed_files
 from src.utils.helpers import _fetch_files
 from src.analysis.skills.flows.code_skill_extraction import extract_code_skills
 try:
@@ -16,10 +16,16 @@ try:
 except ModuleNotFoundError:
     import constants
 
-def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
+def extract_skills(
+    conn: sqlite3.Connection,
+    user_id: int,
+    project_name: str,
+    version_key: int | None = None,
+):
     """
     Unified entry point for extracting skills from any project.
     Determines project type + classification and routes to the appropriate skill extractor.
+    When version_key is provided, uses that version's files (avoids wrong paths for multi-version uploads).
     """
 
     classification, project_type = get_project_metadata(conn, user_id, project_name)
@@ -28,7 +34,9 @@ def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
         print(f"[SKILLS] Cannot extract skills for '{project_name}' (missing metadata).")
         return
 
-    files = _fetch_files(conn, user_id, project_name, only_text=(project_type == "text"))
+    # Use provided version_key or latest, so we scope to the correct version's files
+    vk = version_key or get_latest_version_key(conn, user_id, project_name)
+    files = _fetch_files(conn, user_id, project_name, only_text=(project_type == "text"), version_key=vk)
     if not files:
         print(f"[SKILLS] No files found for '{project_name}'. Skipping skill extraction.")
         return
@@ -41,10 +49,15 @@ def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
             # Filter files to only include those the user contributed to
             original_count = len(files)
 
-            # Match by filename (basename) since file_path formats might differ
+            # Match by filename (basename) since file_path formats might differ.
+            # Normalize backslashes (Windows) before extracting basename so
+            # the comparison works on all platforms.
+            def _basename(p: str) -> str:
+                return p.replace("\\", "/").split("/")[-1]
+
             files = [
                 f for f in files
-                if any(os.path.basename(f.get("file_path", "")) == os.path.basename(contrib_path)
+                if any(_basename(f.get("file_path", "")) == _basename(contrib_path)
                        for contrib_path in contributed_files)
             ]
 
@@ -64,7 +77,7 @@ def extract_skills(conn: sqlite3.Connection, user_id: int, project_name: str):
     if project_type == "code":
         import time
         start = time.time()
-        extract_code_skills(conn, user_id, project_name, classification, files)
+        extract_code_skills(conn, user_id, project_name, classification, files, version_key=vk)
 
         end = time.time()
         if constants.VERBOSE:

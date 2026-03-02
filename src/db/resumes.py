@@ -95,11 +95,12 @@ def delete_resume_snapshot(
     conn: sqlite3.Connection,
     user_id: int,
     resume_id: int,
-) -> None:
+) -> bool:
     """
     Permanently delete a resume snapshot for a user.
+    Returns True if a row was deleted, False otherwise.
     """
-    conn.execute(
+    cur = conn.execute(
         """
         DELETE FROM resume_snapshots
         WHERE user_id = ? AND id = ?
@@ -107,3 +108,19 @@ def delete_resume_snapshot(
         (user_id, resume_id),
     )
     conn.commit()
+    return cur.rowcount > 0
+
+
+def delete_all_user_resumes(conn: sqlite3.Connection, user_id: int) -> int:
+    """
+    Delete all resume snapshots for a user. Returns count of deleted resumes.
+    """
+    cur = conn.execute(
+        """
+        DELETE FROM resume_snapshots
+        WHERE user_id = ?
+        """,
+        (user_id,),
+    )
+    conn.commit()
+    return cur.rowcount

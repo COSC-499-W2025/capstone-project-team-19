@@ -150,3 +150,108 @@ def test_upload_loose_match_may_trigger_needs_dedup_and_resolve_endpoint_behaves
 
     _cleanup_upload_artifacts(state1)
     _cleanup_upload_artifacts(state2)
+
+
+def test_resolve_dedup_backfills_version_key_for_ask_case(client, auth_headers, seed_conn):
+    """
+    Deterministic 'ask' reproduction:
+    - Upload 1 registers a baseline project/version
+    - Upload 2 has identical content but different filenames -> loose fingerprint matches -> 'ask'
+    Then resolving as new_version should:
+      - rename the project's files to the existing project name
+      - backfill files.version_key for this upload's rows
+      - update state.dedup_version_keys / state.dedup_project_keys
+    """
+    # Baseline upload (creates a project + version)
+    base_files = {
+        "BaseProj/a.txt": "same-A",
+        "BaseProj/b.txt": "same-B",
+    }
+    zip1 = _make_zip_bytes(base_files)
+    res1 = client.post(
+        "/projects/upload",
+        headers=auth_headers,
+        files={"file": ("base.zip", zip1, "application/zip")},
+    )
+    assert res1.status_code == 200
+    upload1 = _advance_past_blocks(client, auth_headers, res1.json()["data"])
+    _cleanup_upload_artifacts((upload1.get("state") or {}))
+
+    # Variant upload: identical contents, different file paths -> triggers loose-fp 'ask'
+    variant_files = {
+        "VariantProj/x.txt": "same-A",
+        "VariantProj/y.txt": "same-B",
+    }
+    zip2 = _make_zip_bytes(variant_files)
+    res2 = client.post(
+        "/projects/upload",
+        headers=auth_headers,
+        files={"file": ("variant.zip", zip2, "application/zip")},
+    )
+    assert res2.status_code == 200
+    upload2 = res2.json()["data"]
+    state2 = upload2.get("state") or {}
+    upload_id = upload2["upload_id"]
+
+    assert upload2["status"] == "needs_dedup"
+    asks = state2.get("dedup_asks") or {}
+    assert "VariantProj" in asks
+    assert asks["VariantProj"].get("existing") == "BaseProj"
+
+    # Before resolve: ask-case files are not yet inserted into the versioned-only `files` table.
+    versions_before = seed_conn.execute(
+        """
+        SELECT COUNT(*) AS n
+        FROM project_versions pv
+        JOIN projects p ON p.project_key = pv.project_key
+        WHERE p.user_id = 1 AND p.display_name = 'BaseProj'
+        """,
+    ).fetchone()
+    assert int(versions_before["n"]) == 1
+
+    # Resolve as new_version; this should rename VariantProj -> BaseProj and attach version_key.
+    resolved_res = client.post(
+        f"/projects/upload/{upload_id}/dedup/resolve",
+        headers=auth_headers,
+        json={"decisions": {"VariantProj": "new_version"}},
+    )
+    assert resolved_res.status_code == 200
+    resolved = resolved_res.json()["data"]
+    resolved_state = resolved.get("state") or {}
+
+    # State should now have keys for BaseProj for this upload
+    assert isinstance((resolved_state.get("dedup_project_keys") or {}).get("BaseProj"), int)
+    assert isinstance((resolved_state.get("dedup_version_keys") or {}).get("BaseProj"), int)
+
+    # After resolve: BaseProj should have a new version, and the latest version should have files.
+    versions_after = seed_conn.execute(
+        """
+        SELECT COUNT(*) AS n
+        FROM project_versions pv
+        JOIN projects p ON p.project_key = pv.project_key
+        WHERE p.user_id = 1 AND p.display_name = 'BaseProj'
+        """,
+    ).fetchone()
+    assert int(versions_after["n"]) >= 2
+
+    latest_vk = seed_conn.execute(
+        """
+        SELECT pv.version_key
+        FROM project_versions pv
+        JOIN projects p ON p.project_key = pv.project_key
+        WHERE p.user_id = 1 AND p.display_name = 'BaseProj'
+        ORDER BY pv.version_key DESC
+        LIMIT 1
+        """,
+    ).fetchone()
+    assert latest_vk is not None
+    latest_vk = int(latest_vk[0])
+
+    latest_files = seed_conn.execute(
+        "SELECT COUNT(*) AS n FROM files WHERE user_id = 1 AND version_key = ?",
+        (latest_vk,),
+    ).fetchone()
+    assert int(latest_files["n"]) == 2
+
+    _cleanup_upload_artifacts(state2)
+    _cleanup_upload_artifacts(resolved_state)

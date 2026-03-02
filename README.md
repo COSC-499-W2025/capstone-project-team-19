@@ -163,7 +163,7 @@ After arranging your files, zip the root folder (e.g., zip `my-workspace/` into 
 This project optionally supports Google Drive analysis through the Google Drive API.
 All access is strictly consent-based and is not required for a project to be analyzed.
 
-### For Course Evaluators (TAs)
+### For Course Evaluators (TAs) and Team Members
 
 Google Drive integration **can be tested by course evaluators**.
 
@@ -196,10 +196,19 @@ Configure OAuth Consent Screen
 7. Select "I agree to the Google API Services: User Data Policy. ", Click "Continue"
 8. Click save
 
-Create OAuth Credentials
+Add Yourself as a Test User
+1. Go to APIs & Services -> OAuth consent screen
+2. Find the "Test users" section
+3. Click "+ Add users"
+4. Enter your Google email address (the one you will use to authorize)
+5. Click Save
+
+> Note: While the app is in "Testing" mode, only emails listed as test users can authorize — even if you are the project owner. This applies to both the CLI and web OAuth flows.
+
+Create OAuth Credentials (Desktop — for CLI analysis)
 1. Go to APIs & Services -> Credentials
 2. Click "+ Create Credentials" -> OAuth client ID
-3. Choose Desktop app
+3. Choose **Desktop app**
 4. Name it anything
 5. Click "Create"
 6. Click "Download JSON"
@@ -209,25 +218,27 @@ Placing the Credentials file within the project
 1. Place the file so its path is: `src/integrations/google_drive/google_drive_auth/credentials.json`
 2. Verify the path is correct before running the application.
 
+Create OAuth Credentials (Web — for API endpoints)
+1. Go to APIs & Services -> Credentials
+2. Click "+ Create Credentials" -> OAuth client ID
+3. Choose **Web application**
+4. Name it anything (e.g. "Capstone Web OAuth")
+5. Under "Authorized redirect URIs", add: `http://localhost:8000/auth/google/callback`
+6. Click "Create"
+7. Copy the **Client ID** and **Client Secret**
+8. Add them to your `.env` file:
+   ```
+   GOOGLE_CLIENT_ID=<your-client-id>
+   GOOGLE_CLIENT_SECRET=<your-client-secret>
+   GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
+   ```
+
 If credentials are not provided, the system will fall back to local-only analysis,
 and all core functionality will remain available.
 
-> Note: Google Drive OAuth requires the evaluator’s email to be a Google account (e.g., Gmail).
+> Note: Google Drive OAuth requires the user’s email to be a Google account (e.g., Gmail).
 
 
-### For Team Development Use
-Each team member has been added as a test user in the Google Drive API project
-using the email associated with the **"COSC 499 - GROUP 19"** shared Google Drive folder.
-
-To enable Google Drive integration locally:
-
-1. Obtain `credentials.json` from the team (via private communication).
-2. Place the file at: `src/integrations/google_drive/google_drive_auth/credentials.json`
-3. Verify the path is correct before running the application.
-
-> **Security Note**  
-> `credentials.json` contains sensitive OAuth credentials.  
-> This file is included in `.gitignore` and must never be committed to version control.
 
 ## Environment Variables and OAuth Setup
 
@@ -329,6 +340,182 @@ If no Groq API key is provided, the system will fall back to local-only analysis
 
 4. **Zip the folder**
    - From the **root**, compress it into a `.zip`.
+
+## Project Versioning
+
+The system supports multiple versions of the same project (e.g., re-uploads). When you upload a ZIP:
+
+- **Re-upload of identical content** – Automatically skipped (no duplicate analysis).
+- **Re-upload with changes** – You can choose: **skip**, **new project** (treat as separate), or **new version** (add as a new run of the same project).
+- Each version gets a `version_key`; files and metrics are stored per version.
+- In the API, use `project_key` and `version_key` from `state.dedup_project_keys` and `state.dedup_version_keys` when working with upload flow.
+
+## Test Data
+
+All test data files are located in the `test-data/` directory.
+
+### Versioned Project (Two Snapshots of the Same Project)
+
+These two zips represent the same collaborative code project at different points in time. Upload v1 first, then v2 to test versioning and deduplication.
+
+**v1: Early snapshot** (`test-data/code_collab_proj_v1.zip`):
+A Flask-based task management API with basic models, routes, and one test file (8 files total).
+
+```
+v1_root/
+└── code_collab_proj/
+    ├── app/
+    │   ├── __init__.py
+    │   ├── models.py          # Task, User, Project models
+    │   ├── task_service.py    # Basic CRUD service
+    │   └── routes.py          # REST endpoints
+    ├── test/
+    │   ├── __init__.py
+    │   └── test_models.py
+    ├── doc/
+    │   └── README.md
+    └── requirements.txt
+```
+
+**v2: Later snapshot** (`test-data/code_collab_proj_v2.zip`):
+The same project with expanded models, a new comment system, utility helpers, and additional tests (12 files total).
+
+```
+v2_root/
+└── code_collab_proj/
+    ├── app/
+    │   ├── __init__.py
+    │   ├── models.py            # Expanded: Comment, Priority enum added
+    │   ├── task_service.py      # Enhanced: filtering, sorting, statistics
+    │   ├── comment_service.py   # NEW: comment threading system
+    │   ├── utils.py             # NEW: date/slug/pagination helpers
+    │   └── routes.py            # Expanded: comment + stats endpoints
+    ├── test/
+    │   ├── __init__.py
+    │   ├── test_models.py       # Expanded: comment + priority tests
+    │   ├── test_task_service.py # NEW: service layer tests
+    │   └── test_utils.py        # NEW: utility function tests
+    ├── doc/
+    │   └── README.md            # Updated with new endpoints
+    └── requirements.txt
+```
+
+**How to test versioning:**
+
+1. Run `python -m src.main`
+2. Enter a username (e.g. `test_user`)
+3. Choose option `1` (Analyze new project)
+4. Accept consent (`y`), decline external services (`n`), decline verbose (`n`)
+5. Enter path: `test-data/code_collab_proj_v1.zip`
+6. Classify as collaborative (`c`), code project (`c`)
+7. When prompted, use these suggested answers:
+   - **Project summary:** `A Flask task management API with CRUD operations`
+   - **Your contribution:** `Built the task service layer and REST API routes`
+   - **Enhance with GitHub data:** `n`
+   - **Your role:** `Backend Developer`
+8. After v1 completes, choose option `1` again and upload `test-data/code_collab_proj_v2.zip`
+9. The system will detect it as a version of the same project — choose `v` (new version)
+10. Answer the same prompts with updated descriptions:
+    - **Project summary:** `A Flask task management API with comments and enhanced filtering`
+    - **Your contribution:** `Added the comment system and utility helpers`
+    - **Enhance with GitHub data:** `n`
+    - **Your role:** `Backend Developer`
+
+### Multi-Project Upload (Individual + Collaborative, Code + Text)
+
+A single zip containing four projects covering all combinations of project type and mode (`test-data/multi_project_test_data.zip`).
+
+```
+multi_root/
+├── code_indiv_proj/        # Individual code project
+│   ├── src/
+│   │   ├── calculator.py   # Scientific calculator module
+│   │   ├── converter.py    # Unit converter module
+│   │   └── __init__.py
+│   ├── test/
+│   │   ├── test_calculator.py
+│   │   ├── test_converter.py
+│   │   └── __init__.py
+│   ├── doc/
+│   │   └── README.md
+│   └── requirements.txt
+│
+├── code_collab_proj/       # Collaborative code project
+│   ├── app/
+│   │   ├── models.py           # Inventory data models
+│   │   ├── inventory_service.py # Business logic
+│   │   ├── routes.py           # Flask API endpoints
+│   │   └── __init__.py
+│   ├── test/
+│   │   ├── test_inventory.py
+│   │   └── __init__.py
+│   ├── doc/
+│   │   └── README.md
+│   └── requirements.txt
+│
+├── text_indiv_proj/        # Individual text project
+│   ├── research_paper.txt  # Main document (remote work study)
+│   ├── notes.txt           # Supporting notes
+│   └── survey_results.csv  # Survey data
+│
+└── text_collab_proj/       # Collaborative text project
+    ├── project_proposal.txt
+    ├── design_document.txt # Main document
+    ├── meeting_minutes.txt
+    └── task_tracking.csv
+```
+
+**How to test multi-project upload:**
+
+1. Run `python -m src.main`
+2. Enter a username (e.g. `multi_test_user`)
+3. Choose option `1` (Analyze new project)
+4. Accept consent (`y`), decline external services (`n`), decline verbose (`n`)
+5. Enter path: `test-data/multi_project_test_data.zip`
+6. The system may detect similarity between code projects — choose `n` (new project)
+7. Classify as mixed (`m`), then for each project:
+   - `code_collab_proj` → `c` (collaborative)
+   - `code_indiv_proj` → `i` (individual)
+   - `text_collab_proj` → `c` (collaborative)
+   - `text_indiv_proj` → `i` (individual)
+8. When asked about project type for code projects (they contain both code and text files), choose `c` (code)
+
+**Individual projects run first.** Use these suggested answers:
+
+| Prompt | Suggested answer |
+|--------|-----------------|
+| Connect to GitHub? | `n` |
+| Project summary (code_indiv_proj) | `A Python utility library with calculator and unit converter` |
+| Your work on code_indiv_proj | `Built the calculator and converter modules with full test coverage` |
+| Your role on code_indiv_proj | `Developer` |
+| Main file selection (text_indiv_proj) | Press Enter (auto-selects largest) |
+| Summary for text file | `A research paper on remote work and developer productivity` |
+| Your work on text_indiv_proj | `Wrote the research paper and collected survey data` |
+| Your role on text_indiv_proj | `Lead Author` |
+
+**Collaborative projects run second.** Use these suggested answers:
+
+| Prompt | Suggested answer |
+|--------|-----------------|
+| Project summary (code_collab_proj) | `An inventory management REST API built with Flask` |
+| Your contribution to code_collab_proj | `Implemented the inventory service layer and API routes` |
+| Enhance with GitHub data? | `n` |
+| Your role on code_collab_proj | `Backend Developer` |
+| Connect Google Drive? (text_collab_proj) | `n` |
+| Main file selection | Press Enter (auto-selects largest) |
+| Summary for text file | Press Enter (skip) |
+| Sections you worked on | `1` |
+| Your contribution to text_collab_proj | `Wrote the technical design document and task tracking` |
+| Supporting TEXT files | `1` |
+| CSV files | `1` |
+| Contribution types (comma-separated) | `1,3` (Writing, Research) |
+| Your role on text_collab_proj | `Project Manager` |
+
+After all analyses complete, the system returns to the main menu. You can then:
+- **Option 2**: View project summaries for all 4 projects
+- **Option 3**: Create a resume (aggregates top projects)
+- **Option 4**: View portfolio (ranked project cards)
+- **Option 7**: View all projects ranked by importance
 
 ## System Architecture Diagram
 

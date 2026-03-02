@@ -18,3 +18,10 @@ IGNORE_FILE_SUFFIXES = {
     ".o", ".a", ".so", ".dll", ".dylib",
     ".exe",
 }
+
+IGNORE_FILES = {
+    ".DS_Store",        # macOS folder metadata
+    "Thumbs.db",        # Windows thumbnail cache
+    "desktop.ini",      # Windows folder settings
+    ".thumbs",          # Linux thumbnail metadata
+}

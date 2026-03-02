@@ -3,6 +3,9 @@ from __future__ import annotations
 import sqlite3
 from typing import Any, Dict, Optional
 
+from .projects import get_project_key
+from .deduplication import insert_project
+
 
 def delete_code_activity_metrics_for_project(
     conn: sqlite3.Connection,
@@ -13,21 +16,24 @@ def delete_code_activity_metrics_for_project(
     """
     Delete existing code activity metrics for a given user + project + scope.
     """
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return
     conn.execute(
         """
         DELETE FROM code_activity_metrics
         WHERE user_id = ?
-          AND project_name = ?
+          AND project_key = ?
           AND scope = ?
         """,
-        (user_id, project_name, scope),
+        (user_id, pk, scope),
     )
 
 
 def insert_code_activity_metric(
     conn: sqlite3.Connection,
     user_id: int,
-    project_name: str,
+    project_key: int,
     scope: str,
     source: str,        # 'files', 'prs', or 'combined'
     activity_type: str, # 'feature_coding', 'testing', ...
@@ -42,7 +48,7 @@ def insert_code_activity_metric(
         """
         INSERT INTO code_activity_metrics (
             user_id,
-            project_name,
+            project_key,
             scope,
             source,
             activity_type,
@@ -53,7 +59,7 @@ def insert_code_activity_metric(
         """,
         (
             user_id,
-            project_name,
+            project_key,
             scope,
             source,
             activity_type,
@@ -70,8 +76,10 @@ def store_code_activity_metrics(conn, user_id, summary):
     - Clears old rows for this user + project + scope
     - Inserts rows for 'files', 'prs', and 'combined'
     """
-
     project_name = summary.project_name
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        pk = insert_project(conn, user_id, project_name)
     scope = summary.scope.value  # enum → string
 
     # 1) Delete old rows
@@ -82,7 +90,7 @@ def store_code_activity_metrics(conn, user_id, summary):
         insert_code_activity_metric(
             conn,
             user_id,
-            project_name,
+            pk,
             scope,
             source="files",
             activity_type=at.value,
@@ -97,7 +105,7 @@ def store_code_activity_metrics(conn, user_id, summary):
         insert_code_activity_metric(
             conn,
             user_id,
-            project_name,
+            pk,
             scope,
             source="prs",
             activity_type=at.value,
@@ -112,7 +120,7 @@ def store_code_activity_metrics(conn, user_id, summary):
         insert_code_activity_metric(
             conn,
             user_id,
-            project_name,
+            pk,
             scope,
             source="combined",
             activity_type=at.value,
@@ -139,16 +147,19 @@ def get_code_activity_percents(
     Return {activity_type: percent} for a user+project.
     Uses code_activity_metrics table.
     """
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return {}
     rows = conn.execute(
         """
         SELECT activity_type, percent
         FROM code_activity_metrics
         WHERE user_id = ?
-          AND project_name = ?
+          AND project_key = ?
           AND source = ?
         ORDER BY percent DESC
         """,
-        (user_id, project_name, source),
+        (user_id, pk, source),
     ).fetchall()
 
     out: Dict[str, float] = {}
@@ -181,13 +192,16 @@ def get_normalized_code_metrics(
       }
     """
     if is_collaborative:
+        pk = get_project_key(conn, user_id, project_name)
+        if pk is None:
+            return None
         row = conn.execute(
             """
             SELECT commits_all, commits_yours, loc_added, loc_deleted, loc_net
             FROM code_collaborative_metrics
-            WHERE user_id = ? AND project_name = ?
+            WHERE user_id = ? AND project_key = ?
             """,
-            (user_id, project_name),
+            (user_id, pk),
         ).fetchone()
 
         if not row:
@@ -204,13 +218,16 @@ def get_normalized_code_metrics(
         }
 
     # individual
+    pk = get_project_key(conn, user_id, project_name)
+    if pk is None:
+        return None
     row = conn.execute(
         """
         SELECT total_commits, total_lines_added, total_lines_deleted, net_lines_changed
         FROM git_individual_metrics
-        WHERE user_id = ? AND project_name = ?
+        WHERE user_id = ? AND project_key = ?
         """,
-        (user_id, project_name),
+        (user_id, pk),
     ).fetchone()
 
     if not row:

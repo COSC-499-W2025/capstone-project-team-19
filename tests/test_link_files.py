@@ -64,11 +64,15 @@ def test_find_and_link_files_successful_matching(monkeypatch, conn, mock_service
     assert "Document.docx" in results['manual']
     assert "report.pdf" in results['manual']
     
-    # Verify database - should have exactly 2 entries
-    rows = conn.execute("""
-        SELECT local_file_name FROM project_drive_files
-        WHERE user_id=? AND project_name=?
-    """, (user_id, "TestProject")).fetchall()
+    # Verify database - should have exactly 2 entries (project created by store_file_link)
+    pk = conn.execute(
+        "SELECT project_key FROM projects WHERE user_id=? AND display_name=?",
+        (user_id, "TestProject"),
+    ).fetchone()[0]
+    rows = conn.execute(
+        "SELECT local_file_name FROM project_drive_files WHERE user_id=? AND project_key=?",
+        (user_id, pk),
+    ).fetchall()
     assert len(rows) == 2
 
 
@@ -107,10 +111,14 @@ def test_find_and_link_files_partial_matching(monkeypatch, conn, mock_service):
     assert "missing.pdf" in results['not_found']
     
     # Verify database - should have exactly 2 entries (one linked, one not_found)
-    rows = conn.execute("""
-        SELECT local_file_name, status FROM project_drive_files
-        WHERE user_id=? AND project_name=?
-    """, (user_id, "TestProject")).fetchall()
+    pk = conn.execute(
+        "SELECT project_key FROM projects WHERE user_id=? AND display_name=?",
+        (user_id, "TestProject"),
+    ).fetchone()[0]
+    rows = conn.execute(
+        "SELECT local_file_name, status FROM project_drive_files WHERE user_id=? AND project_key=?",
+        (user_id, pk),
+    ).fetchall()
     assert len(rows) == 2
     statuses = {row[1] for row in rows}
     assert 'manual_selected' in statuses
@@ -141,10 +149,14 @@ def test_no_duplicate_storage(monkeypatch, conn, mock_service):
     find_and_link_files(mock_service, "TestProject", ["Document.docx"], conn, user_id)
     
     # Should still have only 1 entry (old one deleted, new one inserted)
-    rows = conn.execute("""
-        SELECT local_file_name FROM project_drive_files
-        WHERE user_id=? AND project_name=? AND local_file_name=?
-    """, (user_id, "TestProject", "Document.docx")).fetchall()
+    pk = conn.execute(
+        "SELECT project_key FROM projects WHERE user_id=? AND display_name=?",
+        (user_id, "TestProject"),
+    ).fetchone()[0]
+    rows = conn.execute(
+        "SELECT local_file_name FROM project_drive_files WHERE user_id=? AND project_key=? AND local_file_name=?",
+        (user_id, pk, "Document.docx"),
+    ).fetchall()
     assert len(rows) == 1
 
 
@@ -158,12 +170,15 @@ def test_store_file_link(conn):
         "auto_matched"
     )
     
-    # Verify it was stored
-    rows = conn.execute("""
-        SELECT local_file_name, drive_file_id, status
-        FROM project_drive_files
-        WHERE user_id=? AND project_name=?
-    """, (user_id, "TestProject")).fetchall()
+    # Verify it was stored (store_file_link creates project if missing)
+    pk = conn.execute(
+        "SELECT project_key FROM projects WHERE user_id=? AND display_name=?",
+        (user_id, "TestProject"),
+    ).fetchone()[0]
+    rows = conn.execute(
+        "SELECT local_file_name, drive_file_id, status FROM project_drive_files WHERE user_id=? AND project_key=?",
+        (user_id, pk),
+    ).fetchall()
     
     assert len(rows) == 1
     assert rows[0][0] == "file1.docx"
@@ -180,10 +195,14 @@ def test_store_file_link_not_found_status(conn):
         "NOT_FOUND", None, None, "not_found"
     )
     
-    rows = conn.execute("""
-        SELECT status FROM project_drive_files
-        WHERE user_id=? AND project_name=? AND local_file_name=?
-    """, (user_id, "TestProject", "missing.docx")).fetchall()
+    pk = conn.execute(
+        "SELECT project_key FROM projects WHERE user_id=? AND display_name=?",
+        (user_id, "TestProject"),
+    ).fetchone()[0]
+    rows = conn.execute(
+        "SELECT status FROM project_drive_files WHERE user_id=? AND project_key=? AND local_file_name=?",
+        (user_id, pk, "missing.docx"),
+    ).fetchall()
     
     assert len(rows) == 1
     assert rows[0][0] == "not_found"

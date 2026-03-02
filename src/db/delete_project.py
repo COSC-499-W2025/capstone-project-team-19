@@ -9,60 +9,209 @@ def delete_project_everywhere(
     project_name: str,
 ) -> None:
     """
-    Hard-delete all stored data for a (user_id, project_name) pair.
+    Hard-delete all stored data for a (user_id, project_name) pair, INCLUDING dedup tables.
 
     This removes:
-      - project_classifications (and any CASCADE-linked metric tables)
-      - project_summaries, project_skills
+      - dedup registry (projects, project_versions, version_files), which cascades into version_key-keyed metric tables
+      - project_summaries, project_skills, project_feedback, project_rankings, thumbnails
       - files/config_files
       - per-project activity metrics
       - GitHub + Drive + code contribution tables
+      - dedup registry: projects, project_versions, version_files
 
-    NOTE: This does *not* touch github_accounts or other user-level auth tables.
+    NOTE: Does not touch user-level auth tables (github_accounts, user_tokens, etc.).
     """
 
-    cur = conn.cursor()
+    # Strongly recommended globally in your DB init, but harmless to run here too:
+    # conn.execute("PRAGMA foreign_keys = ON;")
 
-    # 1) Delete classification rows (cascades into non_llm_text, non_llm_code_individual,
-    #    text_activity_contribution, etc. via FK).
-    cur.execute(
-        """
-        DELETE FROM project_classifications
-        WHERE user_id = ? AND project_name = ?
-        """,
-        (user_id, project_name),
-    )
+    with conn:
+        cur = conn.cursor()
 
-    # 2) Tables keyed directly by (user_id, project_name)
-    tables_user_project = [
-        "files",
-        "config_files",
-        "project_summaries",
-        "project_skills",
-        "text_contribution_summary",
-        "project_repos",
-        "project_drive_files",
-        "user_code_contributions",
-        "code_activity_metrics",
-        "code_collaborative_metrics",
-        "code_collaborative_summary",
-        "github_repo_metrics",
-        "github_collaboration_profiles",
-        "github_issues",
-        "github_issue_comments",
-        "github_pull_requests",
-        "github_commit_timestamps",
-        "github_pr_reviews",
-        "github_pr_review_comments",
-    ]
+        # ---------------------------------------------------------------------
+        # 0) Delete dedup registry for this display name (projects/version_files)
+        # ---------------------------------------------------------------------
+        # projects has no UNIQUE(user_id, display_name), so handle multiple matches safely.
+        project_keys = [
+            row[0]
+            for row in cur.execute(
+                """
+                SELECT project_key
+                FROM projects
+                WHERE user_id = ? AND display_name = ?
+                """,
+                (user_id, project_name),
+            ).fetchall()
+        ]
 
-    for table in tables_user_project:
+        for pk in project_keys:
+            # Tables keyed by (user_id, project_key). Explicit deletes so deletion works even when
+            # PRAGMA foreign_keys is OFF (e.g. some test connections). When FK is ON, CASCADE would also remove these, redundant but safe.
+            cur.execute(
+                "DELETE FROM project_skills WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_summaries WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_feedback WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_rankings WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_thumbnails WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM config_files WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM text_contribution_summary WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_repos WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM project_drive_files WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM user_code_contributions WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM git_individual_metrics WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM code_collaborative_summary WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM code_collaborative_metrics WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM code_activity_metrics WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_repo_metrics WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_collaboration_profiles WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_issues WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_issue_comments WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_pull_requests WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_commit_timestamps WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_pr_reviews WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+            cur.execute(
+                "DELETE FROM github_pr_review_comments WHERE user_id = ? AND project_key = ?",
+                (user_id, pk),
+            )
+
+            # Delete version_files first (depends on project_versions), then versions, then project row
+            cur.execute(
+                """
+                DELETE FROM version_files
+                WHERE version_key IN (
+                    SELECT version_key FROM project_versions WHERE project_key = ?
+                )
+                """,
+                (pk,),
+            )
+            cur.execute("DELETE FROM project_versions WHERE project_key = ?", (pk,))
+            cur.execute("DELETE FROM projects WHERE project_key = ?", (pk,))
+
+        # ---------------------------------------------------------------------
+        # 1) Tables keyed directly by (user_id, project_name)
+        # ---------------------------------------------------------------------
+        # files table is versioned-only; deleted via CASCADE when project_versions are removed above.
+        tables_user_project: list[str] = []
+
+        for table in tables_user_project:
+            cur.execute(
+                f"DELETE FROM {table} WHERE user_id = ? AND project_name = ?",
+                (user_id, project_name),
+            )
+
+        # ---------------------------------------------------------------------
+        # 2) Optional DB hygiene (safe even if nothing is orphaned)
+        # ---------------------------------------------------------------------
+        # If earlier deletes left orphan rows due to FK settings, this cleans them.
         cur.execute(
-            f"""
-            DELETE FROM {table}
-            WHERE user_id = ? AND project_name = ?
-            """,
-            (user_id, project_name),
+            """
+            DELETE FROM project_versions
+            WHERE project_key NOT IN (SELECT project_key FROM projects)
+            """
+        )
+        cur.execute(
+            """
+            DELETE FROM version_files
+            WHERE version_key NOT IN (SELECT version_key FROM project_versions)
+            """
         )
 
-    conn.commit()
+
+def delete_all_user_projects(conn: sqlite3.Connection, user_id: int) -> int:
+    """
+    Delete all projects for a user. Returns count of deleted projects.
+
+    Deletes from both project_summaries and orphaned entries in the projects
+    table (deduplication data from uploads that never completed analysis).
+    """
+    from src.db.project_summaries import get_project_summaries_list
+
+    # Get project names from project_summaries
+    summaries = get_project_summaries_list(conn, user_id)
+    summary_names = {p["project_name"] for p in summaries}
+
+    # Get orphaned project names from projects table (dedup data without summaries)
+    orphan_rows = conn.execute(
+        """
+        SELECT p.display_name
+        FROM projects p
+        WHERE p.user_id = ?
+        AND NOT EXISTS (
+            SELECT 1
+            FROM project_summaries ps
+            WHERE ps.user_id = p.user_id
+                AND ps.project_key = p.project_key
+        );
+        """,
+            (user_id,),
+    ).fetchall()
+    orphan_names = {row[0] for row in orphan_rows}
+
+    # Combine and delete all
+    all_names = summary_names | orphan_names
+    for project_name in all_names:
+        delete_project_everywhere(conn, user_id, project_name)
+
+    return len(all_names)

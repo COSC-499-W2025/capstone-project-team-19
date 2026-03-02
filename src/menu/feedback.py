@@ -3,10 +3,35 @@ from typing import List, Dict, Any, Optional
 
 
 NO_FEEDBACK_MSG = (
-    "Feedbacks for Code-based projects coming soon. "
-    "This system currently only gives feedback for Text-based projects."
+    "No feedback found for this project yet. "
 )
 
+_ACRONYMS = {"ci", "api", "db", "ui", "ml", "ai", "sql", "jwt"}
+
+def _format_category(name: str) -> str:
+    """
+    Format DB category keys into user-friendly headings.
+    Examples:
+      "object_oriented_programming" -> "Object Oriented Programming"
+      "ci_workflows" -> "CI Workflows"
+      "" -> "General"
+    """
+    if not name or not name.strip():
+        return "General"
+
+    cleaned = name.strip().replace("_", " ").replace("-", " ")
+    cleaned = " ".join(cleaned.split())  # collapse extra whitespace
+
+    words = []
+    for w in cleaned.split(" "):
+        wl = w.lower()
+        if wl in _ACRONYMS:
+            words.append(w.upper())
+        else:
+            # capitalize first letter, keep rest lowercase
+            words.append(w.capitalize())
+
+    return " ".join(words)
 
 # --------------------------------------------------------------------
 # DB helpers (inline so this script works even if you don't have these yet)
@@ -20,29 +45,32 @@ def get_projects_list_for_feedback(conn, user_id: int) -> List[Dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT
-            project_name,
-            project_type,
-            project_mode,
-            created_at
-        FROM project_summaries
-        WHERE user_id = ?
-        ORDER BY datetime(created_at) DESC
+            p.project_key,
+            p.display_name AS project_name,
+            ps.project_type,
+            ps.project_mode,
+            ps.created_at
+        FROM project_summaries ps
+        JOIN projects p ON ps.project_key = p.project_key
+        WHERE ps.user_id = ?
+        ORDER BY datetime(ps.created_at) DESC;
         """,
         (user_id,),
     ).fetchall()
 
     return [
         {
-            "project_name": r[0],
-            "project_type": r[1],
-            "project_mode": r[2],
-            "created_at": r[3],
+            "project_key": r[0],
+            "project_name": r[1],
+            "project_type": r[2],
+            "project_mode": r[3],
+            "created_at": r[4],
         }
         for r in rows
     ]
 
 
-def get_project_feedback_suggestions(conn, user_id: int, project_name: str) -> List[Dict[str, Any]]:
+def get_project_feedback_suggestions(conn, user_id: int, project_key: int) -> List[Dict[str, Any]]:
     """
     Pull all feedback rows for a given project.
     We print only 'suggestion', grouped by skill_name.
@@ -55,10 +83,10 @@ def get_project_feedback_suggestions(conn, user_id: int, project_name: str) -> L
                 COALESCE(suggestion, '') AS suggestion
             FROM project_feedback
             WHERE user_id = ?
-              AND project_name = ?
+              AND project_key = ?
             ORDER BY skill_name COLLATE NOCASE, suggestion COLLATE NOCASE
             """,
-            (user_id, project_name),
+            (user_id, project_key),
         ).fetchall()
 
         return [{"skill_name": r[0] or "", "suggestion": r[1] or ""} for r in rows]
@@ -70,9 +98,9 @@ def get_project_feedback_suggestions(conn, user_id: int, project_name: str) -> L
             SELECT COALESCE(suggestion, '') AS suggestion
             FROM project_feedback
             WHERE user_id = ?
-              AND project_name = ?
+              AND project_key = ?
             """,
-            (user_id, project_name),
+            (user_id, project_key),
         ).fetchall()
 
         return [{"skill_name": "", "suggestion": r[0] or ""} for r in rows]
@@ -108,7 +136,7 @@ def view_project_feedback(conn, user_id: int, username: str):
             print(f"{idx}. {p['project_name']} ({project_mode} {project_type} Project, Analyzed: {created_at})")
 
         if len(projects) == 1:
-            display_project_feedback(conn, user_id, projects[0]["project_name"])
+            display_project_feedback(conn, user_id, projects[0]["project_key"], projects[0]["project_name"])
             input("\nPress Enter to return to main menu...")
             return None
 
@@ -125,7 +153,7 @@ def view_project_feedback(conn, user_id: int, username: str):
             idx = int(choice)
             if 1 <= idx <= len(projects):
                 selected_project = projects[idx - 1]
-                display_project_feedback(conn, user_id, selected_project["project_name"])
+                display_project_feedback(conn, user_id, selected_project["project_key"], selected_project["project_name"])
 
                 print("\n" + "-" * 60)
                 continue_choice = input("\nView feedback for another project? (y/n): ").strip().lower()
@@ -138,14 +166,14 @@ def view_project_feedback(conn, user_id: int, username: str):
             print("Invalid input. Please enter a number or 'q' to quit.")
 
 
-def display_project_feedback(conn, user_id: int, project_name: str):
+def display_project_feedback(conn, user_id: int, project_key: int, project_display_name: str):
     """
     Display all feedback suggestions for a specific project.
     """
-    rows = get_project_feedback_suggestions(conn, user_id, project_name)
+    rows = get_project_feedback_suggestions(conn, user_id, project_key)
 
     print("\n" + "=" * 60)
-    print(f"PROJECT FEEDBACK: {project_name}")
+    print(f"PROJECT FEEDBACK: {project_display_name}")
     print("=" * 60)
 
     if not rows:
@@ -167,17 +195,17 @@ def display_project_feedback(conn, user_id: int, project_name: str):
             print(textwrap.fill(f"• {suggestion}", width=80, subsequent_indent="  "))
         return
 
-    current_skill = None
+    current_group = None
     for r in rows:
         skill_name = (r.get("skill_name") or "").strip()
         suggestion = (r.get("suggestion") or "").strip()
-
         if not suggestion:
             continue
 
-        if skill_name != current_skill:
-            current_skill = skill_name
-            print(f"\n{current_skill if current_skill else 'General'}:")
+        group_header = _format_category(skill_name)
+
+        if group_header != current_group:
+            current_group = group_header
+            print(f"\n{current_group}:")
 
         print(textwrap.fill(f"• {suggestion}", width=80, subsequent_indent="  "))
-

@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-import os
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from src.db import (
-    upsert_project_thumbnail,
+    get_project_key,
     get_project_thumbnail_path,
-    delete_project_thumbnail,
+    store_thumbnail,
+    delete_thumbnail_and_file,
 )
-from src.utils.image_utils import validate_image_path, save_standardized_thumbnail
 
 
 def _select_project_from_ranked_list(conn, user_id: int) -> str | None:
@@ -76,7 +75,12 @@ def manage_project_thumbnails(conn, user_id: int, username: str) -> None:
         if project_name is None:
             continue
 
-        existing = get_project_thumbnail_path(conn, user_id, project_name)
+        project_key = get_project_key(conn, user_id, project_name)
+        if project_key is None:
+            print(f"\nProject '{project_name}' not found.\n")
+            continue
+
+        existing = get_project_thumbnail_path(conn, user_id, project_key)
 
         if action == "1":
             print(
@@ -86,9 +90,7 @@ def manage_project_thumbnails(conn, user_id: int, username: str) -> None:
 
             raw_path = input("Enter image path: ").strip()
             try:
-                src = validate_image_path(raw_path)
-                dst = save_standardized_thumbnail(src, images_dir, user_id, project_name)
-                upsert_project_thumbnail(conn, user_id, project_name, str(dst))
+                dst = store_thumbnail(conn, user_id, project_key, project_name, Path(raw_path), images_dir)
                 print(f"\n✓ Thumbnail added for '{project_name}' -> {dst}\n")
             except Exception as e:
                 print(f"\nFailed to add thumbnail: {e}\n")
@@ -96,9 +98,7 @@ def manage_project_thumbnails(conn, user_id: int, username: str) -> None:
         elif action == "2":
             raw_path = input("Enter new image path: ").strip()
             try:
-                src = validate_image_path(raw_path)
-                dst = save_standardized_thumbnail(src, images_dir, user_id, project_name)
-                upsert_project_thumbnail(conn, user_id, project_name, str(dst))
+                dst = store_thumbnail(conn, user_id, project_key, project_name, Path(raw_path), images_dir)
                 print(f"\n✓ Thumbnail updated for '{project_name}' -> {dst}\n")
             except Exception as e:
                 print(f"\nFailed to update thumbnail: {e}\n")
@@ -121,15 +121,8 @@ def manage_project_thumbnails(conn, user_id: int, username: str) -> None:
                 print("\nCancelled.\n")
                 continue
 
-            ok = delete_project_thumbnail(conn, user_id, project_name)
+            ok = delete_thumbnail_and_file(conn, user_id, project_key, images_dir)
             if ok:
-                # optional: delete managed file if it's in ./images
-                try:
-                    p = Path(existing)
-                    if p.exists() and p.parent.resolve() == images_dir.resolve():
-                        os.remove(p)
-                except Exception:
-                    pass
                 print(f"\n✓ Thumbnail removed for '{project_name}'.\n")
             else:
                 print("\nNothing removed.\n")
@@ -139,7 +132,8 @@ def _select_project_with_thumbnail(conn, user_id: int) -> str | None:
     project_scores = collect_project_data(conn, user_id)
 
     for name, _ in project_scores:
-        if get_project_thumbnail_path(conn, user_id, name):
+        pk = get_project_key(conn, user_id, name)
+        if pk is not None and get_project_thumbnail_path(conn, user_id, pk):
             projects.append(name)
 
     if not projects:

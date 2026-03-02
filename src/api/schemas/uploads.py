@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import Any, Dict, Optional, Literal, List
 
 UploadStatus = Literal[
@@ -39,11 +39,50 @@ class UploadFileItemDTO(BaseModel):
     size_bytes: Optional[int] = None
 
 class UploadProjectFilesDTO(BaseModel):
-    project_name: str
+    project_key: Optional[int] = None  # Stable identifier for API calls
+    version_key: Optional[int] = None  # Identifies this upload's version for metrics
+    project_name: str  # Display only
     all_files: List[UploadFileItemDTO]
     text_files: List[UploadFileItemDTO]
     csv_files: List[UploadFileItemDTO]
 
 class MainFileRequestDTO(BaseModel):
     relpath: str
+    
 
+class SupportingFilesRequestDTO(BaseModel):
+    relpaths: List[str] = []
+
+
+class KeyRoleRequestDTO(BaseModel):
+    key_role: str = Field(..., max_length=120)
+
+    @field_validator("key_role")
+    @classmethod
+    def normalize_key_role(cls, value: str) -> str:
+        normalized = " ".join((value or "").split())
+        return normalized
+
+
+class MainFileSectionDTO(BaseModel):
+    id: int
+    title: str
+    preview: str
+    content: str
+    is_truncated: bool = False
+
+class MainFileSectionsResponseDTO(BaseModel):
+    project_key: Optional[int] = None  # Stable identifier for API calls
+    version_key: Optional[int] = None  # Identifies this upload's version
+    project_name: str  # Display only
+    main_file: str
+    sections: List[MainFileSectionDTO]
+
+class ContributedSectionsRequestDTO(BaseModel):
+    selected_section_ids: List[int]
+
+class ManualProjectSummaryRequestDTO(BaseModel):
+    summary_text: str = ""
+
+class ManualContributionSummaryRequestDTO(BaseModel):
+    manual_contribution_summary: str = ""

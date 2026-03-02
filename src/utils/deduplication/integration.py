@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 from src.utils.deduplication.register_project import register_project
 from src.db.deduplication import insert_project, insert_project_version, insert_version_files
@@ -40,7 +41,14 @@ def handle_dedup_result(conn, user_id, result, display_name):
         pk = result["project_key"]
         row = conn.execute("SELECT display_name FROM projects WHERE project_key = ?", (pk,)).fetchone()
         existing = row[0] if row else display_name
-        print(f"Project '{display_name}' detected as new version of '{existing}'.")
+        if result.get("forced_by_name"):
+            print(
+                f"Project '{display_name}' already exists for this user. "
+                f"This upload was stored as a new version of '{existing}'. "
+                "If you intended a separate project, rename it before uploading."
+            )
+        else:
+            print(f"Project '{display_name}' detected as new version of '{existing}'.")
         return existing
     
     return display_name
@@ -67,7 +75,14 @@ def handle_dedup_result_with_version(conn, user_id, result, display_name):
         vk = result.get("version_key")
         row = conn.execute("SELECT display_name FROM projects WHERE project_key = ?", (pk,)).fetchone()
         existing = row[0] if row else display_name
-        print(f"Project '{display_name}' detected as new version of '{existing}'.")
+        if result.get("forced_by_name"):
+            print(
+                f"Project '{display_name}' already exists for this user. "
+                f"This upload was stored as a new version of '{existing}'. "
+                "If you intended a separate project, rename it before uploading."
+            )
+        else:
+            print(f"Project '{display_name}' detected as new version of '{existing}'.")
         return {"action": "keep", "final_name": existing, "project_key": pk, "version_key": vk, "kind": kind}
 
     if kind == "new_project":
@@ -168,11 +183,15 @@ def run_deduplication_for_projects(conn, user_id, target_dir, layout):
     return skipped
 
 
-def run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout):
+def run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout, *, upload_id: int | None = None):
     """
     Run deduplication for all projects in layout.
     Returns (skipped_projects, decisions_by_original_project_name).
     decisions include final_name + version_key when available.
+
+    Projects from the same upload are compared to each other as well as to
+    previously uploaded projects, so duplicates or new versions within one
+    upload can be detected.
     """
     root_name = layout.get("root_name")
     all_projects = set(layout.get("auto_assignments", {}).keys())
@@ -180,6 +199,14 @@ def run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout):
 
     if not all_projects:
         return set(), {}
+
+    # Process in natural order (e.g. 1.1 before 1.2) so the "base" version is created first
+    # and later folders can be detected as new versions of it.
+    def _natural_sort_key(name: str):
+        segments = re.split(r"(\d+)", name)
+        return [int(s) if s.isdigit() else s.lower() for s in segments if s]
+
+    project_list = sorted(all_projects, key=_natural_sort_key)
 
     if root_name:
         base_path = os.path.join(target_dir, root_name)
@@ -189,7 +216,7 @@ def run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout):
     skipped: set[str] = set()
     decisions: dict[str, dict] = {}
 
-    for project_name in all_projects:
+    for project_name in project_list:
         candidates = [
             os.path.join(base_path, project_name),
             os.path.join(target_dir, project_name),
@@ -208,7 +235,9 @@ def run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout):
             continue
 
         try:
-            result = register_project(conn, user_id, project_name, project_dir)
+            result = register_project(
+                conn, user_id, project_name, project_dir, upload_id=upload_id
+            )
             decision = handle_dedup_result_with_version(conn, user_id, result, project_name)
             if decision.get("action") == "skip":
                 skipped.add(project_name)

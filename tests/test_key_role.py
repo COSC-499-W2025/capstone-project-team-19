@@ -39,8 +39,8 @@ def _setup_text_analysis_mocks(monkeypatch):
 
 def _setup_code_analysis_mocks(monkeypatch):
     """Set up common mocks for run_code_analysis tests."""
-    monkeypatch.setattr("src.project_analysis.detect_languages", lambda *args: ["Python"])
-    monkeypatch.setattr("src.project_analysis.detect_frameworks", lambda *args: [])
+    monkeypatch.setattr("src.project_analysis.detect_languages", lambda *args, **kwargs: ["Python"])
+    monkeypatch.setattr("src.project_analysis.detect_frameworks", lambda *args, **kwargs: [])
     monkeypatch.setattr(
         "src.project_analysis._fetch_files",
         lambda *args, **kwargs: [{"file_name": "main.py", "content": "x=1"}]
@@ -52,7 +52,7 @@ def _setup_code_analysis_mocks(monkeypatch):
     )
     monkeypatch.setattr("src.project_analysis.format_activity_summary", lambda x: "")
     monkeypatch.setattr("src.project_analysis.store_code_activity_metrics", lambda *args: None)
-    monkeypatch.setattr("src.project_analysis.extract_skills", lambda *args: None)
+    monkeypatch.setattr("src.project_analysis.extract_skills", lambda *args, **kwargs: None)
     monkeypatch.setattr(
         "src.project_analysis.prompt_manual_code_project_summary",
         lambda proj: "Manual summary"

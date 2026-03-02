@@ -10,7 +10,9 @@ from .flow import (
     _handle_view_existing_resume,
     _handle_export_resume_docx,
     _handle_edit_resume_wording,
-    _handle_export_resume_pdf, 
+    _handle_export_resume_pdf,
+    _handle_manage_resume_skills,
+    _handle_remove_project_from_resume,
 )
 
 
@@ -26,8 +28,10 @@ def view_resume_items(conn, user_id: int, username: str):
         print("3. Export a resume snapshot to Word (.docx)")
         print("4. Export a resume snapshot to PDF (.pdf)")
         print("5. Edit wording in an existing resume")
-        print("6. Back to main menu")
-        choice = input("Select an option (1-6): ").strip()
+        print("6. Manage skill highlighting for a resume")
+        print("7. Remove a project from a resume")
+        print("8. Back to main menu")
+        choice = input("Select an option (1-8): ").strip()
 
         if choice == "1":
             _handle_create_resume(conn, user_id, username)
@@ -55,7 +59,17 @@ def view_resume_items(conn, user_id: int, username: str):
                 print("")
                 continue
         elif choice == "6":
+            handled = _handle_manage_resume_skills(conn, user_id, username)
+            if handled:
+                print("")
+                continue
+        elif choice == "7":
+            handled = _handle_remove_project_from_resume(conn, user_id)
+            if handled:
+                print("")
+                continue
+        elif choice == "8":
             print("")
             return
         else:
-            print("Invalid choice, please enter 1, 2, 3, 4, 5, or 6.")
+            print("Invalid choice, please enter 1, 2, 3, 4, 5, 6, 7, or 8.")

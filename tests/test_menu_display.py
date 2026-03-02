@@ -6,9 +6,9 @@ from src.menu.display import show_start_menu
 class TestShowStartMenu:
     """Tests for the main menu display functionality."""
 
-    @pytest.mark.parametrize("choice", [str(i) for i in range(1, 12)])
+    @pytest.mark.parametrize("choice", [str(i) for i in range(1, 14)])
     def test_valid_menu_choices(self, choice):
-        """Test that valid menu choices (1-11) are accepted and returned as integers."""
+        """Test that valid menu choices (1-13) are accepted and returned as integers."""
         username = "testuser"
 
         with patch("builtins.input", return_value=choice):
@@ -16,10 +16,10 @@ class TestShowStartMenu:
             assert result == int(choice)
 
     @pytest.mark.parametrize("invalid_input,valid_input", [
-        ("0", "1"),    # Number out of range (too low)
-        ("13", "2"),   # Number out of range (too high)
-        ("99", "3"),   # Number out of range (way too high)
-        ("-1", "4"),   # Negative number
+        ("0", "1"),     # Number out of range (too low)
+        ("14", "2"),    # Number out of range (too high)
+        ("99", "3"),    # Number out of range (way too high)
+        ("-1", "4"),    # Negative number
     ])
     def test_invalid_number_choices(self, invalid_input, valid_input):
         """Test that invalid number choices are rejected and prompt again."""
@@ -29,10 +29,8 @@ class TestShowStartMenu:
             with patch("builtins.print") as mock_print:
                 result = show_start_menu(username)
 
-                # Should eventually return the valid input
                 assert result == int(valid_input)
 
-                # Should print error message for invalid input
                 error_calls = [
                     call for call in mock_print.call_args_list
                     if "Invalid choice" in str(call)
@@ -55,10 +53,8 @@ class TestShowStartMenu:
             with patch("builtins.print") as mock_print:
                 result = show_start_menu(username)
 
-                # Should eventually return the valid input
                 assert result == int(valid_input)
 
-                # Should print error message for invalid input
                 error_calls = [
                     call for call in mock_print.call_args_list
                     if "Invalid choice" in str(call)
@@ -91,10 +87,11 @@ class TestShowStartMenu:
             "6. Delete old insights",
             "7. View all projects ranked",
             "8. View chronological skills",
-            "9. Edit project dates",
-            "10. Manage project thumbnails",
-            "11. View all projects",
-            "12. Exit",
+            "9. View activity heatmap",
+            "10. Edit project dates",
+            "11. Manage project thumbnails",
+            "12. View all projects",
+            "13. Exit",
         ]
 
         with patch("builtins.input", return_value="1"):
@@ -124,4 +121,3 @@ class TestShowStartMenu:
             assert isinstance(result, int)
             assert result == 5
             assert not isinstance(result, str)
-

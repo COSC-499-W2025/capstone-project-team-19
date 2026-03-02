@@ -14,6 +14,7 @@ from src.db import (
     get_metrics_id,
     insert_code_collaborative_summary,
     get_files_for_project,
+    get_files_for_version,
 )
 from src.db.consent import get_latest_external_consent
 from src.integrations.github.github_oauth import github_oauth
@@ -84,7 +85,10 @@ def analyze_code_project(conn: sqlite3.Connection,
                          user_id: int,
                          project_name: str,
                          zip_path: str,
-                         summary=None) -> Optional[dict]:
+                         summary=None,
+                         version_key: int | None = None,
+                         *,
+                         skip_github_prompt: bool = False) -> Optional[dict]:
     # 1) get base dirs from the uploaded zip
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
     # Capture any pre-collected manual description (non-LLM path)
@@ -113,7 +117,7 @@ def analyze_code_project(conn: sqlite3.Connection,
         _handle_no_git_repo(conn, user_id, project_name)
 
         # Still allow GitHub-only enhancement even without local repo_dir
-        _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
+        _enhance_with_github(conn, user_id, project_name, repo_dir, summary, skip_github_prompt=skip_github_prompt)
 
         # Populate whatever we can so the project summary isn't empty
         _apply_basic_summary_without_git(
@@ -124,7 +128,7 @@ def analyze_code_project(conn: sqlite3.Connection,
             summary=summary,
             desc=desc,
         )
-        store_contributions_without_git(conn, user_id, project_name, desc, debug=DEBUG)
+        store_contributions_without_git(conn, user_id, project_name, desc, debug=DEBUG, version_key=version_key)
         print("=" * 80)
         return None
 
@@ -136,7 +140,7 @@ def analyze_code_project(conn: sqlite3.Connection,
             print(f"[debug] using repo_dir={repo_dir}")
 
     # Enhance with GitHub metrics (if user says yes)
-    repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
+    repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary, skip_github_prompt=skip_github_prompt)
 
     # 3) identity table + load user aliases
     ensure_user_github_table(conn)
@@ -152,6 +156,7 @@ def analyze_code_project(conn: sqlite3.Connection,
             print("\n[skip] No identities selected.")
             return None
         save_user_github(conn, user_id, sel_emails, sel_names)
+        print("\nSaved your identity for future runs.")
         aliases = load_user_github(conn, user_id)
 
     # 4) read commits
@@ -183,7 +188,7 @@ def analyze_code_project(conn: sqlite3.Connection,
 
     # 6) fill langs from DB if empty
     if not metrics.get("focus", {}).get("languages"):
-        langs_from_db = detect_languages(conn, project_name) or []
+        langs_from_db = detect_languages(conn, user_id, project_name, version_key=version_key) or []
         if langs_from_db:
             metrics["focus"]["languages"] = [f"{lang} (from DB)" for lang in langs_from_db]
 
@@ -229,7 +234,10 @@ def analyze_code_project(conn: sqlite3.Connection,
         file_commits = file_contributions_data.get("file_commits", {}) or {}
 
         if file_loc:
-            db_files = get_files_for_project(conn, user_id, project_name, only_text=False)
+            if version_key is not None:
+                db_files = get_files_for_version(conn, user_id, version_key, only_text=False)
+            else:
+                db_files = get_files_for_project(conn, user_id, project_name, only_text=False)
             base_dir = _analysis_zip_base(zip_data_dir, zip_name)
             key_files = _rank_key_files_for_git(desc_clean, file_loc, db_files, base_dir, limit=8)
 
@@ -293,7 +301,18 @@ def _handle_no_git_repo(conn, user_id, project_name):
     return None
 
 
-def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None):
+def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None, *, skip_github_prompt: bool = False):
+    """If skip_github_prompt is True, do not ask; only attach existing repo metrics if already linked."""
+    if skip_github_prompt:
+        # Reuse existing link/metrics if any (e.g. already asked for first version of this project)
+        owner, repo = get_gh_repo_name_and_owner(conn, user_id, project_name)
+        if owner and repo and summary:
+            repo_metrics = get_github_repo_metrics(conn, user_id, project_name, owner, repo)
+            if repo_metrics and not _metrics_empty(repo_metrics):
+                summary.metrics["github"] = repo_metrics
+                return repo_metrics
+        return None
+
     ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
     if ans not in {"y", "yes"}:
         return
@@ -399,7 +418,7 @@ def _apply_basic_summary_without_git(
             summary.summary_text = clean_desc
 
     # Basic language/framework detection still works from parsed files/configs
-    summary.languages = detect_languages(conn, project_name) or []
+    summary.languages = detect_languages(conn, user_id, project_name) or []
     frameworks = detect_frameworks(conn, project_name, user_id, zip_path) or set()
     summary.frameworks = sorted(frameworks) if frameworks else []
 

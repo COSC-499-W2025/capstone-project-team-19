@@ -88,7 +88,17 @@ def test_view_existing_resume_lists_and_renders(monkeypatch, capsys):
 
     # Seed one summary and a resume snapshot
     save_project_summary(conn, user_id, "projA", _make_summary("projA"))
-    snap_data = {"projects": [{"project_name": "projA"}], "aggregated_skills": {}}
+    snap_data = {
+        "projects": [
+            {
+                "project_name": "projA",
+                "project_type": "code",
+                "project_mode": "individual",
+                "summary_text": "A short summary",
+            }
+        ],
+        "aggregated_skills": {},
+    }
     insert_resume_snapshot(conn, user_id, "MyResume", json.dumps(snap_data), "Rendered text")
 
     # Mock selection of first resume
@@ -99,7 +109,7 @@ def test_view_existing_resume_lists_and_renders(monkeypatch, capsys):
 
     captured = capsys.readouterr().out
     assert "MyResume" in captured
-    assert "Rendered text" in captured
+    assert "projA" in captured
     assert handled is True
 
 
@@ -238,21 +248,16 @@ def test_render_snapshot_text_activity_two_stages():
     init_schema(conn)
     user_id = 1
 
-    cur = conn.execute(
-        """
-        INSERT INTO project_classifications (
-            user_id,
-            zip_path,
-            zip_name,
-            project_name,
-            classification,
-            project_type,
-            recorded_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (user_id, "fake.zip", "fake", "TextProj", "collaborative", "text", "2025-01-01"),
+    from src.db import record_project_classification
+    version_key = record_project_classification(
+        conn,
+        user_id,
+        "fake.zip",
+        "fake",
+        "TextProj",
+        "collaborative",
+        project_type="text",
     )
-    classification_id = cur.lastrowid
 
     from src.db.text_activity import store_text_activity_contribution
     activity_data = {
@@ -265,7 +270,7 @@ def test_render_snapshot_text_activity_two_stages():
         "activity_classification": {},
         "timeline": [],
     }
-    store_text_activity_contribution(conn, classification_id, activity_data)
+    store_text_activity_contribution(conn, version_key, activity_data)
 
     from src.menu.resume.helpers import render_snapshot
     snapshot = {
@@ -277,7 +282,7 @@ def test_render_snapshot_text_activity_two_stages():
                 "text_type": "Academic writing",
                 "summary_text": "Example summary",
                 "contribution_percent": 50.0,
-                "classification_id": classification_id,
+                "version_key": version_key,
                 "languages": [],
                 "frameworks": [],
                 "skills": [],
@@ -821,3 +826,176 @@ class TestKeyRoleInResume:
 
         assert "summary_text" in sections
         assert "key_role" in sections
+
+
+# ============================================================================
+# CLI: _handle_remove_project_from_resume tests
+# ============================================================================
+
+def _seed_resume_with_projects(conn, user_id, name, project_dicts):
+    """Insert a resume snapshot with the given project entries."""
+    from src.menu.resume.helpers import recompute_aggregated_skills
+
+    snapshot = {
+        "projects": project_dicts,
+        "aggregated_skills": recompute_aggregated_skills(project_dicts),
+    }
+    return insert_resume_snapshot(
+        conn, user_id, name, json.dumps(snapshot), "rendered"
+    )
+
+
+def test_cli_remove_project_from_multi_project_resume(monkeypatch, capsys):
+    """CLI: removing one project from a 2-project resume keeps the other."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    projects = [
+        {"project_name": "Alpha", "languages": ["Python"], "frameworks": [], "skills": ["OOP"]},
+        {"project_name": "Beta", "languages": ["Go"], "frameworks": [], "skills": ["Testing"]},
+    ]
+    resume_id = _seed_resume_with_projects(conn, user_id, "MyResume", projects)
+
+    # Select resume 1, project 1 (Alpha), confirm "y"
+    inputs = iter(["1", "1", "y"])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+    result = resume_flow._handle_remove_project_from_resume(conn, user_id)
+    assert result is True
+
+    snap = get_resume_snapshot(conn, user_id, resume_id)
+    data = json.loads(snap["resume_json"])
+    names = [p["project_name"] for p in data["projects"]]
+    assert "Alpha" not in names
+    assert "Beta" in names
+
+    # Skills should be recomputed (OOP gone, Testing remains)
+    assert "Testing" in data["aggregated_skills"]["technical_skills"]
+    assert "OOP" not in data["aggregated_skills"]["technical_skills"]
+
+
+def test_cli_remove_last_project_deletes_resume(monkeypatch, capsys):
+    """CLI: removing the only project deletes the resume entirely."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    projects = [{"project_name": "Solo", "languages": [], "frameworks": [], "skills": []}]
+    resume_id = _seed_resume_with_projects(conn, user_id, "SingleResume", projects)
+
+    inputs = iter(["1", "1", "y"])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+    result = resume_flow._handle_remove_project_from_resume(conn, user_id)
+    assert result is True
+
+    assert list_resumes(conn, user_id) == []
+    out = capsys.readouterr().out
+    assert "deleted" in out.lower()
+
+
+def test_cli_remove_project_cancelled_by_user(monkeypatch, capsys):
+    """CLI: user cancels at the confirmation prompt."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    projects = [{"project_name": "Keep", "languages": [], "frameworks": [], "skills": []}]
+    resume_id = _seed_resume_with_projects(conn, user_id, "Res", projects)
+
+    # Select resume 1, project 1, decline "n"
+    inputs = iter(["1", "1", "n"])
+    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
+
+    result = resume_flow._handle_remove_project_from_resume(conn, user_id)
+    assert result is False
+
+    # Resume should be untouched
+    snap = get_resume_snapshot(conn, user_id, resume_id)
+    data = json.loads(snap["resume_json"])
+    assert len(data["projects"]) == 1
+
+
+def test_cli_remove_project_no_resumes(monkeypatch, capsys):
+    """CLI: prints message when there are no resumes."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+
+    result = resume_flow._handle_remove_project_from_resume(conn, user_id=1)
+    assert result is False
+
+    out = capsys.readouterr().out
+    assert "No saved resumes" in out
+
+
+# ---------- No-git fallback bullets ----------
+
+def test_build_contribution_bullets_no_git_uses_activity_fallback(monkeypatch):
+    """When code_collaborative_metrics has no data (no .git), bullets use activity breakdown."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    # Seed a collaborative code project summary
+    save_project_summary(conn, user_id, "no_git_proj", _make_summary(
+        "no_git_proj", project_type="code", project_mode="collaborative",
+    ))
+
+    # get_normalized_code_metrics returns None (no git metrics)
+    monkeypatch.setattr(
+        helpers, "get_normalized_code_metrics", lambda c, u, p, collab: None,
+    )
+    # get_code_activity_percents returns file-level activity data
+    monkeypatch.setattr(
+        helpers, "get_code_activity_percents",
+        lambda c, u, p, source="combined": {
+            "feature_coding": 66.7,
+            "testing": 33.3,
+            "refactoring": 0.0,
+            "debugging": 0.0,
+            "documentation": 0.0,
+        },
+    )
+
+    project = {
+        "project_name": "no_git_proj",
+        "project_type": "code",
+        "project_mode": "collaborative",
+    }
+    bullets = helpers.build_contribution_bullets(conn, user_id, project)
+
+    assert len(bullets) >= 2
+    assert "file-level analysis" in bullets[0]
+    assert "feature implementation" in bullets[1]
+    # Should NOT contain the old debug error message
+    assert not any("no metrics found" in b for b in bullets)
+
+
+def test_build_contribution_bullets_no_git_no_activity_returns_empty(monkeypatch):
+    """When there are no git metrics AND no activity data, returns empty list."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    save_project_summary(conn, user_id, "empty_proj", _make_summary(
+        "empty_proj", project_type="code", project_mode="collaborative",
+    ))
+
+    monkeypatch.setattr(
+        helpers, "get_normalized_code_metrics", lambda c, u, p, collab: None,
+    )
+    monkeypatch.setattr(
+        helpers, "get_code_activity_percents",
+        lambda c, u, p, source="combined": {},
+    )
+
+    project = {
+        "project_name": "empty_proj",
+        "project_type": "code",
+        "project_mode": "collaborative",
+    }
+    bullets = helpers.build_contribution_bullets(conn, user_id, project)
+
+    assert bullets == []
+    assert not any("no metrics found" in b for b in bullets)

@@ -114,8 +114,8 @@ def test_submit_classifications_validates_values(client, auth_headers, seed_conn
     row = seed_conn.execute(
         """
         SELECT classification
-        FROM project_classifications
-        WHERE user_id = 1 AND project_name = 'ProjectA'
+        FROM projects
+        WHERE user_id = 1 AND display_name = 'ProjectA'
         """,
     ).fetchone()
     assert row is not None

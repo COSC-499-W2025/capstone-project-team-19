@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 from src.models.project_summary import ProjectSummary
 from typing import Any, Dict, List
 from src.db.code_activity import get_code_activity_percents, get_normalized_code_metrics
-from src.db import get_classification_id
+from src.db import get_latest_version_key
 from src.db.text_activity import get_text_activity_contribution
 from .date_helpers import enrich_snapshot_with_dates
 
@@ -151,6 +151,7 @@ def load_project_summaries(conn, user_id: int, get_all_user_project_summaries) -
     for row in rows:
         try:
             summary_dict = json.loads(row["summary_json"])
+            summary_dict["project_id"] = row.get("project_summary_id")
             projects.append(ProjectSummary.from_dict(summary_dict))
         except Exception:
             # Skip malformed entries to avoid breaking the resume flow.
@@ -159,18 +160,19 @@ def load_project_summaries(conn, user_id: int, get_all_user_project_summaries) -
     return projects
 
 
-def build_resume_snapshot(summaries: List[ProjectSummary]) -> Dict[str, Any]:
+def build_resume_snapshot(summaries: List[ProjectSummary], highlighted_skills: List[str] | None = None,) -> Dict[str, Any]:
     """Build a structured snapshot of resume data from project summaries."""
     projects = []
     for ps in summaries:
         entry: Dict[str, Any] = {
+            "project_summary_id": ps.project_id,
             "project_name": ps.project_name,
             "project_type": ps.project_type,
             "project_mode": ps.project_mode,
             "languages": ps.languages or [],
             "frameworks": ps.frameworks or [],
             "summary_text": ps.summary_text,
-            "skills": _extract_skills(ps, map_labels=True),
+            "skills": _extract_skills(ps, map_labels=True, highlighted_skills=highlighted_skills),
         }
         # Extract key_role from contributions
         if ps.contributions and ps.contributions.get("key_role"):
@@ -188,13 +190,17 @@ def build_resume_snapshot(summaries: List[ProjectSummary]) -> Dict[str, Any]:
                         entry["contribution_percent"] = pct
                     collab_skills = text_collab.get("skills")
                     if isinstance(collab_skills, list) and collab_skills:
-                        entry["skills"] = collab_skills
+                        # For text collab skills, also filter by highlighted if available
+                        if highlighted_skills is not None:
+                            entry["skills"] = [s for s in collab_skills if s in highlighted_skills]
+                        else:
+                            entry["skills"] = collab_skills
         else:  # code
             entry["activities"] = _extract_activity(ps)
 
         projects.append(entry)
 
-    agg = _aggregate_skills(summaries)
+    agg = _aggregate_skills(summaries, highlighted_skills=highlighted_skills)
     return {"projects": projects, "aggregated_skills": agg}
 
 
@@ -203,8 +209,16 @@ def render_snapshot(
     user_id: int,
     snapshot: Dict[str, Any],
     print_output: bool = True,
+    highlighted_skills: List[str] | None = None,
+    highlighted_skills_by_project: Dict[str, List[str]] | None = None,
 ) -> str:
-    """Render a snapshot to text; optionally print to console."""
+    """Render a snapshot to text; optionally print to console.
+
+    Args:
+        highlighted_skills: If provided, only show skills in this list (legacy flat list).
+        highlighted_skills_by_project: If provided, per-project skill filtering
+            (dict mapping project_name -> list of highlighted skill names).
+    """
     lines: List[str] = []
 
     projects = snapshot.get("projects", [])
@@ -223,7 +237,12 @@ def render_snapshot(
         lines.append("")
         lines.append(header)
         for p in group_entries:
-            lines.extend(_render_project_block(conn, user_id, p))
+            # Determine per-project highlighted skills
+            proj_highlighted = highlighted_skills
+            if highlighted_skills_by_project is not None:
+                proj_name = p.get("project_name", "")
+                proj_highlighted = highlighted_skills_by_project.get(proj_name)
+            lines.extend(_render_project_block(conn, user_id, p, highlighted_skills=proj_highlighted))
 
     agg = snapshot.get("aggregated_skills", {})
     skills_lines = []
@@ -231,10 +250,26 @@ def render_snapshot(
         skills_lines.append(f"Languages: {', '.join(sorted(set(agg['languages'])))}")
     if agg.get("frameworks"):
         skills_lines.append(f"Frameworks: {', '.join(sorted(set(agg['frameworks'])))}")
-    if agg.get("technical_skills"):
-        skills_lines.append(f"Technical skills: {', '.join(sorted(set(agg['technical_skills'])))}")
-    if agg.get("writing_skills"):
-        skills_lines.append(f"Writing skills: {', '.join(sorted(set(agg['writing_skills'])))}")
+
+    # Filter aggregated skills by the union of all per-project highlighted skills
+    tech_skills = agg.get("technical_skills", [])
+    writing_skills = agg.get("writing_skills", [])
+
+    effective_highlighted = highlighted_skills
+    if highlighted_skills_by_project is not None:
+        all_highlighted: set[str] = set()
+        for skills_list in highlighted_skills_by_project.values():
+            all_highlighted.update(skills_list)
+        effective_highlighted = list(all_highlighted)
+
+    if effective_highlighted is not None:
+        tech_skills = _filter_skills_by_highlighted(tech_skills, effective_highlighted)
+        writing_skills = _filter_skills_by_highlighted(writing_skills, effective_highlighted)
+
+    if tech_skills:
+        skills_lines.append(f"Technical skills: {', '.join(sorted(set(tech_skills)))}")
+    if writing_skills:
+        skills_lines.append(f"Writing skills: {', '.join(sorted(set(writing_skills)))}")
 
     if skills_lines:
         lines.append("")
@@ -247,7 +282,77 @@ def render_snapshot(
     return rendered
 
 
-def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
+def _filter_skills_by_highlighted(
+    skills: List[str],
+    highlighted_skills: List[str],
+    order_by_highlighted: bool = False,
+) -> List[str]:
+    """Filter display skills by the raw highlighted skill names.
+
+    Maps display labels back to raw names for comparison.
+    """
+    # Build reverse mapping from display label to raw name
+    tech_skill_map = {
+        "architecture_and_design": "Architecture & design",
+        "data_structures": "Data structures",
+        "frontend_skills": "Frontend development",
+        "object_oriented_programming": "Object-oriented programming",
+        "security_and_error_handling": "Security & error handling",
+        "testing_and_ci": "Testing & CI",
+        "algorithms": "Algorithms",
+        "backend_development": "Backend development",
+        "clean_code_and_quality": "Clean code & quality",
+        "devops_and_ci_cd": "DevOps & CI/CD",
+        "api_and_backend": "API & backend",
+    }
+    writing_skill_map = {
+        "clarity": "Clear communication",
+        "structure": "Structured writing",
+        "vocabulary": "Strong vocabulary",
+        "argumentation": "Analytical writing",
+        "depth": "Critical thinking",
+        "process": "Revision & editing",
+        "planning": "Planning & organization",
+        "research": "Research integration",
+        "data_collection": "Data collection",
+        "data_analysis": "Data analysis",
+    }
+
+    # Build reverse: display_label -> raw_name
+    label_to_raw = {}
+    for raw, label in tech_skill_map.items():
+        label_to_raw[label] = raw
+    for raw, label in writing_skill_map.items():
+        label_to_raw[label] = raw
+
+    if not order_by_highlighted:
+        filtered = []
+        for skill in skills:
+            raw_name = label_to_raw.get(skill, skill)
+            if raw_name in highlighted_skills:
+                filtered.append(skill)
+        return filtered
+
+    order_index = {raw: idx for idx, raw in enumerate(highlighted_skills)}
+    ordered: List[tuple[int, str]] = []
+    seen: set[str] = set()
+    for skill in skills:
+        raw_name = label_to_raw.get(skill, skill)
+        idx = order_index.get(raw_name)
+        if idx is None or skill in seen:
+            continue
+        seen.add(skill)
+        ordered.append((idx, skill))
+    ordered.sort(key=lambda item: item[0])
+    return [skill for _idx, skill in ordered]
+
+
+def _render_project_block(
+    conn,
+    user_id: int,
+    p: Dict[str, Any],
+    highlighted_skills: List[str] | None = None,
+) -> List[str]:
     lines = [f"\n- {resolve_resume_display_name(p)}"]
 
     # Display key role if available
@@ -289,8 +394,14 @@ def _render_project_block(conn, user_id: int, p: Dict[str, Any]) -> List[str]:
             lines.append("  Contributions:")
             lines.append("    • (no contribution bullets available)")
 
-    # Skills
+    # Skills - filter by highlighted_skills if provided
     skills = p.get("skills") or []
+    if highlighted_skills is not None:
+        skills = _filter_skills_by_highlighted(
+            skills,
+            highlighted_skills,
+            order_by_highlighted=True,
+        )
     if skills:
         lines.append("  Skills:")
         lines.append("    • " + ", ".join(skills))
@@ -327,18 +438,6 @@ def build_contribution_bullets(
         metrics = get_normalized_code_metrics(conn, user_id, project_name, is_collab)
         activities = get_code_activity_percents(conn, user_id, project_name, source="combined") or {}
 
-        if not metrics:
-            return ["(no metrics found in code_collaborative_metrics / git_individual_metrics)"]
-
-        # Guard against missing keys
-        total_commits = int(metrics.get("total_commits") or 0)
-        your_commits = int(metrics.get("your_commits") or 0)
-        loc_added = int(metrics.get("loc_added") or 0)
-        loc_deleted = int(metrics.get("loc_deleted") or 0)
-        loc_net = int(metrics.get("loc_net") or 0)
-
-        share = (your_commits / total_commits * 100.0) if total_commits > 0 else 0.0
-
         activity_label = {
             "feature_coding": "feature implementation",
             "refactoring": "refactoring",
@@ -355,6 +454,46 @@ def build_contribution_bullets(
         )
         top_acts = [(k, v) for k, v in ranked if v > 0.0][:3]
         workflows = ", ".join(activity_label.get(k, k.replace("_", " ")) for k, _ in top_acts) if top_acts else "core development"
+
+        if not metrics:
+            # No git metrics (project uploaded without .git directory).
+            # Use activity breakdown from file-based analysis instead.
+            if activities and top_acts:
+                bullets.append(
+                    f"Developed across {workflows} workflows based on file-level analysis."
+                )
+            feat = float(activities.get("feature_coding") or 0.0)
+            refac = float(activities.get("refactoring") or 0.0)
+            debug = float(activities.get("debugging") or 0.0)
+            test = float(activities.get("testing") or 0.0)
+            doc = float(activities.get("documentation") or 0.0)
+
+            if feat > 0.0:
+                bullets.append(
+                    f"Focused {feat:.1f}% of development effort on feature implementation, translating requirements into production-ready code."
+                )
+            if refac > 0.0:
+                bullets.append(
+                    f"Allocated {refac:.1f}% of contributions to refactoring, improving readability, modularity, and long-term maintainability."
+                )
+            if debug > 0.0:
+                bullets.append(
+                    f"Dedicated {debug:.1f}% of activity to debugging, identifying root causes and resolving runtime and logic issues."
+                )
+            if (test + doc) > 0.0:
+                bullets.append(
+                    f"Contributed to testing and documentation ({(test + doc):.1f}% combined), supporting code reliability and team onboarding."
+                )
+            return bullets
+
+        # Guard against missing keys
+        total_commits = int(metrics.get("total_commits") or 0)
+        your_commits = int(metrics.get("your_commits") or 0)
+        loc_added = int(metrics.get("loc_added") or 0)
+        loc_deleted = int(metrics.get("loc_deleted") or 0)
+        loc_net = int(metrics.get("loc_net") or 0)
+
+        share = (your_commits / total_commits * 100.0) if total_commits > 0 else 0.0
 
         if is_collab:
             bullets.append(
@@ -404,8 +543,8 @@ def build_contribution_bullets(
         if isinstance(pct, (int, float)):
             bullets.append(f"Contributed to {pct:.1f}% of the project deliverables.")
 
-        classification_id = project.get("classification_id") or get_classification_id(conn, user_id, project_name)
-        row = get_text_activity_contribution(conn, classification_id) if classification_id else None
+        vk = project.get("version_key") or get_latest_version_key(conn, user_id, project_name)
+        row = get_text_activity_contribution(conn, vk) if vk else None
 
         if not row:
             if not bullets:
@@ -469,7 +608,7 @@ def _extract_activity(ps: ProjectSummary) -> List[Dict[str, Any]]:
     return items
 
 
-def _extract_skills(ps: ProjectSummary, map_labels: bool = False) -> List[str]:
+def _extract_skills(ps: ProjectSummary, map_labels: bool = False, highlighted_skills: List[str] | None = None,) -> List[str]:
     skills = ps.metrics.get("skills_detailed")
     tech_skill_map = {
         "architecture_and_design": "Architecture & design",
@@ -482,6 +621,7 @@ def _extract_skills(ps: ProjectSummary, map_labels: bool = False) -> List[str]:
         "backend_development": "Backend development",
         "clean_code_and_quality": "Clean code & quality",
         "devops_and_ci_cd": "DevOps & CI/CD",
+        "api_and_backend": "API & backend",
     }
     writing_skill_map = {
         "clarity": "Clear communication",
@@ -497,6 +637,13 @@ def _extract_skills(ps: ProjectSummary, map_labels: bool = False) -> List[str]:
     }
     if isinstance(skills, list):
         names = [s.get("skill_name") for s in skills if isinstance(s, dict) and s.get("skill_name")]
+
+        # Filter by highlighted skills if provided
+        if highlighted_skills is not None:
+            # Only include skills that are in the highlighted list
+            # Maintain the order from highlighted_skills
+            names = [n for n in highlighted_skills if n in names]
+
         # Deduplicate while preserving order
         seen = set()
         unique = []
@@ -512,7 +659,7 @@ def _extract_skills(ps: ProjectSummary, map_labels: bool = False) -> List[str]:
     return []
 
 
-def _aggregate_skills(summaries: List[ProjectSummary]) -> Dict[str, List[str]]:
+def _aggregate_skills(summaries: List[ProjectSummary], highlighted_skills: List[str] | None = None,) -> Dict[str, List[str]]:
     langs = set()
     frameworks = set()
     tech_skills = set()
@@ -529,6 +676,7 @@ def _aggregate_skills(summaries: List[ProjectSummary]) -> Dict[str, List[str]]:
         "backend_development": "Backend development",
         "clean_code_and_quality": "Clean code & quality",
         "devops_and_ci_cd": "DevOps & CI/CD",
+        "api_and_backend": "API & backend",
     }
 
     writing_skill_map = {
@@ -547,7 +695,7 @@ def _aggregate_skills(summaries: List[ProjectSummary]) -> Dict[str, List[str]]:
     for ps in summaries:
         langs.update(ps.languages or [])
         frameworks.update(ps.frameworks or [])
-        skills = _extract_skills(ps)
+        skills = _extract_skills(ps, highlighted_skills=highlighted_skills)
         for s in skills:
             if s in writing_skill_map:
                 writing_skills.add(writing_skill_map[s])
@@ -560,6 +708,53 @@ def _aggregate_skills(summaries: List[ProjectSummary]) -> Dict[str, List[str]]:
         "technical_skills": sorted(tech_skills),
         "writing_skills": sorted(writing_skills),
     }
+
+# Display-name labels for writing skills.  Used to partition already-mapped
+# skill labels (from resume snapshot JSON) into writing vs technical buckets.
+WRITING_SKILL_LABELS = {
+    "Clear communication",
+    "Structured writing",
+    "Strong vocabulary",
+    "Analytical writing",
+    "Critical thinking",
+    "Revision & editing",
+    "Planning & organization",
+    "Research integration",
+    "Data collection",
+    "Data analysis",
+}
+
+
+def recompute_aggregated_skills(projects: List[Dict[str, Any]]) -> Dict[str, List[str]]:
+    """Rebuild aggregated_skills from a list of snapshot project dicts.
+
+    Unlike ``_aggregate_skills`` (which works on ``ProjectSummary`` objects and
+    maps raw skill keys to display names), this operates on resume-snapshot
+    project entries where skills are already display-name strings.
+    """
+    langs: set[str] = set()
+    frameworks: set[str] = set()
+    tech_skills: set[str] = set()
+    writing_skills: set[str] = set()
+
+    for p in projects:
+        for lang in p.get("languages") or []:
+            langs.add(lang)
+        for fw in p.get("frameworks") or []:
+            frameworks.add(fw)
+        for skill in p.get("skills") or []:
+            if skill in WRITING_SKILL_LABELS:
+                writing_skills.add(skill)
+            else:
+                tech_skills.add(skill)
+
+    return {
+        "languages": sorted(langs),
+        "frameworks": sorted(frameworks),
+        "technical_skills": sorted(tech_skills),
+        "writing_skills": sorted(writing_skills),
+    }
+
 
 def enrich_snapshot_with_contributions(conn, user_id: int, snapshot: Dict[str, Any]) -> Dict[str, Any]:
     snapshot = enrich_snapshot_with_dates(conn, user_id, snapshot)

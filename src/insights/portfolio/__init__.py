@@ -8,6 +8,7 @@ from .formatters import (
     resolve_portfolio_contribution_bullets,
     resolve_portfolio_display_name,
     resolve_portfolio_summary_text,
+    get_all_skills_from_summary,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "resolve_portfolio_contribution_bullets",
     "resolve_portfolio_display_name",
     "resolve_portfolio_summary_text",
+    "get_all_skills_from_summary",
 ]
