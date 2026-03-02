@@ -734,7 +734,7 @@ The plan is to begin implementing the frontend. A PR for setting up React and Vi
 
 ### Burnup chart
 
-![Burnup chart for Feb 9 - Mar 1]()
+![Burnup chart for Feb 9 - Mar 1](screenshots/week6-7_T2-burnupchart.png)
 
 ### Github usernames
 
@@ -751,12 +751,13 @@ The plan is to begin implementing the frontend. A PR for setting up React and Vi
 
 | GitHub Username | Screenshots                                                                                                                                          |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AdaraPutri`    | ![Completed tasks for Adara]() <br> ![Completed tasks for Adara]()         |
-| `ammaarkhan`    | ![Completed tasks for Ammaar]() <br> ![Completed tasks for Ammaar]()     |
-| `ivonanicetin`  | ![Completed tasks for Ivona]() <br> ![Completed tasks for Ivona]()     |
-| `johaneshp`     | ![Completed tasks for Johanes]() <br> ![Completed tasks for Johanes]() |
-| `salmavkh`      | ![Completed tasks for Salma]() <br> ![Completed tasks for Salma]()         |
-| `taoTimTim`     | ![Completed tasks for Timmi]() <br> ![Completed tasks for Timmi]()         |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-week6.png) <br> ![Completed tasks for Adara](screenshots/Completed-Adara-week7.png)         |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-week6.png) <br> ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-week7.png)     |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-week7.png)                                                                                  |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-week6.png) <br> ![Completed tasks for Johanes](screenshots/Completed-Johanes-week7.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-week6.png) <br> ![Completed tasks for Salma](screenshots/Completed-Salma-week7.png)         |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-week6.png) <br> ![Completed tasks for Timmi](screenshots/Completed-Timmi-week7.png)         |
+
 
 ### Table view of under review tasks by username
 
