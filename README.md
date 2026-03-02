@@ -382,12 +382,15 @@ The flow starts when the user login, and choose one of the 11 menu:
    Shows skill timeline, what skills obtained, skill level, from what project, and score in a chronological list.
 
 - View project feedback
+
    Shows improvement suggestions per skill, grouped by skill name.
 
 - Edit project dates
+
    Lets users manually adjust project start/end dates. Will affect skill timeline, and chronological skills.
 
 - Manage project thumbnails
+
    Upload or edit project thumbnail images, which will be shown in the portfolio
 
 - View portfolio items
