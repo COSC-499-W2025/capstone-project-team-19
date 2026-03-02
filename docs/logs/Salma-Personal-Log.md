@@ -258,4 +258,11 @@ I worked on PR [#510](https://github.com/COSC-499-W2025/capstone-project-team-19
 
 I also collaborated with Timmi to design wireframes for the frontend UI.
 
+I also reviewed some PRs, four of them are:
+
+- Timmi's PR [#481](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/481) on finalizing the project version migration. I suggested removing the fallback behavior where the resume/portfolio edit endpoints accept project_name when project_summary_id is missing, since that state shouldn’t be possible.
+- Adara's PR [#486](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/486) on the manual summaries API. I recommended using project_key instead of project_name to keep identifiers consistent across the upload wizard flow.
+- Timmi's PR [#490](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/490) on top projects and project evolution. I asked for clarification on the decision to remove classification/project-type prompts for projects detected as new versions.
+- Adara's PR [#497](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/497) on activity heatmap features. I suggested a few documentation improvements and clean the unused imports.
+
 Next week plan: I plan to address some comments on my PR and plan to work on implementing the frontend.
