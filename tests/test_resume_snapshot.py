@@ -927,3 +927,75 @@ def test_cli_remove_project_no_resumes(monkeypatch, capsys):
 
     out = capsys.readouterr().out
     assert "No saved resumes" in out
+
+
+# ---------- No-git fallback bullets ----------
+
+def test_build_contribution_bullets_no_git_uses_activity_fallback(monkeypatch):
+    """When code_collaborative_metrics has no data (no .git), bullets use activity breakdown."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    # Seed a collaborative code project summary
+    save_project_summary(conn, user_id, "no_git_proj", _make_summary(
+        "no_git_proj", project_type="code", project_mode="collaborative",
+    ))
+
+    # get_normalized_code_metrics returns None (no git metrics)
+    monkeypatch.setattr(
+        helpers, "get_normalized_code_metrics", lambda c, u, p, collab: None,
+    )
+    # get_code_activity_percents returns file-level activity data
+    monkeypatch.setattr(
+        helpers, "get_code_activity_percents",
+        lambda c, u, p, source="combined": {
+            "feature_coding": 66.7,
+            "testing": 33.3,
+            "refactoring": 0.0,
+            "debugging": 0.0,
+            "documentation": 0.0,
+        },
+    )
+
+    project = {
+        "project_name": "no_git_proj",
+        "project_type": "code",
+        "project_mode": "collaborative",
+    }
+    bullets = helpers.build_contribution_bullets(conn, user_id, project)
+
+    assert len(bullets) >= 2
+    assert "file-level analysis" in bullets[0]
+    assert "feature implementation" in bullets[1]
+    # Should NOT contain the old debug error message
+    assert not any("no metrics found" in b for b in bullets)
+
+
+def test_build_contribution_bullets_no_git_no_activity_returns_empty(monkeypatch):
+    """When there are no git metrics AND no activity data, returns empty list."""
+    conn = sqlite3.connect(":memory:")
+    init_schema(conn)
+    user_id = 1
+
+    save_project_summary(conn, user_id, "empty_proj", _make_summary(
+        "empty_proj", project_type="code", project_mode="collaborative",
+    ))
+
+    monkeypatch.setattr(
+        helpers, "get_normalized_code_metrics", lambda c, u, p, collab: None,
+    )
+    monkeypatch.setattr(
+        helpers, "get_code_activity_percents",
+        lambda c, u, p, source="combined": {},
+    )
+
+    project = {
+        "project_name": "empty_proj",
+        "project_type": "code",
+        "project_mode": "collaborative",
+    }
+    bullets = helpers.build_contribution_bullets(conn, user_id, project)
+
+    assert bullets == []
+    assert not any("no metrics found" in b for b in bullets)

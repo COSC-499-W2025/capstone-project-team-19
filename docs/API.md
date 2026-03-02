@@ -249,6 +249,103 @@ Handles project ingestion, analysis, classification, and metadata updates.
       }
       ```
 
+  - **Get Top Projects**
+    - **Endpoint**: `GET /top`
+    - **Description**: Returns the top N projects in ranked order, with summary snippets and version counts. Useful for dashboards and "top projects" displays.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Query Parameters**:
+      - `limit` (integer, optional): Number of top projects to return. Defaults to `3`. Must be ≥ 1.
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `TopProjectsDTO`
+    - **Response Body**:
+      ```json
+      {
+        "success": true,
+        "data": {
+          "topProjects": [
+            {
+              "projectId": "9",
+              "title": "My Project",
+              "rankScore": 0.732,
+              "summarySnippet": "A full-stack task manager with React and Spring Boot...",
+              "versionCount": 3
+            }
+          ]
+        },
+        "error": null
+      }
+      ```
+
+  - **Get Project Evolution**
+    - **Endpoint**: `GET /{project_id}/evolution`
+    - **Description**: Returns version-by-version evolution for a project: summaries, file-level diffs, skill progression, languages, frameworks, and metrics. Projects with multiple uploads (versions) will show how the project evolved over time.
+    - **Path Parameters**:
+      - `{project_id}` (integer, required): The `project_summary_id` of the project
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
+    - **Response DTO**: `ProjectEvolutionDTO`
+    - **Response Body**:
+      ```json
+      {
+        "success": true,
+        "data": {
+          "projectId": "3",
+          "title": "code_collab_proj",
+          "versions": [
+            {
+              "versionId": "1",
+              "date": "2026-02-18",
+              "summary": "Task Manager",
+              "diff": null,
+              "skills": ["architecture_and_design"],
+              "skillsDetail": [{"skill_name": "architecture_and_design", "level": "Intermediate", "score": 0.33}],
+              "skillProgression": null,
+              "languages": ["Java", "JSON", "YAML"],
+              "frameworks": ["Spring", "Spring Boot"],
+              "avgComplexity": null,
+              "totalFiles": 86
+            },
+            {
+              "versionId": "2",
+              "date": "2026-02-18",
+              "summary": "task manager",
+              "diff": {
+                "linesAdded": null,
+                "linesModified": null,
+                "linesRemoved": null,
+                "files": {
+                  "filesAdded": ["new-file.java"],
+                  "filesModified": ["modified-file.py"],
+                  "filesRemoved": ["removed-file.c"],
+                  "unchangedCount": 28
+                }
+              },
+              "skills": ["testing_and_ci"],
+              "skillsDetail": [{"skill_name": "testing_and_ci", "level": "Beginner", "score": 0.25}],
+              "skillProgression": {
+                "newSkills": [{"skill_name": "testing_and_ci", "level": "Beginner", "score": 0.25, "prev_score": null}],
+                "improvedSkills": [],
+                "declinedSkills": [],
+                "removedSkills": [{"skill_name": "architecture_and_design", "level": "Intermediate", "score": 0.33, "prev_score": 0.33}]
+              },
+              "languages": ["Java", "JavaScript", "TypeScript"],
+              "frameworks": ["React", "Spring Boot"],
+              "avgComplexity": null,
+              "totalFiles": 206
+            }
+          ]
+        },
+        "error": null
+      }
+      ```
+    - **Notes**:
+      - First version has `diff: null` and `skillProgression: null` (nothing to compare)
+      - `diff` for later versions includes file-level changes (added/modified/removed) and optionally `linesAdded`, `linesRemoved` when available
+      - `skillProgression` shows new, improved, declined, and removed skills between consecutive versions
+      - `avgComplexity` is `null` for collaborative code projects; only individual code projects have complexity metrics
+
   - **Replace Entire Ranking Order**
     - **Endpoint**: `PUT /ranking`
     - **Description**: Replaces the entire manual ranking order. The request must include **every** project for the user (no extras, no missing). The list order becomes `manual_rank = 1..N`.
@@ -933,7 +1030,6 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
     - `422 Unprocessable Entity` if any relpath is unsafe (e.g. contains `..`) or if the list includes the main file or any `.csv`
     - `404 Not Found` if any relpath does not exist for this project/upload
 
-
 - **Set Supporting CSV Files (Collaborative Text Contribution)**
     - **Endpoint**: `POST /{upload_id}/projects/{project_key}/supporting-csv-files`
     - **Description**: Stores which **CSV files** the user contributed to.
@@ -993,7 +1089,48 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
     - `409 Conflict` if upload status is not valid for this action
     - `422 Unprocessable Entity` if `key_role` is invalid (e.g., wrong type or exceeds max length)
 
----
+- **Manual Project Summary**
+  - **Endpoint**: `POST /{upload_id}/projects/{project_name}/manual-project-summary`
+  - **Description**: Stores a user-provided manual project summary for this upload session.
+    - Writes to: `uploads.state.manual_project_summaries[project_name]`
+  - **Auth**: `Authorization: Bearer <access_token>`
+  - **Path Params**:
+    - `{upload_id}` (integer, required): The upload session ID
+    - `{project_name}` (string, required): The project name
+  - **Request DTO**: `ManualProjectSummaryRequestDTO`
+  - **Request Body**:
+    ```json
+    {
+      "summary_text": "Built a pipeline to ..., improved ..., shipped ..."
+    }
+    ```
+  - **Response Status**: `200 OK`
+  - **Response DTO**: `UploadDTO`
+  - **Error Responses**:
+    - `404 Not Found` if upload or project is not found / does not belong to user
+    - `409 Conflict` if upload is not in a summary-allowed status (must be `needs_summaries`, or if enabled: `analyzing`/`done`)
+
+- **Manual Contribution Summary**
+  - **Endpoint**: `POST /{upload_id}/projects/{project_name}/manual-contribution-summary`
+  - **Description**: Stores a user-provided manual contribution summary for this upload session.
+    - Writes to: `uploads.state.contributions[project_name].manual_contribution_summary`
+  - **Auth**: `Authorization: Bearer <access_token>`
+  - **Path Params**:
+    - `{upload_id}` (integer, required): The upload session ID
+    - `{project_name}` (string, required): The project name
+  - **Request DTO**: `ManualContributionSummaryRequestDTO`
+  - **Request Body**:
+    ```json
+    {
+      "manual_contribution_summary": "I implemented ..., fixed ..., added tests ..., or keep it empty if you'd like"
+    }
+    ```
+  - **Response Status**: `200 OK`
+  - **Response DTO**: `UploadDTO`
+  - **Error Responses**:
+    - `404 Not Found` if upload or project is not found / does not belong to user
+    - `409 Conflict` if upload is not in a summary-allowed status (must be `needs_summaries`, or if enabled: `analyzing`/`done`)
+
 
 ## **GitHub Integration**
 
@@ -1436,6 +1573,85 @@ Exposes extracted skills and timelines.
     }
     ```
 
+- **Get Skill Timeline**
+  - **Endpoint**: `GET /timeline`
+  - **Description**: Returns a chronological skill evolution timeline with cumulative scores computed using diminishing returns. Skills are grouped by date, and undated skills are listed separately. A `current_totals` section folds undated skills into the final cumulative score.
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Response Status**: `200 OK`
+  - **Response Body**: Uses `SkillTimelineDTO`
+    ```json
+    {
+      "success": true,
+      "data": {
+        "dated": [
+          {
+            "date": "2024-01-15",
+            "events": [
+              {
+                "skill_name": "Python",
+                "level": "Intermediate",
+                "score": 0.3,
+                "project_name": "ProjectA"
+              }
+            ],
+            "cumulative_skills": {
+              "Python": {
+                "cumulative_score": 0.3,
+                "projects": ["ProjectA"]
+              }
+            }
+          },
+          {
+            "date": "2024-03-20",
+            "events": [
+              {
+                "skill_name": "Python",
+                "level": "Advanced",
+                "score": 0.4,
+                "project_name": "ProjectB"
+              }
+            ],
+            "cumulative_skills": {
+              "Python": {
+                "cumulative_score": 0.58,
+                "projects": ["ProjectA", "ProjectB"]
+              }
+            }
+          }
+        ],
+        "undated": [
+          {
+            "skill_name": "Docker",
+            "level": "Beginner",
+            "score": 0.25,
+            "project_name": "ProjectC"
+          }
+        ],
+        "current_totals": {
+          "Python": {
+            "cumulative_score": 0.58,
+            "projects": ["ProjectA", "ProjectB"]
+          },
+          "Docker": {
+            "cumulative_score": 0.25,
+            "projects": ["ProjectC"]
+          }
+        },
+        "summary": {
+          "total_skills": 2,
+          "total_projects": 3,
+          "date_range": {
+            "earliest": "2024-01-15",
+            "latest": "2024-03-20"
+          },
+          "skill_names": ["Docker", "Python"]
+        }
+      },
+      "error": null
+    }
+    ```
+  - **Cumulative Score Formula**: Uses diminishing returns — `1 - (1 - current) × (1 - new_score)`. Each new project fills a fraction of the remaining gap to 1.0, so scores always increase but never exceed 1.0. This rewards breadth (practicing a skill across many projects) without rapid saturation.
+
 ---
 
 ## **Resume**
@@ -1551,7 +1767,7 @@ Manages résumé-specific representations of projects.
 
 - **Edit Resume**
   - **Endpoint**: `POST /{resume_id}/edit`
-  - **Description**: Edits a résumé snapshot. Can rename the résumé, edit project details, or both. Project editing is optional - you can rename a résumé without editing any project.
+  - **Description**: Edits a résumé snapshot. Can rename the résumé, edit project details, update resume-level skill highlighting preferences, or any combination. Project editing is optional - you can rename a résumé without editing any project.
   - **Path Parameters**:
     - `{resume_id}` (integer, required): The `id` from `resume_snapshots` table. Get this from `GET /` list.
   - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
@@ -1573,7 +1789,8 @@ Manages résumé-specific representations of projects.
     ```
 
     - `name` (string, optional): New name for the résumé (rename)
-    - `project_summary_id` (integer, optional): Required when editing project fields. Get this from `GET /{resume_id}` response (`projects[].project_summary_id`). If omitted, only the résumé name is updated.
+    - `project_name` (string, optional): The text name of the project to edit. If omitted, only résumé-level updates are applied (e.g., rename and/or skill preferences).
+    - `project_summary_id` (integer, optional): Required when editing project fields. Get this from `GET /resume/{resume_id}` response (`projects[].project_summary_id`). If omitted, only the résumé name is updated.
     - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
       - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
       - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
@@ -1583,6 +1800,8 @@ Manages résumé-specific representations of projects.
     - `contribution_edit_mode` (string, optional): How to apply contribution bullets. Defaults to `"replace"`.
       - `"replace"`: Replace all existing bullets with the provided list
       - `"append"`: Keep existing bullets and add the provided bullets to the end
+    - `skill_preferences` (array, optional): Resume-level skill highlighting preferences. Each entry uses `SkillPreferenceDTO`.
+    - `skill_preferences_reset` (boolean, optional): If true, clears all resume-level skill preferences (reverts to defaults).
 
   - **Response Status**: `200 OK` or `404 Not Found`
   - **Response Body**: Uses `ResumeDetailDTO`
@@ -1605,7 +1824,8 @@ Manages résumé-specific representations of projects.
         }
         ```
         - `name` (string, optional): New name for the résumé (rename)
-        - `project_summary_id` (integer, optional): Required when editing project fields. Get from `GET /{resume_id}` response. If omitted, only name is updated.
+        - `project_name` (string, optional): The text name of the project to edit. If omitted, only résumé-level updates are applied (e.g., rename and/or skill preferences).
+        - `project_summary_id` (integer, optional): Required when editing project fields. Get from `GET /resume/{resume_id}` response. If omitted, only name is updated.
         - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
             - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
             - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
@@ -1616,6 +1836,8 @@ Manages résumé-specific representations of projects.
             - `"replace"`: Replace all existing bullets with the provided list
             - `"append"`: Keep existing bullets and add the provided bullets to the end
         - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead"). Follows the same `scope` rules as other fields.
+        - `skill_preferences` (array, optional): Resume-level skill highlighting preferences. Each entry uses `SkillPreferenceDTO`.
+        - `skill_preferences_reset` (boolean, optional): If true, clears all resume-level skill preferences (reverts to defaults).
     - **Response Status**: `200 OK` or `404 Not Found`
     - **Response Body**: Uses `ResumeDetailDTO`
         ```json
@@ -1806,7 +2028,7 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
 
 - **Edit Portfolio**
     - **Endpoint**: `POST /edit`
-    - **Description**: Edits portfolio wording for a specific project. Changes can be scoped to the portfolio only or applied globally (affecting all resumes and the portfolio). Edits are stored as overrides in `project_summaries.summary_json` — no portfolio snapshot table is needed. Returns the updated portfolio view.
+    - **Description**: Edits portfolio wording or skill highlighting for a specific project. Changes can be scoped to the portfolio only or applied globally (affecting all resumes and the portfolio). Edits are stored as overrides in `project_summaries.summary_json` and skill preferences are stored per project — no portfolio snapshot table is needed. Returns the updated portfolio view.
     - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
     - **Request Body**: Uses `PortfolioEditRequestDTO`
         ```json
@@ -1825,6 +2047,8 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
         - `display_name` (string, optional): Custom display name for the project
         - `summary_text` (string, optional): Updated summary text
         - `contribution_bullets` (array of strings, optional): Custom contribution bullet points
+        - `skill_preferences` (array, optional): Per-project skill highlighting preferences. Each entry uses `SkillPreferenceDTO`.
+        - `skill_preferences_reset` (boolean, optional): If true, clears skill preferences for the specified project.
     - **Response Status**: `200 OK` or `404 Not Found`
     - **Response Body**: Uses `PortfolioDetailDTO` (returns the full updated portfolio)
         ```json
@@ -1977,6 +2201,58 @@ Example:
 - **PatchProjectRankingRequestDTO** (used by `PATCH /projects/{project_id}/ranking`)
   - `rank` (int, optional): Set a manual rank. Use `null` to clear manual rank.
 
+- **TopProjectItemDTO** (used by `GET /projects/top`)
+  - `projectId` (string, required): The `project_summary_id` as string
+  - `title` (string, required): Project display name
+  - `rankScore` (float, required): Computed importance score
+  - `summarySnippet` (string, optional): Truncated summary (≈120 chars), or `null`
+  - `versionCount` (int, default 0): Number of versions (upload snapshots) for this project
+
+- **TopProjectsDTO**
+  - `topProjects` (List[TopProjectItemDTO], required)
+
+- **ProjectEvolutionDTO** (used by `GET /projects/{project_id}/evolution`)
+  - `projectId` (string, required): The `project_summary_id` as string
+  - `title` (string, required): Project display name
+  - `versions` (List[EvolutionVersionDTO], required): Versions ordered oldest first
+
+- **EvolutionVersionDTO**
+  - `versionId` (string, required)
+  - `date` (string, required): Activity or creation date (YYYY-MM-DD)
+  - `summary` (string, required): Version summary text
+  - `diff` (VersionDiffDTO, optional): Changes since previous version; `null` for first version
+  - `skills` (List[string]): Skill names for this version
+  - `skillsDetail` (List[object]): Skill objects with `skill_name`, `level`, `score`
+  - `skillProgression` (SkillProgressionDTO, optional): New/improved/declined/removed skills vs previous version; `null` for first version
+  - `languages` (List[string]): Languages detected
+  - `frameworks` (List[string]): Frameworks detected
+  - `avgComplexity` (float, optional): Average cyclomatic complexity; `null` for collaborative code
+  - `totalFiles` (int, optional): File count for this version
+
+- **VersionDiffDTO**
+  - `linesAdded` (int, optional): Lines added since previous version; `null` when unavailable
+  - `linesModified` (int, optional): Lines modified; `null` when unavailable
+  - `linesRemoved` (int, optional): Lines removed since previous version; `null` when unavailable
+  - `files` (FileDiffDTO, optional): File-level changes
+
+- **FileDiffDTO**
+  - `filesAdded` (List[string]): Paths of newly added files
+  - `filesModified` (List[string]): Paths of modified files
+  - `filesRemoved` (List[string]): Paths of removed files
+  - `unchangedCount` (int): Count of unchanged files
+
+- **SkillProgressionDTO**
+  - `newSkills` (List[SkillChangeDTO]): Skills that appeared in this version
+  - `improvedSkills` (List[SkillChangeDTO]): Skills with increased score
+  - `declinedSkills` (List[SkillChangeDTO]): Skills with decreased score
+  - `removedSkills` (List[SkillChangeDTO]): Skills that disappeared since previous version
+
+- **SkillChangeDTO**
+  - `skill_name` (string, required)
+  - `level` (string, required)
+  - `score` (float, required)
+  - `prev_score` (float, optional): Previous version's score; `null` for new skills
+
 ### **Upload Wizard DTOs (Projects Upload)**
 
 - **UploadDTO**
@@ -2032,12 +2308,20 @@ Example:
 - **SupportingFilesRequest**
     - `relpaths` (List[string], required): relpaths returned by `GET .../files`
 
+<<<<<<< HEAD
+- **ManualProjectSummaryRequestDTO**
+  - `summary_text` (string, required): User-provided manual project summary text
+
+- **ManualContributionSummaryRequestDTO**
+  - `manual_contribution_summary` (string, required): User-provided manual contribution summary text (what you did)
+=======
 - **KeyRoleRequestDTO**
   - `key_role` (string, required): project role/title
   - Notes:
     - whitespace is normalized before storing
     - max length: `120`
     - blank input is allowed and treated as clear (`""`)
+>>>>>>> origin/main
 
 ### **Skills DTOs**
 
@@ -2051,6 +2335,11 @@ Example:
 
 - **SkillsListDTO**
   - `skills` (List[SkillEventDTO], required)
+
+- **SkillPreferenceDTO**
+  - `skill_name` (string, required)
+  - `is_highlighted` (boolean, optional): Defaults to true
+  - `display_order` (int, optional): Lower values show first
 
 ### **Resume DTOs**
 
@@ -2094,6 +2383,7 @@ Example:
 
 - **ResumeEditRequestDTO**
     - `name` (string, optional): New name for the résumé
+    - `project_name` (string, optional): Text name of the project to edit. If omitted, only résumé-level updates are applied.
     - `project_summary_id` (integer, optional): Required when editing project fields. Get from `GET /resume/{resume_id}` response. If omitted, only name is updated.
     - `scope` (string, optional): `"resume_only"` (default) or `"global"`. Required when editing a project.
     - `display_name` (string, optional): Custom display name for the project
@@ -2101,6 +2391,8 @@ Example:
     - `contribution_bullets` (List[string], optional): Custom contribution bullet points
     - `contribution_edit_mode` (string, optional): `"replace"` (default) or `"append"`
     - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead")
+    - `skill_preferences` (List[SkillPreferenceDTO], optional): Resume-level skill highlighting preferences
+    - `skill_preferences_reset` (boolean, optional): Clear all resume-level preferences (revert to defaults)
 
 - **PortfolioGenerateRequestDTO**
     - `name` (string, required): Label for the portfolio
@@ -2111,6 +2403,8 @@ Example:
     - `display_name` (string, optional): Custom display name for the project
     - `summary_text` (string, optional): Updated summary text
     - `contribution_bullets` (List[string], optional): Custom contribution bullet points
+    - `skill_preferences` (List[SkillPreferenceDTO], optional): Per-project skill highlighting preferences
+    - `skill_preferences_reset` (boolean, optional): Clear preferences for the specified project
 
 - **PortfolioProjectDTO**
     - `project_name` (string, required)

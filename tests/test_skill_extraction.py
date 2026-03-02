@@ -47,11 +47,12 @@ def test_happy_path_code():
         version_key=None,
     )
     mocks["code"].assert_called_once_with(
-        ANY_CONN := mocks["code"].call_args.args[0],   # conn, but irrelevant
+        mocks["code"].call_args.args[0],
         1,
         "proj",
         "individual",
-        ["file.py"]
+        ["file.py"],
+        version_key=None,
     )
 
 
