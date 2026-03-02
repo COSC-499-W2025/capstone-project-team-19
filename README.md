@@ -352,9 +352,10 @@ The system supports multiple versions of the same project (e.g., re-uploads). Wh
 
 ## System Architecture Diagram
 
-![System Architecture Diagram 1](docs/plan/Milestone 2 System Architecture Diagram_1)
+![System Architecture Diagram 1](docs/plan/Milestone%202%20System%20Architecture%20Diagram_1.png)
 
-![System Architecture Diagram 2](docs/plan/Milestone 2 System Architecture Diagram_2.png)
+![System Architecture Diagram 2](docs/plan/Milestone%202%20System%20Architecture%20Diagram_2.png)
+
 
 The System Architecture Diagram outlines the complete pipeline from user data consent through metrics generation and outputs. 
 The flow starts when the user login, and choose one of the 11 menu:
