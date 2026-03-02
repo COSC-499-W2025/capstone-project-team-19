@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 6-8 (Feb 9-March 1)](#t2-week-6-8-monday-9th-february--sunday-1st-march)
 - [Week 4&5 (Jan 26-Feb 8)](#t2-week-45-monday-26th-january---sunday-8th-february)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-19th-january---sunday-25th-january)
 - [Week 2 (Jan 12–18)](#t2-week-2-monday-12th-january---sunday-18th-january)
@@ -171,3 +172,20 @@ I didnt reviewed many PR these 2 weeks, I acknowledge my inactivity during these
 I reviewed Ammaar's Key Role PR, where one case (no .git) was skipped, so the user cant input they key role in that case. I also reviewed Adara's PR and Salma's PR
 
 Next week plan: Continue implementing the endpoint and make the necessary update for the skill highlighting features.
+
+## (T2 Week 6-8) Monday 9th February- Sunday 1st March
+![Screenshot of week 8_T2 peer eval](./screenshots/Johanes-Feb9-March1.png)
+
+Week recap:
+These three weeks I've been working on three PRs
+
+First PR: #483
+As per comments in the previous pr, I updated the behaviour of skill highlighting feature. I moved the implementation to be under resume and portfolio menu, not as a new cli menu. Under portfolio menu, skill editing is done per project, while under resume is done per resume, which follows the format of skill in both resume and portfolio.
+
+Second PR: #485
+I decided to close my previous pr about the api skill highlight and remake it since now the implementation is different. The api is now under /resume/{resume_id}/edit and /portfolio/edit. Which follow the implementation of the cli menu
+
+Third PR: #499
+Skill timeline api will be useful for creating a skill progression graph/dashboard in the frontend. It returns the cumulative score of all skills gained grouped by date. Cumulative formula is currently using : `1-(1-current)*(1-new)`, which considered better than capping or taking the maximum of comparison between two scores. This formula consider the skills gained from the second project with lower weight knowing that the user has previous knowledge of the corresponding skills.
+
+I didn't review much PR on these three weeks, I reviewed adara's pr on summary api, questioning about the status after adding summary that remain the same. I also reviewed salma's pr on updating api.md
