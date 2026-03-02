@@ -10,6 +10,8 @@ from src.api.schemas.uploads import (
     ClassificationsRequest,
     ProjectTypesRequest,
     DedupResolveRequestDTO,
+    RunAnalysisRequestDTO,
+    RunAnalysisReadyDTO,
     UploadProjectFilesDTO,
     MainFileRequestDTO,
     MainFileSectionsResponseDTO,
@@ -44,6 +46,7 @@ from src.services.uploads_service import (
     set_project_main_file,
     _resolve_project_key_to_name,
 )
+from src.services.uploads_run_service import run_analysis_preflight
 from src.api.schemas.uploads import SupportingFilesRequestDTO
 from src.services.uploads_supporting_contributions_service import (
     set_project_supporting_text_files,
@@ -92,6 +95,17 @@ def get_projects_upload(
     if upload is None:
         raise HTTPException(status_code=404, detail="Upload not found")
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.post("/upload/{upload_id}/run", response_model=ApiResponse[RunAnalysisReadyDTO])
+def post_upload_run_preflight(
+    upload_id: int,
+    body: RunAnalysisRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    data = run_analysis_preflight(conn, user_id, upload_id, body.scope, body.force_rerun)
+    return ApiResponse(success=True, data=RunAnalysisReadyDTO(**data), error=None)
 
 
 @router.post("/upload/{upload_id}/dedup/resolve", response_model=ApiResponse[UploadDTO])

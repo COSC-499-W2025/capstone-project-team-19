@@ -100,6 +100,7 @@ The API will be available at `http://localhost:8000`. You can:
     - View interactive API documentation at `http://localhost:8000/docs`
     - View alternative API docs at `http://localhost:8000/redoc`
     - Make HTTP requests to the API endpoints from your frontend or API client
+    - For upload `/run` readiness rules, refer to `docs/run_analysis_readiness_matrix.txt`
 
 You can also check the API is running correctly:
     - `http://localhost:8000/health` (returns `{"status": "ok"}`)

@@ -81,6 +81,20 @@ class MainFileSectionsResponseDTO(BaseModel):
 class ContributedSectionsRequestDTO(BaseModel):
     selected_section_ids: List[int]
 
+
+RunScope = Literal["all", "individual", "collaborative"]
+
+
+class RunAnalysisRequestDTO(BaseModel):
+    scope: RunScope = "all"
+    force_rerun: bool = False
+
+
+class RunAnalysisReadyDTO(BaseModel):
+    upload_id: int
+    scope: RunScope
+    ready: bool = True
+    warnings: List[Dict[str, Any]] = []
 class ManualProjectSummaryRequestDTO(BaseModel):
     summary_text: str = ""
 

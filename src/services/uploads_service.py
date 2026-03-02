@@ -503,7 +503,11 @@ def submit_project_types(conn: sqlite3.Connection, user_id: int, upload_id: int,
     new_state = patch_upload_state(
         conn,
         upload_id,
-        patch={"project_types_manual": project_types},
+        patch={
+            "project_types_manual": project_types,
+            "project_types_mixed": [],
+            "project_types_unknown": [],
+        },
         status="needs_file_roles",
     )
     return {"upload_id": upload_id, "status": "needs_file_roles", "zip_name": upload.get("zip_name"), "state": new_state}
