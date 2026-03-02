@@ -2,7 +2,7 @@ import sys
 import os
 import sqlite3
 import pytest
-import db
+import src.db as db
 import tempfile
 import shutil
 from pathlib import Path
@@ -50,7 +50,6 @@ def test_user_id(shared_db):
     """
     conn = db.connect()
     user_id = db.get_or_create_user(conn, "test-user")
-    conn.close()
     return user_id
 
 @pytest.fixture()

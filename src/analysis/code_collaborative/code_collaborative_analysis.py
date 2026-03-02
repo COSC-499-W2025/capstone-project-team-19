@@ -86,7 +86,9 @@ def analyze_code_project(conn: sqlite3.Connection,
                          project_name: str,
                          zip_path: str,
                          summary=None,
-                         version_key: int | None = None) -> Optional[dict]:
+                         version_key: int | None = None,
+                         *,
+                         skip_github_prompt: bool = False) -> Optional[dict]:
     # 1) get base dirs from the uploaded zip
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
     # Capture any pre-collected manual description (non-LLM path)
@@ -115,7 +117,7 @@ def analyze_code_project(conn: sqlite3.Connection,
         _handle_no_git_repo(conn, user_id, project_name)
 
         # Still allow GitHub-only enhancement even without local repo_dir
-        _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
+        _enhance_with_github(conn, user_id, project_name, repo_dir, summary, skip_github_prompt=skip_github_prompt)
 
         # Populate whatever we can so the project summary isn't empty
         _apply_basic_summary_without_git(
@@ -138,7 +140,7 @@ def analyze_code_project(conn: sqlite3.Connection,
             print(f"[debug] using repo_dir={repo_dir}")
 
     # Enhance with GitHub metrics (if user says yes)
-    repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary)
+    repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary, skip_github_prompt=skip_github_prompt)
 
     # 3) identity table + load user aliases
     ensure_user_github_table(conn)
@@ -299,7 +301,18 @@ def _handle_no_git_repo(conn, user_id, project_name):
     return None
 
 
-def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None):
+def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None, *, skip_github_prompt: bool = False):
+    """If skip_github_prompt is True, do not ask; only attach existing repo metrics if already linked."""
+    if skip_github_prompt:
+        # Reuse existing link/metrics if any (e.g. already asked for first version of this project)
+        owner, repo = get_gh_repo_name_and_owner(conn, user_id, project_name)
+        if owner and repo and summary:
+            repo_metrics = get_github_repo_metrics(conn, user_id, project_name, owner, repo)
+            if repo_metrics and not _metrics_empty(repo_metrics):
+                summary.metrics["github"] = repo_metrics
+                return repo_metrics
+        return None
+
     ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
     if ans not in {"y", "yes"}:
         return

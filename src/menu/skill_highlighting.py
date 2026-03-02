@@ -13,6 +13,22 @@ from src.services.skill_preferences_service import (
     reset_skill_preferences,
 )
 
+_WRITING_SKILL_DISPLAY_NAMES: Dict[str, str] = {
+    "clarity": "Clear communication",
+    "structure": "Structured writing",
+    "vocabulary": "Strong vocabulary",
+    "argumentation": "Analytical writing",
+    "depth": "Critical thinking",
+    "process": "Revision & editing",
+    "planning": "Planning & organization",
+    "research": "Research integration",
+    "data_collection": "Data collection",
+    "data_analysis": "Data analysis",
+}
+
+
+def _display_name(raw: str) -> str:
+    return _WRITING_SKILL_DISPLAY_NAMES.get(raw, raw.replace("_", " ").title())
 
 def manage_skill_highlighting(
     conn,
@@ -102,7 +118,7 @@ def _view_skill_preferences(
     print("-" * 70)
 
     for i, skill in enumerate(skills, 1):
-        name = skill["skill_name"].replace("_", " ").title()
+        name = _display_name(skill["skill_name"])
         status = "Highlighted" if skill["is_highlighted"] else "Hidden"
         order = skill.get("display_order")
         order_str = str(order) if order is not None else "-"
@@ -149,7 +165,7 @@ def _toggle_skill_highlighting(
     print("-" * 60)
 
     for i, skill in enumerate(skills, 1):
-        name = skill["skill_name"].replace("_", " ").title()
+        name = _display_name(skill["skill_name"])
         status = "[X]" if skill["is_highlighted"] else "[ ]"
         print(f"{i}. {status} {name}")
 
@@ -219,7 +235,7 @@ def _set_skill_order(
     print("\nCurrent highlighted skills:")
 
     for i, skill in enumerate(highlighted, 1):
-        name = skill["skill_name"].replace("_", " ").title()
+        name = _display_name(skill["skill_name"])
         order = skill.get("display_order")
         order_str = f" (order: {order})" if order is not None else ""
         print(f"{i}. {name}{order_str}")
