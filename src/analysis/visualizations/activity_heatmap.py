@@ -29,8 +29,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from matplotlib.patches import Patch
 
-from src.db.projects import get_project_key
-from src.db.version_evolution import (
+from src.db import (
+    get_project_key,
     get_file_diff_between_versions,
     get_version_keys_ordered_for_project,
 )
