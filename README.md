@@ -97,6 +97,7 @@ uvicorn src.api.main:app --reload
 The API will be available at `http://localhost:8000`. You can:
     - View interactive API documentation at `http://localhost:8000/docs`
     - View alternative API docs at `http://localhost:8000/redoc`
+    - Read the full endpoint reference in [docs/API.md](docs/API.md)
     - Make HTTP requests to the API endpoints from your frontend or API client
     - For upload `/run` readiness rules, refer to `docs/run_analysis_readiness_matrix.txt`
 
@@ -275,7 +276,7 @@ A template file (`.env.example`) is provided and should be copied directly.
 
 ### GitHub OAuth (optional)
 
-GitHub OAuth is used to analyze collaboration metrics such as commits, pull requests, reviews, and contribution frequency. This integration uses GitHub's **Code Flow OAuth**.
+GitHub OAuth is used to analyze collaboration metrics such as commits, pull requests, reviews, and contribution frequency. This integration uses GitHub's **Code Flow OAuth**. For more details, see [docs/github_integration.md](docs/github_integration.md).
 
 To enable GitHub analysis:
 1. Create a GitHub OAuth App:
