@@ -1,27 +1,32 @@
 
 
 
+from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Literal, Optional
+
+from src.api.schemas.skills import SkillPreferenceDTO
+
+
 class PortfolioItemDTO(BaseModel):
     rank: int
     project_name: str
     display_name: str
     score: float
-    project_type: str
-    project_mode: str
-    duration: str
-    languages: str
-    frameworks: str
-    activity: str
-    skills: List[str]
-    summary_lines: List[str]
+    project_type: Optional[str] = None
+    project_mode: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    languages: List[str] = []
+    frameworks: List[str] = []
+    summary_text: Optional[str] = None
+    skills: List[str] = []
+    text_type: Optional[str] = None
+    contribution_percent: Optional[float] = None
+    activities: List[Dict[str, Any]] = []
 
 
 class PortfolioDTO(BaseModel):
     items: List[PortfolioItemDTO]
-from pydantic import BaseModel, Field
-from typing import List, Literal, Optional
-
-from src.api.schemas.skills import SkillPreferenceDTO
 
 
 class PortfolioProjectDTO(BaseModel):

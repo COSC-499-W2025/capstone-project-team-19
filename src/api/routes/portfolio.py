@@ -4,7 +4,13 @@ from sqlite3 import Connection
 from src.api.dependencies import get_db, get_current_user_id
 from src.api.helpers import resolve_project_name_for_edit
 from src.api.schemas.common import ApiResponse
-from src.api.schemas.portfolio import PortfolioDetailDTO, PortfolioGenerateRequestDTO, PortfolioEditRequestDTO,  PortfolioItemDTO
+from src.api.schemas.portfolio import (
+    PortfolioDTO,
+    PortfolioItemDTO,
+    PortfolioDetailDTO,
+    PortfolioGenerateRequestDTO,
+    PortfolioEditRequestDTO,
+)
 from src.services.portfolio_service import generate_portfolio, edit_portfolio, CorruptProjectDataError, get_portfolio
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
