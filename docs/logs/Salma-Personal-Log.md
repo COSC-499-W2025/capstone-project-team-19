@@ -4,6 +4,7 @@
 
 ### Term 2
 
+- [T2 Weeks 6–8 (Feb 9–Mar 1)](#t2-weeks-6-8-monday-february-9---sunday-march-1)
 - [Weeks 4–5 (Jan 26–Feb 8)](#t2-weeks-4-5-monday-january-26---sunday-february-8)
 - [Week 3 (Jan 19–25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12–18)](#t2-week-2-monday-january-12---sunday-january-18)
@@ -243,3 +244,26 @@ I reviewed some PRs, four of them are:
 - Timmi's PR [#445](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/445) on the project dates API, where I found an edge case in which setting only one manual date prevents clearing it via PATCH when the other date is missing.
 
 Next week: I plan to implement the API endpoint for running the analysis (POST /projects/upload/{upload_id}/run). This might require additional endpoints such as run preferences (per upload), project and contribution summaries, project role inputs, and others.
+
+## (T2 Weeks 6-8) Monday February 9 - Sunday March 1
+
+![Screenshot of this week's peer evaluation](./screenshots/Salma-Feb9-Mar1.PNG)
+
+I worked on PR [#492](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/492) tto add a key-role API endpoint for the upload wizard flow. I implemented POST /projects/upload/{upload_id}/projects/{project_key}/key-role plus the DTO/service logic to validate input, normalize whitespace, map project_key → project_name, and persist to uploads.state.contributions[project_name].key_role. I also added API tests (happy path, 404 unknown project, 409 invalid upload status, and blank input clearing behavior) and documented the endpoint in API.md with examples and error cases.
+
+I worked on PR [#493](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/493) to improve API.md consistency and accuracy across sections. I normalized endpoint paths relative to each section’s Base URL, fixed response/request example formatting (including proper JSON blocks), and corrected authorization documentation (e.g., header naming and Bearer token vs X-User-Id). This PR is documentation-only and does not change runtime/API behavior.
+
+I worked on PR [#509](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/509) to finalize the API-first upload wizard flow through /run readiness checks and unblock valid runs. I implemented scope-based readiness validation (all/individual/collaborative) with structured incomplete-state errors, using a readiness matrix to centralize blockers and warnings, and made internal consent a readiness blocker. I also fixed upload-state resolution for manual project types (persist project_types_manual, clear mixed/unknown), added regression/API tests, and updated docs to reflect the readiness-only behavior.
+
+I worked on PR [#510](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/510) to extend /run from readiness-only into readiness + execution for fully API-driven analysis. I added run modes (mode="check" for readiness, mode="run" for readiness + execution) with explicit blocker vs warning semantics, plus matrix-driven evaluation using uploads.state capability/integration signals. I also implemented scope completion tracking and rerun guards (with force_rerun=true support), refactored execution to be non-interactive (no CLI prompts), fixed repo path resolution for extracted layouts, and updated tests/docs for the new behavior.
+
+I also collaborated with Timmi to design wireframes for the frontend UI.
+
+I also reviewed some PRs, four of them are:
+
+- Timmi's PR [#481](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/481) on finalizing the project version migration. I suggested removing the fallback behavior where the resume/portfolio edit endpoints accept project_name when project_summary_id is missing, since that state shouldn’t be possible.
+- Adara's PR [#486](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/486) on the manual summaries API. I recommended using project_key instead of project_name to keep identifiers consistent across the upload wizard flow.
+- Timmi's PR [#490](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/490) on top projects and project evolution. I asked for clarification on the decision to remove classification/project-type prompts for projects detected as new versions.
+- Adara's PR [#497](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/497) on activity heatmap features. I suggested a few documentation improvements and clean the unused imports.
+
+Next week plan: I plan to address some comments on my PR and plan to work on implementing the frontend.
