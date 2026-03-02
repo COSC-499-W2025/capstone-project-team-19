@@ -46,6 +46,7 @@ from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
 from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
 from src.integrations.google_drive.process_project_files import process_project_files
+from src.analysis.visualizations.activity_heatmap import write_project_activity_heatmap
 
 try:
     from src import constants
@@ -921,6 +922,15 @@ def _snapshot_version_evolution(conn, user_id: int, project_name: str, version_k
         total_files=total_files,
     )
     insert_version_skills_from_project(conn, user_id, project_name, version_key)
+    
+    # Generate/update the activity heatmap artifact (safe cache by latest version).
+    if write_project_activity_heatmap is not None:
+        try:
+            # mode='diff' makes each column represent what changed in that iteration.
+            write_project_activity_heatmap(conn, user_id, project_name, mode="diff", normalize=True)
+        except Exception:
+            # Never block analysis on visualization failures.
+            pass
 
 
 def _load_skills_into_summary(conn, user_id, project_name, summary):

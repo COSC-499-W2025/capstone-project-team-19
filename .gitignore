@@ -38,3 +38,6 @@ credentials.json
 # DOCX Output
 out/
 images/
+
+# Heatmap output
+data/artifacts/heatmaps/
