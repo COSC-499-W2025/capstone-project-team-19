@@ -150,23 +150,18 @@ def _handle_view_existing_resume(conn, user_id: int) -> bool:
         print("Unable to load the selected resume.")
         return False
 
-    # Get skill preferences for this resume (falls back to global if none set)
-    highlighted_skills = get_highlighted_skills_for_display(
-        conn=conn,
-        user_id=user_id,
-        context="resume",
-        context_id=resume_id,
-    )
-
-    # Always re-render with current skill preferences applied
+    # Always re-render with current resume-level skill preferences applied
     try:
         snapshot = json.loads(record["resume_json"])
+        highlighted_skills = get_highlighted_skills_for_display(
+            conn, user_id, context="resume", context_id=resume_id
+        )
         render_snapshot(
             conn,
             user_id,
             snapshot,
             print_output=True,
-            highlighted_skills=highlighted_skills if highlighted_skills else None,
+            highlighted_skills=highlighted_skills,
         )
     except Exception:
         print("Stored resume is corrupted or unreadable.")
@@ -309,10 +304,7 @@ def _handle_export_resume_docx(conn, user_id: int, username: str) -> bool:
         return False
 
     highlighted_skills = get_highlighted_skills_for_display(
-        conn=conn,
-        user_id=user_id,
-        context="resume",
-        context_id=resume_id,
+        conn, user_id, context="resume", context_id=resume_id
     )
 
     out_file = export_resume_record_to_docx(
@@ -440,10 +432,7 @@ def _handle_export_resume_pdf(conn, user_id: int, username: str) -> bool:
         return False
 
     highlighted_skills = get_highlighted_skills_for_display(
-        conn=conn,
-        user_id=user_id,
-        context="resume",
-        context_id=resume_id,
+        conn, user_id, context="resume", context_id=resume_id
     )
 
     out_file = export_resume_record_to_pdf(
@@ -488,7 +477,7 @@ def _handle_manage_resume_skills(conn, user_id: int, username: str) -> bool:
         username,
         context="resume",
         context_id=resume_id,
-        context_name=resume_name,
+        context_name=f"Resume: {resume_name}",
     )
     return True
 

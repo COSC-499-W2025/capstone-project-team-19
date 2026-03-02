@@ -4,12 +4,14 @@ from src.utils.deduplication.integration import run_deduplication_for_projects, 
 from src.db import (
     connect,
     init_schema,
+    create_upload,
     get_user_by_username,
     get_or_create_user,
     get_latest_consent,
     get_latest_external_consent,
     record_project_classification,
     store_parsed_files,
+    get_project_metadata,
 )
 from src.menu import (
     show_start_menu,
@@ -23,6 +25,7 @@ from src.menu import (
     view_ranked_projects,
     manage_project_thumbnails,
     edit_project_dates_menu,
+    view_activity_heatmap
 )
 from src.consent.consent import CONSENT_TEXT, get_user_consent, record_consent
 from src.consent.external_consent import get_external_consent, record_external_consent
@@ -82,12 +85,14 @@ def prompt_and_store():
         elif menu_choice == 8:
             view_chronological_skills(conn, user_id, username)
         elif menu_choice == 9:
-            edit_project_dates_menu(conn, user_id, username)
+            view_activity_heatmap(conn, user_id)
         elif menu_choice == 10:
-            manage_project_thumbnails(conn, user_id, username)
+            edit_project_dates_menu(conn, user_id, username)
         elif menu_choice == 11:
-            project_list(conn, user_id, username)
+            manage_project_thumbnails(conn, user_id, username)
         elif menu_choice == 12:
+            project_list(conn, user_id, username)
+        elif menu_choice == 13:
             print("\nThank you for using the system. Goodbye!")
             return None
         elif menu_choice == 1:
@@ -246,38 +251,77 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
             continue
         processed_zip_path = zip_path
 
-        # Run deduplication check
+        # Create upload record before dedup so new versions are linked to this upload
         zip_name = os.path.splitext(os.path.basename(zip_path))[0]
         target_dir = os.path.join(ZIP_DATA_DIR, zip_name)
+        upload_id = create_upload(
+            conn, user_id, zip_name=zip_name, zip_path=zip_path, status="needs_dedup"
+        )
         layout = analyze_project_layout(result)
-        skipped_projects, decisions = run_deduplication_for_projects_detailed(conn, user_id, target_dir, layout)
+        skipped_projects, decisions = run_deduplication_for_projects_detailed(
+            conn, user_id, target_dir, layout, upload_id=upload_id
+        )
         # Filter out skipped projects from result
         if skipped_projects:
             result = [f for f in result if f.get("project_name") not in skipped_projects]
 
-        # Apply dedup renames + attach version_key for storage
+        # Apply dedup renames + attach version_key for storage.
+        # Each file gets the version_key of its original folder (version_key_by_orig)
+        # so multi-version uploads store files under the correct version.
         name_map: dict[str, str] = {}
-        version_keys = {}
+        version_keys: dict[str, int] = {}
+        version_key_by_orig: dict[str, int] = {}
         for orig_name, decision in (decisions or {}).items():
             final = decision.get("final_name")
             vk = decision.get("version_key")
             if final:
                 name_map[orig_name] = final
                 if isinstance(vk, int):
-                    version_keys[final] = vk
+                    version_keys[final] = vk  # latest per project (for backward compat)
+                    version_key_by_orig[orig_name] = vk
 
         for f in result:
             orig = f.get("project_name")
             if orig in name_map:
                 f["project_name"] = name_map[orig]
-                f["version_key"] = version_keys.get(name_map[orig])
+                f["version_key"] = version_key_by_orig.get(orig)
+
+        # One (project_name, version_key) per version for analysis; oldest first for correct progression.
+        version_keys_for_analysis: list[tuple[str, int]] = sorted(
+            [
+                (d["final_name"], d["version_key"])
+                for d in (decisions or {}).values()
+                if d.get("final_name") and isinstance(d.get("version_key"), int)
+            ],
+            key=lambda x: x[1],
+        )
 
         # Persist files once (after dedup tagging)
         store_parsed_files(conn, result, user_id)
 
-        assignments = prompt_for_project_classifications(conn, user_id, zip_path, result, project_name_map=name_map)
+        # Version projects (new_version, ask->new_version) inherit classification/type from DB;
+        # we skip prompting for those. Only do that when the project already existed before this
+        # upload (has metadata in DB). When the "base" project was created in this same upload,
+        # we still need to prompt for classification once, then both base and version get it.
+        projects_created_this_upload = {
+            d["final_name"]
+            for d in (decisions or {}).values()
+            if d.get("kind") in ("new_project", "ask->new_project")
+        }
+        version_project_names = {
+            d["final_name"]
+            for d in (decisions or {}).values()
+            if d.get("kind") in ("new_version", "ask->new_version")
+            and d["final_name"] not in projects_created_this_upload
+        }
+
+        assignments = prompt_for_project_classifications(
+            conn, user_id, zip_path, result,
+            project_name_map=name_map,
+            version_project_names=version_project_names,
+        )
         try:
-            detect_project_type(conn, user_id, assignments)
+            detect_project_type(conn, user_id, assignments, version_project_names=version_project_names)
             # if zip file is valid (has folders)
             unchecked_zip = False
         except AttributeError:
@@ -295,6 +339,7 @@ def run_zip_ingestion_flow(conn, user_id, external_consent_status):
             external_consent_status,
             processed_zip_path,
             version_keys=version_keys,
+            version_keys_for_analysis=version_keys_for_analysis,
         )  # takes projects and sends them into the analysis flow
     else:
         if assignments:
@@ -307,8 +352,19 @@ def get_zip_path_from_user():
     return path
 
 
-def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_info: list[dict], project_name_map: dict[str, str] | None = None) -> dict:
-    """Ask the user to classify each detected project as individual or collaborative."""
+def prompt_for_project_classifications(
+    conn,
+    user_id: int,
+    zip_path: str,
+    files_info: list[dict],
+    project_name_map: dict[str, str] | None = None,
+    version_project_names: set[str] | None = None,
+) -> dict:
+    """Ask the user to classify each detected project as individual or collaborative.
+    For version projects (new_version of existing project), classification is loaded from DB
+    and we do not prompt.
+    """
+    version_project_names = version_project_names or set()
     zip_name = os.path.splitext(os.path.basename(zip_path))[0]
     layout = analyze_project_layout(files_info)
     root_name = layout["root_name"]
@@ -356,6 +412,18 @@ def prompt_for_project_classifications(conn, user_id: int, zip_path: str, files_
 
         auto_assignments = remapped_auto
         pending_projects = remapped_pending
+
+    # Version projects: load classification from DB, do not prompt.
+    auto_assignments = dict(auto_assignments) if auto_assignments else {}
+    for name in version_project_names:
+        classification, project_type = get_project_metadata(conn, user_id, name)
+        if not classification or not project_type:
+            raise ValueError(
+                f"Project '{name}' is a new version of an existing project but has no stored "
+                "classification or project_type. Both must already exist for version projects."
+            )
+        auto_assignments[name] = classification
+        pending_projects = [p for p in pending_projects if p != name]
 
     if not auto_assignments and not pending_projects:
         print("No project folders detected to classify.")

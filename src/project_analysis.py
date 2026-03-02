@@ -1,41 +1,52 @@
+import json
+import sqlite3
+
+from src.db import (
+    code_complexity_metrics_exists,
+    extract_complexity_metrics,
+    get_code_collaborative_metrics,
+    get_code_complexity_metrics,
+    get_latest_version_key,
+    get_metrics_id,
+    get_normalized_code_metrics,
+    get_project_key,
+    get_text_activity_contribution,
+    get_text_non_llm_metrics,
+    get_user_contributed_files,
+    get_version_files_count,
+    insert_code_collaborative_summary,
+    insert_code_complexity_metrics,
+    insert_version_skills_from_project,
+    insert_version_summary,
+    save_project_summary,
+    store_code_activity_metrics,
+    update_code_complexity_metrics,
+    get_project_skills,
+    get_files_for_user,
+)
 from src.utils.language_detector import detect_languages
 from src.utils.framework_detector import detect_frameworks
-
-import sqlite3
-import json
-
-# TEXT ANALYSIS imports
+from src.utils.helpers import _fetch_files
+from src.models.project_summary import ProjectSummary
 from src.analysis.text_individual.text_analyze import run_text_pipeline
 from src.analysis.text_individual.csv_analyze import analyze_all_csv
-from src.db import get_latest_version_key, get_text_activity_contribution
+from src.analysis.text_individual.llm_summary import extract_key_role_llm
 from src.analysis.text_collaborative.text_collab_analysis import analyze_collaborative_text_project
-from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
-
-# CODE ANALYSIS imports
 from src.analysis.code_individual.code_llm_analyze import run_code_llm_analysis
 from src.analysis.code_individual.code_non_llm_analysis import run_code_non_llm_analysis, prompt_manual_code_project_summary
-from src.utils.helpers import _fetch_files
-from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary
-from src.integrations.google_drive.process_project_files import process_project_files
-from src.db.project_summaries import save_project_summary
-from src.db.skills import get_project_skills
-from src.db import get_text_non_llm_metrics, get_latest_version_key
-from src.db.code_metrics import (
-    insert_code_complexity_metrics,
-    update_code_complexity_metrics,
-    code_complexity_metrics_exists,
+from src.analysis.code_collaborative.code_collaborative_analysis import (
+    analyze_code_project,
+    print_code_portfolio_summary,
+    set_manual_descs_store,
+    prompt_collab_descriptions,
 )
-from src.db.code_metrics_helpers import extract_complexity_metrics
-import json
-from src.analysis.code_collaborative.code_collaborative_analysis import analyze_code_project, print_code_portfolio_summary, set_manual_descs_store, prompt_collab_descriptions
 from src.analysis.code_collaborative.code_collaborative_analysis_helper import prompt_key_role
-from src.analysis.text_individual.llm_summary import extract_key_role_llm
-from src.models.project_summary import ProjectSummary
 from src.analysis.skills.flows.skill_extraction import extract_skills
 from src.analysis.activity_type.code.summary import build_activity_summary
 from src.analysis.activity_type.code.formatter import format_activity_summary
-from src.db import store_code_activity_metrics
-from src.db import get_metrics_id, insert_code_collaborative_summary, get_user_contributed_files
+from src.integrations.google_drive.google_drive_auth.text_project_setup import setup_text_project_drive_connection
+from src.integrations.google_drive.process_project_files import process_project_files
+from src.analysis.visualizations.activity_heatmap import write_project_activity_heatmap
 
 try:
     from src import constants
@@ -97,8 +108,14 @@ def _prompt_contribution_and_key_role(
         summary.contributions["key_role"] = key_role
 
 
-def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str]) -> None:
-    result = detect_project_type_auto(conn, user_id, assignments)
+def detect_project_type(conn: sqlite3.Connection, user_id: int, assignments: dict[str, str], version_project_names: set[str] | None = None) -> None:
+    """Detect or prompt for project_type (code/text). Skips version projects entirely."""
+    version_project_names = version_project_names or set()
+    assignments_to_process = {k: v for k, v in assignments.items() if k not in version_project_names}
+    if not assignments_to_process:
+        return
+
+    result = detect_project_type_auto(conn, user_id, assignments_to_process)
 
     # Only CLI prompts for mixed projects
     for project_name in result["mixed_projects"]:
@@ -136,7 +153,6 @@ def detect_project_type_auto(
     - Returns mixed projects needing user choice
     - NO input() calls
     """
-    from src.db.files import get_files_for_user
     files = get_files_for_user(conn, user_id)
 
     project_counts: dict[str, dict[str, int]] = {}
@@ -181,27 +197,13 @@ def detect_project_type_auto(
     }
 
 
-def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, version_keys: dict[str, int] | None = None):
+def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, version_keys: dict[str, int] | None = None, version_keys_for_analysis: list[tuple[str, int]] | None = None):
     """
     Routes each project to the appropriate analysis flow based on its classification and type.
-    Collaborative projects trigger contribution analysis.
-    Individual projects go directly into standard analysis.
-
-    Notes:
-        - Skips projects that do not have a project_type or classification (this should rarely, if ever, happen)
-        - Calls downstream analysis functions for each project depending on its type
-
-    Always offer INDIVIDUAL first, then (optionally) COLLABORATIVE.
-    Flow:
-      1) "Run individual analysis now?"  -> if yes, run all individual projects
-      2) "Run collaborative analysis now?" -> if yes, run all collaborative projects
-      3) otherwise exit
-
-    After each phase (or set of prompts), ask:
-    "Do you want to exit analysis now? (y/n)"
-    If user answers 'n'/'no', automatically run the remaining (unrun) phase(s),
-    starting with INDIVIDUAL if still pending.
+    When version_keys_for_analysis is provided, runs analysis and snapshots for every (project_name, version_key) so each version gets its own skills/summary for progression.
     """
+    version_keys = version_keys or {}
+    version_keys_for_analysis = version_keys_for_analysis or []
 
     # Partition projects and attach their detected types
     individual = []
@@ -233,16 +235,41 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
         print("No projects to analyze.")
         return
 
+    # Build (project_name, project_type, version_key) tasks; when version_keys_for_analysis
+    # is set, one task per version (oldest first) so each version gets analyzed and snapshotted.
+    individual_tasks: list[tuple[str, str, int | None]] = []
+    collaborative_tasks: list[tuple[str, str, int | None]] = []
+    if version_keys_for_analysis:
+        individual_set = {(n, t) for n, t in individual}
+        collaborative_set = {(n, t) for n, t in collaborative}
+        for project_name, vk in version_keys_for_analysis:
+            row = conn.execute(
+                "SELECT project_type FROM projects WHERE user_id = ? AND display_name = ?",
+                (user_id, project_name),
+            ).fetchone()
+            if not row or not row[0]:
+                continue
+            ptype = row[0]
+            if (project_name, ptype) in individual_set:
+                individual_tasks.append((project_name, ptype, vk))
+            elif (project_name, ptype) in collaborative_set:
+                collaborative_tasks.append((project_name, ptype, vk))
+    else:
+        for project_name, project_type in individual:
+            individual_tasks.append((project_name, project_type, version_keys.get(project_name)))
+        for project_name, project_type in collaborative:
+            collaborative_tasks.append((project_name, project_type, version_keys.get(project_name)))
+
     def run_individual_phase():
-        if not individual:
+        if not individual_tasks:
             if constants.VERBOSE:
                 print("\n[INDIVIDUAL] No individual projects.")
             return False
         if constants.VERBOSE:
             print("\n[INDIVIDUAL] Running individual projects...")
-        for project_name, project_type in individual:
-            print(f"  → {project_name} ({project_type})")
-            vk = (version_keys or {}).get(project_name)
+        for project_name, project_type, vk in individual_tasks:
+            label = f" (version {vk})" if vk is not None and len(individual_tasks) > 1 else ""
+            print(f"  → {project_name} ({project_type}){label}")
             summary = ProjectSummary(
                 project_name=project_name,
                 project_type=project_type,
@@ -255,31 +282,35 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=False)
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
+            if vk is not None:
+                _snapshot_version_evolution(conn, user_id, project_name, vk, summary, project_type)
         return True
 
     def run_collaborative_phase():
-        if not collaborative:
+        if not collaborative_tasks:
             print("\n[COLLABORATIVE] No collaborative projects.")
             return False
         if constants.VERBOSE:
             print("\n[COLLABORATIVE] Running collaborative projects...")
 
         # split: code first, then text
-        code_collab = [(n, t) for (n, t) in collaborative if t == "code"]
-        text_collab = [(n, t) for (n, t) in collaborative if t == "text"]
+        code_collab = [(n, t, vk) for (n, t, vk) in collaborative_tasks if t == "code"]
+        text_collab = [(n, t, vk) for (n, t, vk) in collaborative_tasks if t == "text"]
+        
+        # Prompt once per project (not per version) for manual summaries and contribution descriptions
+        unique_code_names = list(dict.fromkeys(name for name, _t, _vk in code_collab))
         
         # capture manual PROJECT summaries for collab code when LLM is disabled
         manual_project_summaries: dict[str, str] = {}
         if code_collab and current_ext_consent != "accepted":
-            for name, _ptype in code_collab:
+            for name in unique_code_names:
                 manual_project_summaries[name] = prompt_manual_code_project_summary(name)
 
 
-        # ask once for user descriptions for CODE collab projects (non-LLM path)
+        # ask once per project for contribution descriptions (not once per version)
         if code_collab:
             # prompt_collab_descriptions expects list[(project_name, something)];
-            # it only uses the project_name, so second value can be anything.
-            projects_for_desc = [(name, "") for (name, _ptype) in code_collab]
+            projects_for_desc = [(name, "") for name in unique_code_names]
             project_descs = prompt_collab_descriptions(projects_for_desc, current_ext_consent)
             set_manual_descs_store(project_descs)
         else:
@@ -287,9 +318,10 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
             set_manual_descs_store({})
 
                 # 1) run all CODE collab
-        for project_name, project_type in code_collab:
-            print(f"  → {project_name} ({project_type})")
-            vk = (version_keys or {}).get(project_name)
+        github_prompted: set[str] = set()  # ask "Enhance with GitHub?" only once per project
+        for project_name, project_type, vk in code_collab:
+            label = f" (version {vk})" if vk is not None and len(collaborative_tasks) > 1 else ""
+            print(f"  → {project_name} ({project_type}){label}")
             summary = ProjectSummary(
                 project_name=project_name,
                 project_type=project_type,
@@ -302,6 +334,7 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 if proj_summary:
                     summary.summary_text = proj_summary
 
+            skip_github = project_name in github_prompted
             get_individual_contributions(
                 conn,
                 user_id,
@@ -311,7 +344,9 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 zip_path,
                 summary,
                 version_key=vk,
+                skip_github_prompt=skip_github,
             )
+            github_prompted.add(project_name)
             _load_skills_into_summary(conn, user_id, project_name, summary)
             _load_text_metrics_into_summary(conn, user_id, project_name, summary)
             if project_type == "text":
@@ -324,6 +359,8 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 )
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
+            if vk is not None:
+                _snapshot_version_evolution(conn, user_id, project_name, vk, summary, project_type)
 
 
         # print summary right after all CODE collab finished
@@ -331,9 +368,9 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
             print_code_portfolio_summary()
 
         # 2) run all TEXT collab
-        for project_name, project_type in text_collab:
-            print(f"  → {project_name} ({project_type})")
-            vk = (version_keys or {}).get(project_name)
+        for project_name, project_type, vk in text_collab:
+            label = f" (version {vk})" if vk is not None and len(collaborative_tasks) > 1 else ""
+            print(f"  → {project_name} ({project_type}){label}")
             summary = ProjectSummary(
                 project_name=project_name,
                 project_type=project_type,
@@ -346,12 +383,14 @@ def send_to_analysis(conn, user_id, assignments, current_ext_consent, zip_path, 
                 _load_text_activity_type_into_summary(conn, user_id, project_name, summary, is_collaborative=True)
             json_data = json.dumps(summary.__dict__, default=str)
             save_project_summary(conn, user_id, project_name, json_data)
+            if vk is not None:
+                _snapshot_version_evolution(conn, user_id, project_name, vk, summary, project_type)
 
         return True
 
     # Track pending phases
-    pending_individual = bool(individual)
-    pending_collab = bool(collaborative)
+    pending_individual = bool(individual_tasks)
+    pending_collab = bool(collaborative_tasks)
 
     # ---- Initial prompts (individual first) ----
     if pending_individual:
@@ -412,6 +451,7 @@ def get_individual_contributions(
     *,
     allow_prompts: bool = True,
     api_inputs: dict | None = None,
+    skip_github_prompt: bool = False,
 ):
     """
     Analyze collaborative projects to get specific user contributions in a collaborative project.
@@ -443,6 +483,7 @@ def get_individual_contributions(
             version_key=version_key,
             allow_prompts=allow_prompts,
             api_inputs=api_inputs,
+            skip_github_prompt=skip_github_prompt
         )
     else:
         print(f"[COLLABORATIVE] Unknown project type for '{project_name}', skipping.")
@@ -657,7 +698,6 @@ def analyze_text_contributions(
         version_key=version_key,
     )
 
-
 def analyze_code_contributions(
     conn,
     user_id,
@@ -669,6 +709,7 @@ def analyze_code_contributions(
     *,
     allow_prompts: bool = True,
     api_inputs: dict | None = None,
+    skip_github_prompt: bool = False,
 ):
     """Collaborative code analysis: Git data + LLM summary."""
     if constants.VERBOSE:
@@ -683,10 +724,14 @@ def analyze_code_contributions(
         version_key=version_key,
         allow_prompts=allow_prompts,
         api_inputs=api_inputs,
+        skip_github_prompt=skip_github_prompt,
     )
 
-    # activity-type summary for collaborative code
-    activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
+    # activity-type summary for collaborative code (version-scoped when version_key given)
+    vk = version_key or get_latest_version_key(conn, user_id, project_name)
+    activity_summary = build_activity_summary(
+        conn, user_id=user_id, project_name=project_name, version_key=vk
+    )
     if constants.VERBOSE:
         print("\n[COLLABORATIVE-CODE] Activity type summary:")
     print(format_activity_summary(activity_summary))
@@ -718,12 +763,14 @@ def analyze_code_contributions(
             )
             focus_file_paths = None
 
-    # Extract skills for collaborative code projects
-    extract_skills(conn, user_id, project_name)
+    # Extract skills for collaborative code projects (version-scoped when version_key given)
+    extract_skills(conn, user_id, project_name, version_key=version_key)
 
 
     if current_ext_consent == 'accepted':
-        parsed_files = _fetch_files(conn, user_id, project_name, only_text=False)
+        parsed_files = _fetch_files(
+            conn, user_id, project_name, only_text=False, version_key=version_key
+        )
         if parsed_files:
             print(f"\n[COLLABORATIVE-CODE] Running LLM-based summary for '{project_name}'...")
             llm_results = run_code_llm_analysis(
@@ -860,8 +907,11 @@ def run_code_analysis(
         api_inputs=api_inputs,
     )
 
-    # --- Activity-type summary (individual) ---
-    activity_summary = build_activity_summary(conn, user_id=user_id, project_name=project_name)
+    # --- Activity-type summary (individual, version-scoped when version_key given) ---
+    vk = version_key or get_latest_version_key(conn, user_id, project_name)
+    activity_summary = build_activity_summary(
+        conn, user_id=user_id, project_name=project_name, version_key=vk
+    )
     print()  # spacing
     print(format_activity_summary(activity_summary))
     print()
@@ -871,8 +921,8 @@ def run_code_analysis(
         # store raw counts so you can reuse later in UI / JSON
         summary.metrics["activity_type"] = activity_summary.per_activity
 
-    # Extract skills for code projects
-    extract_skills(conn, user_id, project_name)
+    # Extract skills for code projects (version-scoped when version_key given)
+    extract_skills(conn, user_id, project_name, version_key=version_key)
 
     # --- Run LLM summary LAST, and only once ---
     if current_ext_consent == "accepted":
@@ -1000,6 +1050,93 @@ def analyze_files(
 def _run_skill_extraction_for_all(conn, user_id, assignments):
     for project_name in assignments.keys():
         extract_skills(conn, user_id, project_name)
+
+
+def _snapshot_version_evolution(conn, user_id: int, project_name: str, version_key: int, summary, project_type: str) -> None:
+    """
+    Snapshot per-version data for evolution showcase.
+    Stores summary, diff stats (lines), enriched metrics (languages, frameworks, complexity, file count), and skills.
+    Feeds GET /projects/{id}/evolution and future skills timeline / heatmap.
+    """
+    summary_text = getattr(summary, "summary_text", None) or ""
+    activity_date = None
+    lines_added = None
+    lines_deleted = None
+    total_words = None
+
+    languages = getattr(summary, "languages", None) or []
+    frameworks = getattr(summary, "frameworks", None) or []
+    avg_complexity = None
+    total_files = None
+
+    if project_type == "code":
+        is_collab = getattr(summary, "project_mode", None) == "collaborative"
+        loc = get_normalized_code_metrics(conn, user_id, project_name, is_collab)
+        if loc:
+            lines_added = loc.get("loc_added")
+            lines_deleted = loc.get("loc_deleted")
+
+        if is_collab:
+            # Collaborative: get languages/frameworks from code_collaborative_metrics
+            pk = get_project_key(conn, user_id, project_name)
+            if pk is not None:
+                metrics_row = get_code_collaborative_metrics(conn, user_id, pk)
+                if metrics_row is not None:
+                    languages_json, frameworks_json = metrics_row
+                    if languages_json:
+                        try:
+                            languages = json.loads(languages_json) or []
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    if frameworks_json:
+                        try:
+                            frameworks = json.loads(frameworks_json) or []
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+            # total_files from version_files count (actual files in this version)
+
+            total_files = get_version_files_count(conn, version_key)
+        else:
+            # Individual: get complexity + total_files from non_llm_code_individual
+            complexity = get_code_complexity_metrics(conn, version_key)
+            if complexity:
+                avg_complexity = complexity.get("avg_complexity")
+                total_files = complexity.get("total_files")
+            if not languages and not frameworks:
+                languages = getattr(summary, "languages", None) or []
+                frameworks = getattr(summary, "frameworks", None) or []
+    else:
+        non_llm = get_text_non_llm_metrics(conn, version_key)
+        if non_llm:
+            total_words = non_llm.get("total_words")
+            total_files = non_llm.get("doc_count")
+        tac = get_text_activity_contribution(conn, version_key)
+        if tac and tac.get("timestamp_analysis"):
+            activity_date = tac["timestamp_analysis"].get("end_date")
+
+    insert_version_summary(
+        conn,
+        version_key=version_key,
+        summary_text=summary_text or None,
+        activity_date=activity_date,
+        lines_added=lines_added,
+        lines_deleted=lines_deleted,
+        total_words=total_words,
+        languages=languages if languages else None,
+        frameworks=frameworks if frameworks else None,
+        avg_complexity=avg_complexity,
+        total_files=total_files,
+    )
+    insert_version_skills_from_project(conn, user_id, project_name, version_key)
+    
+    # Generate/update the activity heatmap artifact (safe cache by latest version).
+    if write_project_activity_heatmap is not None:
+        try:
+            # mode='diff' makes each column represent what changed in that iteration.
+            write_project_activity_heatmap(conn, user_id, project_name, mode="diff", normalize=True)
+        except Exception:
+            # Never block analysis on visualization failures.
+            pass
 
 
 def _load_skills_into_summary(conn, user_id, project_name, summary):

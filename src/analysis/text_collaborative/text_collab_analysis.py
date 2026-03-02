@@ -167,7 +167,7 @@ def analyze_collaborative_text_project(
     user_sections = [sections[i - 1] for i in indices]
 
     # ---------------------------------------------------------
-    # STEP 2A — Ask for contribution description (like code projects)
+    # STEP 2A — Ask for contribution description
     # ---------------------------------------------------------
     contribution_desc = ""
     if isinstance(manual_contribution_summary, str):
@@ -372,14 +372,7 @@ def analyze_collaborative_text_project(
             full_main_text, contributed_text
         )
     else:
-        if isinstance(manual_contribution_summary, str) and manual_contribution_summary.strip():
-            contribution_summary = manual_contribution_summary.strip()
-        elif isinstance(manual_summary_fallback, str) and manual_summary_fallback.strip():
-            contribution_summary = manual_summary_fallback.strip()
-        elif allow_prompts:
-            contribution_summary = _manual_contribution_summary_prompt()
-        else:
-            contribution_summary = "I contributed to this project."
+        contribution_summary = contribution_desc or "[No manual contribution summary provided]"
 
     if constants.VERBOSE:
         print("\n" + "="*80)
@@ -492,24 +485,3 @@ def _select_files_by_relpaths(files: list[dict], relpaths: list[str]) -> list[di
         ):
             out.append(row)
     return out
-
-
-def _manual_contribution_summary_prompt():
-    """Manual first-person contribution statement."""
-    print("\nLLM consent not granted. Please describe your contributions.\n")
-    print("What types of contribution did you make?")
-    options = [
-        "Writing", "Editing", "Research", "Formatting",
-        "Proofreading", "Data Analysis", "Drafting", "Revising"
-    ]
-    for i, opt in enumerate(options, start=1):
-        print(f"{i}. {opt}")
-
-    nums = input("Enter numbers (comma-separated): ").strip()
-    selected = [options[int(n.strip()) - 1] for n in nums.split(",") if n.strip().isdigit()]
-
-    if not selected:
-        return "I contributed to the project, but did not specify the type of work."
-
-    joined = ", ".join(selected)
-    return f"I contributed by {joined.lower()}."

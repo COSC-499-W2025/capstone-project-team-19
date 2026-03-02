@@ -1,6 +1,7 @@
 import pytest
 
 from src.db.project_feedback import upsert_project_feedback
+from src.db.projects import get_project_key
 from src.api.auth.security import create_access_token
 from tests.api.conftest import seed_project
 
@@ -19,10 +20,12 @@ def _seed_feedback(
     observed: dict | None = None,
     suggestion: str | None = None,
 ) -> None:
+    project_key = get_project_key(seed_conn, user_id, project_name)
+    assert project_key is not None, f"Project '{project_name}' not found for user {user_id}"
     upsert_project_feedback(
         seed_conn,
         user_id,
-        project_name,
+        project_key,
         project_type,
         skill_name,
         criterion_key,

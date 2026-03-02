@@ -93,6 +93,7 @@ def analyze_code_project(conn: sqlite3.Connection,
                          *,
                          allow_prompts: bool = True,
                          api_inputs: dict[str, Any] | None = None) -> Optional[dict]:
+                         skip_github_prompt: bool = False) -> Optional[dict]:
     # 1) get base dirs from the uploaded zip
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
     # Capture any pre-collected manual description (non-LLM path)
@@ -167,8 +168,9 @@ def analyze_code_project(conn: sqlite3.Connection,
         summary,
         allow_prompts=allow_prompts,
         github_state=github_state,
+        skip_github_prompt=skip_github_prompt
     )
-
+    
     # 3) identity table + load user aliases
     ensure_user_github_table(conn)
     aliases = load_user_github(conn, user_id)
@@ -363,7 +365,19 @@ def _enhance_with_github(
     *,
     allow_prompts: bool = True,
     github_state: str | None = None,
+    skip_github_prompt: bool = False,
 ):
+    # skip prompt and reuse existing linked metrics
+    if skip_github_prompt:
+        owner, repo = get_gh_repo_name_and_owner(conn, user_id, project_name)
+        if owner and repo and summary:
+            repo_metrics = get_github_repo_metrics(conn, user_id, project_name, owner, repo)
+            if repo_metrics and not _metrics_empty(repo_metrics):
+                summary.metrics["github"] = repo_metrics
+                return repo_metrics
+        return None
+
+    # prompt in CLI mode, gate by state in API mode
     if allow_prompts:
         ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
         if ans not in {"y", "yes"}:

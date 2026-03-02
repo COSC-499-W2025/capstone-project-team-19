@@ -98,3 +98,8 @@ class RunAnalysisReadyDTO(BaseModel):
     ready: bool = True
     warnings: List[Dict[str, Any]] = []
     errors: List[Dict[str, Any]] = []
+class ManualProjectSummaryRequestDTO(BaseModel):
+    summary_text: str = ""
+
+class ManualContributionSummaryRequestDTO(BaseModel):
+    manual_contribution_summary: str = ""

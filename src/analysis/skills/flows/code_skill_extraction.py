@@ -49,7 +49,7 @@ def _emit_feedback(
 
 
 # Main entry
-def extract_code_skills(conn, user_id, project_name, classification, files):
+def extract_code_skills(conn, user_id, project_name, classification, files, *, version_key: int | None = None):
     if constants.VERBOSE:
         print(f"\n[SKILL EXTRACTION] Running CODE skill extraction for {project_name}")
 
@@ -84,7 +84,7 @@ def extract_code_skills(conn, user_id, project_name, classification, files):
             # callback-only ctx (no dead fallback path)
             feedback_ctx = {"add_feedback": _add_feedback}
 
-    zip_name = _get_zip_name(conn, user_id, project_name)
+    zip_name = _get_zip_name(conn, user_id, project_name, version_key=version_key)
     if not zip_name:
         if constants.VERBOSE:
             print(
@@ -252,9 +252,12 @@ def _filter_code_files(files: List[Dict[str, Any]], code_exts: Set[str]) -> List
     return filtered
 
 
-def _get_zip_name(conn, user_id: int, project_name: str) -> Optional[str]:
+def _get_zip_name(
+    conn, user_id: int, project_name: str, *, version_key: int | None = None
+) -> Optional[str]:
     """
     Return the extraction folder name under `src/analysis/zip_data/` for a project.
+    When version_key is provided, uses that version's upload (for multi-version uploads).
 
     Important:
     - The extraction folder is based on the stored upload path stem:
@@ -263,20 +266,34 @@ def _get_zip_name(conn, user_id: int, project_name: str) -> Optional[str]:
     """
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT u.zip_path, pv.extraction_root, pv.version_key
-            FROM project_versions pv
-            JOIN projects p ON p.project_key = pv.project_key
-            LEFT JOIN uploads u ON u.upload_id = pv.upload_id
-            WHERE p.user_id = ? AND p.display_name = ?
-            ORDER BY (u.zip_path IS NOT NULL) DESC,
-                     (pv.extraction_root IS NOT NULL AND pv.extraction_root != '') DESC,
-                     pv.version_key DESC
-            LIMIT 1
-            """,
-            (user_id, project_name),
-        )
+        if version_key is not None:
+            # Use the specific version's upload
+            cursor.execute(
+                """
+                SELECT u.zip_path, pv.extraction_root, pv.version_key
+                FROM project_versions pv
+                JOIN projects p ON p.project_key = pv.project_key
+                LEFT JOIN uploads u ON u.upload_id = pv.upload_id
+                WHERE p.user_id = ? AND p.display_name = ? AND pv.version_key = ?
+                LIMIT 1
+                """,
+                (user_id, project_name, version_key),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT u.zip_path, pv.extraction_root, pv.version_key
+                FROM project_versions pv
+                JOIN projects p ON p.project_key = pv.project_key
+                LEFT JOIN uploads u ON u.upload_id = pv.upload_id
+                WHERE p.user_id = ? AND p.display_name = ?
+                ORDER BY (u.zip_path IS NOT NULL) DESC,
+                         (pv.extraction_root IS NOT NULL AND pv.extraction_root != '') DESC,
+                         pv.version_key DESC
+                LIMIT 1
+                """,
+                (user_id, project_name),
+            )
 
         row = cursor.fetchone()
         zip_path = row[0] if row else None

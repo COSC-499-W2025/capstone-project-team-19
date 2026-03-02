@@ -117,6 +117,7 @@ from .file_contributions import (
 from .files import (
     get_files_for_project,
     get_files_for_version,
+    get_files_for_user,
     get_files_with_timestamps,
     get_files_with_timestamps_for_version,
     get_code_files_for_version,
@@ -134,6 +135,7 @@ from .code_activity import (
     delete_code_activity_metrics_for_project,
     insert_code_activity_metric,
     store_code_activity_metrics,
+    get_normalized_code_metrics,
 )
 
 # github prs
@@ -144,6 +146,18 @@ from .git_identities import (
     ensure_user_github_table,
     load_user_github,
     save_user_github,
+)
+
+# version evolution
+from .version_evolution import (
+    insert_version_summary,
+    insert_version_skills_from_project,
+    get_version_keys_ordered_for_project,
+    get_version_summary,
+    get_version_skills,
+    get_version_files_count,
+    get_file_diff_between_versions,
+    get_skill_diff_between_versions,
 )
 
 # project summaries
@@ -165,6 +179,7 @@ from .project_summaries import (
 # local git metrics for code collaborative projects
 from .code_collaborative import (
     insert_code_collaborative_metrics,
+    get_code_collaborative_metrics,
     get_metrics_id,
     insert_code_collaborative_summary,
 )
@@ -290,6 +305,7 @@ __all__ = [
     "delete_code_activity_metrics_for_project",
     "insert_code_activity_metric",
     "store_code_activity_metrics",
+    "get_normalized_code_metrics",
     "get_pull_requests_for_project",
     "get_files_for_project",
     "get_files_for_version",
@@ -297,6 +313,7 @@ __all__ = [
     "get_files_with_timestamps_for_version",
     "get_code_files_for_version",
     "get_code_extensions_for_version",
+    "get_files_for_user",
     "store_text_activity_contribution",
     "get_text_activity_contribution",
     "save_project_summary",
@@ -306,6 +323,7 @@ __all__ = [
     "get_skill_events",
     "update_project_summary_json",
     "insert_code_collaborative_metrics",
+    "get_code_collaborative_metrics",
     "get_metrics_id",
     "insert_code_collaborative_summary",
     "get_all_user_project_summaries",
@@ -360,6 +378,14 @@ __all__ = [
     "delete_thumbnail_and_file",
     "upsert_project_feedback",
     "get_project_summary_by_id",
+    "insert_version_summary",
+    "insert_version_skills_from_project",
+    "get_version_keys_ordered_for_project",
+    "get_version_summary",
+    "get_version_skills",
+    "get_version_files_count",
+    "get_file_diff_between_versions",
+    "get_skill_diff_between_versions",
     "get_user_skill_preferences",
     "upsert_skill_preference",
     "bulk_upsert_skill_preferences",
