@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlite3 import Connection
-from typing import Literal
 
 from src.api.dependencies import get_db, get_current_user_id
 from src.api.schemas.common import ApiResponse
@@ -14,9 +13,9 @@ from src.services.activity_heatmap_service import (
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
-@router.get("/{project_name}/activity-heatmap", response_model=ApiResponse[ActivityHeatmapInfoDTO])
+@router.get("/{project_id}/activity-heatmap", response_model=ApiResponse[ActivityHeatmapInfoDTO])
 def get_activity_heatmap_info(
-    project_name: str,
+    project_id: int,
     mode: HeatmapMode = Query("diff"),
     normalize: bool = Query(True),
     include_unclassified_text: bool = Query(True),
@@ -24,11 +23,10 @@ def get_activity_heatmap_info(
     conn: Connection = Depends(get_db),
 ):
     try:
-        # Generate (or reuse cached) artifact, but return a friendly URL for clients.
-        _path = get_activity_heatmap_png_path(
+        project_name, _path = get_activity_heatmap_png_path(
             conn,
             user_id,
-            project_name,
+            project_id,
             mode=mode,
             normalize=normalize,
             include_unclassified_text=include_unclassified_text,
@@ -44,18 +42,19 @@ def get_activity_heatmap_info(
         raise HTTPException(status_code=500, detail="Failed to generate heatmap")
 
     dto = ActivityHeatmapInfoDTO(
+        project_id=project_id,
         project_name=project_name,
         mode=mode,
         normalize=normalize,
         include_unclassified_text=include_unclassified_text,
-        png_url=build_activity_heatmap_png_url(project_name, mode, normalize, include_unclassified_text),
+        png_url=build_activity_heatmap_png_url(project_id, mode, normalize, include_unclassified_text),
     )
     return ApiResponse(success=True, data=dto, error=None)
 
 
-@router.get("/{project_name}/activity-heatmap.png")
+@router.get("/{project_id}/activity-heatmap.png")
 def get_activity_heatmap_png(
-    project_name: str,
+    project_id: int,
     mode: HeatmapMode = Query("diff"),
     normalize: bool = Query(True),
     include_unclassified_text: bool = Query(True),
@@ -63,10 +62,10 @@ def get_activity_heatmap_png(
     conn: Connection = Depends(get_db),
 ):
     try:
-        path = get_activity_heatmap_png_path(
+        _project_name, path = get_activity_heatmap_png_path(
             conn,
             user_id,
-            project_name,
+            project_id,
             mode=mode,
             normalize=normalize,
             include_unclassified_text=include_unclassified_text,

@@ -5,6 +5,7 @@ HeatmapMode = Literal["diff", "snapshot"]
 
 
 class ActivityHeatmapInfoDTO(BaseModel):
+    project_id: int
     project_name: str
     mode: HeatmapMode = "diff"
     normalize: bool = True

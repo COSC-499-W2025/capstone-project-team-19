@@ -44,12 +44,11 @@ def test_get_activity_heatmap_png_success(client, tmp_path):
     png_path = tmp_path / "heatmap.png"
     png_path.write_bytes(SAMPLE_PNG_BYTES)
 
-    # Patch the symbol used by the router module (important!)
     with patch(
         "src.api.routes.activity_heatmap.get_activity_heatmap_png_path",
-        return_value=str(png_path),
+        return_value=("MyProject", str(png_path)),
     ):
-        resp = client.get("/projects/MyProject/activity-heatmap.png?mode=diff&normalize=true")
+        resp = client.get("/projects/123/activity-heatmap.png?mode=diff&normalize=true")
 
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("image/png")
@@ -61,7 +60,7 @@ def test_get_activity_heatmap_png_project_not_found(client):
         "src.api.routes.activity_heatmap.get_activity_heatmap_png_path",
         side_effect=ValueError("Project not found"),
     ):
-        resp = client.get("/projects/Nope/activity-heatmap.png?mode=diff")
+        resp = client.get("/projects/999/activity-heatmap.png?mode=diff")
 
     assert resp.status_code == 404
     assert resp.json()["detail"] == "Project not found"
