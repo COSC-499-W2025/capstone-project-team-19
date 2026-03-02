@@ -92,7 +92,7 @@ def analyze_code_project(conn: sqlite3.Connection,
                          version_key: int | None = None,
                          *,
                          allow_prompts: bool = True,
-                         api_inputs: dict[str, Any] | None = None) -> Optional[dict]:
+                         api_inputs: dict[str, Any] | None = None,
                          skip_github_prompt: bool = False) -> Optional[dict]:
     # 1) get base dirs from the uploaded zip
     zip_data_dir, zip_name, _ = zip_paths(zip_path)

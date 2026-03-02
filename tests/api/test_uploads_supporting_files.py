@@ -286,7 +286,10 @@ def test_supporting_files_requires_needs_file_roles(client, auth_headers):
     upload = start.json()["data"]
     upload_id = upload["upload_id"]
     state = upload.get("state") or {}
-    project_key = _get_project_key(state, "ProjectA")
+    project_key = (state.get("dedup_project_keys") or {}).get("ProjectA")
+    if project_key is None:
+        project_key = next(iter((state.get("dedup_project_keys") or {}).values()), None)
+    assert project_key is not None, "no project_key found in dedup_project_keys"
 
     res = client.post(
         f"/projects/upload/{upload_id}/projects/{project_key}/supporting-text-files",

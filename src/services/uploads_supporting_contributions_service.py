@@ -49,33 +49,33 @@ def set_project_supporting_text_files(
     contributions[project_name] = proj
 
     next_status = _advance_to_needs_summaries(
-    conn,
-    user_id,
-    upload_id,
-    upload,
-    state=state,
-    contributions_patch=contributions,
-)
+        conn,
+        user_id,
+        upload_id,
+        upload,
+        state=state,
+        contributions_patch=contributions,
+    )
 
-patch: dict = {"contributions": contributions}
+    patch: dict = {"contributions": contributions}
 
-# If we just advanced into needs_summaries, set required keys + copy name-keyed contributions to key-keyed buckets.
-if upload.get("status") == "needs_file_roles" and next_status == "needs_summaries":
-    patch.update(_build_summaries_transition_patch(conn, user_id, state, contributions))
+    # If we just advanced into needs_summaries, set required keys + copy name-keyed contributions to key-keyed buckets.
+    if upload.get("status") == "needs_file_roles" and next_status == "needs_summaries":
+        patch.update(_build_summaries_transition_patch(conn, user_id, state, contributions))
 
-new_state = patch_upload_state(conn, upload_id, patch=patch, status=next_status)
+    new_state = patch_upload_state(conn, upload_id, patch=patch, status=next_status)
 
-merge_project_run_inputs(
-    conn,
-    upload_id,
-    project_name,
-    {
-        "manual_inputs": {
-            "supporting_text_files_count": len(selected),
-            "supporting_text_files_set": len(selected) > 0,
-        }
-    },
-)
+    merge_project_run_inputs(
+        conn,
+        upload_id,
+        project_name,
+        {
+            "manual_inputs": {
+                "supporting_text_files_count": len(selected),
+                "supporting_text_files_set": len(selected) > 0,
+            }
+        },
+    )
 
     return {
         "upload_id": upload["upload_id"],
@@ -117,33 +117,33 @@ def set_project_supporting_csv_files(
     contributions[project_name] = proj
 
     next_status = _advance_to_needs_summaries(
-      conn,
-      user_id,
-      upload_id,
-      upload,
-      state=state,
-      contributions_patch=contributions,
-  )
+        conn,
+        user_id,
+        upload_id,
+        upload,
+        state=state,
+        contributions_patch=contributions,
+    )
 
-  patch: dict = {"contributions": contributions}
+    patch: dict = {"contributions": contributions}
 
-  # If we just advanced into needs_summaries, set required keys + copy name-keyed contributions to key-keyed buckets.
-  if upload.get("status") == "needs_file_roles" and next_status == "needs_summaries":
-      patch.update(_build_summaries_transition_patch(conn, user_id, state, contributions))
+    # If we just advanced into needs_summaries, set required keys + copy name-keyed contributions to key-keyed buckets.
+    if upload.get("status") == "needs_file_roles" and next_status == "needs_summaries":
+        patch.update(_build_summaries_transition_patch(conn, user_id, state, contributions))
 
-  new_state = patch_upload_state(conn, upload_id, patch=patch, status=next_status)
+    new_state = patch_upload_state(conn, upload_id, patch=patch, status=next_status)
 
-  merge_project_run_inputs(
-      conn,
-      upload_id,
-      project_name,
-      {
-          "manual_inputs": {
-              "supporting_csv_files_count": len(selected),
-              "supporting_csv_files_set": len(selected) > 0,
-          }
-      },
-  )
+    merge_project_run_inputs(
+        conn,
+        upload_id,
+        project_name,
+        {
+            "manual_inputs": {
+                "supporting_csv_files_count": len(selected),
+                "supporting_csv_files_set": len(selected) > 0,
+            }
+        },
+    )
 
     return {
         "upload_id": upload["upload_id"],
