@@ -1508,6 +1508,85 @@ Exposes extracted skills and timelines.
     }
     ```
 
+- **Get Skill Timeline**
+  - **Endpoint**: `GET /timeline`
+  - **Description**: Returns a chronological skill evolution timeline with cumulative scores computed using diminishing returns. Skills are grouped by date, and undated skills are listed separately. A `current_totals` section folds undated skills into the final cumulative score.
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Response Status**: `200 OK`
+  - **Response Body**: Uses `SkillTimelineDTO`
+    ```json
+    {
+      "success": true,
+      "data": {
+        "dated": [
+          {
+            "date": "2024-01-15",
+            "events": [
+              {
+                "skill_name": "Python",
+                "level": "Intermediate",
+                "score": 0.3,
+                "project_name": "ProjectA"
+              }
+            ],
+            "cumulative_skills": {
+              "Python": {
+                "cumulative_score": 0.3,
+                "projects": ["ProjectA"]
+              }
+            }
+          },
+          {
+            "date": "2024-03-20",
+            "events": [
+              {
+                "skill_name": "Python",
+                "level": "Advanced",
+                "score": 0.4,
+                "project_name": "ProjectB"
+              }
+            ],
+            "cumulative_skills": {
+              "Python": {
+                "cumulative_score": 0.58,
+                "projects": ["ProjectA", "ProjectB"]
+              }
+            }
+          }
+        ],
+        "undated": [
+          {
+            "skill_name": "Docker",
+            "level": "Beginner",
+            "score": 0.25,
+            "project_name": "ProjectC"
+          }
+        ],
+        "current_totals": {
+          "Python": {
+            "cumulative_score": 0.58,
+            "projects": ["ProjectA", "ProjectB"]
+          },
+          "Docker": {
+            "cumulative_score": 0.25,
+            "projects": ["ProjectC"]
+          }
+        },
+        "summary": {
+          "total_skills": 2,
+          "total_projects": 3,
+          "date_range": {
+            "earliest": "2024-01-15",
+            "latest": "2024-03-20"
+          },
+          "skill_names": ["Docker", "Python"]
+        }
+      },
+      "error": null
+    }
+    ```
+  - **Cumulative Score Formula**: Uses diminishing returns — `1 - (1 - current) × (1 - new_score)`. Each new project fills a fraction of the remaining gap to 1.0, so scores always increase but never exceed 1.0. This rewards breadth (practicing a skill across many projects) without rapid saturation.
+
 ---
 
 ## **Resume**
