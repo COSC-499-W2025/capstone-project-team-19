@@ -7,6 +7,7 @@ from typing import Optional
 
 from src.db.uploads import get_upload_by_id, patch_upload_state
 from src.utils.parsing import ZIP_DATA_DIR
+from src.services.uploads_run_state_service import merge_project_run_inputs
 from src.services.uploads_file_roles_util import safe_relpath
 from src.utils.helpers import extract_text_file, normalize_pdf_paragraphs
 from src.analysis.text_collaborative.text_sections import extract_document_sections
@@ -122,6 +123,17 @@ def set_main_file_contributed_sections(
         upload["upload_id"],
         patch=patch,
         status=upload["status"],
+    )
+    merge_project_run_inputs(
+        conn,
+        upload["upload_id"],
+        project_name,
+        {
+            "manual_inputs": {
+                "contribution_sections_count": len(deduped_sorted),
+                "contribution_sections_set": len(deduped_sorted) > 0,
+            }
+        },
     )
 
     return {

@@ -43,6 +43,8 @@ def test_post_key_role_happy_path_persists_normalized_value(client, auth_headers
     persisted_state = _get_upload_state(client, auth_headers, upload_id)
     persisted_contrib = ((persisted_state.get("contributions") or {}).get(PROJECT)) or {}
     assert persisted_contrib.get("key_role") == "Backend Developer"
+    run_inputs = (((persisted_state.get("run_inputs") or {}).get("projects") or {}).get(PROJECT)) or {}
+    assert ((run_inputs.get("manual_inputs") or {}).get("key_role_set")) is True
 
     _cleanup_upload_artifacts(persisted_state)
 
@@ -124,4 +126,6 @@ def test_post_key_role_accepts_blank_and_clears_value(client, auth_headers):
     persisted_state = _get_upload_state(client, auth_headers, upload_id)
     persisted_contrib = ((persisted_state.get("contributions") or {}).get(PROJECT)) or {}
     assert persisted_contrib.get("key_role") == ""
+    run_inputs = (((persisted_state.get("run_inputs") or {}).get("projects") or {}).get(PROJECT)) or {}
+    assert ((run_inputs.get("manual_inputs") or {}).get("key_role_set")) is False
     _cleanup_upload_artifacts(persisted_state)

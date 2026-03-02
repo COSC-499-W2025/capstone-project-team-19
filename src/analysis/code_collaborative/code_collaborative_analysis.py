@@ -80,6 +80,9 @@ def print_code_portfolio_summary() -> None:
         return
     print_portfolio_summary(_CODE_RUN_METRICS)
     _CODE_RUN_METRICS.clear()
+    # Manual descriptions are run-scoped; clear to avoid leaking into future runs/tests.
+    global _manual_descs_store
+    _manual_descs_store = {}
 
 def analyze_code_project(conn: sqlite3.Connection,
                          user_id: int,
@@ -88,11 +91,18 @@ def analyze_code_project(conn: sqlite3.Connection,
                          summary=None,
                          version_key: int | None = None,
                          *,
+                         allow_prompts: bool = True,
+                         api_inputs: dict[str, Any] | None = None,
                          skip_github_prompt: bool = False) -> Optional[dict]:
     # 1) get base dirs from the uploaded zip
     zip_data_dir, zip_name, _ = zip_paths(zip_path)
     # Capture any pre-collected manual description (non-LLM path)
-    desc = get_manual_desc(project_name)
+    desc = (
+        (api_inputs or {}).get("manual_contribution_summary")
+        or get_manual_desc(project_name)
+    )
+    key_role_override = (api_inputs or {}).get("key_role")
+    github_state = (api_inputs or {}).get("integrations", {}).get("github", {}).get("state")
 
     # Debug: show basic context for this project run
     if constants.VERBOSE:
@@ -117,7 +127,15 @@ def analyze_code_project(conn: sqlite3.Connection,
         _handle_no_git_repo(conn, user_id, project_name)
 
         # Still allow GitHub-only enhancement even without local repo_dir
-        _enhance_with_github(conn, user_id, project_name, repo_dir, summary, skip_github_prompt=skip_github_prompt)
+        _enhance_with_github(
+            conn,
+            user_id,
+            project_name,
+            repo_dir,
+            summary,
+            allow_prompts=allow_prompts,
+            github_state=github_state,
+        )
 
         # Populate whatever we can so the project summary isn't empty
         _apply_basic_summary_without_git(
@@ -127,6 +145,8 @@ def analyze_code_project(conn: sqlite3.Connection,
             zip_path=zip_path,
             summary=summary,
             desc=desc,
+            allow_prompts=allow_prompts,
+            key_role_override=key_role_override,
         )
         store_contributions_without_git(conn, user_id, project_name, desc, debug=DEBUG, version_key=version_key)
         print("=" * 80)
@@ -140,8 +160,17 @@ def analyze_code_project(conn: sqlite3.Connection,
             print(f"[debug] using repo_dir={repo_dir}")
 
     # Enhance with GitHub metrics (if user says yes)
-    repo_metrics = _enhance_with_github(conn, user_id, project_name, repo_dir, summary, skip_github_prompt=skip_github_prompt)
-
+    repo_metrics = _enhance_with_github(
+        conn,
+        user_id,
+        project_name,
+        repo_dir,
+        summary,
+        allow_prompts=allow_prompts,
+        github_state=github_state,
+        skip_github_prompt=skip_github_prompt
+    )
+    
     # 3) identity table + load user aliases
     ensure_user_github_table(conn)
     aliases = load_user_github(conn, user_id)
@@ -151,13 +180,32 @@ def analyze_code_project(conn: sqlite3.Connection,
         if not authors:
             print(f"\n[skip] {project_name}: no authors found in Git history.")
             return None
-        sel_emails, sel_names = prompt_user_identity_choice(authors)
-        if not sel_emails and not sel_names:
-            print("\n[skip] No identities selected.")
-            return None
-        save_user_github(conn, user_id, sel_emails, sel_names)
-        print("\nSaved your identity for future runs.")
-        aliases = load_user_github(conn, user_id)
+        if allow_prompts:
+            sel_emails, sel_names = prompt_user_identity_choice(authors)
+            if not sel_emails and not sel_names:
+                print("\n[skip] No identities selected.")
+                return None
+            save_user_github(conn, user_id, sel_emails, sel_names)
+            print("\nSaved your identity for future runs.")
+            aliases = load_user_github(conn, user_id)
+        else:
+            selected_indices = (
+                (api_inputs or {}).get("capabilities", {}).get("git", {}).get("selected_identity_indices")
+                or []
+            )
+            sel_emails: list[str] = []
+            sel_names: list[str] = []
+            for idx in selected_indices:
+                if not isinstance(idx, int) or idx < 1 or idx > len(authors):
+                    continue
+                an, ae, _ = authors[idx - 1]
+                if ae:
+                    sel_emails.append(ae)
+                if an:
+                    sel_names.append(an)
+            if sel_emails or sel_names:
+                save_user_github(conn, user_id, sel_emails, sel_names)
+                aliases = load_user_github(conn, user_id)
 
     # 4) read commits
     commits = read_git_history(repo_dir)
@@ -174,13 +222,16 @@ def analyze_code_project(conn: sqlite3.Connection,
         external_consent = get_latest_external_consent(conn, user_id)
 
         if external_consent != "accepted":
-            try:
-                user_desc = input(
-                    f"Describe your contribution to '{project_name}': "
-                )
-            except EOFError:
-                user_desc = ""
-            desc = (user_desc or "").strip()
+            if allow_prompts:
+                try:
+                    user_desc = input(
+                        f"Describe your contribution to '{project_name}': "
+                    )
+                except EOFError:
+                    user_desc = ""
+                desc = (user_desc or "").strip()
+            else:
+                desc = "[No manual contribution summary provided]"
             
     desc_clean = (desc or "").strip()
     if desc_clean:
@@ -219,10 +270,14 @@ def analyze_code_project(conn: sqlite3.Connection,
         # 7.3) Extract or prompt for key role
         external_consent = get_latest_external_consent(conn, user_id)
 
-        if external_consent == "accepted" and desc_clean:
+        if isinstance(key_role_override, str) and key_role_override.strip():
+            key_role = key_role_override.strip()
+        elif external_consent == "accepted" and desc_clean:
             key_role = extract_key_role_llm(desc_clean)
-        else:
+        elif allow_prompts:
             key_role = prompt_key_role(project_name)
+        else:
+            key_role = None
 
         if key_role:
             summary.contributions["key_role"] = key_role
@@ -301,10 +356,19 @@ def _handle_no_git_repo(conn, user_id, project_name):
     return None
 
 
-def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None, *, skip_github_prompt: bool = False):
-    """If skip_github_prompt is True, do not ask; only attach existing repo metrics if already linked."""
+def _enhance_with_github(
+    conn,
+    user_id,
+    project_name,
+    repo_dir,
+    summary=None,
+    *,
+    allow_prompts: bool = True,
+    github_state: str | None = None,
+    skip_github_prompt: bool = False,
+):
+    # skip prompt and reuse existing linked metrics
     if skip_github_prompt:
-        # Reuse existing link/metrics if any (e.g. already asked for first version of this project)
         owner, repo = get_gh_repo_name_and_owner(conn, user_id, project_name)
         if owner and repo and summary:
             repo_metrics = get_github_repo_metrics(conn, user_id, project_name, owner, repo)
@@ -313,13 +377,22 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None, *,
                 return repo_metrics
         return None
 
-    ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
-    if ans not in {"y", "yes"}:
-        return
+    # prompt in CLI mode, gate by state in API mode
+    if allow_prompts:
+        ans = input("Enhance analysis with GitHub data? (y/n): ").strip().lower()
+        if ans not in {"y", "yes"}:
+            return
+    else:
+        state_norm = (github_state or "").strip().lower()
+        if state_norm != "connected":
+            return
     
     try:
         token = get_github_token(conn, user_id)
         github_user = None
+
+        if not token and not allow_prompts:
+            return
 
         if not token:
             token = github_oauth(conn, user_id)
@@ -333,6 +406,8 @@ def _enhance_with_github(conn, user_id, project_name, repo_dir, summary=None, *,
             github_user = get_authenticated_user(token)
 
         if not ensure_repo_link(conn, user_id, project_name, token):
+            if not allow_prompts:
+                return
             select_and_store_repo(conn, user_id, project_name, token)
 
         # get repo url
@@ -402,6 +477,9 @@ def _apply_basic_summary_without_git(
     zip_path: str,
     summary,
     desc: str | None,
+    *,
+    allow_prompts: bool = True,
+    key_role_override: str | None = None,
 ) -> None:
     """
     Populate summary fields when no local Git repository is available.
@@ -425,10 +503,14 @@ def _apply_basic_summary_without_git(
     # Extract or prompt for key role (same logic as git path)
     external_consent = get_latest_external_consent(conn, user_id)
 
-    if external_consent == "accepted" and clean_desc:
+    if isinstance(key_role_override, str) and key_role_override.strip():
+        key_role = key_role_override.strip()
+    elif external_consent == "accepted" and clean_desc:
         key_role = extract_key_role_llm(clean_desc)
-    else:
+    elif allow_prompts:
         key_role = prompt_key_role(project_name)
+    else:
+        key_role = None
 
     if key_role:
         summary.contributions["key_role"] = key_role

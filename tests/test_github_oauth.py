@@ -110,7 +110,7 @@ def test_github_oauth_poll_raises(monkeypatch, conn):
     monkeypatch.setattr(webbrowser, "open", lambda u: None)
     monkeypatch.setattr(builtins, "input", lambda p="": "")
 
-    response = request_device_code()
+    response = github_oauth(conn, "User123")
     assert response is None
 
 # browser opening fails

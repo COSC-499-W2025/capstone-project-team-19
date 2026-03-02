@@ -100,7 +100,7 @@ def post_github_link(
     if upload is None:
         raise HTTPException(status_code=404, detail="Upload not found")
     
-    result = github_link_repo(conn, user_id, project, body.repo_full_name)
+    result = github_link_repo(conn, user_id, upload_id, project, body.repo_full_name)
     if result is None:
         raise HTTPException(
             status_code=400,

@@ -83,11 +83,13 @@ class ContributedSectionsRequestDTO(BaseModel):
 
 
 RunScope = Literal["all", "individual", "collaborative"]
+RunMode = Literal["run", "check"]
 
 
 class RunAnalysisRequestDTO(BaseModel):
     scope: RunScope = "all"
     force_rerun: bool = False
+    mode: RunMode = "run"
 
 
 class RunAnalysisReadyDTO(BaseModel):
@@ -95,6 +97,7 @@ class RunAnalysisReadyDTO(BaseModel):
     scope: RunScope
     ready: bool = True
     warnings: List[Dict[str, Any]] = []
+    errors: List[Dict[str, Any]] = []
 class ManualProjectSummaryRequestDTO(BaseModel):
     summary_text: str = ""
 

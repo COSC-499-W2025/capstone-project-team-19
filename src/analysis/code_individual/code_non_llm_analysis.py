@@ -11,7 +11,16 @@ try:
 except ModuleNotFoundError:
     import constants
 
-def run_code_non_llm_analysis(conn, user_id, project_name, zip_path, summary=None):
+def run_code_non_llm_analysis(
+    conn,
+    user_id,
+    project_name,
+    zip_path,
+    summary=None,
+    *,
+    allow_prompts: bool = True,
+    api_inputs: dict | None = None,
+):
 
     # Run complexity analysis
     complexity_data = analyze_code_complexity(conn, user_id, project_name, zip_path)
@@ -21,7 +30,18 @@ def run_code_non_llm_analysis(conn, user_id, project_name, zip_path, summary=Non
         display_complexity_results(complexity_data)
 
     # Run git analysis
-    git_data = analyze_git_individual_project(conn, user_id, project_name, zip_path)
+    try:
+        git_data = analyze_git_individual_project(
+            conn,
+            user_id,
+            project_name,
+            zip_path,
+            allow_prompts=allow_prompts,
+            api_inputs=api_inputs,
+        )
+    except TypeError:
+        # Backward compatibility for tests/callers monkeypatching the old signature.
+        git_data = analyze_git_individual_project(conn, user_id, project_name, zip_path)
     if summary and git_data:
         summary.metrics["git"] = git_data
     if git_data and git_data.get('has_git'):
@@ -58,4 +78,3 @@ def prompt_manual_code_project_summary(project_name: str) -> str:
         summary = ""
 
     return summary or "[No manual project summary provided]"
-

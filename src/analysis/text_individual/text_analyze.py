@@ -22,7 +22,10 @@ def run_text_pipeline(
     version_key: int | None = None,
     consent: str = "rejected",
     csv_metadata=None,
-    suppress_print=False
+    suppress_print=False,
+    main_file_relpath: str | None = None,
+    manual_summary_text: str | None = None,
+    allow_prompts: bool = True,
 ):
     """
     Text project analysis with:
@@ -136,7 +139,16 @@ def run_text_pipeline(
         files_sorted = sorted(files, key=lambda x: x["file_name"])
 
         # --- Select main file ---
-        main_file = _select_main_file(files_sorted, base_path)
+        try:
+            main_file = _select_main_file(
+                files_sorted,
+                base_path,
+                main_file_relpath=main_file_relpath,
+                allow_prompts=allow_prompts,
+            )
+        except TypeError:
+            # Backward-compatible fallback for tests/mocks that patch the old 2-arg helper.
+            main_file = _select_main_file(files_sorted, base_path)
 
         # --- Activity type analysis (only for individual mode) ---
         if not suppress_print:
@@ -186,7 +198,12 @@ def run_text_pipeline(
         if consent == "accepted":
             summary = generate_text_llm_summary(main_text)
         else:
-            summary = prompt_manual_summary(main_file["file_name"])
+            if isinstance(manual_summary_text, str) and manual_summary_text.strip():
+                summary = manual_summary_text.strip()
+            elif allow_prompts:
+                summary = prompt_manual_summary(main_file["file_name"])
+            else:
+                summary = "[No manual project summary provided]"
             
         # === COLLABORATIVE MODE: skip printing + skip skill detectors ===
         if suppress_print:
@@ -236,12 +253,27 @@ def run_text_pipeline(
 
 # ----------------- Helpers -----------------
 
-def _select_main_file(files_sorted, base_path):
+def _select_main_file(files_sorted, base_path, *, main_file_relpath: str | None = None, allow_prompts: bool = True):
     """Prompt user or auto-select main text file."""
+    relpath_norm = (main_file_relpath or "").replace("\\", "/").strip()
+    if relpath_norm:
+        for f in files_sorted:
+            file_path = (f.get("file_path") or "").replace("\\", "/").strip()
+            file_name = (f.get("file_name") or "").strip()
+            if relpath_norm == file_path or relpath_norm.endswith("/" + file_path) or relpath_norm.endswith("/" + file_name):
+                return f
+
     if len(files_sorted) == 1:
         main = files_sorted[0]
         print(f"Only one text file detected: {main['file_name']}")
         return main
+
+    if not allow_prompts:
+        # fallback: largest file on disk
+        return max(
+            files_sorted,
+            key=lambda f: os.path.getsize(os.path.join(base_path, f["file_path"])),
+        )
 
     print("\nSelect the MAIN (final) file for this project:")
     for idx, f in enumerate(files_sorted, start=1):

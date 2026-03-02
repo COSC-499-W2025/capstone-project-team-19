@@ -30,6 +30,12 @@ def test_drive_start_connect_now_false(client, auth_headers, seed_conn):
     assert res.json()["success"] is True
     assert res.json()["data"]["auth_url"] is None
 
+    status_res = client.get(f"/projects/upload/{upload_id}", headers=auth_headers)
+    assert status_res.status_code == 200
+    drive_state = status_res.json()["data"]["state"]["run_inputs"]["projects"]["TestProject"]["integrations"]["drive"]
+    assert drive_state["state"] == "skipped"
+    assert drive_state["linked_files_count"] == 0
+
 @patch("src.services.google_drive_service.get_google_drive_token")
 @patch("src.services.google_drive_service.generate_google_auth_url")
 def test_drive_start_connect_now_true_generates_url(mock_auth_url, mock_get_token, client, auth_headers, seed_conn):
@@ -133,6 +139,12 @@ def test_drive_link_success(mock_store_link, mock_get_token, client, auth_header
     assert res.json()["success"] is True
     assert res.json()["data"]["files_linked"] == 2
     assert mock_store_link.call_count == 2
+
+    status_res = client.get(f"/projects/upload/{upload_id}", headers=auth_headers)
+    assert status_res.status_code == 200
+    drive_state = status_res.json()["data"]["state"]["run_inputs"]["projects"]["TestProject"]["integrations"]["drive"]
+    assert drive_state["state"] == "connected"
+    assert drive_state["linked_files_count"] == 2
 
 @patch("src.services.google_drive_service.get_google_drive_token")
 def test_drive_link_not_connected(mock_get_token, client, auth_headers, seed_conn):

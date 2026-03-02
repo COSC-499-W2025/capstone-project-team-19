@@ -139,6 +139,10 @@ def test_post_supporting_text_files_happy_path_persists_and_dedupes(client, auth
     persisted_state = get_upload_state(client, auth_headers, upload_id)
     persisted_contrib = get_project_contrib(persisted_state, PROJECT)
     assert sorted(persisted_contrib.get("supporting_text_relpaths") or []) == sorted(set(selected))
+    run_inputs = (((persisted_state.get("run_inputs") or {}).get("projects") or {}).get(PROJECT)) or {}
+    manual = run_inputs.get("manual_inputs") or {}
+    assert manual.get("supporting_text_files_set") is True
+    assert manual.get("supporting_text_files_count") == len(set(selected))
 
     _cleanup_upload_artifacts(persisted_state)
 
@@ -236,6 +240,10 @@ def test_post_supporting_csv_files_happy_path_persists_and_dedupes(client, auth_
     persisted_state = get_upload_state(client, auth_headers, upload_id)
     persisted_contrib = get_project_contrib(persisted_state, PROJECT)
     assert sorted(persisted_contrib.get("supporting_csv_relpaths") or []) == sorted(set(selected))
+    run_inputs = (((persisted_state.get("run_inputs") or {}).get("projects") or {}).get(PROJECT)) or {}
+    manual = run_inputs.get("manual_inputs") or {}
+    assert manual.get("supporting_csv_files_set") is True
+    assert manual.get("supporting_csv_files_count") == len(set(selected))
 
     _cleanup_upload_artifacts(persisted_state)
 
@@ -278,7 +286,10 @@ def test_supporting_files_requires_needs_file_roles(client, auth_headers):
     upload = start.json()["data"]
     upload_id = upload["upload_id"]
     state = upload.get("state") or {}
-    project_key = _get_project_key(state, "ProjectA")
+    project_key = (state.get("dedup_project_keys") or {}).get("ProjectA")
+    if project_key is None:
+        project_key = next(iter((state.get("dedup_project_keys") or {}).values()), None)
+    assert project_key is not None, "no project_key found in dedup_project_keys"
 
     res = client.post(
         f"/projects/upload/{upload_id}/projects/{project_key}/supporting-text-files",

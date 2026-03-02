@@ -9,6 +9,7 @@ from src.integrations.github.github_api import list_user_repos
 from src.integrations.github.link_repo import get_github_repo_metadata
 from src.db.github_repositories import save_project_repo
 from src.db.uploads import get_upload_by_id, patch_upload_state
+from src.services.uploads_run_state_service import merge_project_run_inputs
 
 
 def github_start_connection(
@@ -23,12 +24,24 @@ def github_start_connection(
         patch_upload_state(conn, upload_id, {
             f"github_{project_name}": {"skipped": True}
         })
+        merge_project_run_inputs(
+            conn,
+            upload_id,
+            project_name,
+            {"integrations": {"github": {"state": "skipped", "repo_linked": False}}},
+        )
         return {"auth_url": None, "connected": False}
     
     if get_github_token(conn, user_id):
         patch_upload_state(conn, upload_id, {
             f"github_{project_name}": {"connected": True}
         })
+        merge_project_run_inputs(
+            conn,
+            upload_id,
+            project_name,
+            {"integrations": {"github": {"state": "connected"}}},
+        )
         return {"auth_url": None, "connected": True}
     
     oauth_state = secrets.token_urlsafe(32)
@@ -41,6 +54,12 @@ def github_start_connection(
             "project_name": project_name,
         }
     })
+    merge_project_run_inputs(
+        conn,
+        upload_id,
+        project_name,
+        {"integrations": {"github": {"state": "unset", "repo_linked": False}}},
+    )
     
     auth_url = generate_github_auth_url(state=oauth_state)
     return {"auth_url": auth_url, "connected": False}
@@ -94,6 +113,12 @@ def github_handle_callback(conn, code: str, state: Optional[str] = None) -> Dict
     patch_upload_state(conn, state_info["upload_id"], {
         f"github_{state_info['project_name']}": {"connected": True}
     })
+    merge_project_run_inputs(
+        conn,
+        state_info["upload_id"],
+        state_info["project_name"],
+        {"integrations": {"github": {"state": "connected"}}},
+    )
     
     return {"success": True, **state_info}
 
@@ -106,7 +131,13 @@ def github_list_repos(conn, user_id: int) -> Optional[list[str]]:
     return list_user_repos(token)
 
 
-def github_link_repo(conn, user_id: int, project_name: str, repo_full_name: str) -> Optional[Dict[str, Any]]:
+def github_link_repo(
+    conn,
+    user_id: int,
+    upload_id: int,
+    project_name: str,
+    repo_full_name: str,
+) -> Optional[Dict[str, Any]]:
     """Link a repo to a project. Reuses existing function."""
     token = get_github_token(conn, user_id)
     if not token:
@@ -123,6 +154,20 @@ def github_link_repo(conn, user_id: int, project_name: str, repo_full_name: str)
     save_project_repo(
         conn, user_id, project_name, repo_url, repo_full_name,
         repo_owner, repo_name, repo_id, default_branch, provider="github"
+    )
+    merge_project_run_inputs(
+        conn,
+        upload_id,
+        project_name,
+        {
+            "integrations": {
+                "github": {
+                    "state": "connected",
+                    "repo_linked": True,
+                    "repo_full_name": repo_full_name,
+                }
+            }
+        },
     )
     
     return {"success": True, "repo_full_name": repo_full_name}

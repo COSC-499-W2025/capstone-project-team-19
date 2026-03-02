@@ -104,7 +104,14 @@ def post_upload_run_preflight(
     user_id: int = Depends(get_current_user_id),
     conn: Connection = Depends(get_db),
 ):
-    data = run_analysis_preflight(conn, user_id, upload_id, body.scope, body.force_rerun)
+    data = run_analysis_preflight(
+        conn,
+        user_id,
+        upload_id,
+        body.scope,
+        body.force_rerun,
+        mode=body.mode,
+    )
     return ApiResponse(success=True, data=RunAnalysisReadyDTO(**data), error=None)
 
 

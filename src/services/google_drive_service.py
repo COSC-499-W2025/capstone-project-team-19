@@ -12,6 +12,7 @@ from src.integrations.google_drive.google_drive_web_oauth import (generate_googl
 from src.integrations.google_drive.token_store import (get_google_drive_token,save_google_drive_tokens,)
 from src.db.drive_files import store_file_link
 from src.db.uploads import patch_upload_state
+from src.services.uploads_run_state_service import merge_project_run_inputs
 
 
 def drive_start_connection(
@@ -26,12 +27,24 @@ def drive_start_connection(
         patch_upload_state(conn, upload_id, {
             f"drive_{project_name}": {"skipped": True}
         })
+        merge_project_run_inputs(
+            conn,
+            upload_id,
+            project_name,
+            {"integrations": {"drive": {"state": "skipped", "linked_files_count": 0}}},
+        )
         return {"auth_url": None, "connected": False}
 
     if get_google_drive_token(conn, user_id):
         patch_upload_state(conn, upload_id, {
             f"drive_{project_name}": {"connected": True}
         })
+        merge_project_run_inputs(
+            conn,
+            upload_id,
+            project_name,
+            {"integrations": {"drive": {"state": "connected"}}},
+        )
         return {"auth_url": None, "connected": True}
 
     oauth_state = secrets.token_urlsafe(32)
@@ -44,6 +57,12 @@ def drive_start_connection(
             "project_name": project_name,
         }
     })
+    merge_project_run_inputs(
+        conn,
+        upload_id,
+        project_name,
+        {"integrations": {"drive": {"state": "unset", "linked_files_count": 0}}},
+    )
 
     auth_url = generate_google_auth_url(state=oauth_state)
     return {"auth_url": auth_url, "connected": False}
@@ -108,6 +127,12 @@ def drive_handle_callback(conn, code: str, state: Optional[str] = None) -> Dict[
     patch_upload_state(conn, state_info["upload_id"], {
         f"drive_{state_info['project_name']}": {"connected": True}
     })
+    merge_project_run_inputs(
+        conn,
+        state_info["upload_id"],
+        state_info["project_name"],
+        {"integrations": {"drive": {"state": "connected"}}},
+    )
 
     return {"success": True, **state_info}
 
@@ -168,7 +193,13 @@ def _fetch_drive_files(token: str) -> List[Dict[str, str]]:
     return all_files
 
 
-def drive_link_files(conn,user_id: int,project_name: str,links: List[Dict[str, str]],) -> Optional[Dict[str, Any]]:
+def drive_link_files(
+    conn,
+    user_id: int,
+    upload_id: int,
+    project_name: str,
+    links: List[Dict[str, str]],
+) -> Optional[Dict[str, Any]]:
     """ Link Drive files to a project's local files. """
     token = get_google_drive_token(conn, user_id)
     if not token:
@@ -185,6 +216,20 @@ def drive_link_files(conn,user_id: int,project_name: str,links: List[Dict[str, s
             mime_type=link.get("mime_type"),
             status="manual_selected",
         )
+
+    merge_project_run_inputs(
+        conn,
+        upload_id,
+        project_name,
+        {
+            "integrations": {
+                "drive": {
+                    "state": "connected",
+                    "linked_files_count": len(links),
+                }
+            }
+        },
+    )
 
     return {
         "success": True,
