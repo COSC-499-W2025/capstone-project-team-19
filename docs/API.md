@@ -2033,6 +2033,47 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
 
 ### **Endpoints**
 
+- **Get Portfolio Overview**
+    - **Endpoint**: `GET /`
+    - **Description**: Returns the user's portfolio as a ranked list of projects, suitable for display in a UI. This is a read-only view; it does not create or persist any portfolio snapshot.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response Body**: Uses `PortfolioDTO`
+        ```json
+        {
+          "success": true,
+          "data": {
+            "items": [
+              {
+                "rank": 1,
+                "project_name": "MyProject",
+                "display_name": "My Project",
+                "score": 0.875,
+                "project_type": "code",
+                "project_mode": "individual",
+                "start_date": "2024-01-15",
+                "end_date": "2024-06-30",
+                "languages": ["Python", "JavaScript"],
+                "frameworks": ["FastAPI", "React"],
+                "summary_text": "A web application for...",
+                "skills": ["Backend Development", "API Design"],
+                "text_type": null,
+                "contribution_percent": null,
+                "activities": [
+                  { "name": "feature_coding", "percent": 85.0 },
+                  { "name": "testing", "percent": 15.0 }
+                ]
+              }
+            ]
+          },
+          "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: User not found
+
 - **Generate Portfolio**
     - **Endpoint**: `POST /generate`
     - **Description**: Generates a portfolio view from all of the user's analyzed projects, ranked by importance. Returns structured project data and a rendered plain-text version. The portfolio is not persisted — it is built on demand from existing project summaries.
@@ -2454,6 +2495,26 @@ Example:
     - `contribution_bullets` (List[string], optional): Custom contribution bullet points
     - `skill_preferences` (List[SkillPreferenceDTO], optional): Per-project skill highlighting preferences
     - `skill_preferences_reset` (boolean, optional): Clear preferences for the specified project
+
+- **PortfolioItemDTO**
+    - `rank` (int, required): 1-based rank of the project within the portfolio
+    - `project_name` (string, required): Internal project name
+    - `display_name` (string, required): Human-friendly project title
+    - `score` (float, required): Importance ranking score
+    - `project_type` (string, optional): `"code"` or `"text"` (or `null` if unknown)
+    - `project_mode` (string, optional): `"individual"` or `"collaborative"` (or `null` if unknown)
+    - `start_date` (string, optional): ISO 8601 date string (YYYY-MM-DD)
+    - `end_date` (string, optional): ISO 8601 date string (YYYY-MM-DD)
+    - `languages` (List[string], optional): Languages associated with the project
+    - `frameworks` (List[string], optional): Frameworks or libraries used
+    - `summary_text` (string, optional): Short description of the project
+    - `skills` (List[string], optional): High-level skills highlighted for this project
+    - `text_type` (string, optional): For text projects, a label such as `"Academic writing"`
+    - `contribution_percent` (float, optional): User's estimated contribution percentage (text projects)
+    - `activities` (List[dict], optional): Activity breakdown entries (e.g. `{ "name": "feature_coding", "percent": 85.0 }`)
+
+- **PortfolioDTO**
+    - `items` (List[PortfolioItemDTO], required): Ranked list of portfolio items for the current user
 
 - **PortfolioProjectDTO**
     - `project_name` (string, required)
