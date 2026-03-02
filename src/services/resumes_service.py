@@ -114,7 +114,7 @@ def edit_resume(
         )
         conn.commit()
 
-    # If no project_name provided, just return after name update (name-only edit)
+    # If no project_name provided, just return after name update
     if project_name is None:
         return get_resume_by_id(conn, user_id, resume_id)
 
