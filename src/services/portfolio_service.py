@@ -8,7 +8,13 @@ from src.services.resume_overrides import (
     update_project_manual_overrides,
     apply_manual_overrides_to_resumes,
 )
-from src.services.skill_preferences_service import get_highlighted_skills_for_display
+from src.services.skill_preferences_service import (
+    get_highlighted_skills_for_display,
+    update_skill_preferences,
+    reset_skill_preferences,
+    normalize_skill_preferences,
+)
+from src.db.skill_preferences import get_project_skill_names
 from src.db.projects import get_project_key
 from src.insights.portfolio import (
     format_duration,
@@ -269,6 +275,8 @@ def edit_portfolio(
     summary_text: Optional[str] = None,
     contribution_bullets: Optional[List[str]] = None,
     name: str = "Portfolio",
+    skill_preferences: Optional[List[Dict[str, Any]]] = None,
+    skill_preferences_reset: Optional[bool] = False,
 ) -> Optional[Dict[str, Any]]:
     """
     Edit portfolio wording for a project.
@@ -279,6 +287,40 @@ def edit_portfolio(
     if not summary_row:
         return None
 
+    if scope not in ("portfolio_only", "global"):
+        scope = "portfolio_only"
+
+    pref_context = "portfolio" if scope == "portfolio_only" else "global"
+    pref_context_id = None
+    if skill_preferences_reset:
+        project_key = get_project_key(conn, user_id, project_name)
+        if project_key is None:
+            return None
+        reset_skill_preferences(
+            conn,
+            user_id,
+            context=pref_context,
+            context_id=pref_context_id,
+            project_key=project_key,
+        )
+    elif skill_preferences:
+        project_key = get_project_key(conn, user_id, project_name)
+        if project_key is None:
+            return None
+        normalized_prefs = normalize_skill_preferences(skill_preferences)
+        if normalized_prefs:
+            valid_skills = set(get_project_skill_names(conn, user_id, project_key))
+            invalid = [p["skill_name"] for p in normalized_prefs if p["skill_name"] not in valid_skills]
+            if invalid:
+                raise ValueError(f"Invalid skill name(s): {', '.join(invalid)}")
+            update_skill_preferences(
+                conn,
+                user_id,
+                normalized_prefs,
+                context=pref_context,
+                context_id=pref_context_id,
+                project_key=project_key,
+            )
     # Build updates dict
     updates: Dict[str, Any] = {}
     if display_name is not None:
