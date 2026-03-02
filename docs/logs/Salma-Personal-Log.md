@@ -243,3 +243,19 @@ I reviewed some PRs, four of them are:
 - Timmi's PR [#445](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/445) on the project dates API, where I found an edge case in which setting only one manual date prevents clearing it via PATCH when the other date is missing.
 
 Next week: I plan to implement the API endpoint for running the analysis (POST /projects/upload/{upload_id}/run). This might require additional endpoints such as run preferences (per upload), project and contribution summaries, project role inputs, and others.
+
+## (T2 Weeks 6-8) Monday February 9 - Sunday March 1
+
+![Screenshot of this week's peer evaluation](./screenshots/Salma-Feb9-Mar1.PNG)
+
+I worked on PR [#492](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/492) tto add a key-role API endpoint for the upload wizard flow. I implemented POST /projects/upload/{upload_id}/projects/{project_key}/key-role plus the DTO/service logic to validate input, normalize whitespace, map project_key → project_name, and persist to uploads.state.contributions[project_name].key_role. I also added API tests (happy path, 404 unknown project, 409 invalid upload status, and blank input clearing behavior) and documented the endpoint in API.md with examples and error cases.
+
+I worked on PR [#493](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/493) to improve API.md consistency and accuracy across sections. I normalized endpoint paths relative to each section’s Base URL, fixed response/request example formatting (including proper JSON blocks), and corrected authorization documentation (e.g., header naming and Bearer token vs X-User-Id). This PR is documentation-only and does not change runtime/API behavior.
+
+I worked on PR [#509](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/509) to finalize the API-first upload wizard flow through /run readiness checks and unblock valid runs. I implemented scope-based readiness validation (all/individual/collaborative) with structured incomplete-state errors, using a readiness matrix to centralize blockers and warnings, and made internal consent a readiness blocker. I also fixed upload-state resolution for manual project types (persist project_types_manual, clear mixed/unknown), added regression/API tests, and updated docs to reflect the readiness-only behavior.
+
+I worked on PR [#510](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/510) to extend /run from readiness-only into readiness + execution for fully API-driven analysis. I added run modes (mode="check" for readiness, mode="run" for readiness + execution) with explicit blocker vs warning semantics, plus matrix-driven evaluation using uploads.state capability/integration signals. I also implemented scope completion tracking and rerun guards (with force_rerun=true support), refactored execution to be non-interactive (no CLI prompts), fixed repo path resolution for extracted layouts, and updated tests/docs for the new behavior.
+
+I also collaborated with Timmi to design wireframes for the frontend UI.
+
+Next week plan: I plan to address some comments on my PR and plan to work on implementing the frontend.
