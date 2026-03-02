@@ -51,23 +51,19 @@ pip install -r requirements.txt
 
 ### 4. Configure Environment Variables
 
-Copy the example environment file and update it with your configuration:
+Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-**Important:** Make sure to add a secure `JWT_SECRET` value to your `.env` file. You can generate a secure random string using:
+Then generate and set a `JWT_SECRET` (required for running the API):
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-Then add it to your `.env`:
-
-```
-JWT_SECRET=<your_generated_secure_string>
-```
+Paste the output into your `.env` as the value for `JWT_SECRET`. All other variables in `.env` are for optional integrations and can be left as-is. See [Environment Variables and OAuth Setup](#environment-variables-and-oauth-setup) for details.
 
 ### 5. Run Tests
 Ensure you are in the main directory `/capstone-project-team-19`.
@@ -76,9 +72,11 @@ Ensure you are in the main directory `/capstone-project-team-19`.
 pytest tests
 ```
 
-If everything is set up correctly, you should see the tests pass.
+This runs the automated unit and integration test suite. If everything is set up correctly, you should see the tests pass.
 
-### 5. Run the system
+To test the system end-to-end with sample projects, see the [Test Data](#test-data) section below for manual CLI walkthroughs using the files in `test-data/`.
+
+### 6. Run the system
 
 This project can be run in **one of two modes** - choose the one that fits your needs:
 
@@ -92,13 +90,14 @@ cd capstone-project-team-19
 
 # Start the API server
 uvicorn src.api.main:app --reload
+```
 
 > **Note:** If you are getting an error regarding `JWT_SECRET` missing from the .env file but it exists, try running `uvicorn src.api.main:app --reload --env-file .env` instead.
-```
 
 The API will be available at `http://localhost:8000`. You can:
     - View interactive API documentation at `http://localhost:8000/docs`
     - View alternative API docs at `http://localhost:8000/redoc`
+    - Read the full endpoint reference in [docs/API.md](docs/API.md)
     - Make HTTP requests to the API endpoints from your frontend or API client
     - For upload `/run` readiness rules, refer to `docs/run_analysis_readiness_matrix.txt`
 
@@ -256,18 +255,20 @@ A template file (`.env.example`) is provided and should be copied directly.
     ```
     (On Windows, create the `.env` file manually or use `copy .env.example .env`.)
 
-2. Ensure all variables below are present in `.env`:
-    ```env
-    GROQ_API_KEY=<your-api-key>
-    GITHUB_CLIENT_ID=""
-    GITHUB_CLIENT_SECRET=<your-new-client-secret>
-    
-    GITHUB_REDIRECT_URI=http://localhost:8000/auth/github/callback
-    DEVICE_CODE_URL="https://github.com/login/device/code"
-    TOKEN_URL="https://github.com/login/oauth/access_token"
+2. Generate and set a `JWT_SECRET` (required for running the API):
+    ```bash
+    python -c "import secrets; print(secrets.token_urlsafe(32))"
     ```
-    The values for GROQ_API_KEY and GITHUB_CLIENT_ID may be left empty.
-    The URL values are required and should not be modified.
+    Paste the output into your `.env`:
+    ```env
+    JWT_SECRET=<your_generated_secure_string>
+    ```
+
+3. The remaining variables in `.env.example` are for **optional** integrations and can be left as-is:
+    - `GROQ_API_KEY` — LLM summarization (leave empty to use manual summaries instead)
+    - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` — GitHub OAuth (leave empty to skip GitHub analysis)
+    - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — Google Drive (leave empty to skip Drive analysis)
+    - `DEVICE_CODE_URL`, `TOKEN_URL`, `GITHUB_REDIRECT_URI`, `GOOGLE_REDIRECT_URI` — URL constants, do not modify
 
 > **Security Note**
 > The `.env` file may contain sensitive information and is ignored by Git via `.gitignore`.
@@ -275,7 +276,7 @@ A template file (`.env.example`) is provided and should be copied directly.
 
 ### GitHub OAuth (optional)
 
-GitHub OAuth is used to analyze collaboration metrics such as commits, pull requests, reviews, and contribution frequency. This integration uses GitHub's **Code Flow OAuth**.
+GitHub OAuth is used to analyze collaboration metrics such as commits, pull requests, reviews, and contribution frequency. This integration uses GitHub's **Code Flow OAuth**. For more details, see [docs/github_integration.md](docs/github_integration.md).
 
 To enable GitHub analysis:
 1. Create a GitHub OAuth App:
@@ -628,17 +629,17 @@ The flow starts when the user login, and choose one of the 11 menu:
 
 The Level 1 DFD illustrates the complete lifecycle of a project analysis request, beginning with the user selecting an action in the menu and ending with the generation of summaries, skills, and portfolio outputs. When the user initiates a new analysis, the system first manages consent by collecting permissions for local analysis, GitHub integration, Google Drive access, and optional LLM summarization. These selections are stored in the consent and configuration data store so that future analyses remain consistent with the user's preferences.
 
-After the user uploads a zipped project folder, the system validates the archive, extracts its contents, and records file metadata. The classification stage determines project boundaries, identifies file types, and separates individual from collaborative projects. Once classified, projects are sent to the non LLM analysis pipeline, which performs linguistic metrics, CSV inspection, readability analysis, language and framework detection, Git commit inspection, and contribution inference depending on the project type and available integrations. All extracted metrics and contribution data are written to the analysis results store.
+After the user uploads a zipped project folder, the system validates the archive, extracts its contents, and records file metadata. If the project has been uploaded before, the versioning and deduplication stage detects duplicates and lets the user skip, create a new project, or add a new version. The classification stage then determines project boundaries, identifies file types, and separates individual from collaborative projects. Once classified, projects are sent to the non-LLM analysis pipeline, which performs linguistic metrics, CSV inspection, readability analysis, language and framework detection, Git commit inspection, and contribution inference depending on the project type and available integrations. All extracted metrics and contribution data are written to the analysis results store.
 
-The skill bucket analysis process then evaluates the available evidence, including text and code metrics, contributions, structural features, and activity traces, to produce skill scores and levels. Activity type detection supplements these results by categorizing user behavior over time, such as coding, testing, documentation, or textual revision patterns.
+The skill bucket analysis process then evaluates the available evidence, including text and code metrics, contributions, structural features, and activity traces, to produce skill scores and levels. When a skill detector finds no evidence for a criterion, the feedback system generates actionable improvement suggestions for the user. Activity type detection supplements these results by categorizing user behavior over time, such as coding, testing, documentation, or textual revision patterns.
 
-If LLM access is granted, a summarization process enhances the project record with natural language summaries. Otherwise, the system prompts the user to provide a manual description. These finalized summaries, along with all metrics and skill outputs, are stored as complete project records.
+If LLM access is granted, a summarization process enhances the project record with natural language summaries and extracts a key role (e.g., "Backend Developer") from the user's contribution description. Otherwise, the system prompts the user to provide a manual summary and key role. These finalized summaries, along with all metrics, skill outputs, and contribution descriptions, are stored as complete project records.
 
-Because all menu operations draw from the same analysis results store, the user can view ranked projects, retrieve chronological skill timelines, build resumes, or revisit past analyses without re running computation. The DFD clearly indicates which components interact with external services, which rely on stored data, and where new analysis paths, such as additional detectors or classifiers, can be integrated into the pipeline.
+Because all menu operations draw from the same analysis results store, the user can view ranked projects, retrieve chronological skill timelines, build and edit resumes, view and edit portfolio cards, review skill feedback, manage project thumbnails, edit project dates, export resumes and portfolios to DOCX or PDF, or revisit past analyses without re-running computation. The system is also accessible via a FastAPI layer with JWT authentication, which mirrors CLI functionality through REST endpoints. The DFD illustrates which components interact with external services, which rely on stored data, and where new analysis paths, such as additional detectors or classifiers, can be integrated into the pipeline.
 
 ## Work Breakdown Structure
 
-Work breakdown structure will be updated based on [this google sheets](https://docs.google.com/spreadsheets/d/1yeHoVlBvooq_YpePy--oXryqxtmau8V4wUhEGfgpzfs/edit?usp=sharing) (Milestone 2 and 3 will be updated based on what is updated on canvas.)
+Work breakdown structure is tracked in [this google sheets](https://docs.google.com/spreadsheets/d/1yeHoVlBvooq_YpePy--oXryqxtmau8V4wUhEGfgpzfs/edit?usp=sharing). The table below reflects progress through Milestone 2.
 
 | No     | Module/Functionality                                  | Description                                                                                                                                                                                     | Member(s)   | Status          |
 | ------ | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | --------------- |
@@ -681,17 +682,18 @@ Work breakdown structure will be updated based on [this google sheets](https://d
 | 4.1    | Milestone 1 Documentation                             | Prepare milestone 1 documentation                                                                                                                                                               | All Members | Done            |
 | **5**  | **Review and Evaluation**                             |                                                                                                                                                                                                 |             |                 |
 | 5.1    | Milestone #1 Review                                   | Review and Evaluate Milestone #1 for future use in milestone 2                                                                                                                                  | All Members | Done            |
-| 5.2    | API Framework Decision                                | Decide API Framework to be used in milestone 2                                                                                                                                                  |             |                 |
+| 5.2    | API Framework Decision                                | Decide API Framework to be used in milestone 2                                                                                                                                                  | All Members | Done            |
 | **6**  | **API Implementation**                                |                                                                                                                                                                                                 |             |                 |
 | 6.1    | Implement endpoints for some functions                | Implement endpoints for functions such as uploading additional zipped folder, modification of data                                                                                              | All Members | Done            |
-| 6.2    | Define acceptable JSON formats                        | Standardized JSON response formats                                                                                                                                                              |             |                 |
+| 6.2    | Define acceptable JSON formats                        | Standardized JSON response formats using ApiResponse wrapper                                                                                                                                    | All Members | Done            |
+| 6.3    | API Authentication                                    | JWT Bearer token authentication for protected endpoints (register, login, token validation)                                                                                                     | All Members | Done            |
 | **7**  | **Backend Update**                                    |                                                                                                                                                                                                 |             |                 |
 | 7.1    | Incremental Data Addition Module                      |                                                                                                                                                                                                 |             |                 |
 | 7.1.1  | Retrieve Previous Data                                | Retrieve previous data to be added (milestone 1)                                                                                                                                                |             | Done            |
 | 7.1.2  | Handle Metadata                                       | Handle metadata for version tracking                                                                                                                                                            |             | Done            |
 | 7.1.3  | Merge new data functionality                          | Merge new data with previously retrieved data                                                                                                                                                   |             | Done            |
 | 7.2    | Duplicate File Handling Modules                       |                                                                                                                                                                                                 |             |                 |
-| 7.2.1  | Identify Duplicate Functionality                      | Recognized duplicate files                                                                                                                                                                      |             | Patial          |
+| 7.2.1  | Identify Duplicate Functionality                      | Recognized duplicate files                                                                                                                                                                      |             | Done            |
 | 7.2.2  | Maintain Unique Files                                 | maintain using only one file of duplicates to avoid redundancy                                                                                                                                  |             | Done            |
 | 7.2.3  | Return response to users                              | Return response to user for feedback functionality                                                                                                                                              |             | Done            |
 | 7.3    | Database Update                                       |                                                                                                                                                                                                 |             |                 |
@@ -699,30 +701,35 @@ Work breakdown structure will be updated based on [this google sheets](https://d
 | 7.3.2  | Resume Text Update                                    | Update resume based on added file                                                                                                                                                               |             | Done            |
 | 7.3.3  | Metrics and data updates                              | Update metrics based on added file                                                                                                                                                              |             | Done            |
 | **8**  | **Human-in-the-Loop Module**                          |                                                                                                                                                                                                 |             |                 |
-| 8.1    | User Customization Interface                          | Allow user to be involved in selection, customization and corrections                                                                                                                           |             |                 |
-| 8.1.1  | Re-rank project functionality                         | Allow user to re-rank the project after the analyzation done                                                                                                                                    |             |                 |
-| 8.1.2  | Corrections to chronology functionality               | Allow user to correct the chronology                                                                                                                                                            |             |                 |
-| 8.1.3  | Modify attributes for project comparison              | Allow user to choose and modify attributes for project comparison                                                                                                                               |             |                 |
-| 8.1.4  | Highlight specific skills                             | Allow user to choose specific skills to be represented                                                                                                                                          |             | Done            |
-| 8.2    | Role and Evidence Functionality                       |                                                                                                                                                                                                 |             |                 |
-| 8.2.1  | Assign user's key role                                | Allow user to input their key role in a project and incorporate it into the data                                                                                                                |             |                 |
-| 8.2.2  | Attach success evidence                               | Allow user to attach success evidence of their project                                                                                                                                          |             |                 |
-| 8.3    | Project Media Module                                  |                                                                                                                                                                                                 |             |                 |
-| 8.3.1  | Project Thumbnail Upload Functionality                | New function to upload project thumbnail                                                                                                                                                        |             |                 |
-| 8.4    | Result Customization Module                           |                                                                                                                                                                                                 |             |                 |
-| 8.4.1  | Customize Portfolio Information                       | Allow users to customize and save portfolio information                                                                                                                                         |             |                 |
-| 8.4.2  | Customize Project Wording                             | Allow users to customize and save the wording of a project used for a resume item                                                                                                               |             |                 |
+| 8.1    | User Customization Interface                          | Allow user to be involved in selection, customization and corrections                                                                                                                           |             | Done            |
+| 8.1.1  | Re-rank project functionality                         | Allow user to re-rank projects via CLI and API (manual rank overrides)                                                                                                                          | All Members | Done            |
+| 8.1.2  | Corrections to chronology functionality               | Allow user to edit project start/end dates (CLI menu option 9)                                                                                                                                  | All Members | Done            |
+| 8.1.3  | Modify attributes for project comparison              | Allow user to customize display names, summaries, and contribution bullets for portfolio and resume                                                                                              | All Members | Done            |
+| 8.1.4  | Highlight specific skills                             | Allow user to choose specific skills to be represented                                                                                                                                          | All Members | Done            |
+| 8.2    | Role and Evidence Functionality                       |                                                                                                                                                                                                 |             | Done            |
+| 8.2.1  | Assign user's key role                                | Allow user to input their key role in a project (LLM extraction or manual prompt) and incorporate it into the data                                                                              | All Members | Done            |
+| 8.2.2  | Attach success evidence                               | Skill scores, metrics, and feedback provide evidence of project outcomes                                                                                                                        | All Members | Done            |
+| 8.3    | Project Media Module                                  |                                                                                                                                                                                                 |             | Done            |
+| 8.3.1  | Project Thumbnail Upload Functionality                | Upload project thumbnail via CLI (menu option 10) and API endpoint                                                                                                                              | All Members | Done            |
+| 8.4    | Result Customization Module                           |                                                                                                                                                                                                 |             | Done            |
+| 8.4.1  | Customize Portfolio Information                       | Allow users to customize and save portfolio information (global and portfolio-specific overrides)                                                                                                | All Members | Done            |
+| 8.4.2  | Customize Project Wording                             | Allow users to customize and save the wording of a project used for a resume item (resume-specific overrides)                                                                                   | All Members | Done            |
 | **9**  | **Data Display and Output**                           |                                                                                                                                                                                                 |             |                 |
-| 9.1    | Portfolio Display Module                              |                                                                                                                                                                                                 |             |                 |
-| 9.1.1  | Textual Information Display                           | Display textual information about a project as a portfolio showcase                                                                                                                             |             | Done            |
-| 9.2    | Resume Display Module                                 |                                                                                                                                                                                                 |             |                 |
-| 9.2.1  | Textual Information Display                           | Display textual information about a project as a résumé item                                                                                                                                    |             | Done            |
-| 9.2.2  | Export Functionality                                  | Allow users to download/export the resume generated                                                                                                                                             |             |                 |
+| 9.1    | Portfolio Display Module                              |                                                                                                                                                                                                 |             | Done            |
+| 9.1.1  | Textual Information Display                           | Display textual information about a project as a portfolio showcase                                                                                                                             | All Members | Done            |
+| 9.1.2  | Portfolio Export Functionality                         | Export portfolio to DOCX and PDF                                                                                                                                                                | All Members | Done            |
+| 9.2    | Resume Display Module                                 |                                                                                                                                                                                                 |             | Done            |
+| 9.2.1  | Textual Information Display                           | Display textual information about a project as a résumé item                                                                                                                                    | All Members | Done            |
+| 9.2.2  | Resume Export Functionality                           | Export resume to DOCX and PDF via CLI and API                                                                                                                                                   | All Members | Done            |
+| 9.3    | Skill Feedback Module                                 |                                                                                                                                                                                                 |             | Done            |
+| 9.3.1  | Feedback Generation                                   | Generate actionable skill improvement suggestions when detectors find no evidence                                                                                                               | All Members | Done            |
+| 9.3.2  | Feedback Display                                      | Display feedback in CLI (menu option 5) and via API endpoint                                                                                                                                    | All Members | Done            |
 | **10** | **Testing**                                           |                                                                                                                                                                                                 |             |                 |
 | 10.1   | Unit Test                                             | Perform unit test for all modules                                                                                                                                                               |             | Done            |
 | 10.2   | Integration Testing                                   | Perform integration testing between modules                                                                                                                                                     |             | Done            |
 | **11** | **Documentation**                                     |                                                                                                                                                                                                 |             |                 |
-| 11.1   | Milestone 2 Documentation                             | Prepare for documentation                                                                                                                                                                       |             |                 |
+| 11.1   | Milestone 2 Documentation                             | Prepare milestone 2 documentation and updated README                                                                                                                                            | All Members | In Progress     |
+| 11.2   | API Endpoint Documentation                            | Document all API endpoints in docs/API.md                                                                                                                                                       | All Members | Done            |
 | **12** | **Frontend**                                          |                                                                                                                                                                                                 |             |                 |
 | 12.1   | System Plan                                           |                                                                                                                                                                                                 |             |                 |
 | 12.1.1 | Review Milestone #2                                   | Review and Evaluate Milestone #1 for future use in milestone 2                                                                                                                                  |             |                 |

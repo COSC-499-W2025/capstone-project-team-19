@@ -30,16 +30,16 @@ http://localhost:8000
 4. [GitHub Integration](#github-integration)
 5. [Google Drive Integration](#google-drive-integration)
 6. [Uploads Wizard](#uploads-wizard)
-6. [Privacy Consent](#privacyconsent)
-7. [Skills](#skills)
-8. [Resume](#resume)
-9. [Portfolio](#portfolio)
-10. [Activity Heatmap](#activity-heatmap)
-11. [Path Variables](#path-variables)
-12. [DTO References](#dto-references)
-13. [Best Practices](#best-practices)
-14. [Error Codes](#error-codes)
-15. [Example Error Response](#example-error-response)
+7. [Privacy Consent](#privacyconsent)
+8. [Skills](#skills)
+9. [Resume](#resume)
+10. [Portfolio](#portfolio)
+11. [Activity Heatmap](#activity-heatmap)
+12. [Path Variables](#path-variables)
+13. [DTO References](#dto-references)
+14. [Best Practices](#best-practices)
+15. [Error Codes](#error-codes)
+16. [Example Error Response](#example-error-response)
 
 ---
 
@@ -373,6 +373,28 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **Request DTO**: `PatchProjectRankingRequestDTO`
     - **Request Body**:
       - Set manual rank:
+        ```json
+        { "rank": 1 }
+        ```
+      - Clear manual rank (revert to auto ranking for that project):
+        ```json
+        { "rank": null }
+        ```
+      - Note: `rank` is required (sending `{}` will return `422 Unprocessable Entity`)
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `ProjectRankingDTO`
+    - **Error Responses**:
+      - `400 Bad Request` if `rank` is less than 1, or greater than the user's project count
+      - `404 Not Found` if the project does not exist / does not belong to the user
+
+  - **Reset Ranking to Automatic**
+    - **Endpoint**: `POST /ranking/reset`
+    - **Description**: Clears all manual ranking overrides for the user (reverts to pure computed ranking).
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `ProjectRankingDTO`
+
 - **Project Dates**
     - **Description**: View and manage **manual date overrides** for projects.
         - If a project has manual dates, the API will report `source: "MANUAL"` and return those dates.
@@ -382,7 +404,7 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **List Project Dates**
         - **Endpoint**: `GET /dates`
         - **Description**: Returns all projects with their effective dates and whether they come from manual overrides or automatic computation.
-        - **Auth**:`Authorization: Bearer <access_token>`
+        - **Auth**: `Authorization: Bearer <access_token>`
         - **Request Body**: None
         - **Response Status**: `200 OK`
         - **Response Body**:
@@ -524,42 +546,12 @@ Handles project ingestion, analysis, classification, and metadata updates.
     - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
     - **Response Body**:
         ```json
-        { "rank": 1 }
+        {
+            "success": true,
+            "data": null,
+            "error": null
+        }
         ```
-      - Clear manual rank (revert to auto ranking for that project):
-        ```json
-        { "rank": null }
-        ```
-      - Note: `rank` is required (sending `{}` will return `422 Unprocessable Entity`)
-    - **Response Status**: `200 OK`
-    - **Response DTO**: `ProjectRankingDTO`
-    - **Error Responses**:
-      - `400 Bad Request` if `rank` is less than 1, or greater than the user's project count
-      - `404 Not Found` if the project does not exist / does not belong to the user
-
-  - **Reset Ranking to Automatic**
-    - **Endpoint**: `POST /ranking/reset`
-    - **Description**: Clears all manual ranking overrides for the user (reverts to pure computed ranking).
-    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-    - **Request Body**: None
-    - **Response Status**: `200 OK`
-    - **Response DTO**: `ProjectRankingDTO`
-
-- **Delete Project by ID**
-  - **Endpoint**: `DELETE /{project_id}`
-  - **Description**: Permanently deletes a specific project and all its associated data (skills, metrics, files, etc.).
-  - **Path Parameters**:
-    - `{project_id}` (integer, required): The project_summary_id of the project to delete
-  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-  - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
-  - **Response Body**:
-    ```json
-    {
-      "success": true,
-      "data": null,
-      "error": null
-    }
-    ```
 
 - **Delete All Projects**
     - **Endpoint**: `DELETE /`
@@ -1564,7 +1556,7 @@ Exposes extracted skills and timelines.
             "skill_name": "Python",
             "level": "Advanced",
             "score": 0.9,
-            "project_name": "MyProjet",
+            "project_name": "MyProject",
             "actual_activity_date": "2024-01-15",
             "recorded_at": "2024-01-20"
           }
@@ -1727,8 +1719,6 @@ Manages résumé-specific representations of projects.
       }
       ```
 
-  ````
-
 - **Generate Resume**
   - **Endpoint**: `POST /generate`
   - **Description**: Creates a new résumé snapshot from the user's projects. If `project_ids` is not provided, automatically selects the top 5 ranked projects. Builds the snapshot, enriches with contribution bullets and dates, and renders the text.
@@ -1785,7 +1775,8 @@ Manages résumé-specific representations of projects.
         "Built feature X",
         "Improved performance by 50%"
       ],
-      "contribution_edit_mode": "replace"
+      "contribution_edit_mode": "replace",
+      "key_role": "Backend Developer"
     }
     ```
 
@@ -1801,46 +1792,12 @@ Manages résumé-specific representations of projects.
     - `contribution_edit_mode` (string, optional): How to apply contribution bullets. Defaults to `"replace"`.
       - `"replace"`: Replace all existing bullets with the provided list
       - `"append"`: Keep existing bullets and add the provided bullets to the end
+    - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead"). Follows the same `scope` rules as other fields.
     - `skill_preferences` (array, optional): Resume-level skill highlighting preferences. Each entry uses `SkillPreferenceDTO`.
     - `skill_preferences_reset` (boolean, optional): If true, clears all resume-level skill preferences (reverts to defaults).
 
   - **Response Status**: `200 OK` or `404 Not Found`
   - **Response Body**: Uses `ResumeDetailDTO`
-    ```json
-    {
-        "success": true,
-        "data": {
-            "id": 1,
-            "name": "Updated Resume Name",
-            "project_name": "MyProject",
-            "scope": "resume_only",
-            "display_name": "Custom Project Name",
-            "summary_text": "Updated project summary...",
-            "contribution_bullets": [
-                "Built feature X",
-                "Improved performance by 50%"
-            ],
-            "contribution_edit_mode": "replace",
-            "key_role": "Backend Developer"
-        }
-        ```
-        - `name` (string, optional): New name for the résumé (rename)
-        - `project_name` (string, optional): The text name of the project to edit. If omitted, only résumé-level updates are applied (e.g., rename and/or skill preferences).
-        - `project_summary_id` (integer, optional): Required when editing project fields. Get from `GET /resume/{resume_id}` response. If omitted, only name is updated.
-        - `scope` (string, optional): Required when editing a project. Either `"resume_only"` or `"global"`. Defaults to `"resume_only"` if not specified.
-            - `resume_only`: Changes apply only to this résumé (stored as `resume_*_override` fields)
-            - `global`: Changes apply to all résumés and update `project_summaries.manual_overrides`
-        - `display_name` (string, optional): Custom display name for the project
-        - `summary_text` (string, optional): Updated summary text
-        - `contribution_bullets` (array of strings, optional): Custom contribution bullet points
-        - `contribution_edit_mode` (string, optional): How to apply contribution bullets. Defaults to `"replace"`.
-            - `"replace"`: Replace all existing bullets with the provided list
-            - `"append"`: Keep existing bullets and add the provided bullets to the end
-        - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead"). Follows the same `scope` rules as other fields.
-        - `skill_preferences` (array, optional): Resume-level skill highlighting preferences. Each entry uses `SkillPreferenceDTO`.
-        - `skill_preferences_reset` (boolean, optional): If true, clears all resume-level skill preferences (reverts to defaults).
-    - **Response Status**: `200 OK` or `404 Not Found`
-    - **Response Body**: Uses `ResumeDetailDTO`
         ```json
         {
             "success": true,
@@ -2375,20 +2332,19 @@ Example:
 - **SupportingFilesRequest**
     - `relpaths` (List[string], required): relpaths returned by `GET .../files`
 
-<<<<<<< HEAD
 - **ManualProjectSummaryRequestDTO**
   - `summary_text` (string, required): User-provided manual project summary text
 
 - **ManualContributionSummaryRequestDTO**
   - `manual_contribution_summary` (string, required): User-provided manual contribution summary text (what you did)
-=======
+
 - **KeyRoleRequestDTO**
   - `key_role` (string, required): project role/title
   - Notes:
     - whitespace is normalized before storing
     - max length: `120`
     - blank input is allowed and treated as clear (`""`)
->>>>>>> origin/main
+
 
 ### **Skills DTOs**
 
@@ -2472,34 +2428,6 @@ Example:
     - `contribution_bullets` (List[string], optional): Custom contribution bullet points
     - `skill_preferences` (List[SkillPreferenceDTO], optional): Per-project skill highlighting preferences
     - `skill_preferences_reset` (boolean, optional): Clear preferences for the specified project
-
-- **PortfolioProjectDTO**
-    - `project_name` (string, required)
-    - `display_name` (string, required)
-    - `project_type` (string, optional)
-    - `project_mode` (string, optional)
-    - `score` (float, required): Importance ranking score
-    - `duration` (string, optional): Formatted duration string (e.g. "Duration: 2024-01-15 – 2024-06-30")
-    - `languages` (List[string], optional): Top 3 languages (code projects only)
-    - `frameworks` (List[string], optional): Frameworks used (code projects only)
-    - `activity` (string, optional): Formatted activity line (e.g. "Activity: feature_coding 85%, testing 15%")
-    - `skills` (List[string], optional): Top 4 skills
-    - `summary_text` (string, optional): Project summary text
-    - `contribution_bullets` (List[string], optional): Contribution bullet points
-
-- **PortfolioDetailDTO**
-    - `projects` (List[PortfolioProjectDTO], optional)
-    - `rendered_text` (string, optional): Plain-text formatted portfolio
-
-- **PortfolioGenerateRequestDTO**
-    - `name` (string, required): Label for the portfolio
-
-- **PortfolioEditRequestDTO**
-    - `project_summary_id` (integer, required): Use from portfolio generate response
-    - `scope` (string, optional): `"portfolio_only"` (default) or `"global"`
-    - `display_name` (string, optional): Custom display name for the project
-    - `summary_text` (string, optional): Updated summary text
-    - `contribution_bullets` (List[string], optional): Custom contribution bullet points
 
 - **PortfolioProjectDTO**
     - `project_name` (string, required)
