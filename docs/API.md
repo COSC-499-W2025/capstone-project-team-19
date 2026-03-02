@@ -249,6 +249,103 @@ Handles project ingestion, analysis, classification, and metadata updates.
       }
       ```
 
+  - **Get Top Projects**
+    - **Endpoint**: `GET /top`
+    - **Description**: Returns the top N projects in ranked order, with summary snippets and version counts. Useful for dashboards and "top projects" displays.
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Query Parameters**:
+      - `limit` (integer, optional): Number of top projects to return. Defaults to `3`. Must be ≥ 1.
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response DTO**: `TopProjectsDTO`
+    - **Response Body**:
+      ```json
+      {
+        "success": true,
+        "data": {
+          "topProjects": [
+            {
+              "projectId": "9",
+              "title": "My Project",
+              "rankScore": 0.732,
+              "summarySnippet": "A full-stack task manager with React and Spring Boot...",
+              "versionCount": 3
+            }
+          ]
+        },
+        "error": null
+      }
+      ```
+
+  - **Get Project Evolution**
+    - **Endpoint**: `GET /{project_id}/evolution`
+    - **Description**: Returns version-by-version evolution for a project: summaries, file-level diffs, skill progression, languages, frameworks, and metrics. Projects with multiple uploads (versions) will show how the project evolved over time.
+    - **Path Parameters**:
+      - `{project_id}` (integer, required): The `project_summary_id` of the project
+    - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    - **Request Body**: None
+    - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
+    - **Response DTO**: `ProjectEvolutionDTO`
+    - **Response Body**:
+      ```json
+      {
+        "success": true,
+        "data": {
+          "projectId": "3",
+          "title": "code_collab_proj",
+          "versions": [
+            {
+              "versionId": "1",
+              "date": "2026-02-18",
+              "summary": "Task Manager",
+              "diff": null,
+              "skills": ["architecture_and_design"],
+              "skillsDetail": [{"skill_name": "architecture_and_design", "level": "Intermediate", "score": 0.33}],
+              "skillProgression": null,
+              "languages": ["Java", "JSON", "YAML"],
+              "frameworks": ["Spring", "Spring Boot"],
+              "avgComplexity": null,
+              "totalFiles": 86
+            },
+            {
+              "versionId": "2",
+              "date": "2026-02-18",
+              "summary": "task manager",
+              "diff": {
+                "linesAdded": null,
+                "linesModified": null,
+                "linesRemoved": null,
+                "files": {
+                  "filesAdded": ["new-file.java"],
+                  "filesModified": ["modified-file.py"],
+                  "filesRemoved": ["removed-file.c"],
+                  "unchangedCount": 28
+                }
+              },
+              "skills": ["testing_and_ci"],
+              "skillsDetail": [{"skill_name": "testing_and_ci", "level": "Beginner", "score": 0.25}],
+              "skillProgression": {
+                "newSkills": [{"skill_name": "testing_and_ci", "level": "Beginner", "score": 0.25, "prev_score": null}],
+                "improvedSkills": [],
+                "declinedSkills": [],
+                "removedSkills": [{"skill_name": "architecture_and_design", "level": "Intermediate", "score": 0.33, "prev_score": 0.33}]
+              },
+              "languages": ["Java", "JavaScript", "TypeScript"],
+              "frameworks": ["React", "Spring Boot"],
+              "avgComplexity": null,
+              "totalFiles": 206
+            }
+          ]
+        },
+        "error": null
+      }
+      ```
+    - **Notes**:
+      - First version has `diff: null` and `skillProgression: null` (nothing to compare)
+      - `diff` for later versions includes file-level changes (added/modified/removed) and optionally `linesAdded`, `linesRemoved` when available
+      - `skillProgression` shows new, improved, declined, and removed skills between consecutive versions
+      - `avgComplexity` is `null` for collaborative code projects; only individual code projects have complexity metrics
+
   - **Replace Entire Ranking Order**
     - **Endpoint**: `PUT /ranking`
     - **Description**: Replaces the entire manual ranking order. The request must include **every** project for the user (no extras, no missing). The list order becomes `manual_rank = 1..N`.
@@ -1951,6 +2048,58 @@ Example:
 
 - **PatchProjectRankingRequestDTO** (used by `PATCH /projects/{project_id}/ranking`)
   - `rank` (int, optional): Set a manual rank. Use `null` to clear manual rank.
+
+- **TopProjectItemDTO** (used by `GET /projects/top`)
+  - `projectId` (string, required): The `project_summary_id` as string
+  - `title` (string, required): Project display name
+  - `rankScore` (float, required): Computed importance score
+  - `summarySnippet` (string, optional): Truncated summary (≈120 chars), or `null`
+  - `versionCount` (int, default 0): Number of versions (upload snapshots) for this project
+
+- **TopProjectsDTO**
+  - `topProjects` (List[TopProjectItemDTO], required)
+
+- **ProjectEvolutionDTO** (used by `GET /projects/{project_id}/evolution`)
+  - `projectId` (string, required): The `project_summary_id` as string
+  - `title` (string, required): Project display name
+  - `versions` (List[EvolutionVersionDTO], required): Versions ordered oldest first
+
+- **EvolutionVersionDTO**
+  - `versionId` (string, required)
+  - `date` (string, required): Activity or creation date (YYYY-MM-DD)
+  - `summary` (string, required): Version summary text
+  - `diff` (VersionDiffDTO, optional): Changes since previous version; `null` for first version
+  - `skills` (List[string]): Skill names for this version
+  - `skillsDetail` (List[object]): Skill objects with `skill_name`, `level`, `score`
+  - `skillProgression` (SkillProgressionDTO, optional): New/improved/declined/removed skills vs previous version; `null` for first version
+  - `languages` (List[string]): Languages detected
+  - `frameworks` (List[string]): Frameworks detected
+  - `avgComplexity` (float, optional): Average cyclomatic complexity; `null` for collaborative code
+  - `totalFiles` (int, optional): File count for this version
+
+- **VersionDiffDTO**
+  - `linesAdded` (int, optional): Lines added since previous version; `null` when unavailable
+  - `linesModified` (int, optional): Lines modified; `null` when unavailable
+  - `linesRemoved` (int, optional): Lines removed since previous version; `null` when unavailable
+  - `files` (FileDiffDTO, optional): File-level changes
+
+- **FileDiffDTO**
+  - `filesAdded` (List[string]): Paths of newly added files
+  - `filesModified` (List[string]): Paths of modified files
+  - `filesRemoved` (List[string]): Paths of removed files
+  - `unchangedCount` (int): Count of unchanged files
+
+- **SkillProgressionDTO**
+  - `newSkills` (List[SkillChangeDTO]): Skills that appeared in this version
+  - `improvedSkills` (List[SkillChangeDTO]): Skills with increased score
+  - `declinedSkills` (List[SkillChangeDTO]): Skills with decreased score
+  - `removedSkills` (List[SkillChangeDTO]): Skills that disappeared since previous version
+
+- **SkillChangeDTO**
+  - `skill_name` (string, required)
+  - `level` (string, required)
+  - `score` (float, required)
+  - `prev_score` (float, optional): Previous version's score; `null` for new skills
 
 ### **Upload Wizard DTOs (Projects Upload)**
 
