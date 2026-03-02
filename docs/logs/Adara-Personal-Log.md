@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 6 & 7 & 8 (Feb 9 - Mar 1)](#t2-week-6--7--8-monday-9th-february---sunday-1st-march)
 - [Week 4 & 5 (Jan 26 – Feb 8)](#t2-week-4--5-monday-26th-january---sunday-8th-february)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-19th---sunday-25th-january)
 - [Week 2 (Jan 12-18)](#t2-week-2-monday-12th---sunday-18th-january)
