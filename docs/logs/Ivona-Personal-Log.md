@@ -2,6 +2,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 8 (Feb 9-March 1)](#t2-week-8-monday-february-9---sunday-march-1)
 - [Week 4 (Jan 26-Feb 8)](#t2-week-4-monday-january-26---sunday-february-8)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12-18)](#t2-week-2-monday-january-12---sunday-january-18)
@@ -216,5 +217,22 @@ Next Week:
 I plan to help finish any api endpoints our team has left to do and start making wireframes for the frontend.
 
 
+## (T2 Week 8) Monday February 9 - Sunday March 1
+![Screenshot of this week's peer eval](./screenshots/Ivona-Feb.9-March1.PNG)
+
+This sprint, I attended team meetings, worked on and attended the milestone 2 presenation. 
+
+Coding PRs:
+I worked on PR ([#404](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/404)) which is to add the api ednpoint to get the portfolio for a user. In the PR I added all necessary functions, routes, schemas and tests for the api endpoint.
+
+
+PRs I reviewed:
+
+1st PR review (Johanne's): ([#485](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/485)) on adding the skill highliting behaviour to the api endpoints.
+
+2nd PR review (Salma's) ([#492](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/492)) on api endpoints for storing the project key role during the project upload process.
+
+Next Week:
+I plan to work on making some frontend pages ( not sure which ones yet I will discuss with my team). 
 
 
