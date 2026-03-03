@@ -6,7 +6,6 @@ import { register } from "../api/auth";
 export default function RegisterPage() {
   const nav = useNavigate();
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState(""); // backend does not store this yet
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -43,14 +42,6 @@ export default function RegisterPage() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
-          />
-
-          <label>Email</label>
-          <input
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
           />
 
           <label>Password</label>
