@@ -66,3 +66,78 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: #fff;
+}
+
+.topbar {
+  height: 56px;
+  background: #b9adad;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.page {
+  min-height: calc(100vh - 56px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.card {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+label {
+  font-size: 14px;
+}
+
+input {
+  height: 34px;
+  border-radius: 4px;
+  border: 0;
+  background: #d9d9d9;
+  padding: 0 10px;
+  outline: none;
+}
+
+.btn {
+  margin-top: 6px;
+  height: 36px;
+  border: 0;
+  border-radius: 4px;
+  background: #d9d9d9;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.error {
+  color: #b00020;
+  font-size: 12px;
+}
+
+.helper {
+  margin-top: 6px;
+  font-size: 12px;
+  font-style: italic;
+  text-align: center;
+}
+
+.hint {
+  margin-top: 6px;
+  font-size: 11px;
+  text-align: center;
+  opacity: 0.75;
+}
