@@ -194,3 +194,16 @@ button {
   font-weight: 600;
   cursor: pointer;
 }
+
+.content {
+  padding: 28px;
+  box-sizing: border-box;
+}
+
+.cardWide {
+  margin-top: 14px;
+  max-width: 720px;
+  padding: 14px;
+  background: #f2f2f2;
+  border-radius: 8px;
+}

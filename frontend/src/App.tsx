@@ -4,8 +4,11 @@ import type { ReactNode } from "react";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import HomePage from "./pages/Home";
-import Placeholder from "./pages/Placeholder";
 import { tokenStore } from "./auth/token";
+import UploadPage from "./pages/Upload";
+import ProjectsPage from "./pages/Projects";
+import InsightsPage from "./pages/Insights";
+import OutputsPage from "./pages/Outputs";
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const token = tokenStore.get();
@@ -33,31 +36,34 @@ export default function App() {
           path="/upload"
           element={
             <RequireAuth>
-              <Placeholder title="Upload" />
+              <UploadPage />
             </RequireAuth>
           }
         />
+
         <Route
           path="/projects"
           element={
             <RequireAuth>
-              <Placeholder title="Projects" />
+              <ProjectsPage />
             </RequireAuth>
           }
         />
+
         <Route
           path="/insights"
           element={
             <RequireAuth>
-              <Placeholder title="Insights" />
+              <InsightsPage />
             </RequireAuth>
           }
         />
+
         <Route
           path="/outputs"
           element={
             <RequireAuth>
-              <Placeholder title="Outputs" />
+              <OutputsPage />
             </RequireAuth>
           }
         />
