@@ -28,7 +28,53 @@ try:
 except ModuleNotFoundError:
     import constants
 
-def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_path: str) -> Dict:
+
+def _candidate_repo_roots(zip_data_dir: Path, zip_name: str, project_name: str) -> List[Path]:
+    """
+    Build candidate directories where a project's local repo may exist.
+
+    Supports both:
+    - zip_data/<zip_stem>/<zip_stem>/<project>
+    - zip_data/<zip_stem>/<inner_root>/<project>   (upload flow, e.g. "1_real_test/real_test")
+    """
+    roots: List[Path] = []
+    base_root = zip_data_dir / zip_name
+    direct_nested = base_root / zip_name
+
+    # Legacy/default candidates
+    for base in (direct_nested, base_root):
+        roots.extend(
+            [
+                base / project_name,
+                base / "individual" / project_name,
+                base / "collaborative" / project_name,
+            ]
+        )
+
+    # Upload-flow candidates: <base_root>/<inner_root>/...
+    if base_root.exists() and base_root.is_dir():
+        for child in base_root.iterdir():
+            if not child.is_dir() or child.name == "__MACOSX":
+                continue
+            roots.extend(
+                [
+                    child / project_name,
+                    child / "individual" / project_name,
+                    child / "collaborative" / project_name,
+                ]
+            )
+    return roots
+
+
+def analyze_git_individual_project(
+    conn,
+    user_id: int,
+    project_name: str,
+    zip_path: str,
+    *,
+    allow_prompts: bool = True,
+    api_inputs: dict | None = None,
+) -> Dict:
     """
     Analyze git repository for an individual project.
 
@@ -45,29 +91,14 @@ def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_pa
 
     zip_name = Path(zip_path).stem  # e.g. real_test4 from ../real_test4.zip
 
-    # Possible base roots where project folders might live:
-    #   zip_data/zip_name/zip_name/...
-    #   zip_data/zip_name/...
-    base_roots = [
-        zip_data_dir / zip_name / zip_name,
-        zip_data_dir / zip_name,
-    ]
-
     if constants.VERBOSE:
         print("\n" + "=" * 80)
         print(f"[debug] project={project_name}")
         print(f"[debug] zip_path arg={zip_path}")
-        for base in base_roots:
-            print(f"[debug] base_root candidate={base} (exists? {base.exists()})")
-
-    # Candidate locations for this project's repo
-    candidate_roots: List[Path] = []
-    for base in base_roots:
-        candidate_roots.extend([
-            base / project_name,
-            base / "individual" / project_name,
-            base / "collaborative" / project_name,
-        ])
+    candidate_roots = _candidate_repo_roots(zip_data_dir, zip_name, project_name)
+    if constants.VERBOSE:
+        base_root = zip_data_dir / zip_name
+        print(f"[debug] base_root={base_root} (exists? {base_root.exists()})")
 
     repo_path: Optional[str] = None
     for root in candidate_roots:
@@ -89,7 +120,13 @@ def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_pa
             print("=" * 80)
 
         # Offer GitHub connection option / gracefully skip
-        return _handle_no_git_repo(conn, user_id, project_name)
+        return _handle_no_git_repo(
+            conn,
+            user_id,
+            project_name,
+            allow_prompts=allow_prompts,
+            api_inputs=api_inputs,
+        )
 
     if constants.VERBOSE:
         print(f"\n{'='*80}")
@@ -113,12 +150,25 @@ def analyze_git_individual_project(conn, user_id: int, project_name: str, zip_pa
     }
 
 
-def _handle_no_git_repo(conn, user_id: int, project_name: str) -> Optional[Dict]:
+def _handle_no_git_repo(
+    conn,
+    user_id: int,
+    project_name: str,
+    *,
+    allow_prompts: bool = True,
+    api_inputs: dict | None = None,
+) -> Optional[Dict]:
     """
     Handle case when no local git repository is found.
     Offers to connect to GitHub to link a remote repository.
     """
     token = get_github_token(conn, user_id)
+    if not allow_prompts:
+        if constants.VERBOSE:
+            print(f"[API] No local .git for '{project_name}'. Skipping GitHub prompt flow.")
+        # API mode is non-interactive: no OAuth/linking prompt here.
+        # Readiness service already exposes this as warnings.
+        return None
 
     # User has token already, allow linking without re-authentication
     if token:

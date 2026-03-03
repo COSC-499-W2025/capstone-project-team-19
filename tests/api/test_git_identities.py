@@ -32,6 +32,19 @@ def test_git_identities_collaborative_get_and_post(
     post_data = post.json()["data"]
     assert 1 in post_data["selected_indices"]
 
+    upload_res = client.get(
+        f"/projects/upload/{upload['upload_id']}",
+        headers=auth_headers,
+    )
+    assert upload_res.status_code == 200
+    state = upload_res.json()["data"]["state"]
+    git_state = state["run_inputs"]["projects"]["ProjectA"]["capabilities"]["git"]
+    assert git_state["repo_detected"] is True
+    assert git_state["author_count_hint"] >= 2
+    assert git_state["commit_count_hint"] >= 2
+    assert git_state["multi_author_hint"] is True
+    assert 1 in git_state["selected_identity_indices"]
+
 
 def test_git_identities_individual_get_empty_options(
     client,

@@ -10,10 +10,15 @@ from src.api.schemas.uploads import (
     ClassificationsRequest,
     ProjectTypesRequest,
     DedupResolveRequestDTO,
+    RunAnalysisRequestDTO,
+    RunAnalysisReadyDTO,
     UploadProjectFilesDTO,
     MainFileRequestDTO,
     MainFileSectionsResponseDTO,
     ContributedSectionsRequestDTO,
+    ManualProjectSummaryRequestDTO,
+    ManualContributionSummaryRequestDTO,
+    KeyRoleRequestDTO,
 )
 from src.api.schemas.git_identities import (
     GitIdentitiesResponse,
@@ -41,14 +46,20 @@ from src.services.uploads_service import (
     set_project_main_file,
     _resolve_project_key_to_name,
 )
+from src.services.uploads_run_service import run_analysis_preflight
 from src.api.schemas.uploads import SupportingFilesRequestDTO
 from src.services.uploads_supporting_contributions_service import (
     set_project_supporting_text_files,
     set_project_supporting_csv_files,
+    set_project_key_role,
 )
 from src.services.uploads_contribution_service import (
     list_main_file_sections,
     set_main_file_contributed_sections,
+)
+from src.services.uploads_manual_summaries_service import (
+    set_manual_project_summary,
+    set_manual_contribution_summary,
 )
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -84,6 +95,24 @@ def get_projects_upload(
     if upload is None:
         raise HTTPException(status_code=404, detail="Upload not found")
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.post("/upload/{upload_id}/run", response_model=ApiResponse[RunAnalysisReadyDTO])
+def post_upload_run_preflight(
+    upload_id: int,
+    body: RunAnalysisRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    data = run_analysis_preflight(
+        conn,
+        user_id,
+        upload_id,
+        body.scope,
+        body.force_rerun,
+        mode=body.mode,
+    )
+    return ApiResponse(success=True, data=RunAnalysisReadyDTO(**data), error=None)
 
 
 @router.post("/upload/{upload_id}/dedup/resolve", response_model=ApiResponse[UploadDTO])
@@ -230,6 +259,23 @@ def post_upload_project_supporting_csv_files(
     result = set_project_supporting_csv_files(conn, user_id, upload_id, project_name, body.relpaths)
     return ApiResponse(success=True, data=UploadDTO(**result), error=None)
 
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_key:int}/key-role",
+    response_model=ApiResponse[UploadDTO],
+)
+def post_upload_project_key_role(
+    upload_id: int,
+    project_key: int,
+    body: KeyRoleRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload, project_name = _resolve_upload_project(conn, user_id, upload_id, project_key)
+    result = set_project_key_role(conn, user_id, upload_id, project_name, body.key_role)
+    return ApiResponse(success=True, data=UploadDTO(**result), error=None)
+
+
 @router.get(
     "/upload/{upload_id}/projects/{project_key}/git/identities",
     response_model=ApiResponse[GitIdentitiesResponse],
@@ -319,3 +365,39 @@ def delete_single_project(
     if not deleted:
         raise HTTPException(status_code=404, detail="Project not found")
     return ApiResponse(success=True, data=None, error=None)
+
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_key:int}/manual-project-summary",
+    response_model=ApiResponse[UploadDTO],
+)
+def post_manual_project_summary(
+    upload_id: int,
+    project_key: int,
+    body: ManualProjectSummaryRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = set_manual_project_summary(conn, user_id, upload_id, project_key, body.summary_text)
+    return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.post(
+    "/upload/{upload_id}/projects/{project_key:int}/manual-contribution-summary",
+    response_model=ApiResponse[UploadDTO],
+)
+def post_manual_contribution_summary(
+    upload_id: int,
+    project_key: int,
+    body: ManualContributionSummaryRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload = set_manual_contribution_summary(
+        conn,
+        user_id,
+        upload_id,
+        project_key,
+        body.manual_contribution_summary,
+    )
+    return ApiResponse(success=True, data=UploadDTO(**upload), error=None)

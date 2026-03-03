@@ -116,6 +116,22 @@ def insert_code_collaborative_metrics(
     conn.commit()
 
 
+def get_code_collaborative_metrics(conn: sqlite3.Connection, user_id: int, project_key: int,) -> Optional[tuple[Optional[str], Optional[str]]]:
+    """
+    Return (languages_json, frameworks_json) for a collaborative project, or None.
+    """
+    row = conn.execute(
+        """
+        SELECT languages_json, frameworks_json
+        FROM code_collaborative_metrics
+        WHERE user_id = ? AND project_key = ?
+        """,
+        (user_id, project_key),
+    ).fetchone()
+    if not row:
+        return None
+    return (row[0], row[1])
+
 def get_metrics_id(
     conn: sqlite3.Connection,
     user_id: int,

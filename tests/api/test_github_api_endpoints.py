@@ -28,6 +28,12 @@ def test_github_start_connect_now_false(client, auth_headers, seed_conn):
     assert res.json()["success"] is True
     assert res.json()["data"]["auth_url"] is None
 
+    status_res = client.get(f"/projects/upload/{upload_id}", headers=auth_headers)
+    assert status_res.status_code == 200
+    github_state = status_res.json()["data"]["state"]["run_inputs"]["projects"]["TestProject"]["integrations"]["github"]
+    assert github_state["state"] == "skipped"
+    assert github_state["repo_linked"] is False
+
 @patch("src.services.github_service.get_github_token")
 @patch("src.services.github_service.generate_github_auth_url")
 def test_github_start_connect_now_true_generates_url(mock_auth_url, mock_get_token, client, auth_headers, seed_conn):
@@ -111,6 +117,13 @@ def test_github_link_success(mock_save_repo, mock_get_metadata, mock_get_token, 
     assert res.json()["success"] is True
     assert res.json()["data"]["repo_full_name"] == "owner/repo"
     mock_save_repo.assert_called_once()
+
+    status_res = client.get(f"/projects/upload/{upload_id}", headers=auth_headers)
+    assert status_res.status_code == 200
+    github_state = status_res.json()["data"]["state"]["run_inputs"]["projects"]["TestProject"]["integrations"]["github"]
+    assert github_state["state"] == "connected"
+    assert github_state["repo_linked"] is True
+    assert github_state["repo_full_name"] == "owner/repo"
 
 @patch("src.services.github_service.get_github_token")
 def test_github_link_not_connected(mock_get_token, client, auth_headers, seed_conn):

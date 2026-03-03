@@ -155,3 +155,7 @@ def test_set_main_file_contributed_sections_persists_ids(conn, user_id, upload_s
     persisted_state = row.get("state") or {}
     persisted = (persisted_state.get("contributions") or {}).get(project_name) or {}
     assert persisted.get("main_section_ids") == sorted(set(selected))
+    run_inputs = (((persisted_state.get("run_inputs") or {}).get("projects") or {}).get(project_name)) or {}
+    manual = run_inputs.get("manual_inputs") or {}
+    assert manual.get("contribution_sections_set") is True
+    assert manual.get("contribution_sections_count") == len(sorted(set(selected)))

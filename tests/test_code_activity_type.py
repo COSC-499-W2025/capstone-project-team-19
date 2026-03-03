@@ -363,3 +363,67 @@ def test_build_activity_summary_collaborative_uses_contributed_files_only(monkey
     # Only 1 file should be counted (main.py), not ignore_me.py
     assert summary.total_file_events == 1
     assert summary.total_events == 1
+
+
+def test_build_activity_summary_collaborative_backslash_paths(monkeypatch):
+    """
+    On Windows, get_user_contributed_files may return paths with backslashes.
+    build_activity_summary should still match them to file_name via basename.
+    """
+    fake_classification = ("collaborative", "code")
+
+    fake_files = [
+        {
+            "file_id": 1,
+            "file_name": "main.py",
+            "file_path": "proj\\src\\main.py",
+            "extension": ".py",
+            "file_type": "code",
+            "created": "2024-01-01",
+            "modified": "2024-01-02",
+            "size_bytes": 100,
+        },
+        {
+            "file_id": 2,
+            "file_name": "utils.py",
+            "file_path": "proj\\src\\utils.py",
+            "extension": ".py",
+            "file_type": "code",
+            "created": "2024-01-01",
+            "modified": "2024-01-02",
+            "size_bytes": 100,
+        },
+    ]
+
+    monkeypatch.setattr(
+        summary_mod, "get_project_metadata",
+        lambda conn, user_id, project_name: fake_classification,
+    )
+    monkeypatch.setattr(
+        summary_mod, "get_files_for_project",
+        lambda conn, user_id, project_name, only_text=False: fake_files,
+    )
+    # Simulate Windows-style backslash paths from DB
+    monkeypatch.setattr(
+        summary_mod, "get_user_contributed_files",
+        lambda conn, user_id, project_name: ["proj\\src\\main.py"],
+    )
+    monkeypatch.setattr(
+        summary_mod, "has_github_account",
+        lambda conn, user_id: False,
+    )
+    monkeypatch.setattr(
+        summary_mod, "get_project_repo",
+        lambda conn, user_id, project_name: None,
+    )
+    monkeypatch.setattr(
+        summary_mod, "get_pull_requests_for_project",
+        lambda conn, user_id, project_name: [],
+    )
+
+    conn = object()
+    summary = summary_mod.build_activity_summary(conn, user_id=1, project_name="proj")
+
+    # main.py should match despite backslash paths; utils.py should be filtered out
+    assert summary.total_file_events == 1
+    assert summary.total_events == 1

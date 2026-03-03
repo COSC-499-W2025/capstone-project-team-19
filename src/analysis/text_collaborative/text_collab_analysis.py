@@ -23,6 +23,16 @@ def analyze_collaborative_text_project(
     external_consent,
     summary_obj,  # ProjectSummary instance
     version_key: int | None = None,
+    *,
+    allow_prompts: bool = True,
+    selected_section_ids: list[int] | None = None,
+    manual_contribution_summary: str | None = None,
+    supporting_text_relpaths: list[str] | None = None,
+    supporting_csv_relpaths: list[str] | None = None,
+    key_role_override: str | None = None,
+    main_file_relpath: str | None = None,
+    manual_project_summary: str | None = None,
+    manual_summary_fallback: str | None = None,
 ):
     """
     Collaborative TEXT project analysis flow.
@@ -48,7 +58,10 @@ def analyze_collaborative_text_project(
         project_name=project_name,
         version_key=version_key,
         consent=external_consent,
-        suppress_print=True
+        suppress_print=True,
+        main_file_relpath=main_file_relpath,
+        manual_summary_text=manual_project_summary,
+        allow_prompts=allow_prompts,
     )
 
     if not pipeline_result:
@@ -105,16 +118,41 @@ def analyze_collaborative_text_project(
     # ---------------------------------------------------------
     sections = extract_document_sections(full_main_text)
 
-    print("\nSelect the sections/paragraphs YOU contributed to:")
-    for i, sec in enumerate(sections, start=1):
-        preview = sec["header"] if sec["header"] else sec["preview"]
-        print(f"  {i}. {preview}")
+    indices: list[int] = []
+    if selected_section_ids is not None:
+        indices = sorted(
+            {
+                int(i)
+                for i in (selected_section_ids or [])
+                if isinstance(i, int) and 1 <= int(i) <= len(sections)
+            }
+        )
+    elif allow_prompts:
+        print("\nSelect the sections/paragraphs YOU contributed to:")
+        for i, sec in enumerate(sections, start=1):
+            preview = sec["header"] if sec["header"] else sec["preview"]
+            print(f"  {i}. {preview}")
 
-    selected = input(
-        "\nEnter the numbers (comma-separated) of the sections you worked on: "
-    ).strip()
+        selected = input(
+            "\nEnter the numbers (comma-separated) of the sections you worked on: "
+        ).strip()
 
-    if not selected:
+        for x in selected.split(","):
+            x = x.strip()
+            if not x:
+                continue
+            if not x.isdigit():
+                print(f"[Warning] Ignoring invalid input: '{x}'")
+                continue
+            n = int(x)
+            if 1 <= n <= len(sections):
+                indices.append(n)
+            else:
+                print(f"[Warning] Selection {n} is out of range.")
+    else:
+        indices = []
+
+    if not indices:
         print("[TEXT-COLLAB] No sections selected; assuming 0 contribution.")
         summary_obj.contributions["text_collab"] = {
             "contributed_text": "",
@@ -126,30 +164,23 @@ def analyze_collaborative_text_project(
         }
         return
 
-    indices = []
-    for x in selected.split(","):
-        x = x.strip()
-        if not x.isdigit():
-            print(f"[Warning] Ignoring invalid input: '{x}'")
-            continue
-
-        n = int(x)
-        if 1 <= n <= len(sections):
-            indices.append(n)
-        else:
-            print(f"[Warning] Selection {n} is out of range.")
-
     user_sections = [sections[i - 1] for i in indices]
 
     # ---------------------------------------------------------
-    # STEP 2A — Ask for contribution description (like code projects)
+    # STEP 2A — Ask for contribution description
     # ---------------------------------------------------------
-    print("\nDescribe your personal contributions to this collaborative text project.")
-    print("Write 1-3 sentences. Be specific about sections/content you primarily worked on.")
-    try:
-        contribution_desc = input(f"Your contribution to '{project_name}': ").strip()
-    except EOFError:
-        contribution_desc = ""
+    contribution_desc = ""
+    if isinstance(manual_contribution_summary, str):
+        contribution_desc = manual_contribution_summary.strip()
+    elif allow_prompts:
+        print("\nDescribe your personal contributions to this collaborative text project.")
+        print("Write 1-3 sentences. Be specific about sections/content you primarily worked on.")
+        try:
+            contribution_desc = input(f"Your contribution to '{project_name}': ").strip()
+        except EOFError:
+            contribution_desc = ""
+    elif isinstance(manual_summary_fallback, str) and manual_summary_fallback.strip():
+        contribution_desc = manual_summary_fallback.strip()
 
     # Store the description
     summary_obj.contributions["manual_contribution_summary"] = contribution_desc or "[No manual contribution summary provided]"
@@ -173,7 +204,11 @@ def analyze_collaborative_text_project(
     ]
 
     # ---- SUPPORTING TEXT FILES ----
-    if supporting_text_files:
+    if supporting_text_files and supporting_text_relpaths is not None:
+        selected_text_support_files = _select_files_by_relpaths(
+            supporting_text_files, supporting_text_relpaths
+        )
+    elif supporting_text_files and allow_prompts:
         print("\nWhich supporting TEXT files did you contribute to?")
         for idx, f in enumerate(supporting_text_files, start=1):
             print(f"  {idx}. {f['file_name']}")
@@ -199,8 +234,10 @@ def analyze_collaborative_text_project(
             supporting_text_files[i - 1] for i in text_support_indices
         ]
     else:
-        print("\n(No supporting text files detected.)")
-        selected_text_support_files = []
+        if supporting_text_files:
+            selected_text_support_files = []
+        else:
+            print("\n(No supporting text files detected.)")
 
 
     # ---------------------------------------------------------
@@ -226,7 +263,17 @@ def analyze_collaborative_text_project(
     # ---------------------------------------------------------
     # STEP 2D — CSV selection
     # ---------------------------------------------------------
-    if supporting_csv_files:
+    if supporting_csv_files and supporting_csv_relpaths is not None:
+        selected_csv_files = _select_files_by_relpaths(supporting_csv_files, supporting_csv_relpaths)
+        user_csv_metadata = None
+        if selected_csv_files:
+            selected_names = {f.get("file_name") for f in selected_csv_files}
+            all_csv_metadata = pipeline_result.get("csv_metadata", {})
+            files_metadata = all_csv_metadata.get("files", []) if isinstance(all_csv_metadata, dict) else []
+            user_csv_metadata = {
+                "files": [item for item in files_metadata if item.get("file_name") in selected_names]
+            }
+    elif supporting_csv_files and allow_prompts:
         print("\nWhich CSV files did you contribute to?")
         for idx, csv_f in enumerate(supporting_csv_files, start=1):
             print(f"  {idx}. {csv_f['file_name']}")
@@ -260,8 +307,11 @@ def analyze_collaborative_text_project(
                 ]
             }
     else:
-        print("\n(No CSV files detected.)")
-        user_csv_metadata = None
+        if supporting_csv_files:
+            user_csv_metadata = None
+        else:
+            print("\n(No CSV files detected.)")
+            user_csv_metadata = None
 
 
     # ---------------------------------------------------------
@@ -322,7 +372,7 @@ def analyze_collaborative_text_project(
             full_main_text, contributed_text
         )
     else:
-        contribution_summary = _manual_contribution_summary_prompt()
+        contribution_summary = contribution_desc or "[No manual contribution summary provided]"
 
     if constants.VERBOSE:
         print("\n" + "="*80)
@@ -335,10 +385,14 @@ def analyze_collaborative_text_project(
     # STEP 4B — Extract or prompt for key role
     # ---------------------------------------------------------
     contribution_desc = summary_obj.contributions.get("manual_contribution_summary", "")
-    if external_consent == "accepted" and contribution_desc and contribution_desc != "[No manual contribution summary provided]":
+    if isinstance(key_role_override, str) and key_role_override.strip():
+        key_role = key_role_override.strip()
+    elif external_consent == "accepted" and contribution_desc and contribution_desc != "[No manual contribution summary provided]":
         key_role = extract_key_role_llm(contribution_desc)
-    else:
+    elif allow_prompts:
         key_role = prompt_key_role(project_name)
+    else:
+        key_role = None
 
     if key_role:
         summary_obj.contributions["key_role"] = key_role
@@ -410,22 +464,24 @@ def _load_main_text(parsed_files, main_file_name, zip_path, conn, user_id):
     return extract_text_file(path, conn, user_id) or ""
 
 
-def _manual_contribution_summary_prompt():
-    """Manual first-person contribution statement."""
-    print("\nLLM consent not granted. Please describe your contributions.\n")
-    print("What types of contribution did you make?")
-    options = [
-        "Writing", "Editing", "Research", "Formatting",
-        "Proofreading", "Data Analysis", "Drafting", "Revising"
-    ]
-    for i, opt in enumerate(options, start=1):
-        print(f"{i}. {opt}")
+def _select_files_by_relpaths(files: list[dict], relpaths: list[str]) -> list[dict]:
+    normalized_targets = {
+        str(p or "").replace("\\", "/").strip()
+        for p in (relpaths or [])
+        if str(p or "").strip()
+    }
+    if not normalized_targets:
+        return []
 
-    nums = input("Enter numbers (comma-separated): ").strip()
-    selected = [options[int(n.strip()) - 1] for n in nums.split(",") if n.strip().isdigit()]
-
-    if not selected:
-        return "I contributed to the project, but did not specify the type of work."
-
-    joined = ", ".join(selected)
-    return f"I contributed by {joined.lower()}."
+    out: list[dict] = []
+    for row in files:
+        file_path = str(row.get("file_path") or "").replace("\\", "/").strip()
+        file_name = str(row.get("file_name") or "").strip()
+        if any(
+            target == file_path
+            or target.endswith("/" + file_path)
+            or target.endswith("/" + file_name)
+            for target in normalized_targets
+        ):
+            out.append(row)
+    return out

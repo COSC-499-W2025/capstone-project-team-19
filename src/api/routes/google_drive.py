@@ -58,7 +58,7 @@ def post_drive_link(upload_id: int, project: str, body: DriveLinkRequest, user_i
     if upload is None:
         raise HTTPException(status_code=404, detail="Upload not found")
     links = [link.model_dump() for link in body.links]
-    result = drive_link_files(conn, user_id, project, links)
+    result = drive_link_files(conn, user_id, upload_id, project, links)
     if result is None:
         raise HTTPException(status_code=400, detail="Failed to link files. Check that Google Drive is connected.")
     return ApiResponse(success=True, data=result, error=None)

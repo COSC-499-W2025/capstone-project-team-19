@@ -141,7 +141,10 @@ def test_list_project_files_requires_needs_file_roles(client, auth_headers):
 
     # Not in needs_file_roles yet -> should 409
     state = upload.get("state") or {}
-    project_key = _get_project_key(state, "ProjectA")
+    project_key = (state.get("dedup_project_keys") or {}).get("ProjectA")
+    if project_key is None:
+        project_key = next(iter((state.get("dedup_project_keys") or {}).values()), None)
+    assert project_key is not None, "no project_key found in dedup_project_keys"
     res = client.get(
         f"/projects/upload/{upload_id}/projects/{project_key}/files",
         headers=auth_headers,

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import Any, Dict, Optional, Literal, List
 
 UploadStatus = Literal[
@@ -52,6 +52,18 @@ class MainFileRequestDTO(BaseModel):
 
 class SupportingFilesRequestDTO(BaseModel):
     relpaths: List[str] = []
+
+
+class KeyRoleRequestDTO(BaseModel):
+    key_role: str = Field(..., max_length=120)
+
+    @field_validator("key_role")
+    @classmethod
+    def normalize_key_role(cls, value: str) -> str:
+        normalized = " ".join((value or "").split())
+        return normalized
+
+
 class MainFileSectionDTO(BaseModel):
     id: int
     title: str
@@ -68,3 +80,26 @@ class MainFileSectionsResponseDTO(BaseModel):
 
 class ContributedSectionsRequestDTO(BaseModel):
     selected_section_ids: List[int]
+
+
+RunScope = Literal["all", "individual", "collaborative"]
+RunMode = Literal["run", "check"]
+
+
+class RunAnalysisRequestDTO(BaseModel):
+    scope: RunScope = "all"
+    force_rerun: bool = False
+    mode: RunMode = "run"
+
+
+class RunAnalysisReadyDTO(BaseModel):
+    upload_id: int
+    scope: RunScope
+    ready: bool = True
+    warnings: List[Dict[str, Any]] = []
+    errors: List[Dict[str, Any]] = []
+class ManualProjectSummaryRequestDTO(BaseModel):
+    summary_text: str = ""
+
+class ManualContributionSummaryRequestDTO(BaseModel):
+    manual_contribution_summary: str = ""
