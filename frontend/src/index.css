@@ -116,3 +116,81 @@ button {
   text-align: center;
   opacity: 0.75;
 }
+
+.topbarInner {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.navLink {
+  color: #111;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  text-decoration: underline;
+}
+
+.navSep {
+  opacity: 0.6;
+}
+
+.userArea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #d9d9d9;
+}
+
+.username {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.home {
+  min-height: calc(100vh - 56px);
+  display: flex;
+  align-items: flex-start;
+  padding: 120px 0 0 120px;
+  box-sizing: border-box;
+}
+
+.hero {
+  max-width: 520px;
+}
+
+.heroTitle {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.heroSubtitle {
+  font-size: 16px;
+  margin-bottom: 28px;
+}
+
+.primaryBtn {
+  background: #111;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
