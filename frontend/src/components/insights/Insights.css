@@ -4,6 +4,9 @@
     flex-direction: column;
 }
 
+
+/* Insights Sub NavBar */
+
 .insights-top {
     width: 100%;
     display: flex;
@@ -54,4 +57,29 @@
 
 .insights-content {
     margin-top: 12px;
+}
+
+
+/* Ranked Projects */
+
+.ranked-table {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ranked-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    font-weight: 700;
+    padding: 0 12px;
+}
+
+.ranked-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    background: #b9adad;
+    border-radius: 6px;
+    padding: 12px;
+    align-items: center;
 }
