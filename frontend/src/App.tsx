@@ -7,7 +7,7 @@ import HomePage from "./pages/Home";
 import { tokenStore } from "./auth/token";
 import UploadPage from "./pages/Upload";
 import ProjectsPage from "./pages/Projects";
-import InsightsPage from "./pages/Insights";
+import InsightsPage from "./pages/InsightsPage";
 import OutputsPage from "./pages/Outputs";
 
 function RequireAuth({ children }: { children: ReactNode }) {
