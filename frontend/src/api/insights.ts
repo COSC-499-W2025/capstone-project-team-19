@@ -1,5 +1,7 @@
 import { api } from "./client";
 
+const BASE_URL = "/projects";
+
 // Get Project Ranking (returns a list of all projects in their ranked order)
 
 export type RankedProject = {
@@ -10,15 +12,24 @@ export type RankedProject = {
     manual_rank: number | null;
 };
 
-type RankingResponse = {
-    success: Boolean;
-    data: {
-        rankings: RankedProject[];
-    };
+export type ProjectRankingDTO = {
+    success: boolean;
+    data: { rankings: RankedProject[] };
     error: string | null;
 };
 
-export async function getProjectRanking() {
-    const res = await api.get<RankingResponse>("/projects/ranking");
-    return res.data.rankings;
+export function getRanking() {
+    return api.get<ProjectRankingDTO>(`${BASE_URL}/ranking`);
+}
+
+export function replaceRankingOrder(projectIds: number[]) {
+    return api.putJson<ProjectRankingDTO>(`${BASE_URL}/ranking`, { project_ids: projectIds });
+}
+
+export function patchProjectRank(projectId: number, rank: number | null) {
+    return api.patchJson<ProjectRankingDTO>(`${BASE_URL}/${projectId}/ranking`, { rank });
+}
+
+export function resetRanking() {
+    return api.post<ProjectRankingDTO>(`${BASE_URL}/ranking/reset`);
 }
