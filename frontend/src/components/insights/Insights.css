@@ -1,0 +1,56 @@
+.insights-container {
+    padding: 0px 24px 24px 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.insights-top {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    border-bottom: 2px solid black;
+}
+
+.insights-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.insights-subnav {
+    display: flex;
+    align-items: right;
+    gap: 10px;
+}
+
+.insights-tab {
+    padding: 18px 14px;
+    border-radius: 8px;
+    border: 2px solid black;
+    background: black;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.insights-tab:hover {
+    background: white;
+    border: 2px solid #b9adad;
+    color: black;
+}
+
+.insights-tab.active {
+    background: white;
+    border: 2px solid black;
+    color: black;
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-bottom: -2px;
+}
+
+.insights-content {
+    margin-top: 12px;
+}

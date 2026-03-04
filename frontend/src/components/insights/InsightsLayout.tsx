@@ -4,17 +4,19 @@ import RankedProjectsTab from "./tabs/RankedProjectsTab";
 import SkillTimelineTab from "./tabs/SkillTimelineTab";
 import ChronologicalSkillsTab from "./tabs/ChronologicalSkillsTab";
 import ActivityHeatmapTab from "./tabs/ActivityHeatmapTab";
+import "../insights/Insights.css";
 
 export default function InsightsLayout() {
     const [activeTab, setActiveTab] = useState("ranked-projects");
 
     return (
         <div className="insights-container">
-            <h2>Insights</h2>
-
-            <InsightsSubNav activeTab={activeTab} onChange={setActiveTab} />
+            <header className="insights-top">
+                <h2 className="insights-header">Insights</h2>
+                <InsightsSubNav activeTab={activeTab} onChange={setActiveTab} />
+            </header>
             
-            <div className="insights-nav">
+            <div className="insights-content">
                 {activeTab === "ranked-projects" && <RankedProjectsTab />}
                 {activeTab === "skill-timeline" && <SkillTimelineTab />}
                 {activeTab === "chronological-skills" && <ChronologicalSkillsTab />}
