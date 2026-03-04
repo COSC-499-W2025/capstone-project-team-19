@@ -40,6 +40,7 @@
     background: white;
     border: 2px solid #b9adad;
     color: black;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .insights-tab.active {
