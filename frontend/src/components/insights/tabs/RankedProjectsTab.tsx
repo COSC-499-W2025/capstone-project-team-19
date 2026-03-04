@@ -117,8 +117,8 @@ export default function RankedProjectsTab() {
             <div className="ranked-header">
                 <div>PROJECT</div>
                 <div>SCORE</div>
-                <div>TYPE</div>
-                <div></div>
+                <div>RANK</div>
+                <div>ORDER</div>
             </div>
 
             {rankings.map((p, idx) => (
