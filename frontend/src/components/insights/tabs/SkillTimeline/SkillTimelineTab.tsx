@@ -9,7 +9,7 @@ import UndatedPanel from "./UndatedPanel";
 import "./SkillTimeline.css";
 
 type SkillTimelineSection = "timeline" | "totals" | "undated";
-type UndatedSortField = "skill_name" | "project_name" | "level";
+type UndatedSortField = "skill_name" | "project_name" | "level" | "score";
 type SortDirection = "asc" | "desc";
 
 export default function SkillTimelineTab() {
@@ -45,8 +45,11 @@ export default function SkillTimelineTab() {
         const arr = [...timeline.undated];
         const mult = undatedSortDir === "asc" ? 1 : -1;
         arr.sort((a: TimelineEventDTO, b: TimelineEventDTO) => {
-            const aVal = a[undatedSortField].toLowerCase();
-            const bVal = b[undatedSortField].toLowerCase();
+            if (undatedSortField === "score") {
+                return mult * (a.score - b.score);
+            }
+            const aVal = String(a[undatedSortField]).toLowerCase();
+            const bVal = String(b[undatedSortField]).toLowerCase();
             return mult * aVal.localeCompare(bVal);
         });
         return arr;

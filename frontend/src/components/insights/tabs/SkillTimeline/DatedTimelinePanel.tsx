@@ -1,6 +1,7 @@
-import type {SkillTimelineDTO} from "../../../../api/insights";
+import type { SkillTimelineDTO } from "../../../../api/insights";
+import { formatSkillName } from "./formatSkillName";
 
-export default function DatedTimelineDTO({timeline}: {timeline: SkillTimelineDTO}) {
+export default function DatedTimelineDTO({ timeline }: { timeline: SkillTimelineDTO }) {
     return (
         <div className="skill-timeline-panel">
             {timeline.dated.length > 0 ? (
@@ -10,7 +11,7 @@ export default function DatedTimelineDTO({timeline}: {timeline: SkillTimelineDTO
                     <ul>
                     {group.events.map((e, i) => (
                         <li key={`${group.date}-${i}`}>
-                            <strong>{e.skill_name}</strong> ({e.level}) – {e.project_name} (
+                            <strong>{formatSkillName(e.skill_name)}</strong> ({e.level}) – {e.project_name} (
                             {e.score.toFixed(2)})
                         </li>
                     ))}

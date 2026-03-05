@@ -1,6 +1,7 @@
 import type { TimelineEventDTO } from "../../../../api/insights";
+import { formatSkillName } from "./formatSkillName";
 
-type UndatedSortField = "skill_name" | "project_name" | "level";
+type UndatedSortField = "skill_name" | "project_name" | "level" | "score";
 type SortDirection = "asc" | "desc";
 
 export default function UndatedPanel({
@@ -28,23 +29,40 @@ export default function UndatedPanel({
                         <option value="skill_name">Skill name</option>
                         <option value="project_name">Project</option>
                         <option value="level">Level</option>
+                        <option value="score">Score</option>
                     </select>
 
-                    <button 
-                        type="button" 
-                        className="skill-timeline-sort-dir" 
-                        onClick={() => setUndatedSortDir((d) => (d === "asc" ? "desc" : "asc"))} 
-                        title={undatedSortDir === "asc" ? "A→Z (click for Z→A)" : "Z→A (click for A→Z)"}>
-                        
-                        {undatedSortDir === "asc" ? "A→Z" : "Z→A"}
+                    <button
+                        type="button"
+                        className="skill-timeline-sort-dir"
+                        onClick={() => setUndatedSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                        title={
+                            undatedSortField === "score"
+                                ? undatedSortDir === "asc"
+                                    ? "Low→High (click for High→Low)"
+                                    : "High→Low (click for Low→High)"
+                                : undatedSortDir === "asc"
+                                    ? "A→Z (click for Z→A)"
+                                    : "Z→A (click for A→Z)"
+                        }
+                    >
+                        {undatedSortField === "score"
+                            ? undatedSortDir === "asc"
+                                ? "Low→High"
+                                : "High→Low"
+                            : undatedSortDir === "asc"
+                                ? "A→Z"
+                                : "Z→A"}
                     </button>
                 </div>
 
-                <ul>
+                <ul className="skill-undated-list">
                     {sortedEvents.map((e, i) => (
-                    <li key={`undated-${i}`}>
-                        <strong>{e.skill_name}</strong> ({e.level}) – {e.project_name} (
-                        {e.score.toFixed(2)})
+                    <li key={`undated-${i}`} className="skill-undated-item">
+                        <strong className="skill-undated-skill">{formatSkillName(e.skill_name)} </strong>
+                        <span className="skill-undated-meta">
+                            ({e.level}) - {e.project_name} ({e.score.toFixed(2)})
+                        </span>
                     </li>
                     ))}
                 </ul>
