@@ -1,0 +1,60 @@
+
+/* Skill Timeline */
+
+.skill-timeline-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.skill-timeline-header {
+    background-color: #b9adad;
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 20px;
+}
+
+.skill-timeline-header p {
+    margin: 0;
+}
+
+.skill-timeline-body {
+    display: flex;
+    width: 100%;
+    min-height: 300px;
+    margin-top: 12px;
+}
+
+.skill-timeline-nav {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    gap: 6px;
+    width: 150px;
+    padding-right: 10px;
+    border-right: 2px solid black;
+}
+
+.skill-timeline-nav button {
+
+    background-color: black;
+    color: white;
+    border-radius: 8px;
+    border: 2px solid black;
+    padding: 10px;
+}
+
+.skill-timeline-nav button.active {
+    margin-right: -11px;
+    background-color: white;
+    color: black;
+    border: 2px solid black;
+    border-bottom-right-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.skill-timeline-content {
+    flex: 1;
+    min-width: 0;
+    padding: 0 24px;
+}
