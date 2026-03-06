@@ -5,7 +5,7 @@ import SkillTimelineNav from "./SkillTimelineNav";
 import DatedTimelinePanel from "./DatedTimelinePanel";
 import TotalsPanel from "./TotalsPanel";
 import UndatedPanel from "./UndatedPanel";
-import { toYMD } from "./formatHelpers";
+import { toYMD } from "./utils/formatHelpers";
 
 import "./SkillTimeline.css";
 

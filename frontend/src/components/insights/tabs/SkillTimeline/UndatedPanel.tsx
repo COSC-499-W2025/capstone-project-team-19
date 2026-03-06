@@ -1,9 +1,9 @@
 import {useState, useMemo} from "react";
 import type { TimelineEventDTO } from "../../../../api/insights";
-import { formatSkillName } from "./formatHelpers";
+import { formatSkillName } from "./utils/formatHelpers";
 import TimelineSortControls from "./TimelineSortControls";
-import type {TimelineSortField, SortDirection} from "./timelineSortTypes";
-import { sortTimelineEvents } from "./sortTimelineEvents";
+import type { TimelineSortField, SortDirection } from "./utils/timelineSortTypes";
+import { sortTimelineEvents } from "./utils/sortTimelineEvents";
 
 export default function UndatedPanel({events}: {
     events: TimelineEventDTO[];

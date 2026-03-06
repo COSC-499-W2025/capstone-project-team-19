@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { SkillTimelineDTO } from "../../../../api/insights";
-import { formatSkillName, toYMD } from "./formatHelpers";
+import { formatSkillName, toYMD } from "./utils/formatHelpers";
 import TimelineSortControls from "./TimelineSortControls";
-import type { TimelineSortField, SortDirection } from "./timelineSortTypes";
-import { sortTimelineEvents } from "./sortTimelineEvents";
+import type { TimelineSortField, SortDirection } from "./utils/timelineSortTypes";
+import { sortTimelineEvents } from "./utils/sortTimelineEvents";
 
 export default function DatedTimelinePanel({ timeline }: { timeline: SkillTimelineDTO }) {
     const [sortField, setSortField] = useState<TimelineSortField>("skill_name");

@@ -1,4 +1,4 @@
-import type { TimelineEventDTO } from "../../../../api/insights";
+import type { TimelineEventDTO } from "../../../../../api/insights";
 import type { TimelineSortField, SortDirection } from "./timelineSortTypes";
 
 export function sortTimelineEvents(events: TimelineEventDTO[], sortField: TimelineSortField, sortDir: SortDirection) {

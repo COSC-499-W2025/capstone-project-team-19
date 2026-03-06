@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { SkillTimelineDTO } from "../../../../api/insights";
-import { formatSkillName } from "./formatHelpers";
+import { formatSkillName } from "./utils/formatHelpers";
 import TimelineSortControls from "./TimelineSortControls";
-import type { TimelineSortField, SortDirection } from "./timelineSortTypes";
+import type { TimelineSortField, SortDirection } from "./utils/timelineSortTypes";
 
 export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }) {
     const [sortField, setSortField] = useState<TimelineSortField>("score");

@@ -1,4 +1,4 @@
-import type { TimelineSortField, SortDirection } from "./timelineSortTypes";
+import type { TimelineSortField, SortDirection } from "./utils/timelineSortTypes";
 
 const SORT_OPTIONS: { value: TimelineSortField; label: string }[] = [
     { value: "skill_name", label: "Skill name" },
@@ -35,6 +35,7 @@ export default function TimelineSortControls({
                     </option>
                 ))}
             </select>
+
             <button
                 type="button"
                 className="skill-timeline-sort-dir"
