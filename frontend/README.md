@@ -42,3 +42,18 @@ Then confirm the backend is reachable:
 
 * If you see CORS errors in the browser console, make sure the backend allows requests from `http://localhost:5173`.
 * If `JWT_SECRET` is not set, login will fail.
+
+## Testing
+
+The frontend uses **Vitest** and **React Testing Library** for component testing.
+
+Run tests with: 
+
+```
+cd frontend
+npm run test
+```
+
+This will execute all `*.test.tsx` and `*.test.ts` files in the project.
+
+Tests run in a jsdom environment, which simulates a browser so React components can be rendered and interacted with.
