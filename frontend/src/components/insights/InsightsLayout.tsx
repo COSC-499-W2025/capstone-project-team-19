@@ -1,7 +1,7 @@
 import { useState } from "react";
 import InsightsSubNav from "./InsightsSubNav";
 import RankedProjectsTab from "./tabs/RankedProjectsTab";
-import SkillTimelineTab from "./tabs/SkillTimelineTab";
+import SkillTimelineTab from "./tabs/SkillTimeline/SkillTimelineTab";
 import ChronologicalSkillsTab from "./tabs/ChronologicalSkillsTab";
 import ActivityHeatmapTab from "./tabs/ActivityHeatmapTab";
 import "../insights/Insights.css";
