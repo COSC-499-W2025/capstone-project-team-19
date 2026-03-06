@@ -1,5 +1,5 @@
 import type { TimelineEventDTO } from "../../../../api/insights";
-import { formatSkillName } from "./formatSkillName";
+import { formatSkillName } from "./formatHelpers";
 
 type UndatedSortField = "skill_name" | "project_name" | "level" | "score";
 type SortDirection = "asc" | "desc";

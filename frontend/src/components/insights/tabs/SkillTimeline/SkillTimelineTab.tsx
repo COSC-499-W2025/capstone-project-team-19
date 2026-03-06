@@ -5,6 +5,7 @@ import SkillTimelineNav from "./SkillTimelineNav";
 import DatedTimelinePanel from "./DatedTimelinePanel";
 import TotalsPanel from "./TotalsPanel";
 import UndatedPanel from "./UndatedPanel";
+import {toYMD} from "./formatHelpers";
 
 import "./SkillTimeline.css";
 
@@ -65,7 +66,7 @@ export default function SkillTimelineTab() {
                 <p>
                     {timeline.summary.total_skills} Skills · {timeline.summary.total_projects} Projects
                     {timeline.summary.date_range?.earliest && timeline.summary.date_range?.latest && (
-                    <> · {timeline.summary.date_range.earliest} - {timeline.summary.date_range.latest}</>
+                    <> · {toYMD(timeline.summary.date_range.earliest)} - {toYMD(timeline.summary.date_range.latest)}</>
                     )}
                 </p>
             </header>

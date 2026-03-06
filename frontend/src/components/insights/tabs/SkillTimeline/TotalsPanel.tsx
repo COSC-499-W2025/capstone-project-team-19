@@ -1,5 +1,5 @@
 import type { SkillTimelineDTO } from "../../../../api/insights";
-import { formatSkillName } from "./formatSkillName";
+import { formatSkillName } from "./formatHelpers";
 
 export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }) {
     const entries = Object.entries(timeline.current_totals);

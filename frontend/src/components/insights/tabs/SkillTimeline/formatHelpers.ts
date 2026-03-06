@@ -13,3 +13,18 @@ export function formatSkillName(name: string): string {
         })
         .join(" ");
 }
+
+export function toYMD(iso?: string | null) {
+    if (!iso) return "";
+
+    const d = new Date(iso);
+
+    const formatted = d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+
+    // add the period after the month abbreviation
+    return formatted.replace(/^(\w{3})/, "$1.");
+}
