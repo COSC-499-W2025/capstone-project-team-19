@@ -10,6 +10,7 @@ __pycache__/
 # Env variables and secrets
 .env
 *.env
+.env.local
 
 # OS junk (mac and windows, to avoid any excess files being pushed)
 .DS_Store

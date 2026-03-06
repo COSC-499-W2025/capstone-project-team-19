@@ -10,15 +10,24 @@ from src.api.routes import (
     github_router,
     google_drive_router,
     consent_router,
-    portfolio_router,
     export_router,
     thumbnails_router,
     activity_heatmap_router,
 )
 from src.api.auth.routes import router as auth_router
 
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI(title="Capstone API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 def health():
