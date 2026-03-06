@@ -66,6 +66,7 @@
     background: #fff;
 }
 
+/* Sort controls (Undated panel) */
 .skill-timeline-sort {
     display: flex;
     align-items: center;
@@ -159,9 +160,6 @@
     line-height: 1.4;
 }
 
-.skill-dated-item:last-child {
-    border-bottom: none;
-}
 
 .skill-totals {
     width: 100%;

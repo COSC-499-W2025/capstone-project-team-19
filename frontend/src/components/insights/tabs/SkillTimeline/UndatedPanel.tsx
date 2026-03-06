@@ -1,60 +1,29 @@
+import {useState, useMemo} from "react";
 import type { TimelineEventDTO } from "../../../../api/insights";
 import { formatSkillName } from "./formatHelpers";
+import TimelineSortControls from "./TimelineSortControls";
+import type {TimelineSortField, SortDirection} from "./timelineSortTypes";
+import { sortTimelineEvents } from "./sortTimelineEvents";
 
-type UndatedSortField = "skill_name" | "project_name" | "level" | "score";
-type SortDirection = "asc" | "desc";
-
-export default function UndatedPanel({
-    events,
-    sortedEvents,
-    undatedSortField,
-    setUndatedSortField,
-    undatedSortDir,
-    setUndatedSortDir,
-}: {
+export default function UndatedPanel({events}: {
     events: TimelineEventDTO[];
-    sortedEvents: TimelineEventDTO[];
-    undatedSortField: UndatedSortField;
-    setUndatedSortField: (f: UndatedSortField) => void;
-    undatedSortDir: SortDirection;
-    setUndatedSortDir: React.Dispatch<React.SetStateAction<SortDirection>>;
 }) {
+    const [sortField, setSortField] = useState<TimelineSortField>("skill_name");
+    const [sortDir, setSortDir] = useState<SortDirection>("asc");
+    const sortedEvents = useMemo(() => {
+        return sortTimelineEvents(events, sortField, sortDir);
+    }, [events, sortField, sortDir]);
+
     return (
         <div className="skill-timeline-panel">
             {events.length > 0 ? (
                 <>
-                <div className="skill-timeline-sort">
-                    <label>Sort by</label>
-                    <select value={undatedSortField} onChange={(e) => setUndatedSortField(e.target.value as UndatedSortField)}>
-                        <option value="skill_name">Skill name</option>
-                        <option value="project_name">Project</option>
-                        <option value="level">Level</option>
-                        <option value="score">Score</option>
-                    </select>
-
-                    <button
-                        type="button"
-                        className="skill-timeline-sort-dir"
-                        onClick={() => setUndatedSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-                        title={
-                            undatedSortField === "score"
-                                ? undatedSortDir === "asc"
-                                    ? "Low→High (click for High→Low)"
-                                    : "High→Low (click for Low→High)"
-                                : undatedSortDir === "asc"
-                                    ? "A→Z (click for Z→A)"
-                                    : "Z→A (click for A→Z)"
-                        }
-                    >
-                        {undatedSortField === "score"
-                            ? undatedSortDir === "asc"
-                                ? "Low→High"
-                                : "High→Low"
-                            : undatedSortDir === "asc"
-                                ? "A→Z"
-                                : "Z→A"}
-                    </button>
-                </div>
+                <TimelineSortControls
+                    sortField={sortField}
+                    setSortField={setSortField}
+                    sortDir={sortDir}
+                    setSortDir={setSortDir}
+                />
 
                 <ul className="skill-undated-list">
                     {sortedEvents.map((e, i) => (

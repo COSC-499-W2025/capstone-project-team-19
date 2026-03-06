@@ -1,25 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { getSkillTimeline } from "../../../../api/insights";
-import type { SkillTimelineDTO, TimelineEventDTO } from "../../../../api/insights";
+import type { SkillTimelineDTO } from "../../../../api/insights";
 import SkillTimelineNav from "./SkillTimelineNav";
 import DatedTimelinePanel from "./DatedTimelinePanel";
 import TotalsPanel from "./TotalsPanel";
 import UndatedPanel from "./UndatedPanel";
-import {toYMD} from "./formatHelpers";
+import { toYMD } from "./formatHelpers";
 
 import "./SkillTimeline.css";
 
 type SkillTimelineSection = "timeline" | "totals" | "undated";
-type UndatedSortField = "skill_name" | "project_name" | "level" | "score";
-type SortDirection = "asc" | "desc";
 
 export default function SkillTimelineTab() {
     const [timeline, setTimeline] = useState<SkillTimelineDTO | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>("");
     const [activeSection, setActiveSection] = useState<SkillTimelineSection>("timeline");
-    const [undatedSortField, setUndatedSortField] = useState<UndatedSortField>("skill_name");
-    const [undatedSortDir, setUndatedSortDir] = useState<SortDirection>("asc");
 
     useEffect(() => {
         let cancelled = false;
@@ -40,21 +36,6 @@ export default function SkillTimelineTab() {
         load();
         return () => { cancelled = true; };
     }, []);
-
-    const sortedUndated = useMemo(() => {
-        if (!timeline?.undated.length) return [];
-        const arr = [...timeline.undated];
-        const mult = undatedSortDir === "asc" ? 1 : -1;
-        arr.sort((a: TimelineEventDTO, b: TimelineEventDTO) => {
-            if (undatedSortField === "score") {
-                return mult * (a.score - b.score);
-            }
-            const aVal = String(a[undatedSortField]).toLowerCase();
-            const bVal = String(b[undatedSortField]).toLowerCase();
-            return mult * aVal.localeCompare(bVal);
-        });
-        return arr;
-    }, [timeline?.undated, undatedSortField, undatedSortDir]);
 
     if (loading) return <div className="skill-timeline-state">Loading skill timeline...</div>;
     if (error) return <div className="skill-timeline-state skill-timeline-error">{error}</div>;
@@ -77,16 +58,7 @@ export default function SkillTimelineTab() {
                 <main className="skill-timeline-content">
                     {activeSection === "timeline" && <DatedTimelinePanel timeline={timeline} />}
                     {activeSection === "totals" && <TotalsPanel timeline={timeline} />}
-                    {activeSection === "undated" && (
-                    <UndatedPanel
-                        events={timeline.undated}
-                        sortedEvents={sortedUndated}
-                        undatedSortField={undatedSortField}
-                        setUndatedSortField={setUndatedSortField}
-                        undatedSortDir={undatedSortDir}
-                        setUndatedSortDir={setUndatedSortDir}
-                    />
-                    )}
+                    {activeSection === "undated" && <UndatedPanel events={timeline.undated} />}
                 </main>
             </div>
         </div>
