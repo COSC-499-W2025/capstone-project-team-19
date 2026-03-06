@@ -45,10 +45,15 @@ export default function SkillTimelineTab() {
     return (
         <div className="skill-timeline-container">
             <header className="skill-timeline-header">
-                <p>
-                    {timeline.summary.total_skills} Skills · {timeline.summary.total_projects} Projects
+                <p className="skill-timeline-header-text">
+                    <span>{timeline.summary.total_skills} Skills</span>
+                    <span className="skill-timeline-header-sep">·</span>
+                    <span>{timeline.summary.total_projects} Projects</span>
                     {timeline.summary.date_range?.earliest && timeline.summary.date_range?.latest && (
-                    <> · {toYMD(timeline.summary.date_range.earliest)} - {toYMD(timeline.summary.date_range.latest)}</>
+                    <>
+                        <span className="skill-timeline-header-sep">·</span>
+                        <span>{toYMD(timeline.summary.date_range.earliest)} – {toYMD(timeline.summary.date_range.latest)}</span>
+                    </>
                     )}
                 </p>
                 <ScoreInfoTooltip />

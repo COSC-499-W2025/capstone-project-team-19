@@ -22,6 +22,11 @@
     text-align: center;
 }
 
+.skill-timeline-header-text .skill-timeline-header-sep {
+    margin: 0 1.0em;
+    opacity: 0.9;
+}
+
 .skill-timeline-body {
     display: flex;
     width: 100%;
