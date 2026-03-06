@@ -6,6 +6,7 @@ import DatedTimelinePanel from "./DatedTimelinePanel";
 import TotalsPanel from "./TotalsPanel";
 import UndatedPanel from "./UndatedPanel";
 import { toYMD } from "./utils/formatHelpers";
+import ScoreInfoTooltip from "./ScoreInfoTooltip";
 
 import "./SkillTimeline.css";
 
@@ -50,6 +51,7 @@ export default function SkillTimelineTab() {
                     <> · {toYMD(timeline.summary.date_range.earliest)} - {toYMD(timeline.summary.date_range.latest)}</>
                     )}
                 </p>
+                <ScoreInfoTooltip />
             </header>
 
             <div className="skill-timeline-body">
