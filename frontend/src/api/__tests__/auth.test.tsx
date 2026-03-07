@@ -38,12 +38,12 @@ describe("Auth pages", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByPlaceholderText("Username"), "adara");
+    await user.type(screen.getByPlaceholderText("Username"), "testuser");
     await user.type(screen.getByPlaceholderText("Password"), "Password123");
     await user.click(screen.getByRole("button", { name: "Login" }));
 
     expect(await screen.findByTestId("home")).toBeInTheDocument();
-    expect(login).toHaveBeenCalledWith("adara", "Password123");
+    expect(login).toHaveBeenCalledWith("testuser", "Password123");
     expect(tokenStore.get()).toBe("fake.jwt.token");
   });
 
@@ -62,7 +62,7 @@ describe("Auth pages", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByPlaceholderText("Username"), "adara");
+    await user.type(screen.getByPlaceholderText("Username"), "testuser");
     await user.type(screen.getByPlaceholderText("Password"), "wrong");
     await user.click(screen.getByRole("button", { name: "Login" }));
 
@@ -80,7 +80,7 @@ describe("Auth pages", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByPlaceholderText("Username"), "adara");
+    await user.type(screen.getByPlaceholderText("Username"), "testuser");
     await user.type(screen.getByPlaceholderText("Password"), "Password123");
     await user.type(screen.getByPlaceholderText("Confirm Password"), "Password124");
     await user.click(screen.getByRole("button", { name: "Register" }));
@@ -94,7 +94,7 @@ describe("Auth pages", () => {
 
     (register as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       user_id: 1,
-      username: "adara",
+      username: "testuser",
     });
 
     render(
@@ -106,12 +106,12 @@ describe("Auth pages", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByPlaceholderText("Username"), "adara");
+    await user.type(screen.getByPlaceholderText("Username"), "testuser");
     await user.type(screen.getByPlaceholderText("Password"), "Password123");
     await user.type(screen.getByPlaceholderText("Confirm Password"), "Password123");
     await user.click(screen.getByRole("button", { name: "Register" }));
 
     expect(await screen.findByTestId("login")).toBeInTheDocument();
-    expect(register).toHaveBeenCalledWith("adara", "Password123");
+    expect(register).toHaveBeenCalledWith("testuser", "Password123");
   });
 });

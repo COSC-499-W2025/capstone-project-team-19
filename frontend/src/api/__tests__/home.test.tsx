@@ -27,7 +27,7 @@ beforeEach(() => {
 describe("Home and navigation", () => {
   it("Home shows username from token and Start analyzing navigates to /upload", async () => {
     const user = userEvent.setup();
-    tokenStore.set(makeJwt({ sub: "1", username: "adara" }));
+    tokenStore.set(makeJwt({ sub: "1", username: "testuser" }));
 
     render(
       <MemoryRouter initialEntries={["/"]}>
@@ -38,7 +38,7 @@ describe("Home and navigation", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Hello, adara!")).toBeInTheDocument();
+    expect(await screen.findByText("Hello, testuser!")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Start analyzing" }));
     expect(await screen.findByTestId("upload")).toBeInTheDocument();
@@ -49,7 +49,7 @@ describe("Home and navigation", () => {
 
     const UploadFake = () => (
       <>
-        <TopBar showNav username="adara" />
+        <TopBar showNav username="testuser" />
         <div>Upload</div>
       </>
     );
