@@ -50,7 +50,11 @@ export default function LoginPage() {
             autoComplete="current-password"
           />
 
-          {err && <div className="error">{err}</div>}
+          {err && (
+            <div className="error" style={{ whiteSpace: "pre-line" }}>
+              {err}
+            </div>
+          )}
 
           <button className="btn" type="submit" disabled={loading}>
             {loading ? "Logging in..." : "Login"}

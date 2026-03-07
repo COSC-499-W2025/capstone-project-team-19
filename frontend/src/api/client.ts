@@ -15,19 +15,29 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const raw = await res.text();
-    let msg = raw;
+    let msg = raw || `${res.status} ${res.statusText}`;
 
     try {
       const parsed = JSON.parse(raw);
-      if (typeof parsed?.detail === "string") msg = parsed.detail;
-      else if (Array.isArray(parsed?.detail)) {
-        msg = parsed.detail.map((d: any) => d?.msg).filter(Boolean).join(", ");
+
+      // FastAPI error shape: { detail: "..." } or { detail: [ { loc, msg, type }, ... ] }
+      if (typeof parsed?.detail === "string") {
+        msg = parsed.detail;
+      } else if (Array.isArray(parsed?.detail)) {
+        msg = parsed.detail
+          .map((e: any) => {
+            const loc = Array.isArray(e?.loc) ? e.loc : [];
+            const field = loc.length ? String(loc[loc.length - 1]) : "";
+            const label = field ? field.charAt(0).toUpperCase() + field.slice(1) : "Input";
+            return `${label}: ${e?.msg ?? "Invalid value"}`;
+          })
+          .join("\n");
       }
     } catch {
-      // keep raw text
+      // keep raw
     }
 
-    throw new Error(msg || `${res.status} ${res.statusText}`);
+    throw new Error(msg);
   }
 
   // some endpoints might return empty body

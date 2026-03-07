@@ -63,7 +63,11 @@ export default function RegisterPage() {
             autoComplete="new-password"
           />
 
-          {err && <div className="error">{err}</div>}
+          {err && (
+            <div className="error" style={{ whiteSpace: "pre-line" }}>
+              {err}
+            </div>
+          )}
 
           <button className="btn" type="submit" disabled={loading}>
             {loading ? "Registering..." : "Register"}
