@@ -9,7 +9,16 @@ from .test_uploads_wizard import _make_zip_bytes
 
 
 def _get_project_key(state: dict, project_name: str) -> int:
+    """
+    Look up the project_key for a given project name in the upload state.
+    Prefer an explicit mapping in dedup_project_keys; if not present,
+    fall back to any best_match_project_key from dedup_asks.
+    """
     pk = (state.get("dedup_project_keys") or {}).get(project_name)
+    if pk is None:
+        asks = (state.get("dedup_asks") or {})
+        ask = asks.get(project_name) or {}
+        pk = ask.get("best_match_project_key")
     assert pk is not None, f"project_key not found for {project_name}"
     return int(pk)
 
