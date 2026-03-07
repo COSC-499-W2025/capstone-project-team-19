@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 
 type Props = {
   showNav?: boolean;
@@ -9,7 +9,9 @@ export default function TopBar({ showNav = false, username }: Props) {
   return (
     <div className="topbar">
       <div className="topbarInner">
-        <div className="brand">resuME</div>
+        <Link to="/" className="brandLink" aria-label="Go to home">
+          <div className="brand">resuME</div>
+        </Link>
 
         {showNav && (
           <nav className="nav">

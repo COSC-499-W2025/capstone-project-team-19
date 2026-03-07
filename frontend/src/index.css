@@ -207,3 +207,11 @@ button {
   background: #f2f2f2;
   border-radius: 8px;
 }
+
+.brandLink {
+  text-decoration: none;
+  color: inherit;
+}
+.brandLink:hover {
+  text-decoration: none;
+}

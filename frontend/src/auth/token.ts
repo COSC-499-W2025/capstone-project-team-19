@@ -1,4 +1,4 @@
-const TOKEN_KEY = "token";
+const TOKEN_KEY = "resuME_token";
 
 export const tokenStore = {
   get(): string | null {
