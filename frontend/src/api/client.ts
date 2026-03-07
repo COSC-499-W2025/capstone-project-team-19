@@ -1,11 +1,9 @@
+import { tokenStore } from "../auth/token";
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-function getToken() {
-  return localStorage.getItem("token");
-}
-
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
+  const token = tokenStore.get();
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
@@ -16,11 +14,35 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${text}`);
+    const raw = await res.text();
+    let msg = raw || `${res.status} ${res.statusText}`;
+
+    try {
+      const parsed = JSON.parse(raw);
+
+      // FastAPI error shape: { detail: "..." } or { detail: [ { loc, msg, type }, ... ] }
+      if (typeof parsed?.detail === "string") {
+        msg = parsed.detail;
+      } else if (Array.isArray(parsed?.detail)) {
+        msg = parsed.detail
+          .map((e: any) => {
+            const loc = Array.isArray(e?.loc) ? e.loc : [];
+            const field = loc.length ? String(loc[loc.length - 1]) : "";
+            const label = field ? field.charAt(0).toUpperCase() + field.slice(1) : "Input";
+            return `${label}: ${e?.msg ?? "Invalid value"}`;
+          })
+          .join("\n");
+      }
+    } catch {
+      // keep raw
+    }
+
+    throw new Error(msg);
   }
 
-  return (await res.json()) as T;
+  // some endpoints might return empty body
+  const text = await res.text();
+  return (text ? (JSON.parse(text) as T) : ({} as T));
 }
 
 export const api = {
@@ -31,6 +53,4 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
-  postForm: <T>(path: string, form: FormData) =>
-    request<T>(path, { method: "POST", body: form }),
 };
