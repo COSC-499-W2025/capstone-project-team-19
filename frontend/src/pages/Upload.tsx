@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import type { ChangeEvent, DragEvent } from "react";
 import { getUsername } from "../auth/user";
 import UploadWizardShell from "../components/UploadWizardShell";
 
@@ -41,6 +42,9 @@ const STAGES: StageDef[] = [
 export default function UploadPage() {
   const username = getUsername();
   const [stageIndex, setStageIndex] = useState(0);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const currentStage = useMemo(() => STAGES[stageIndex], [stageIndex]);
   const canGoBack = stageIndex > 0;
@@ -61,6 +65,100 @@ export default function UploadPage() {
     { label: "2. Upload", status: "active" as const },
     { label: "3. Setup", status: "disabled" as const, disabled: true },
   ];
+
+  const sizeLabel = selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB` : null;
+
+  function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedFile(file);
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragActive(false);
+    const file = event.dataTransfer.files?.[0] ?? null;
+    if (!file) return;
+    setSelectedFile(file);
+  }
+
+  function renderStageBody() {
+    if (currentStage.key !== "upload") {
+      return (
+        <>
+          <h2 className="wizardPlaceholderTitle">{currentStage.title}</h2>
+          <p className="wizardPlaceholderText">Current stage: {currentStage.label}</p>
+          <div className="wizardPlaceholderNote">{currentStage.description}</div>
+        </>
+      );
+    }
+
+    return (
+      <div className="uploadStagePanel">
+        <h2 className="wizardPlaceholderTitle">Upload Placeholder</h2>
+
+        <div className="uploadIntroRow">
+          <div className="uploadIntroText">
+            <p>
+              We treat each folder as one project. Optionally, organize projects under <code>individual/</code> and{" "}
+              <code>collaborative/</code> before zipping.
+            </p>
+            <p>
+              Upload accepts one ZIP file for now. Deduplication and classification are shown in later stages in this
+              flow.
+            </p>
+          </div>
+
+          <div className="uploadStructureCard" aria-label="Upload structure example">
+            <div>projects.zip</div>
+            <div>individual/</div>
+            <div>ProjectA/</div>
+            <div>ProjectB/</div>
+            <div>collaborative/</div>
+            <div>ProjectC/</div>
+          </div>
+        </div>
+
+        <input
+          ref={uploadInputRef}
+          type="file"
+          accept=".zip,application/zip"
+          className="uploadFileInput"
+          onChange={handleFileSelect}
+        />
+
+        <div
+          className={`uploadDropZone${dragActive ? " uploadDropZone--active" : ""}`}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragActive(true);
+          }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={handleDrop}
+        >
+          <div className="uploadDropLeft">
+            <div className="uploadDropTitle">Select a file or drag and drop here</div>
+            <div className="uploadDropHint">ZIP file only</div>
+          </div>
+
+          <button type="button" className="uploadSelectBtn" onClick={() => uploadInputRef.current?.click()}>
+            SELECT FILE
+          </button>
+        </div>
+
+        <div className="uploadFileAddedBlock">
+          <h3 className="uploadFileAddedTitle">File added</h3>
+          {selectedFile ? (
+            <div className="uploadFileRow">
+              <span className="uploadFileName">{selectedFile.name}</span>
+              <span className="uploadFileSize">{sizeLabel}</span>
+            </div>
+          ) : (
+            <div className="uploadFileEmpty">No file selected yet.</div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <UploadWizardShell
@@ -89,11 +187,7 @@ export default function UploadPage() {
           })}
         </div>
 
-        <h2 className="wizardPlaceholderTitle">{currentStage.title}</h2>
-        <p className="wizardPlaceholderText">Current stage: {currentStage.label}</p>
-        <div className="wizardPlaceholderNote">
-          {currentStage.description}
-        </div>
+        {renderStageBody()}
 
         <div className="uploadStageNavRow">
           <button type="button" className="uploadStageBackBtn" onClick={onBack} disabled={!canGoBack}>

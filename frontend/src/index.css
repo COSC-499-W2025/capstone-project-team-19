@@ -404,6 +404,138 @@ button {
   cursor: not-allowed;
 }
 
+.uploadStagePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.uploadIntroRow {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 16px;
+  align-items: start;
+}
+
+.uploadIntroText p {
+  margin: 0 0 14px;
+  font-size: 16px;
+  line-height: 1.35;
+  color: #111;
+}
+
+.uploadIntroText p:last-child {
+  margin-bottom: 0;
+}
+
+.uploadStructureCard {
+  border-radius: 10px;
+  background: #ececec;
+  padding: 18px 14px;
+  font-size: 16px;
+  line-height: 1.35;
+  color: #111;
+  text-align: center;
+}
+
+.uploadFileInput {
+  display: none;
+}
+
+.uploadDropZone {
+  border: 1px dashed #c4c4c4;
+  border-radius: 12px;
+  background: #fafafa;
+  min-height: 108px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  box-sizing: border-box;
+}
+
+.uploadDropZone--active {
+  border-color: #111;
+  background: #f2f2f2;
+}
+
+.uploadDropLeft {
+  min-width: 0;
+}
+
+.uploadDropTitle {
+  font-size: 34px;
+  line-height: 1.2;
+  margin-bottom: 6px;
+  color: #111;
+}
+
+.uploadDropHint {
+  font-size: 24px;
+  color: #7a7a7a;
+  line-height: 1.2;
+}
+
+.uploadSelectBtn {
+  border: 1px solid #7f7f7f;
+  border-radius: 12px;
+  background: #fff;
+  color: #222;
+  min-width: 152px;
+  height: 58px;
+  font-size: 24px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.uploadFileAddedBlock {
+  border-top: 1px solid #d8d8d8;
+  padding-top: 18px;
+}
+
+.uploadFileAddedTitle {
+  margin: 0 0 12px;
+  font-size: 36px;
+  line-height: 1.2;
+  color: #111;
+}
+
+.uploadFileRow {
+  border: 1px solid #d8d8d8;
+  border-radius: 10px;
+  background: #fff;
+  min-height: 56px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.uploadFileName {
+  font-size: 24px;
+  color: #111;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.uploadFileSize {
+  font-size: 20px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.uploadFileEmpty {
+  border: 1px dashed #c8c8c8;
+  border-radius: 10px;
+  min-height: 56px;
+  padding: 14px 16px;
+  font-size: 18px;
+  color: #666;
+  background: #fff;
+}
+
 .consentContent {
   max-width: 980px;
 }
@@ -513,6 +645,46 @@ button {
 
   .wizardActionBtn {
     max-width: 280px;
+  }
+
+  .uploadIntroRow {
+    grid-template-columns: 1fr;
+  }
+
+  .uploadStructureCard {
+    max-width: 280px;
+  }
+
+  .uploadDropZone {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .uploadDropTitle {
+    font-size: 24px;
+  }
+
+  .uploadDropHint {
+    font-size: 16px;
+  }
+
+  .uploadSelectBtn {
+    width: 100%;
+    min-width: 0;
+    height: 46px;
+    font-size: 16px;
+  }
+
+  .uploadFileAddedTitle {
+    font-size: 24px;
+  }
+
+  .uploadFileName {
+    font-size: 16px;
+  }
+
+  .uploadFileSize {
+    font-size: 14px;
   }
 
   .consentSectionTitle {
