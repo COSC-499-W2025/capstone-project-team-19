@@ -643,6 +643,85 @@ button {
   cursor: not-allowed;
 }
 
+.classificationStagePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.classificationStageMeta {
+  font-size: 14px;
+  color: #666;
+}
+
+.classificationStageMetaDivider {
+  margin: 0 8px;
+}
+
+.classificationStageTableWrap {
+  border: 1px solid #b9b9b9;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.classificationStageTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.classificationStageTable th,
+.classificationStageTable td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e5e5;
+  text-align: left;
+  font-size: 18px;
+  color: #111;
+}
+
+.classificationStageTable tr:last-child td {
+  border-bottom: 0;
+}
+
+.classificationStageTable th {
+  font-weight: 700;
+  background: #fafafa;
+}
+
+.classificationStageSelect {
+  width: 100%;
+  min-width: 168px;
+  height: 36px;
+  border: 1px solid #d6d6d6;
+  border-radius: 8px;
+  background: #fff;
+  color: #111;
+  font-size: 14px;
+  padding: 0 10px;
+}
+
+.classificationStagePager {
+  display: flex;
+  gap: 12px;
+}
+
+.classificationStagePagerBtn {
+  height: 36px;
+  min-width: 138px;
+  border: 1px solid #222;
+  border-radius: 8px;
+  background: #fff;
+  color: #111;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.classificationStagePagerBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .consentContent {
   max-width: 980px;
 }
@@ -816,6 +895,31 @@ button {
   }
 
   .dedupStagePagerBtn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .classificationStageMeta {
+    font-size: 13px;
+  }
+
+  .classificationStageTable th,
+  .classificationStageTable td {
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  .classificationStageSelect {
+    min-width: 0;
+    font-size: 13px;
+    height: 32px;
+  }
+
+  .classificationStagePager {
+    flex-direction: column;
+  }
+
+  .classificationStagePagerBtn {
     width: 100%;
     min-width: 0;
   }

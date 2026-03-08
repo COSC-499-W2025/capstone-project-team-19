@@ -13,6 +13,8 @@ type StageDef = {
 };
 
 type DedupDecisionValue = "new_project" | "new_version";
+type ProjectClassificationValue = "" | "individual" | "collaborative";
+type ProjectTypeValue = "" | "text" | "code";
 
 type DedupCase = {
   projectName: string;
@@ -56,6 +58,9 @@ export default function UploadPage() {
   const [dragActive, setDragActive] = useState(false);
   const [dedupCaseIndex, setDedupCaseIndex] = useState(0);
   const [dedupDecisions, setDedupDecisions] = useState<Record<string, DedupDecisionValue>>({});
+  const [classificationIndex, setClassificationIndex] = useState(0);
+  const [classifications, setClassifications] = useState<Record<string, ProjectClassificationValue>>({});
+  const [projectTypes, setProjectTypes] = useState<Record<string, ProjectTypeValue>>({});
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const currentStage = useMemo(() => STAGES[stageIndex], [stageIndex]);
@@ -87,16 +92,33 @@ export default function UploadPage() {
   const currentDedupCase = dedupPreview[dedupCaseIndex] ?? null;
   const canGoToPreviousDedupCase = dedupCaseIndex > 0;
   const canGoToNextDedupCase = dedupCaseIndex < dedupPreview.length - 1;
+  const currentClassificationProject = projectsPreview[classificationIndex] ?? null;
+  const canGoToPreviousClassificationProject = classificationIndex > 0;
+  const canGoToNextClassificationProject = classificationIndex < projectsPreview.length - 1;
+  const completedClassificationCount = useMemo(
+    () =>
+      projectsPreview.filter((projectName) => Boolean(classifications[projectName]) && Boolean(projectTypes[projectName]))
+        .length,
+    [classifications, projectTypes, projectsPreview],
+  );
 
   useEffect(() => {
     setDedupCaseIndex(0);
     setDedupDecisions({});
+    setClassificationIndex(0);
+    setClassifications({});
+    setProjectTypes({});
   }, [selectedFile]);
 
   useEffect(() => {
     if (dedupCaseIndex <= dedupPreview.length - 1) return;
     setDedupCaseIndex(0);
   }, [dedupCaseIndex, dedupPreview.length]);
+
+  useEffect(() => {
+    if (classificationIndex <= projectsPreview.length - 1) return;
+    setClassificationIndex(0);
+  }, [classificationIndex, projectsPreview.length]);
 
   function onNext() {
     if (!canGoNext) return;
@@ -225,6 +247,99 @@ export default function UploadPage() {
                   disabled={!canGoToNextDedupCase}
                 >
                   Next case
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    if (currentStage.key === "classification") {
+      return (
+        <div className="classificationStagePanel">
+          <h2 className="wizardPlaceholderTitle">Classification and Type</h2>
+          <p className="wizardPlaceholderText">
+            Review each project and choose classification and project type one-by-one.
+          </p>
+
+          {projectsPreview.length === 0 ? (
+            <div className="uploadEmptyState">No projects found.</div>
+          ) : (
+            <>
+              <div className="classificationStageMeta">
+                Project {classificationIndex + 1} of {projectsPreview.length}
+                <span className="classificationStageMetaDivider">|</span>
+                {completedClassificationCount} of {projectsPreview.length} completed
+              </div>
+
+              {currentClassificationProject && (
+                <div className="classificationStageTableWrap">
+                  <table className="classificationStageTable">
+                    <thead>
+                      <tr>
+                        <th>Projects</th>
+                        <th>Classification</th>
+                        <th>Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>{currentClassificationProject}</td>
+                        <td>
+                          <select
+                            className="classificationStageSelect"
+                            value={classifications[currentClassificationProject] ?? ""}
+                            onChange={(event) =>
+                              setClassifications((prev) => ({
+                                ...prev,
+                                [currentClassificationProject]: event.target.value as ProjectClassificationValue,
+                              }))
+                            }
+                          >
+                            <option value="">Select</option>
+                            <option value="individual">Individual</option>
+                            <option value="collaborative">Collaborative</option>
+                          </select>
+                        </td>
+                        <td>
+                          <select
+                            className="classificationStageSelect"
+                            value={projectTypes[currentClassificationProject] ?? ""}
+                            onChange={(event) =>
+                              setProjectTypes((prev) => ({
+                                ...prev,
+                                [currentClassificationProject]: event.target.value as ProjectTypeValue,
+                              }))
+                            }
+                          >
+                            <option value="">Select</option>
+                            <option value="text">Text</option>
+                            <option value="code">Code</option>
+                          </select>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="classificationStagePager">
+                <button
+                  type="button"
+                  className="classificationStagePagerBtn"
+                  onClick={() => setClassificationIndex((prev) => prev - 1)}
+                  disabled={!canGoToPreviousClassificationProject}
+                >
+                  Previous project
+                </button>
+                <button
+                  type="button"
+                  className="classificationStagePagerBtn"
+                  onClick={() => setClassificationIndex((prev) => prev + 1)}
+                  disabled={!canGoToNextClassificationProject}
+                >
+                  Next project
                 </button>
               </div>
             </>
