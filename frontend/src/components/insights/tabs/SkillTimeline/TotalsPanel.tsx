@@ -19,8 +19,16 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
         return entries.filter(([, data]) => data.skill_type === totalsView);
     }, [entries, totalsView]);
 
-    if (entries.length === 0) return <p>No totals.</p>;
-    if (filteredEntries.length === 0) return <p>No {totalsView} skills available.</p>;
+    if (entries.length === 0) return (
+        <div className="skill-timeline-panel">
+            <p>No totals.</p>
+        </div>
+    );
+    if (filteredEntries.length === 0) return (
+        <div className="skill-timeline-panel">
+            <p>No {totalsView} skills available.</p>
+        </div>
+    );
 
     const maxScore = Math.max(...filteredEntries.map(([, d]) => d.cumulative_score), 1);
     const sorted = [...filteredEntries].sort((a, b) => {
