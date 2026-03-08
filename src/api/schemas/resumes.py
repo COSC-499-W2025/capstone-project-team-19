@@ -22,6 +22,10 @@ class ResumeProjectDTO(BaseModel):
     text_type: Optional[str] = None
     contribution_percent: Optional[float] = None
     activities: List[Dict[str, Any]] = []
+    key_role: Optional[str] = None
+    contribution_bullets: List[str] = []
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
 
 class AggregatedSkillsDTO(BaseModel):
     languages: List[str] = []
