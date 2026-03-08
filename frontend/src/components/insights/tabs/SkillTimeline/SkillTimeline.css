@@ -285,7 +285,12 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 16px;
+    margin-bottom: 16px;
     flex-wrap: wrap;
+}
+
+.skill-totals-empty {
+    margin: 0;
 }
 
 .skill-totals-toggle {
