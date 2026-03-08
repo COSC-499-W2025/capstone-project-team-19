@@ -54,4 +54,9 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
+  postForm: <T>(path: string, formData: FormData) =>
+    request<T>(path, {
+      method: "POST",
+      body: formData,
+    }),
 };

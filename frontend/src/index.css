@@ -337,19 +337,23 @@ button {
 
 .wizardPlaceholderCard {
   max-width: 1000px;
-  background: #fff;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
   border-radius: 10px;
   padding: 22px;
 }
 
 .wizardPlaceholderTitle {
   margin: 0 0 10px;
-  font-size: 24px;
+  font-size: 28px;
+  line-height: 1.2;
 }
 
 .wizardPlaceholderText {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
+  line-height: 1.35;
+  color: #222;
 }
 
 .wizardPlaceholderNote {
@@ -367,11 +371,11 @@ button {
 
 .uploadStageTab {
   border: 1px solid #c9c9c9;
-  background: #fff;
+  background: #f5f5f5;
   color: #666;
   border-radius: 8px;
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -397,7 +401,7 @@ button {
   min-width: 96px;
   border: 1px solid #222;
   border-radius: 8px;
-  background: #fff;
+  background: #f5f5f5;
   color: #111;
   font-size: 14px;
   font-weight: 700;
@@ -412,7 +416,44 @@ button {
 .uploadStagePanel {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
+}
+
+.uploadStatusLine {
+  margin: 0 0 10px;
+  font-size: 14px;
+  white-space: pre-line;
+}
+
+.uploadInfoLine {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #333;
+}
+
+.uploadStageActionRow {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.uploadStagePrimaryBtn {
+  height: 36px;
+  min-width: 168px;
+  border: 0;
+  border-radius: 8px;
+  background: #111;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.uploadStagePrimaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .uploadIntroRow {
@@ -424,7 +465,7 @@ button {
 
 .uploadIntroText p {
   margin: 0 0 14px;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.35;
   color: #111;
 }
@@ -433,16 +474,11 @@ button {
   margin-bottom: 0;
 }
 
-.uploadScenarioLine {
-  font-size: 14px;
-  color: #555;
-}
-
 .uploadStructureCard {
   border-radius: 10px;
   background: #ececec;
   padding: 18px 14px;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.35;
   color: #111;
   text-align: center;
@@ -455,7 +491,7 @@ button {
 .uploadDropZone {
   border: 1px dashed #c4c4c4;
   border-radius: 12px;
-  background: #fafafa;
+  background: #f5f5f5;
   min-height: 108px;
   display: flex;
   align-items: center;
@@ -475,14 +511,14 @@ button {
 }
 
 .uploadDropTitle {
-  font-size: 34px;
+  font-size: 18px;
   line-height: 1.2;
   margin-bottom: 6px;
   color: #111;
 }
 
 .uploadDropHint {
-  font-size: 24px;
+  font-size: 13px;
   color: #7a7a7a;
   line-height: 1.2;
 }
@@ -490,12 +526,12 @@ button {
 .uploadSelectBtn {
   border: 1px solid #7f7f7f;
   border-radius: 12px;
-  background: #fff;
+  background: #f5f5f5;
   color: #222;
   min-width: 152px;
-  height: 58px;
-  font-size: 24px;
-  font-weight: 500;
+  height: 42px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -506,7 +542,7 @@ button {
 
 .uploadFileAddedTitle {
   margin: 0 0 12px;
-  font-size: 36px;
+  font-size: 20px;
   line-height: 1.2;
   color: #111;
 }
@@ -514,7 +550,7 @@ button {
 .uploadFileRow {
   border: 1px solid #d8d8d8;
   border-radius: 10px;
-  background: #fff;
+  background: #f5f5f5;
   min-height: 56px;
   padding: 12px 16px;
   display: flex;
@@ -524,14 +560,14 @@ button {
 }
 
 .uploadFileName {
-  font-size: 24px;
+  font-size: 15px;
   color: #111;
   line-height: 1.2;
   word-break: break-word;
 }
 
 .uploadFileSize {
-  font-size: 20px;
+  font-size: 13px;
   color: #666;
   white-space: nowrap;
 }
@@ -541,9 +577,9 @@ button {
   border-radius: 10px;
   min-height: 56px;
   padding: 14px 16px;
-  font-size: 18px;
+  font-size: 14px;
   color: #666;
-  background: #fff;
+  background: #f5f5f5;
 }
 
 .projectsStagePanel {
@@ -560,18 +596,25 @@ button {
 }
 
 .projectsStageListItem {
-  font-size: 24px;
+  font-size: 16px;
   line-height: 1.2;
   color: #111;
+}
+
+.projectsStageListNote {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #555;
 }
 
 .uploadEmptyState {
   border: 1px dashed #c8c8c8;
   border-radius: 10px;
-  background: #fff;
+  background: #f5f5f5;
   min-height: 56px;
   padding: 14px 16px;
-  font-size: 18px;
+  font-size: 14px;
   line-height: 1.3;
   color: #666;
 }
@@ -590,12 +633,12 @@ button {
 .dedupStageCard {
   border: 1px solid #b9b9b9;
   border-radius: 10px;
-  background: #fff;
+  background: #f5f5f5;
   padding: 16px;
 }
 
 .dedupStageSummary {
-  font-size: 22px;
+  font-size: 16px;
   line-height: 1.3;
   color: #111;
   margin-bottom: 12px;
@@ -620,7 +663,8 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 20px;
+  font-size: 14px;
+  line-height: 1.35;
   color: #111;
   margin-top: 10px;
 }
@@ -641,7 +685,7 @@ button {
   min-width: 128px;
   border: 1px solid #222;
   border-radius: 8px;
-  background: #fff;
+  background: #f5f5f5;
   color: #111;
   font-size: 14px;
   font-weight: 700;
@@ -671,7 +715,7 @@ button {
 .classificationStageTableWrap {
   border: 1px solid #b9b9b9;
   border-radius: 10px;
-  background: #fff;
+  background: #f5f5f5;
   overflow: hidden;
 }
 
@@ -685,7 +729,7 @@ button {
   padding: 12px 14px;
   border-bottom: 1px solid #e5e5e5;
   text-align: left;
-  font-size: 18px;
+  font-size: 15px;
   color: #111;
 }
 
@@ -695,7 +739,7 @@ button {
 
 .classificationStageTable th {
   font-weight: 700;
-  background: #fafafa;
+  background: #ececec;
 }
 
 .classificationStageSelect {
@@ -704,10 +748,16 @@ button {
   height: 36px;
   border: 1px solid #d6d6d6;
   border-radius: 8px;
-  background: #fff;
+  background: #f5f5f5;
   color: #111;
   font-size: 14px;
   padding: 0 10px;
+}
+
+.classificationStageHint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #666;
 }
 
 .classificationStagePager {
@@ -720,7 +770,7 @@ button {
   min-width: 138px;
   border: 1px solid #222;
   border-radius: 8px;
-  background: #fff;
+  background: #f5f5f5;
   color: #111;
   font-size: 14px;
   font-weight: 700;
@@ -730,6 +780,32 @@ button {
 .classificationStagePagerBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.dedupSavedPanel {
+  border: 1px solid #cfcfcf;
+  border-radius: 10px;
+  background: #f5f5f5;
+  padding: 12px 14px;
+}
+
+.dedupSavedTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 8px;
+}
+
+.dedupSavedList {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.dedupSavedItem {
+  font-size: 13px;
+  color: #333;
 }
 
 .consentContent {
@@ -857,30 +933,30 @@ button {
   }
 
   .uploadDropTitle {
-    font-size: 24px;
+    font-size: 18px;
   }
 
   .uploadDropHint {
-    font-size: 16px;
+    font-size: 13px;
   }
 
   .uploadSelectBtn {
     width: 100%;
     min-width: 0;
     height: 46px;
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .uploadFileAddedTitle {
-    font-size: 24px;
+    font-size: 20px;
   }
 
   .uploadFileName {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .uploadFileSize {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .projectsStageListItem {
@@ -888,7 +964,7 @@ button {
   }
 
   .uploadEmptyState {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .dedupStageSummary {
@@ -896,7 +972,7 @@ button {
   }
 
   .dedupStageOption {
-    font-size: 15px;
+    font-size: 14px;
     align-items: flex-start;
   }
 

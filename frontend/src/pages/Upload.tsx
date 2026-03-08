@@ -2,6 +2,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import { getUsername } from "../auth/user";
 import UploadWizardShell from "../components/UploadWizardShell";
+import {
+  postProjectsUpload,
+  postUploadClassifications,
+  postUploadDedupResolve,
+  postUploadProjectTypes,
+} from "../api/uploads";
+import type {
+  DedupDecision,
+  ProjectClassification,
+  ProjectType,
+  UploadRecord,
+} from "../api/uploads";
 
 type UploadFlowStage = "upload" | "projects" | "deduplication" | "classification";
 
@@ -10,24 +22,16 @@ type StageDef = {
   label: string;
 };
 
-type DedupDecisionValue = "new_project" | "new_version";
-type ProjectClassificationValue = "" | "individual" | "collaborative";
-type ProjectTypeValue = "" | "text" | "code";
+type DedupDecisionValue = "" | DedupDecision;
+type ProjectClassificationValue = "" | ProjectClassification;
+type ProjectTypeValue = "" | ProjectType;
 
 type DedupCase = {
   projectName: string;
   existingProjectName: string;
-  similarityLabel: string;
-  pathLabel: string;
-  filesLabel: string;
-};
-
-type MockWizardScenario = "default" | "no_dedup" | "no_projects";
-
-type MockWizardData = {
-  scenario: MockWizardScenario;
-  projects: string[];
-  dedupCases: DedupCase[];
+  similarityLabel?: string;
+  pathLabel?: string;
+  filesLabel?: string;
 };
 
 const STAGES: StageDef[] = [
@@ -37,67 +41,237 @@ const STAGES: StageDef[] = [
   { key: "classification", label: "Classification" },
 ];
 
-function deriveMockWizardData(file: File | null): MockWizardData {
-  if (!file) {
-    return { scenario: "default", projects: [], dedupCases: [] };
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return {};
+    }
+    return {};
   }
 
-  const fileName = file.name.toLowerCase();
-  const scenario: MockWizardScenario = fileName.includes("empty")
-    ? "no_projects"
-    : fileName.includes("nodedup")
-      ? "no_dedup"
-      : "default";
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
 
-  if (scenario === "no_projects") {
-    return {
-      scenario,
-      projects: [],
-      dedupCases: [],
-    };
+function asStringArray(value: unknown): string[] {
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
+      }
+    } catch {
+      return [];
+    }
   }
 
-  const projects = ["ProjectsA", "ProjectsB", "ProjectsC"];
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
+}
 
-  if (scenario === "no_dedup") {
-    return {
-      scenario,
-      projects,
-      dedupCases: [],
-    };
+function asStringMap(value: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  const obj = asRecord(value);
+  for (const [k, v] of Object.entries(obj)) {
+    if (typeof v === "string" && v.trim().length > 0) out[k] = v;
   }
+  return out;
+}
 
+function objectKeys(value: unknown): string[] {
+  return Object.keys(asRecord(value)).filter((key) => key.trim().length > 0);
+}
+
+function uniqueStrings(items: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of items) {
+    if (seen.has(item)) continue;
+    seen.add(item);
+    out.push(item);
+  }
+  return out;
+}
+
+function uploadState(upload: UploadRecord | null): Record<string, unknown> {
+  return asRecord(upload?.state);
+}
+
+function layoutState(upload: UploadRecord | null): Record<string, unknown> {
+  return asRecord(uploadState(upload).layout);
+}
+
+function getProjectsFromUpload(upload: UploadRecord | null): string[] {
+  const layout = layoutState(upload);
+  const pending = asStringArray(layout.pending_projects);
+  const layoutProjects = asStringArray(layout.projects);
+  const auto = Object.keys(asStringMap(layout.auto_assignments));
+  const state = uploadState(upload);
+  const keyed = objectKeys(state.dedup_project_keys);
+  const versionKeyed = objectKeys(state.dedup_version_keys);
+  const asks = objectKeys(state.dedup_asks);
+  const resolved = objectKeys(state.dedup_resolved);
+  const classified = objectKeys(state.classifications);
+  const typeAuto = objectKeys(state.project_types_auto);
+  const typeManual = objectKeys(state.project_types_manual);
+  const filetypeIndex = objectKeys(state.project_filetype_index);
+
+  return uniqueStrings([
+    ...pending,
+    ...layoutProjects,
+    ...auto,
+    ...keyed,
+    ...versionKeyed,
+    ...asks,
+    ...resolved,
+    ...classified,
+    ...typeAuto,
+    ...typeManual,
+    ...filetypeIndex,
+  ]);
+}
+
+function getDiscoveredProjects(upload: UploadRecord | null): string[] {
+  const state = uploadState(upload);
+  const layout = layoutState(upload);
+
+  const dedupSkipped = asStringArray(state.dedup_skipped_projects);
+  const dedupNewVersions = asStringMap(state.dedup_new_versions);
+  const dedupRenamedFrom = Object.keys(dedupNewVersions);
+  const dedupRenamedTo = uniqueStrings(Object.values(dedupNewVersions).filter((name) => name.trim().length > 0));
+
+  const strayLocations = asStringArray(layout.stray_locations);
+  const rootName = typeof layout.root_name === "string" && layout.root_name.trim().length > 0 ? [layout.root_name] : [];
+
+  return uniqueStrings([
+    ...getProjectsFromUpload(upload),
+    ...dedupSkipped,
+    ...dedupRenamedFrom,
+    ...dedupRenamedTo,
+    ...strayLocations,
+    ...rootName,
+  ]);
+}
+
+function getKnownProjects(upload: UploadRecord | null): string[] {
+  const layout = layoutState(upload);
+  return uniqueStrings([
+    ...asStringArray(layout.pending_projects),
+    ...Object.keys(asStringMap(layout.auto_assignments)),
+    ...objectKeys(uploadState(upload).dedup_project_keys),
+  ]);
+}
+
+function getPendingProjects(upload: UploadRecord | null): string[] {
+  return asStringArray(layoutState(upload).pending_projects);
+}
+
+function getAutoAssignments(upload: UploadRecord | null): Record<string, string> {
+  return asStringMap(layoutState(upload).auto_assignments);
+}
+
+function getExistingClassifications(upload: UploadRecord | null): Record<string, string> {
+  return asStringMap(uploadState(upload).classifications);
+}
+
+function getExistingProjectTypes(upload: UploadRecord | null): Record<string, string> {
+  const state = uploadState(upload);
   return {
-    scenario,
-    projects,
-    dedupCases: [
-      {
-        projectName: "ProjectsB",
-        existingProjectName: "ProjectsLegacyB",
-        similarityLabel: "75% match",
-        pathLabel: "Path 75% similar",
-        filesLabel: "4 files",
-      },
-      {
-        projectName: "ProjectsC",
-        existingProjectName: "ProjectsLegacyC",
-        similarityLabel: "72% match",
-        pathLabel: "Path 72% similar",
-        filesLabel: "6 files",
-      },
-    ],
+    ...asStringMap(state.project_types_auto),
+    ...asStringMap(state.project_types_manual),
   };
+}
+
+function getAutoDetectedProjectTypes(upload: UploadRecord | null): Record<string, ProjectType> {
+  const raw = asStringMap(uploadState(upload).project_types_auto);
+  const out: Record<string, ProjectType> = {};
+  for (const [projectName, value] of Object.entries(raw)) {
+    if (value === "code" || value === "text") out[projectName] = value;
+  }
+  return out;
+}
+
+function getProjectsNeedingType(upload: UploadRecord | null): string[] {
+  const state = uploadState(upload);
+  return uniqueStrings([...asStringArray(state.project_types_mixed), ...asStringArray(state.project_types_unknown)]);
+}
+
+function getDedupCases(upload: UploadRecord | null): DedupCase[] {
+  const asks = asRecord(uploadState(upload).dedup_asks);
+  return Object.entries(asks).map(([projectName, raw]) => {
+    const ask = asRecord(raw);
+    const existingProjectName =
+      typeof ask.existing === "string" && ask.existing.trim().length > 0 ? ask.existing : "existing project";
+    const similarity = typeof ask.similarity === "number" ? Math.round(ask.similarity * 100) : null;
+    const pathSimilarity = typeof ask.path_similarity === "number" ? Math.round(ask.path_similarity * 100) : null;
+    const fileCount = typeof ask.file_count === "number" ? ask.file_count : null;
+
+    return {
+      projectName,
+      existingProjectName,
+      similarityLabel: similarity !== null ? `${similarity}% match` : undefined,
+      pathLabel: pathSimilarity !== null ? `Path ${pathSimilarity}% similar` : undefined,
+      filesLabel: fileCount !== null ? `${fileCount} files` : undefined,
+    };
+  });
+}
+
+function getProjectNotes(upload: UploadRecord | null): Record<string, string[]> {
+  const notes: Record<string, string[]> = {};
+
+  function addNote(projectName: string, note: string) {
+    if (!projectName.trim() || !note.trim()) return;
+    if (!notes[projectName]) notes[projectName] = [];
+    if (!notes[projectName].includes(note)) notes[projectName].push(note);
+  }
+
+  const state = uploadState(upload);
+  const asks = asRecord(state.dedup_asks);
+  for (const [projectName, raw] of Object.entries(asks)) {
+    const existing = asRecord(raw).existing;
+    if (typeof existing === "string" && existing.trim().length > 0) {
+      addNote(projectName, `Similar to previously analyzed project "${existing}".`);
+    } else {
+      addNote(projectName, "Similar to a previously analyzed project.");
+    }
+  }
+
+  const newVersions = asStringMap(state.dedup_new_versions);
+  for (const [projectName, existingProject] of Object.entries(newVersions)) {
+    addNote(projectName, `Matched to existing project history "${existingProject}" from earlier uploads.`);
+  }
+
+  const skipped = asStringArray(state.dedup_skipped_projects);
+  for (const projectName of skipped) {
+    addNote(projectName, "Already analyzed in a previous upload and skipped here.");
+  }
+
+  const warnings = asStringMap(state.dedup_warnings);
+  for (const [projectName, warning] of Object.entries(warnings)) {
+    addNote(projectName, warning);
+  }
+
+  return notes;
+}
+
+function isZipFile(file: File): boolean {
+  const lowerName = file.name.toLowerCase();
+  const lowerType = file.type.toLowerCase();
+  return (
+    lowerName.endsWith(".zip") ||
+    lowerType === "application/zip" ||
+    lowerType === "application/x-zip-compressed" ||
+    lowerType === "multipart/x-zip"
+  );
 }
 
 function stageIndexByKey(key: UploadFlowStage): number {
   return STAGES.findIndex((stage) => stage.key === key);
-}
-
-function nextStageIndex(fromKey: UploadFlowStage): number {
-  if (fromKey === "upload") return stageIndexByKey("projects");
-  if (fromKey === "projects") return stageIndexByKey("deduplication");
-  if (fromKey === "deduplication") return stageIndexByKey("classification");
-  return stageIndexByKey("classification");
 }
 
 export default function UploadPage() {
@@ -109,10 +283,14 @@ export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
+  const [uploadData, setUploadData] = useState<UploadRecord | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitInfo, setSubmitInfo] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [dedupCaseIndex, setDedupCaseIndex] = useState(0);
   const [dedupDecisions, setDedupDecisions] = useState<Record<string, DedupDecisionValue>>({});
 
-  const [classificationIndex, setClassificationIndex] = useState(0);
   const [classifications, setClassifications] = useState<Record<string, ProjectClassificationValue>>({});
   const [projectTypes, setProjectTypes] = useState<Record<string, ProjectTypeValue>>({});
 
@@ -121,44 +299,130 @@ export default function UploadPage() {
   const currentStage = useMemo(() => STAGES[stageIndex], [stageIndex]);
   const canGoBack = stageIndex > 0;
 
-  const mockWizardData = useMemo(() => deriveMockWizardData(selectedFile), [selectedFile]);
-  const projectsPreview = mockWizardData.projects;
-  const dedupPreview = mockWizardData.dedupCases;
+  const projects = useMemo(() => getProjectsFromUpload(uploadData), [uploadData]);
+  const discoveredProjects = useMemo(() => getDiscoveredProjects(uploadData), [uploadData]);
+  const knownProjects = useMemo(() => getKnownProjects(uploadData), [uploadData]);
+  const projectsForFlow = useMemo(
+    () => (projects.length > 0 ? projects : discoveredProjects),
+    [projects, discoveredProjects],
+  );
+  const projectNotes = useMemo(() => getProjectNotes(uploadData), [uploadData]);
 
-  const currentDedupCase = dedupPreview[dedupCaseIndex] ?? null;
+  const pendingProjects = useMemo(() => getPendingProjects(uploadData), [uploadData]);
+  const projectsNeedingType = useMemo(() => getProjectsNeedingType(uploadData), [uploadData]);
+  const autoAssignments = useMemo(() => getAutoAssignments(uploadData), [uploadData]);
+  const autoDetectedProjectTypes = useMemo(() => getAutoDetectedProjectTypes(uploadData), [uploadData]);
+
+  const dedupCases = useMemo(() => getDedupCases(uploadData), [uploadData]);
+  const currentDedupCase = dedupCases[dedupCaseIndex] ?? null;
   const canGoToPreviousDedupCase = dedupCaseIndex > 0;
-  const canGoToNextDedupCase = dedupCaseIndex < dedupPreview.length - 1;
-
-  const currentClassificationProject = projectsPreview[classificationIndex] ?? null;
-  const canGoToPreviousClassificationProject = classificationIndex > 0;
-  const canGoToNextClassificationProject = classificationIndex < projectsPreview.length - 1;
-
-  const completedClassificationCount = useMemo(
+  const canGoToNextDedupCase = dedupCaseIndex < dedupCases.length - 1;
+  const savedDedupChoices = useMemo(
     () =>
-      projectsPreview.filter((projectName) => Boolean(classifications[projectName]) && Boolean(projectTypes[projectName]))
-        .length,
-    [classifications, projectTypes, projectsPreview],
+      Object.entries(dedupDecisions).filter(
+        (entry): entry is [string, DedupDecision] =>
+          entry[1] === "new_project" || entry[1] === "new_version" || entry[1] === "skip",
+      ),
+    [dedupDecisions],
   );
 
-  const isDedupComplete = useMemo(
-    () => dedupPreview.length === 0 || dedupPreview.every((entry) => Boolean(dedupDecisions[entry.projectName])),
-    [dedupDecisions, dedupPreview],
+  const needsClassification = uploadData?.status === "needs_classification";
+  const needsProjectTypes = uploadData?.status === "needs_project_types";
+
+  const classificationRequiredProjects = useMemo(
+    () => (needsClassification ? uniqueStrings([...knownProjects, ...pendingProjects]) : []),
+    [knownProjects, needsClassification, pendingProjects],
   );
 
-  const isClassificationComplete = useMemo(
-    () =>
-      projectsPreview.length > 0 &&
-      projectsPreview.every((projectName) => Boolean(classifications[projectName]) && Boolean(projectTypes[projectName])),
-    [classifications, projectTypes, projectsPreview],
+  const completedClassificationCount = useMemo(() => {
+    return projectsForFlow.filter((projectName) => {
+      const classificationComplete =
+        !needsClassification || !classificationRequiredProjects.includes(projectName) || Boolean(classifications[projectName]);
+      const typeComplete = !needsProjectTypes || !projectsNeedingType.includes(projectName) || Boolean(projectTypes[projectName]);
+      return classificationComplete && typeComplete;
+    }).length;
+  }, [
+    classificationRequiredProjects,
+    classifications,
+    needsClassification,
+    needsProjectTypes,
+    projectTypes,
+    projectsForFlow,
+    projectsNeedingType,
+  ]);
+
+  const dedupResolved = useMemo(
+    () => dedupCases.length === 0 || dedupCases.every((entry) => Boolean(dedupDecisions[entry.projectName])),
+    [dedupCases, dedupDecisions],
   );
 
-  const actionLabel = currentStage.key === "classification" ? "Finish" : "Next";
-  const actionDisabled = useMemo(() => {
+  const classificationReady = useMemo(() => {
+    if (!uploadData) return false;
+    let hasRequirement = false;
+
+    if (needsClassification) {
+      hasRequirement = true;
+      if (classificationRequiredProjects.length === 0) return false;
+      for (const projectName of classificationRequiredProjects) {
+        if (!classifications[projectName]) return false;
+      }
+    }
+
+    if (needsProjectTypes) {
+      hasRequirement = true;
+      if (projectsNeedingType.length === 0) return false;
+      for (const projectName of projectsNeedingType) {
+        if (!projectTypes[projectName]) return false;
+      }
+    }
+
+    return hasRequirement;
+  }, [
+    classificationRequiredProjects,
+    classifications,
+    needsClassification,
+    needsProjectTypes,
+    projectTypes,
+    projectsNeedingType,
+    uploadData,
+  ]);
+
+  const primaryLabel = useMemo(() => {
+    if (isSubmitting) {
+      if (currentStage.key === "upload") return "Uploading...";
+      return "Saving...";
+    }
+
+    if (currentStage.key === "classification") {
+      if (uploadData && !needsClassification && !needsProjectTypes) return "Completed";
+      return "Submit and Continue";
+    }
+
+    if (currentStage.key === "deduplication") return "Resolve and Continue";
+    return "Next";
+  }, [currentStage.key, isSubmitting, needsClassification, needsProjectTypes, uploadData]);
+
+  const primaryDisabled = useMemo(() => {
+    if (isSubmitting) return true;
+
     if (currentStage.key === "upload") return !selectedFile;
-    if (currentStage.key === "deduplication") return !isDedupComplete;
-    if (currentStage.key === "classification") return !isClassificationComplete;
-    return false;
-  }, [currentStage.key, isClassificationComplete, isDedupComplete, selectedFile]);
+    if (currentStage.key === "projects") return !uploadData || discoveredProjects.length === 0;
+    if (currentStage.key === "deduplication") return !uploadData || !dedupResolved;
+
+    if (!uploadData) return true;
+    if (!needsClassification && !needsProjectTypes) return true;
+    return !classificationReady;
+  }, [
+    classificationReady,
+    currentStage.key,
+    dedupResolved,
+    discoveredProjects.length,
+    isSubmitting,
+    needsClassification,
+    needsProjectTypes,
+    selectedFile,
+    uploadData,
+  ]);
 
   const steps = [
     { label: "1. Consent", status: "inactive" as const, to: "/upload/consent" },
@@ -170,57 +434,275 @@ export default function UploadPage() {
 
   useEffect(() => {
     setDedupCaseIndex(0);
-    setDedupDecisions({});
+    const existingDecisions = asStringMap(uploadState(uploadData).dedup_resolved);
+    setDedupDecisions((prev) => {
+      const next = { ...prev };
+      for (const [projectName, value] of Object.entries(existingDecisions)) {
+        if (value === "new_project" || value === "new_version" || value === "skip") {
+          next[projectName] = value;
+        }
+      }
+      return next;
+    });
 
-    setClassificationIndex(0);
+    const seededClassifications = {
+      ...asStringMap(autoAssignments),
+      ...asStringMap(getExistingClassifications(uploadData)),
+    };
+    setClassifications((prev) => {
+      const next = { ...prev };
+      for (const [projectName, value] of Object.entries(seededClassifications)) {
+        if (value === "individual" || value === "collaborative") {
+          next[projectName] = value;
+        }
+      }
+      return next;
+    });
+
+    const seededTypes = asStringMap(getExistingProjectTypes(uploadData));
+    setProjectTypes((prev) => {
+      const next = { ...prev };
+      for (const [projectName, value] of Object.entries(seededTypes)) {
+        if (value === "code" || value === "text") {
+          next[projectName] = value;
+        }
+      }
+      return next;
+    });
+  }, [autoAssignments, uploadData]);
+
+  useEffect(() => {
+    if (dedupCaseIndex <= dedupCases.length - 1) return;
+    setDedupCaseIndex(0);
+  }, [dedupCaseIndex, dedupCases.length]);
+
+  function resetFlowForNewFile(file: File | null) {
+    setSelectedFile(file);
+    setUploadData(null);
+    setSubmitError(null);
+    setSubmitInfo(null);
+    setDedupCaseIndex(0);
+    setDedupDecisions({});
     setClassifications({});
     setProjectTypes({});
-
     setStageIndex(0);
     setMaxUnlockedStageIndex(0);
-  }, [selectedFile]);
-
-  useEffect(() => {
-    if (dedupCaseIndex <= dedupPreview.length - 1) return;
-    setDedupCaseIndex(0);
-  }, [dedupCaseIndex, dedupPreview.length]);
-
-  useEffect(() => {
-    if (classificationIndex <= projectsPreview.length - 1) return;
-    setClassificationIndex(0);
-  }, [classificationIndex, projectsPreview.length]);
-
-  function onNext() {
-    if (actionDisabled) return;
-    if (currentStage.key === "classification") return;
-
-    const targetStageIndex = nextStageIndex(currentStage.key);
-    setStageIndex(targetStageIndex);
-    setMaxUnlockedStageIndex((prev) => Math.max(prev, targetStageIndex));
   }
 
   function onBack() {
-    if (!canGoBack) return;
+    if (!canGoBack || isSubmitting) return;
     setStageIndex((prev) => prev - 1);
+  }
+
+  function unlockAndGoTo(stageKey: UploadFlowStage) {
+    const idx = stageIndexByKey(stageKey);
+    setStageIndex(idx);
+    setMaxUnlockedStageIndex((prev) => Math.max(prev, idx));
+  }
+
+  function selectZipFile(file: File | null) {
+    if (!file) {
+      resetFlowForNewFile(null);
+      return;
+    }
+
+    if (!isZipFile(file)) {
+      resetFlowForNewFile(null);
+      setSubmitError("Only ZIP files are allowed.");
+      return;
+    }
+
+    resetFlowForNewFile(file);
+  }
+
+  async function handleUploadNext() {
+    if (!selectedFile) return;
+
+    if (!isZipFile(selectedFile)) {
+      setSubmitError("Only ZIP files are allowed.");
+      return;
+    }
+
+    setSubmitError(null);
+    setSubmitInfo(null);
+    setIsSubmitting(true);
+
+    try {
+      const response = await postProjectsUpload(selectedFile, selectedFile.name);
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message ?? "Upload failed.");
+      }
+
+      setUploadData(response.data);
+      unlockAndGoTo("projects");
+      setSubmitInfo(`Upload created (ID ${response.data.upload_id}). Similarity checks include previous uploads.`);
+    } catch (e: unknown) {
+      setSubmitError(e instanceof Error ? e.message : "Upload failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function handleProjectsNext() {
+    if (!uploadData) return;
+
+    if (discoveredProjects.length === 0) {
+      setSubmitError("No projects found. Upload another ZIP file to continue.");
+      return;
+    }
+
+    setSubmitError(null);
+    setSubmitInfo("Proceed to deduplication review.");
+    unlockAndGoTo("deduplication");
+  }
+
+  async function handleDedupNext() {
+    if (!uploadData) return;
+
+    setSubmitError(null);
+    setSubmitInfo(null);
+
+    if (dedupCases.length === 0 || uploadData.status !== "needs_dedup") {
+      unlockAndGoTo("classification");
+      return;
+    }
+
+    const decisions: Record<string, DedupDecision> = {};
+    for (const entry of dedupCases) {
+      const selected = dedupDecisions[entry.projectName];
+      if (!selected) {
+        setSubmitError(`Please choose a decision for ${entry.projectName}.`);
+        return;
+      }
+      decisions[entry.projectName] = selected;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await postUploadDedupResolve(uploadData.upload_id, decisions);
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message ?? "Failed to save deduplication decisions.");
+      }
+      setUploadData(response.data);
+      unlockAndGoTo("classification");
+      setSubmitInfo("Deduplication decisions saved.");
+    } catch (e: unknown) {
+      setSubmitError(e instanceof Error ? e.message : "Failed to save deduplication decisions.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleClassificationNext() {
+    if (!uploadData) return;
+
+    setSubmitError(null);
+    setSubmitInfo(null);
+
+    if (!needsClassification && !needsProjectTypes) {
+      setSubmitInfo("Classification step is complete.");
+      return;
+    }
+
+    let workingUpload = uploadData;
+    setIsSubmitting(true);
+
+    try {
+      if (workingUpload.status === "needs_classification") {
+        const targets = getKnownProjects(workingUpload);
+        const assignments: Record<string, ProjectClassification> = {};
+
+        if (targets.length === 0) {
+          throw new Error("No projects available for classification.");
+        }
+
+        for (const projectName of targets) {
+          const value = classifications[projectName];
+          if (value !== "individual" && value !== "collaborative") {
+            throw new Error(`Please choose a classification for ${projectName}.`);
+          }
+          assignments[projectName] = value;
+        }
+
+        const response = await postUploadClassifications(workingUpload.upload_id, assignments);
+        if (!response.success || !response.data) {
+          throw new Error(response.error?.message ?? "Failed to save classifications.");
+        }
+        workingUpload = response.data;
+      }
+
+      if (workingUpload.status === "needs_project_types") {
+        const neededProjects = getProjectsNeedingType(workingUpload);
+        const project_types: Record<string, ProjectType> = {};
+
+        for (const projectName of neededProjects) {
+          const value = projectTypes[projectName];
+          if (value !== "code" && value !== "text") {
+            throw new Error(`Please choose a project type for ${projectName}.`);
+          }
+          project_types[projectName] = value;
+        }
+
+        const response = await postUploadProjectTypes(workingUpload.upload_id, project_types);
+        if (!response.success || !response.data) {
+          throw new Error(response.error?.message ?? "Failed to save project types.");
+        }
+        workingUpload = response.data;
+      }
+
+      setUploadData(workingUpload);
+      if (workingUpload.status === "needs_classification" || workingUpload.status === "needs_project_types") {
+        setSubmitInfo("Please complete all required fields.");
+      } else {
+        setSubmitInfo("Classification step is complete.");
+      }
+    } catch (e: unknown) {
+      setSubmitError(e instanceof Error ? e.message : "Failed to save classification data.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function onPrimaryAction() {
+    if (primaryDisabled) return;
+
+    if (currentStage.key === "upload") {
+      await handleUploadNext();
+      return;
+    }
+
+    if (currentStage.key === "projects") {
+      handleProjectsNext();
+      return;
+    }
+
+    if (currentStage.key === "deduplication") {
+      await handleDedupNext();
+      return;
+    }
+
+    await handleClassificationNext();
   }
 
   function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
-    setSelectedFile(file);
+    selectZipFile(file);
+    if (file && !isZipFile(file)) {
+      event.target.value = "";
+    }
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setDragActive(false);
     const file = event.dataTransfer.files?.[0] ?? null;
-    if (!file) return;
-    setSelectedFile(file);
+    selectZipFile(file);
   }
 
   function renderUploadStage() {
     return (
       <div className="uploadStagePanel">
-        <h2 className="wizardPlaceholderTitle">Upload Placeholder</h2>
+        <h2 className="wizardPlaceholderTitle">Upload</h2>
 
         <div className="uploadIntroRow">
           <div className="uploadIntroText">
@@ -228,19 +710,8 @@ export default function UploadPage() {
               We treat each folder as one project. Optionally, organize projects under <code>individual/</code> and{" "}
               <code>collaborative/</code> before zipping.
             </p>
-            <p>
-              Upload accepts one ZIP file for now. Deduplication and classification are shown in later stages in this
-              flow.
-            </p>
-            <p className="uploadScenarioLine">
-              Mock scenario:{" "}
-              <strong>
-                {mockWizardData.scenario === "default" && "default"}
-                {mockWizardData.scenario === "no_dedup" && "no deduplication"}
-                {mockWizardData.scenario === "no_projects" && "no projects"}
-              </strong>
-              . Use filename containing <code>nodedup</code> or <code>empty</code> to switch behavior.
-            </p>
+            <p>Only ZIP files are accepted. Other formats are rejected.</p>
+            <p>After upload, projects are compared with previous uploads to detect duplicates or existing history.</p>
           </div>
 
           <div className="uploadStructureCard" aria-label="Upload structure example">
@@ -256,7 +727,7 @@ export default function UploadPage() {
         <input
           ref={uploadInputRef}
           type="file"
-          accept=".zip,application/zip"
+          accept=".zip,application/zip,application/x-zip-compressed"
           className="uploadFileInput"
           onChange={handleFileSelect}
         />
@@ -299,15 +770,20 @@ export default function UploadPage() {
     return (
       <div className="projectsStagePanel">
         <h2 className="wizardPlaceholderTitle">Projects</h2>
-        <p className="wizardPlaceholderText">Parsed projects from the uploaded ZIP are shown here before deduplication.</p>
+        <p className="wizardPlaceholderText">Parsed projects from this ZIP are shown before deduplication.</p>
 
-        {projectsPreview.length === 0 ? (
+        {discoveredProjects.length === 0 ? (
           <div className="uploadEmptyState">No projects found.</div>
         ) : (
           <ul className="projectsStageList">
-            {projectsPreview.map((projectName) => (
+            {discoveredProjects.map((projectName) => (
               <li key={projectName} className="projectsStageListItem">
-                {projectName}
+                <div>{projectName}</div>
+                {projectNotes[projectName]?.map((note) => (
+                  <div key={`${projectName}-${note}`} className="projectsStageListNote">
+                    {note}
+                  </div>
+                ))}
               </li>
             ))}
           </ul>
@@ -317,17 +793,36 @@ export default function UploadPage() {
   }
 
   function renderDedupStage() {
+    function dedupLabel(choice: DedupDecision): string {
+      if (choice === "new_project") return "New project";
+      if (choice === "new_version") return "New version";
+      return "Skip";
+    }
+
     return (
       <div className="dedupStagePanel">
         <h2 className="wizardPlaceholderTitle">Deduplication</h2>
         <p className="wizardPlaceholderText">Review similar projects one-by-one and choose how each should be treated.</p>
 
-        {dedupPreview.length === 0 ? (
-          <div className="uploadEmptyState">No deduplication found.</div>
+        {dedupCases.length === 0 ? (
+          savedDedupChoices.length === 0 ? (
+            <div className="uploadEmptyState">No deduplication found.</div>
+          ) : (
+            <div className="dedupSavedPanel">
+              <div className="dedupSavedTitle">Saved decisions</div>
+              <ul className="dedupSavedList">
+                {savedDedupChoices.map(([projectName, choice]) => (
+                  <li key={projectName} className="dedupSavedItem">
+                    <strong>{projectName}</strong>: {dedupLabel(choice)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
         ) : (
           <>
             <div className="dedupStageCaseCount">
-              Case {dedupCaseIndex + 1} of {dedupPreview.length}
+              Case {dedupCaseIndex + 1} of {dedupCases.length}
             </div>
 
             {currentDedupCase && (
@@ -337,9 +832,9 @@ export default function UploadPage() {
                 </div>
 
                 <div className="dedupStageBadges">
-                  <span className="dedupStageBadge">{currentDedupCase.similarityLabel}</span>
-                  <span className="dedupStageBadge">{currentDedupCase.pathLabel}</span>
-                  <span className="dedupStageBadge">{currentDedupCase.filesLabel}</span>
+                  {currentDedupCase.similarityLabel && <span className="dedupStageBadge">{currentDedupCase.similarityLabel}</span>}
+                  {currentDedupCase.pathLabel && <span className="dedupStageBadge">{currentDedupCase.pathLabel}</span>}
+                  {currentDedupCase.filesLabel && <span className="dedupStageBadge">{currentDedupCase.filesLabel}</span>}
                 </div>
 
                 <label className="dedupStageOption">
@@ -367,6 +862,30 @@ export default function UploadPage() {
                   />
                   <span>New version (links to existing history)</span>
                 </label>
+
+                <label className="dedupStageOption">
+                  <input
+                    type="radio"
+                    name={`dedup-${currentDedupCase.projectName}`}
+                    value="skip"
+                    checked={dedupDecisions[currentDedupCase.projectName] === "skip"}
+                    onChange={() => setDedupDecisions((prev) => ({ ...prev, [currentDedupCase.projectName]: "skip" }))}
+                  />
+                  <span>Skip this project</span>
+                </label>
+              </div>
+            )}
+
+            {savedDedupChoices.length > 0 && (
+              <div className="dedupSavedPanel">
+                <div className="dedupSavedTitle">Saved decisions</div>
+                <ul className="dedupSavedList">
+                  {savedDedupChoices.map(([projectName, choice]) => (
+                    <li key={projectName} className="dedupSavedItem">
+                      <strong>{projectName}</strong>: {dedupLabel(choice)}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -395,42 +914,46 @@ export default function UploadPage() {
   }
 
   function renderClassificationStage() {
+    function readableClassification(value: ProjectClassificationValue | undefined) {
+      if (value === "individual") return "Individual";
+      if (value === "collaborative") return "Collaborative";
+      return "";
+    }
+
     return (
       <div className="classificationStagePanel">
         <h2 className="wizardPlaceholderTitle">Classification and Type</h2>
-        <p className="wizardPlaceholderText">Review each project and choose classification and project type one-by-one.</p>
+        <p className="wizardPlaceholderText">Review all projects and choose classification and project type.</p>
 
-        {projectsPreview.length === 0 ? (
+        {projectsForFlow.length === 0 ? (
           <div className="uploadEmptyState">No projects found.</div>
         ) : (
           <>
             <div className="classificationStageMeta">
-              Project {classificationIndex + 1} of {projectsPreview.length}
-              <span className="classificationStageMetaDivider">|</span>
-              {completedClassificationCount} of {projectsPreview.length} completed
+              {completedClassificationCount} of {projectsForFlow.length} completed
             </div>
 
-            {currentClassificationProject && (
-              <div className="classificationStageTableWrap">
-                <table className="classificationStageTable">
-                  <thead>
-                    <tr>
-                      <th>Projects</th>
-                      <th>Classification</th>
-                      <th>Type</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>{currentClassificationProject}</td>
+            <div className="classificationStageTableWrap">
+              <table className="classificationStageTable">
+                <thead>
+                  <tr>
+                    <th>Projects</th>
+                    <th>Classification</th>
+                    <th>Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projectsForFlow.map((projectName) => (
+                    <tr key={projectName}>
+                      <td>{projectName}</td>
                       <td>
                         <select
                           className="classificationStageSelect"
-                          value={classifications[currentClassificationProject] ?? ""}
+                          value={classifications[projectName] ?? ""}
                           onChange={(event) =>
                             setClassifications((prev) => ({
                               ...prev,
-                              [currentClassificationProject]: event.target.value as ProjectClassificationValue,
+                              [projectName]: event.target.value as ProjectClassificationValue,
                             }))
                           }
                         >
@@ -438,15 +961,20 @@ export default function UploadPage() {
                           <option value="individual">Individual</option>
                           <option value="collaborative">Collaborative</option>
                         </select>
+                        {autoAssignments[projectName] && (
+                          <div className="classificationStageHint">
+                            Auto-detected: {readableClassification(classifications[projectName])}
+                          </div>
+                        )}
                       </td>
                       <td>
                         <select
                           className="classificationStageSelect"
-                          value={projectTypes[currentClassificationProject] ?? ""}
+                          value={projectTypes[projectName] ?? ""}
                           onChange={(event) =>
                             setProjectTypes((prev) => ({
                               ...prev,
-                              [currentClassificationProject]: event.target.value as ProjectTypeValue,
+                              [projectName]: event.target.value as ProjectTypeValue,
                             }))
                           }
                         >
@@ -454,30 +982,16 @@ export default function UploadPage() {
                           <option value="text">Text</option>
                           <option value="code">Code</option>
                         </select>
+                        {autoDetectedProjectTypes[projectName] && (
+                          <div className="classificationStageHint">
+                            Auto-detected: {autoDetectedProjectTypes[projectName] === "code" ? "Code" : "Text"}
+                          </div>
+                        )}
                       </td>
                     </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <div className="classificationStagePager">
-              <button
-                type="button"
-                className="classificationStagePagerBtn"
-                onClick={() => setClassificationIndex((prev) => prev - 1)}
-                disabled={!canGoToPreviousClassificationProject}
-              >
-                Previous project
-              </button>
-              <button
-                type="button"
-                className="classificationStagePagerBtn"
-                onClick={() => setClassificationIndex((prev) => prev + 1)}
-                disabled={!canGoToNextClassificationProject}
-              >
-                Next project
-              </button>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </>
         )}
@@ -493,13 +1007,7 @@ export default function UploadPage() {
   }
 
   return (
-    <UploadWizardShell
-      username={username}
-      steps={steps}
-      actionLabel={actionLabel}
-      onAction={onNext}
-      actionDisabled={actionDisabled}
-    >
+    <UploadWizardShell username={username} steps={steps} actionLabel="Next" showAction={false}>
       <div className="wizardPlaceholderCard">
         <div className="uploadStageTabs" role="tablist" aria-label="Upload flow stages">
           {STAGES.map((stage, idx) => {
@@ -525,11 +1033,18 @@ export default function UploadPage() {
           })}
         </div>
 
+        {submitError && <p className="error uploadStatusLine">{submitError}</p>}
+        {submitInfo && <p className="uploadInfoLine">{submitInfo}</p>}
+
         {renderStageBody()}
 
-        <div className="uploadStageNavRow">
-          <button type="button" className="uploadStageBackBtn" onClick={onBack} disabled={!canGoBack}>
+        <div className="uploadStageActionRow">
+          <button type="button" className="uploadStageBackBtn" onClick={onBack} disabled={!canGoBack || isSubmitting}>
             Back
+          </button>
+
+          <button type="button" className="uploadStagePrimaryBtn" onClick={onPrimaryAction} disabled={primaryDisabled}>
+            {primaryLabel}
           </button>
         </div>
       </div>
