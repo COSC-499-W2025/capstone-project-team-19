@@ -26,9 +26,9 @@ export default function ConsentPage() {
         if (!active) return;
         setInternalConsent(res.data?.internal_consent ?? null);
         setExternalConsent(res.data?.external_consent ?? null);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!active) return;
-        setStatusError(e?.message ?? "Failed to load consent status.");
+        setStatusError(e instanceof Error ? e.message : "Failed to load consent status.");
       } finally {
         if (active) setLoadingStatus(false);
       }
@@ -65,8 +65,8 @@ export default function ConsentPage() {
       }
 
       nav("/upload/upload");
-    } catch (e: any) {
-      setSubmitError(e?.message ?? "Failed to save consent choices.");
+    } catch (e: unknown) {
+      setSubmitError(e instanceof Error ? e.message : "Failed to save consent choices.");
     } finally {
       setSubmitting(false);
     }
