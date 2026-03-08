@@ -23,6 +23,59 @@ def _make_summary_json(project_name, project_type="code", project_mode="individu
 
 
 # ---------------------------------------------------------------------------
+# GET /portfolio
+# ---------------------------------------------------------------------------
+
+
+class TestPortfolioGet:
+
+    def test_requires_auth(self, client):
+        res = client.get("/portfolio")
+        assert res.status_code == 401
+
+    def test_nonexistent_user(self, client, auth_headers_nonexistent_user):
+        res = client.get("/portfolio", headers=auth_headers_nonexistent_user)
+        assert res.status_code == 404
+        body = res.json()
+        assert "not found" in body.get("detail", "").lower()
+
+    def test_empty_portfolio_returns_empty_list(self, client, auth_headers):
+        res = client.get("/portfolio", headers=auth_headers)
+        assert res.status_code == 200
+        body = res.json()
+        assert body["success"] is True
+        assert "data" in body
+        assert isinstance(body["data"]["items"], list)
+        assert body["data"]["items"] == []
+
+    def test_portfolio_returns_ranked_items(self, client, auth_headers, seed_conn):
+        # Seed several projects for user 1
+        for name in ["ProjA", "ProjB", "ProjC"]:
+            save_project_summary(
+                seed_conn,
+                1,
+                name,
+                _make_summary_json(name),
+            )
+        seed_conn.commit()
+
+        res = client.get("/portfolio", headers=auth_headers)
+        assert res.status_code == 200
+        body = res.json()
+        assert body["success"] is True
+
+        items = body["data"]["items"]
+        assert len(items) == 3
+
+        # Ranks should be consecutive starting at 1
+        ranks = [item["rank"] for item in items]
+        assert ranks == list(range(1, len(items) + 1))
+
+        names = {item["project_name"] for item in items}
+        assert names == {"ProjA", "ProjB", "ProjC"}
+
+
+# ---------------------------------------------------------------------------
 # POST /portfolio/generate
 # ---------------------------------------------------------------------------
 
