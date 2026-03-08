@@ -4,11 +4,17 @@ import { api } from '../client'
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 describe('api client', () => {
-    it('exports get and postJson methods', () => {
+    it('exports all expected client methods', () => {
         expect(api).toHaveProperty('get')
         expect(api).toHaveProperty('postJson')
+        expect(api).toHaveProperty('putJson')
+        expect(api).toHaveProperty('patchJson')
+        expect(api).toHaveProperty('post')
         expect(typeof api.get).toBe('function')
         expect(typeof api.postJson).toBe('function')
+        expect(typeof api.putJson).toBe('function')
+        expect(typeof api.patchJson).toBe('function')
+        expect(typeof api.post).toBe('function')
     })
 
     describe('request behavior', () => {
