@@ -885,8 +885,8 @@ def run_code_analysis(
     print(f"Frameworks detected in {project_name}: {frameworks}")
 
     if summary:
-        summary.languages = languages or []
-        summary.frameworks = frameworks or []
+        summary.languages = sorted(languages) if isinstance(languages, set) else (languages or [])
+        summary.frameworks = sorted(frameworks) if isinstance(frameworks, set) else (frameworks or [])
 
     parsed_files = _fetch_files(conn, user_id, project_name, only_text=False, version_key=version_key)
     if not parsed_files:
