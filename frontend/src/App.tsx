@@ -36,6 +36,24 @@ export default function App() {
           path="/upload"
           element={
             <RequireAuth>
+              <Navigate to="/upload/consent" replace />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/upload/consent"
+          element={
+            <RequireAuth>
+              <UploadPage />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/upload/upload"
+          element={
+            <RequireAuth>
               <UploadPage />
             </RequireAuth>
           }

@@ -15,7 +15,7 @@ export default function TopBar({ showNav = false, username }: Props) {
 
         {showNav && (
           <nav className="nav">
-            <NavLink className="navLink" to="/upload">
+            <NavLink className="navLink" to="/upload/consent">
               Upload
             </NavLink>
             <span className="navSep">|</span>
