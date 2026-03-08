@@ -34,6 +34,7 @@ class DateGroupDTO(BaseModel):
 class CurrentTotalDTO(BaseModel):
     cumulative_score: float
     projects: List[str]
+    skill_type: Optional[str] = None  # "text" | "code" | "unknown"
 
 class TimelineSummaryDTO(BaseModel):
     total_skills: int
