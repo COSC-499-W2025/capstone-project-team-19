@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 9 (Mar 2-8)](#t2-week-9-monday-2nd---sunday-8th-march)
 - [Week 6 & 8 (Feb 9 - Mar 1)](#t2-week-6--8-monday-9th-february---sunday-1st-march)
 - [Week 4 & 5 (Jan 26 – Feb 8)](#t2-week-4--5-monday-26th-january---sunday-8th-february)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-19th---sunday-25th-january)
@@ -261,3 +262,18 @@ I also started working on PR [500](https://github.com/COSC-499-W2025/capstone-pr
 **Reviewing / collaboration tasks:** I reviewed 9 PRs in total, ensuring the changes work as expected and requesting changes along with suggested solutions when necessary.
 
 **Plan for next week:** I will complete the frontend setup PR, and continue to implement the rest of the frontend features with the team.
+
+
+## (T2 Week 9) Monday 2nd - Sunday 8th March
+
+![Screenshot of tasks done from this sprint](./screenshots/Adara-Mar2-8.png)
+
+Week recap
+
+This sprint I focused on getting our frontend foundation in place and unblocking Milestone 3 UI work, along with a few key code reviews on teammate PRs. I opened three frontend PRs: [#500](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/500), [#522](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/522), and [#533](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/533). In [#500](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/500), I scaffolded the React + Vite frontend under `/frontend`, added `.env.local` support for `VITE_API_BASE_URL`, and verified end-to-end connectivity by calling `GET /health` and rendering the response in the UI. In [#522](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/522), I implemented the initial auth + home flow with Login/Register pages wired to `POST /auth/register` and `POST /auth/login`, stored the JWT in localStorage, and added a protected homepage + skeleton pages for Upload/Projects/Insights/Outputs to give the team a consistent routing and folder structure to build on. In [#533](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/533), I added initial frontend component tests for the auth + home flow using Vitest/React Testing Library, covering login success/failure, register validation (password mismatch), register success redirect, homepage username rendering from JWT, “Start analyzing” navigation, and clickable `resuME` logo navigation.
+
+**Testing / debugging tasks:** While building the frontend, I handled local dev integration issues (CORS setup for `http://localhost:5173`, Node/Vite setup quirks, and CSS overrides for the default Vite template). I also added/maintained frontend tests in [#533](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/533) to validate routing and token behavior (mocking auth API calls and simulating JWTs for authenticated routing).
+
+**Reviewing / collaboration tasks:** I reviewed and tested several teammate PRs. For backend work, I reviewed [#404](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/404) (GET `/portfolio/{id}`) by testing both portfolio-present and portfolio-missing cases and confirming outputs and tests were correct. For frontend work, I reviewed [#531](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/531) (frontend test stack) and flagged a missing `npm install` step in the README that caused `vitest: command not found`, plus suggested a higher-signal follow-up test for API client behavior (mocking `fetch` + auth header). I reviewed [#535](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/535) (Projects page + Project Detail) and tested thumbnails/date editing, then left codebase cleanup suggestions like moving thumbnail blob fetch into the shared API client, removing unused CSS, simplifying feedback display, and formatting skill names. I reviewed [#540](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/540) (upload wizard consent UI + tests) and confirmed the flow worked, then requested restoring missing API client methods (`putJson`, `patchJson`, `post`) to avoid regressions. Lastly, I reviewed [#545](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/545) (Outputs page resume flow) and validated resume create/view/delete/export end-to-end, leaving non-blocking UX/API notes (custom delete modal + fixing/removing unused `getPortfolio()`).
+
+**Plan for next week:** Continue building out the frontend page features (different modes, edit features, etc) and assisting any missing backend support.
