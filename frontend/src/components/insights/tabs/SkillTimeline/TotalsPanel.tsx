@@ -34,6 +34,7 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
 
             {sorted.map(([skillName, data]) => {
                 const pct = (data.cumulative_score / maxScore) * 100;
+                const skillType = data.skill_type;
 
                 return (
                 <div key={skillName} className="skill-totals-row">

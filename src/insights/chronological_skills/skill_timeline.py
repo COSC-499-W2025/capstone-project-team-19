@@ -8,22 +8,27 @@ def get_skill_timeline(conn, user_id):
     undated = []
 
     for row in rows:
-        # SQLite returns tuples: skill_name, level, score, project_name, actual_activity_date, recorded_at
+        # SQLite returns tuples: skill_name, level, score, project_name, actual_activity_date, recorded_at, project_type
         skill_name = row[0]
         level = row[1]
         score = row[2]
         project_name = row[3]
         actual_activity_date = row[4]  # end_date or last_commit_date, can be NULL
-        
+        project_type = row[6] if len(row) > 6 else None
+
         # Replace underscores with spaces in skill names for better readability
         formatted_skill_name = skill_name.replace("_", " ")
-        
+
+        # Map project_type to skill_type for code/text breakdown (text and code projects use disjoint skill sets)
+        skill_type = project_type if project_type in ("text", "code") else "unknown"
+
         event = {
             "skill_name": formatted_skill_name,
             "level": level,
             "score": score,
             "project_name": project_name,
-            "date": actual_activity_date
+            "date": actual_activity_date,
+            "skill_type": skill_type,
         }
 
         # Only use actual activity dates for "dated" list
