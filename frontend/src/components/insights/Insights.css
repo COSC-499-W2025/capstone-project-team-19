@@ -1,0 +1,151 @@
+.insights-container {
+    padding: 0px 24px 24px 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+
+/* Insights Sub NavBar */
+
+.insights-top {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    border-bottom: 2px solid black;
+}
+
+.insights-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.insights-subnav {
+    display: flex;
+    align-items: right;
+    gap: 10px;
+}
+
+.insights-tab {
+    padding: 18px 14px;
+    border-radius: 8px;
+    border: 2px solid black;
+    background: black;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.insights-tab:hover {
+    background: white;
+    border: 2px solid #b9adad;
+    color: black;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.insights-tab.active {
+    background: white;
+    border: 2px solid black;
+    color: black;
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-bottom: -2px;
+}
+
+.insights-content {
+    margin-top: 12px;
+}
+
+
+/* Ranked Projects */
+
+.ranked-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.ranked-title {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.ranked-toolbar-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.ranked-toolbar-actions button {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 2px solid black;
+    background: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ranked-toolbar-actions button:hover {
+    background: black;
+    color: white;
+}
+
+.ranked-toolbar-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.ranked-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    background: #d4caca;
+    border-radius: 6px;
+    padding: 12px;
+    align-items: center;
+    border: 1px solid #9f9494;
+}
+
+.ranked-row-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.ranked-row-actions button {
+    border: none;
+    background: white;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+}
+
+.ranked-row-actions button:hover {
+    background: #e6e6e6;
+}
+
+.ranked-row-actions button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.ranked-table {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ranked-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+    color: #444;
+    margin-left: 5px;
+    margin-right: 5px;
+}
