@@ -16,7 +16,7 @@ export default function HomePage() {
           <div className="heroTitle">Hello, {username}!</div>
           <div className="heroSubtitle">Welcome aboard! Let&apos;s turn your work into cool insights.</div>
 
-          <button className="primaryBtn" onClick={() => nav("/upload")}>
+          <button className="primaryBtn" onClick={() => nav("/upload/consent")}>
             Start analyzing
           </button>
         </div>
