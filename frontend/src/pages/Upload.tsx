@@ -299,10 +299,6 @@ function isZipFile(file: File): boolean {
   );
 }
 
-function stageIndexByKey(key: UploadFlowStage): number {
-  return STAGES.findIndex((stage) => stage.key === key);
-}
-
 export default function UploadPage() {
   const username = getUsername();
   const nav = useNavigate();
@@ -649,8 +645,8 @@ export default function UploadPage() {
     });
 
     const seededClassifications = {
-      ...asStringMap(autoAssignments),
-      ...asStringMap(getExistingClassifications(uploadData)),
+      ...autoAssignments,
+      ...getExistingClassifications(uploadData),
     };
     setClassifications((prev) => {
       const next = { ...prev };
@@ -662,7 +658,7 @@ export default function UploadPage() {
       return next;
     });
 
-    const seededTypes = asStringMap(getExistingProjectTypes(uploadData));
+    const seededTypes = getExistingProjectTypes(uploadData);
     setProjectTypes((prev) => {
       const next = { ...prev };
       for (const [projectName, value] of Object.entries(seededTypes)) {
@@ -716,11 +712,6 @@ export default function UploadPage() {
     else await handleClassificationNext();
   }
 
-  function unlockAndGoTo(stageKey: UploadFlowStage) {
-    const idx = stageIndexByKey(stageKey);
-    setStageIndex(idx);
-  }
-
   function selectZipFile(file: File | null) {
     if (!file) {
       resetFlowForNewFile(null);
@@ -754,7 +745,7 @@ export default function UploadPage() {
       }
 
       setUploadData(response.data);
-      unlockAndGoTo("projects");
+      setStageIndex(STAGES.findIndex((stage) => stage.key === "projects"));
       return true;
     } catch (e: unknown) {
       setSubmitError(e instanceof Error ? e.message : "Upload failed.");
@@ -773,7 +764,7 @@ export default function UploadPage() {
     }
 
     setSubmitError(null);
-    unlockAndGoTo("deduplication");
+    setStageIndex(STAGES.findIndex((stage) => stage.key === "deduplication"));
     return true;
   }
 
@@ -783,7 +774,7 @@ export default function UploadPage() {
     setSubmitError(null);
 
     if (visibleDedupCases.length === 0) {
-      unlockAndGoTo("classification");
+      setStageIndex(STAGES.findIndex((stage) => stage.key === "classification"));
       return true;
     }
 
@@ -798,7 +789,7 @@ export default function UploadPage() {
     }
 
     if (uploadData.status !== "needs_dedup") {
-      unlockAndGoTo("classification");
+      setStageIndex(STAGES.findIndex((stage) => stage.key === "classification"));
       return true;
     }
 
@@ -809,7 +800,7 @@ export default function UploadPage() {
         throw new Error(response.error?.message ?? "Failed to save deduplication decisions.");
       }
       setUploadData(response.data);
-      unlockAndGoTo("classification");
+      setStageIndex(STAGES.findIndex((stage) => stage.key === "classification"));
       return true;
     } catch (e: unknown) {
       setSubmitError(e instanceof Error ? e.message : "Failed to save deduplication decisions.");
@@ -842,7 +833,7 @@ export default function UploadPage() {
           throw new Error("No projects available for classification.");
         }
 
-        const existingAssignments = asStringMap(getExistingClassifications(workingUpload));
+        const existingAssignments = getExistingClassifications(workingUpload);
         for (const projectName of targets) {
           const linkedSource = newVersionSourceByTarget[projectName];
           const value =
@@ -872,7 +863,7 @@ export default function UploadPage() {
         const requiredProjectsNeedingType = getProjectsNeedingType(workingUpload);
         const typeTargets = shouldResubmitCompleted ? getKnownProjects(workingUpload) : requiredProjectsNeedingType;
         const project_types: Record<string, ProjectType> = {};
-        const existingTypes = asStringMap(getExistingProjectTypes(workingUpload));
+        const existingTypes = getExistingProjectTypes(workingUpload);
 
         for (const projectName of typeTargets) {
           const linkedSource = newVersionSourceByTarget[projectName];
