@@ -49,6 +49,10 @@ export default function UploadPage() {
   const currentStage = useMemo(() => STAGES[stageIndex], [stageIndex]);
   const canGoBack = stageIndex > 0;
   const canGoNext = stageIndex < STAGES.length - 1;
+  const projectsPreview = useMemo(() => {
+    if (!selectedFile) return [];
+    return ["ProjectsA", "ProjectsB", "ProjectsC"];
+  }, [selectedFile]);
 
   function onNext() {
     if (!canGoNext) return;
@@ -82,6 +86,29 @@ export default function UploadPage() {
   }
 
   function renderStageBody() {
+    if (currentStage.key === "projects") {
+      return (
+        <div className="projectsStagePanel">
+          <h2 className="wizardPlaceholderTitle">Projects</h2>
+          <p className="wizardPlaceholderText">
+            Parsed projects from the uploaded ZIP are shown here before deduplication.
+          </p>
+
+          {projectsPreview.length === 0 ? (
+            <div className="uploadEmptyState">No projects found.</div>
+          ) : (
+            <ul className="projectsStageList">
+              {projectsPreview.map((projectName) => (
+                <li key={projectName} className="projectsStageListItem">
+                  {projectName}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      );
+    }
+
     if (currentStage.key !== "upload") {
       return (
         <>
