@@ -95,6 +95,12 @@ export function patchProjectDates(
     .then((r) => r.data);
 }
 
+export function resetProjectDates(projectId: number): Promise<ProjectDatesItem> {
+  return api
+    .delete<{ success: boolean; data: ProjectDatesItem }>(`/projects/${projectId}/dates`)
+    .then((r) => r.data);
+}
+
 export function getProjectFeedback(projectId: number): Promise<FeedbackItem[]> {
   return api
     .get<{ success: boolean; data: { project_id: number; project_name: string; feedback: FeedbackItem[] } }>(

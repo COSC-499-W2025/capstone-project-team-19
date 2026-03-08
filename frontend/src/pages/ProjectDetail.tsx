@@ -11,6 +11,7 @@ import {
   getProjectDates,
   getProjectFeedback,
   patchProjectDates,
+  resetProjectDates,
   uploadThumbnail,
   type FeedbackItem,
   type ProjectDatesItem,
@@ -128,6 +129,22 @@ export default function ProjectDetailPage() {
     setEndDate(dates?.end_date ?? "");
     setDatesError(null);
     setEditingDates(false);
+  }
+
+  async function handleResetDates() {
+    setSavingDates(true);
+    setDatesError(null);
+    try {
+      const updated = await resetProjectDates(projectId);
+      setDates(updated);
+      setStartDate(updated.start_date ?? "");
+      setEndDate(updated.end_date ?? "");
+      setEditingDates(false);
+    } catch (e: unknown) {
+      setDatesError(e instanceof Error ? e.message : "Reset failed");
+    } finally {
+      setSavingDates(false);
+    }
   }
 
   async function handleDeleteProject() {
@@ -289,6 +306,9 @@ export default function ProjectDetailPage() {
                   {savingDates ? "Saving…" : "Save"}
                 </button>
                 <button className="btn" onClick={handleCancelDates} disabled={savingDates}>Cancel</button>
+                {dates?.source === "MANUAL" && (
+                  <button className="btn" onClick={handleResetDates} disabled={savingDates}>Reset to auto</button>
+                )}
               </div>
             </div>
           )}
