@@ -396,7 +396,7 @@ def submit_classifications(conn: sqlite3.Connection, user_id: int, upload_id: in
     if not upload or upload["user_id"] != user_id:
         raise HTTPException(status_code=404, detail="Upload not found")
 
-    if upload["status"] not in {"needs_classification", "parsed"}:
+    if upload["status"] not in {"needs_classification", "parsed", "needs_project_types", "needs_file_roles", "needs_summaries"}:
         raise HTTPException(status_code=409, detail=f"Upload not ready for classifications (status={upload['status']})")
 
     if not assignments:
@@ -466,20 +466,25 @@ def submit_project_types(conn: sqlite3.Connection, user_id: int, upload_id: int,
         raise HTTPException(status_code=404, detail="Upload not found")
 
     state = upload.get("state") or {}
+    layout = state.get("layout") or {}
+    known_projects = _known_projects_from_layout(layout)
+    if not known_projects:
+        raise HTTPException(status_code=409, detail="Upload layout missing; parse step not completed")
+
     mixed = set(state.get("project_types_mixed") or [])
     unknown = set(state.get("project_types_unknown") or [])
 
-    # user is choosing types for mixed/unknown
+    # user is choosing types for mixed/unknown; after completion we also allow overwrite for known projects.
     needs_choice = mixed | unknown
-    if not needs_choice:
-        raise HTTPException(status_code=409, detail="No projects require type selection")
+    if not project_types:
+        raise HTTPException(status_code=422, detail="project_types cannot be empty")
 
     allowed = {"code", "text"}
     bad_vals = {k: v for k, v in project_types.items() if v not in allowed}
     if bad_vals:
         raise HTTPException(status_code=422, detail={"invalid_project_types": bad_vals})
 
-    extra = set(project_types.keys()) - needs_choice
+    extra = set(project_types.keys()) - known_projects
     missing = needs_choice - set(project_types.keys())
     if extra:
         raise HTTPException(status_code=422, detail={"unknown_projects": sorted(extra)})
@@ -500,17 +505,31 @@ def submit_project_types(conn: sqlite3.Connection, user_id: int, upload_id: int,
         # Validate via update helper (and update by project_key).
         update_project_metadata(conn, pk, project_type=ptype)
 
+    remaining_mixed = sorted([name for name in mixed if name not in project_types])
+    remaining_unknown = sorted([name for name in unknown if name not in project_types])
+    existing_manual = state.get("project_types_manual") or {}
+    if not isinstance(existing_manual, dict):
+        existing_manual = {}
+    merged_manual = {**existing_manual, **project_types}
+
+    if remaining_mixed or remaining_unknown:
+        next_status = "needs_project_types"
+    elif upload.get("status") == "needs_summaries":
+        next_status = "needs_summaries"
+    else:
+        next_status = "needs_file_roles"
+
     new_state = patch_upload_state(
         conn,
         upload_id,
         patch={
-            "project_types_manual": project_types,
-            "project_types_mixed": [],
-            "project_types_unknown": [],
+            "project_types_manual": merged_manual,
+            "project_types_mixed": remaining_mixed,
+            "project_types_unknown": remaining_unknown,
         },
-        status="needs_file_roles",
+        status=next_status,
     )
-    return {"upload_id": upload_id, "status": "needs_file_roles", "zip_name": upload.get("zip_name"), "state": new_state}
+    return {"upload_id": upload_id, "status": next_status, "zip_name": upload.get("zip_name"), "state": new_state}
 
 
 def _known_projects_from_layout(layout: dict) -> set[str]:

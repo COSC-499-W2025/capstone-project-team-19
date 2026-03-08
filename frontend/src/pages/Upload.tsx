@@ -195,17 +195,39 @@ function getExistingProjectTypes(upload: UploadRecord | null): Record<string, st
 }
 
 function getAutoDetectedProjectTypes(upload: UploadRecord | null): Record<string, ProjectType> {
-  const raw = asStringMap(uploadState(upload).project_types_auto);
+  const state = uploadState(upload);
+  const raw = asStringMap(state.project_types_auto);
   const out: Record<string, ProjectType> = {};
   for (const [projectName, value] of Object.entries(raw)) {
     if (value === "code" || value === "text") out[projectName] = value;
   }
+
+  const index = asRecord(state.project_filetype_index);
+  for (const [projectName, rawFlags] of Object.entries(index)) {
+    if (out[projectName]) continue;
+    const flags = asRecord(rawFlags);
+    const hasCode = Boolean(flags.has_code);
+    const hasText = Boolean(flags.has_text);
+    if (hasCode && !hasText) out[projectName] = "code";
+    else if (!hasCode && hasText) out[projectName] = "text";
+  }
+
   return out;
 }
 
 function getProjectsNeedingType(upload: UploadRecord | null): string[] {
   const state = uploadState(upload);
   return uniqueStrings([...asStringArray(state.project_types_mixed), ...asStringArray(state.project_types_unknown)]);
+}
+
+function toProjectClassificationValue(value: string | undefined): ProjectClassificationValue {
+  if (value === "individual" || value === "collaborative") return value;
+  return "";
+}
+
+function toProjectTypeValue(value: string | undefined): ProjectTypeValue {
+  if (value === "code" || value === "text") return value;
+  return "";
 }
 
 function getDedupCases(upload: UploadRecord | null): DedupCase[] {
@@ -300,6 +322,7 @@ export default function UploadPage() {
 
   const [classifications, setClassifications] = useState<Record<string, ProjectClassificationValue>>({});
   const [projectTypes, setProjectTypes] = useState<Record<string, ProjectTypeValue>>({});
+  const [lastClassificationSubmitSignature, setLastClassificationSubmitSignature] = useState<string | null>(null);
 
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -322,6 +345,8 @@ export default function UploadPage() {
   const projectsNeedingType = useMemo(() => getProjectsNeedingType(uploadData), [uploadData]);
   const autoAssignments = useMemo(() => getAutoAssignments(uploadData), [uploadData]);
   const autoDetectedProjectTypes = useMemo(() => getAutoDetectedProjectTypes(uploadData), [uploadData]);
+  const existingClassifications = useMemo(() => getExistingClassifications(uploadData), [uploadData]);
+  const existingProjectTypes = useMemo(() => getExistingProjectTypes(uploadData), [uploadData]);
 
   const dedupCases = useMemo(() => getDedupCases(uploadData), [uploadData]);
   const visibleDedupCases = dedupCases.length > 0 ? dedupCases : persistedDedupCases;
@@ -356,12 +381,65 @@ export default function UploadPage() {
     [newVersionSourceByTarget, projectsForFlow],
   );
 
+  const classificationCompletionSignature = useMemo(() => {
+    const rows = classificationProjectsForDisplay.map((projectName) => [
+      projectName,
+      toProjectClassificationValue(
+        classifications[projectName] ?? autoAssignments[projectName] ?? existingClassifications[projectName],
+      ),
+      toProjectTypeValue(
+        projectTypes[projectName] ?? autoDetectedProjectTypes[projectName] ?? existingProjectTypes[projectName],
+      ),
+    ]);
+    const dedup = visibleDedupCases.map((entry) => [
+      entry.projectName,
+      entry.existingProjectName,
+      dedupDecisions[entry.projectName] ?? "",
+    ]);
+    return JSON.stringify({ rows, dedup });
+  }, [
+    autoAssignments,
+    autoDetectedProjectTypes,
+    classificationProjectsForDisplay,
+    classifications,
+    dedupDecisions,
+    existingClassifications,
+    existingProjectTypes,
+    projectTypes,
+    visibleDedupCases,
+  ]);
+
+  const classificationDirtySinceSubmit = useMemo(
+    () =>
+      lastClassificationSubmitSignature !== null &&
+      classificationCompletionSignature !== lastClassificationSubmitSignature,
+    [classificationCompletionSignature, lastClassificationSubmitSignature],
+  );
+
   const completedClassificationCount = useMemo(
     () =>
       classificationProjectsForDisplay.filter(
-        (projectName) => Boolean(classifications[projectName]) && Boolean(projectTypes[projectName]),
+        (projectName) =>
+          Boolean(
+            toProjectClassificationValue(
+              classifications[projectName] ?? autoAssignments[projectName] ?? existingClassifications[projectName],
+            ),
+          ) &&
+          Boolean(
+            toProjectTypeValue(
+              projectTypes[projectName] ?? autoDetectedProjectTypes[projectName] ?? existingProjectTypes[projectName],
+            ),
+          ),
       ).length,
-    [classificationProjectsForDisplay, classifications, projectTypes],
+    [
+      autoAssignments,
+      autoDetectedProjectTypes,
+      classificationProjectsForDisplay,
+      classifications,
+      existingClassifications,
+      existingProjectTypes,
+      projectTypes,
+    ],
   );
 
   const dedupResolved = useMemo(
@@ -373,9 +451,27 @@ export default function UploadPage() {
     () =>
       classificationProjectsForDisplay.length > 0 &&
       classificationProjectsForDisplay.every(
-        (projectName) => Boolean(classifications[projectName]) && Boolean(projectTypes[projectName]),
+        (projectName) =>
+          Boolean(
+            toProjectClassificationValue(
+              classifications[projectName] ?? autoAssignments[projectName] ?? existingClassifications[projectName],
+            ),
+          ) &&
+          Boolean(
+            toProjectTypeValue(
+              projectTypes[projectName] ?? autoDetectedProjectTypes[projectName] ?? existingProjectTypes[projectName],
+            ),
+          ),
       ),
-    [classificationProjectsForDisplay, classifications, projectTypes],
+    [
+      autoAssignments,
+      autoDetectedProjectTypes,
+      classificationProjectsForDisplay,
+      classifications,
+      existingClassifications,
+      existingProjectTypes,
+      projectTypes,
+    ],
   );
 
   const classificationReady = useMemo(() => {
@@ -387,7 +483,17 @@ export default function UploadPage() {
       if (knownProjects.length === 0) return false;
       for (const projectName of knownProjects) {
         const linkedSource = newVersionSourceByTarget[projectName];
-        const value = classifications[projectName] || (linkedSource ? classifications[linkedSource] : "");
+        const value =
+          toProjectClassificationValue(
+            classifications[projectName] ?? autoAssignments[projectName] ?? existingClassifications[projectName],
+          ) ||
+          (linkedSource
+            ? toProjectClassificationValue(
+                classifications[linkedSource] ??
+                  autoAssignments[linkedSource] ??
+                  existingClassifications[linkedSource],
+              )
+            : "");
         if (!value) return false;
       }
     }
@@ -397,7 +503,17 @@ export default function UploadPage() {
       if (projectsNeedingType.length === 0) return false;
       for (const projectName of projectsNeedingType) {
         const linkedSource = newVersionSourceByTarget[projectName];
-        const value = projectTypes[projectName] || (linkedSource ? projectTypes[linkedSource] : "");
+        const value =
+          toProjectTypeValue(
+            projectTypes[projectName] ?? autoDetectedProjectTypes[projectName] ?? existingProjectTypes[projectName],
+          ) ||
+          (linkedSource
+            ? toProjectTypeValue(
+                projectTypes[linkedSource] ??
+                  autoDetectedProjectTypes[linkedSource] ??
+                  existingProjectTypes[linkedSource],
+              )
+            : "");
         if (!value) return false;
       }
     }
@@ -409,10 +525,21 @@ export default function UploadPage() {
     needsClassification,
     needsProjectTypes,
     newVersionSourceByTarget,
+    autoAssignments,
+    autoDetectedProjectTypes,
+    existingClassifications,
+    existingProjectTypes,
     projectTypes,
     projectsNeedingType,
     uploadData,
   ]);
+
+  const classificationStageCompleted =
+    Boolean(uploadData) &&
+    !needsClassification &&
+    !needsProjectTypes &&
+    allClassificationRowsComplete &&
+    !classificationDirtySinceSubmit;
 
   const primaryLabel = useMemo(() => {
     if (isSubmitting) {
@@ -421,13 +548,22 @@ export default function UploadPage() {
     }
 
     if (currentStage.key === "classification") {
-      if (uploadData && !needsClassification && !needsProjectTypes && allClassificationRowsComplete) return "Completed";
+      if (classificationStageCompleted) return "Completed";
+      if (uploadData && !needsClassification && !needsProjectTypes && classificationDirtySinceSubmit) return "Resubmit";
       return "Submit and Continue";
     }
 
     if (currentStage.key === "deduplication") return "Resolve and Continue";
     return "Next";
-  }, [allClassificationRowsComplete, currentStage.key, isSubmitting, needsClassification, needsProjectTypes, uploadData]);
+  }, [
+    classificationDirtySinceSubmit,
+    classificationStageCompleted,
+    currentStage.key,
+    isSubmitting,
+    needsClassification,
+    needsProjectTypes,
+    uploadData,
+  ]);
 
   const primaryDisabled = useMemo(() => {
     if (isSubmitting) return true;
@@ -438,11 +574,14 @@ export default function UploadPage() {
 
     if (!uploadData) return true;
     if (!allClassificationRowsComplete) return true;
-    if (!needsClassification && !needsProjectTypes) return false;
+    if (classificationStageCompleted) return true;
+    if (!needsClassification && !needsProjectTypes) return !classificationDirtySinceSubmit;
     return !classificationReady;
   }, [
     allClassificationRowsComplete,
+    classificationDirtySinceSubmit,
     classificationReady,
+    classificationStageCompleted,
     currentStage.key,
     dedupResolved,
     discoveredProjects.length,
@@ -477,6 +616,24 @@ export default function UploadPage() {
       setPersistedDedupCases(dedupCases);
     }
   }, [dedupCases]);
+
+  useEffect(() => {
+    if (!uploadData) {
+      setLastClassificationSubmitSignature(null);
+      return;
+    }
+    if (lastClassificationSubmitSignature !== null) return;
+    if (!needsClassification && !needsProjectTypes && allClassificationRowsComplete) {
+      setLastClassificationSubmitSignature(classificationCompletionSignature);
+    }
+  }, [
+    allClassificationRowsComplete,
+    classificationCompletionSignature,
+    lastClassificationSubmitSignature,
+    needsClassification,
+    needsProjectTypes,
+    uploadData,
+  ]);
 
   useEffect(() => {
     setDedupCaseIndex(0);
@@ -526,6 +683,7 @@ export default function UploadPage() {
     setSelectedFile(file);
     setUploadData(null);
     setSubmitError(null);
+    setLastClassificationSubmitSignature(null);
     setDedupCaseIndex(0);
     setDedupDecisions({});
     setPersistedDedupCases([]);
@@ -666,7 +824,8 @@ export default function UploadPage() {
 
     setSubmitError(null);
 
-    if (!needsClassification && !needsProjectTypes) {
+    const shouldResubmitCompleted = !needsClassification && !needsProjectTypes && classificationDirtySinceSubmit;
+    if (!needsClassification && !needsProjectTypes && !shouldResubmitCompleted) {
       return true;
     }
 
@@ -674,7 +833,8 @@ export default function UploadPage() {
     setIsSubmitting(true);
 
     try {
-      if (workingUpload.status === "needs_classification") {
+      const shouldSubmitClassifications = workingUpload.status === "needs_classification" || shouldResubmitCompleted;
+      if (shouldSubmitClassifications) {
         const targets = getKnownProjects(workingUpload);
         const assignments: Record<string, ProjectClassification> = {};
 
@@ -682,9 +842,18 @@ export default function UploadPage() {
           throw new Error("No projects available for classification.");
         }
 
+        const existingAssignments = asStringMap(getExistingClassifications(workingUpload));
         for (const projectName of targets) {
           const linkedSource = newVersionSourceByTarget[projectName];
-          const value = classifications[projectName] || (linkedSource ? classifications[linkedSource] : "");
+          const value =
+            toProjectClassificationValue(
+              classifications[projectName] ?? autoAssignments[projectName] ?? existingAssignments[projectName],
+            ) ||
+            (linkedSource
+              ? toProjectClassificationValue(
+                  classifications[linkedSource] ?? autoAssignments[linkedSource] ?? existingAssignments[linkedSource],
+                )
+              : "");
           if (value !== "individual" && value !== "collaborative") {
             throw new Error(`Please choose a classification for ${projectName}.`);
           }
@@ -698,17 +867,34 @@ export default function UploadPage() {
         workingUpload = response.data;
       }
 
-      if (workingUpload.status === "needs_project_types") {
-        const neededProjects = getProjectsNeedingType(workingUpload);
+      const shouldSubmitProjectTypes = workingUpload.status === "needs_project_types" || shouldResubmitCompleted;
+      if (shouldSubmitProjectTypes) {
+        const requiredProjectsNeedingType = getProjectsNeedingType(workingUpload);
+        const typeTargets = shouldResubmitCompleted ? getKnownProjects(workingUpload) : requiredProjectsNeedingType;
         const project_types: Record<string, ProjectType> = {};
+        const existingTypes = asStringMap(getExistingProjectTypes(workingUpload));
 
-        for (const projectName of neededProjects) {
+        for (const projectName of typeTargets) {
           const linkedSource = newVersionSourceByTarget[projectName];
-          const value = projectTypes[projectName] || (linkedSource ? projectTypes[linkedSource] : "");
+          const value =
+            toProjectTypeValue(
+              projectTypes[projectName] ?? autoDetectedProjectTypes[projectName] ?? existingTypes[projectName],
+            ) ||
+            (linkedSource
+              ? toProjectTypeValue(
+                  projectTypes[linkedSource] ?? autoDetectedProjectTypes[linkedSource] ?? existingTypes[linkedSource],
+                )
+              : "");
           if (value !== "code" && value !== "text") {
             throw new Error(`Please choose a project type for ${projectName}.`);
           }
           project_types[projectName] = value;
+        }
+
+        for (const projectName of requiredProjectsNeedingType) {
+          if (!project_types[projectName]) {
+            throw new Error(`Please choose a project type for ${projectName}.`);
+          }
         }
 
         const response = await postUploadProjectTypes(workingUpload.upload_id, project_types);
@@ -719,6 +905,7 @@ export default function UploadPage() {
       }
 
       setUploadData(workingUpload);
+      setLastClassificationSubmitSignature(classificationCompletionSignature);
       return true;
     } catch (e: unknown) {
       setSubmitError(e instanceof Error ? e.message : "Failed to save classification data.");
@@ -982,12 +1169,6 @@ export default function UploadPage() {
   }
 
   function renderClassificationStage() {
-    function readableClassification(value: ProjectClassificationValue | undefined) {
-      if (value === "individual") return "Individual";
-      if (value === "collaborative") return "Collaborative";
-      return "";
-    }
-
     return (
       <div className="classificationStagePanel">
         <h2 className="wizardPlaceholderTitle">Classification and Type</h2>
@@ -1017,7 +1198,9 @@ export default function UploadPage() {
                       <td>
                         <select
                           className="classificationStageSelect"
-                          value={classifications[projectName] ?? ""}
+                          value={toProjectClassificationValue(
+                            classifications[projectName] ?? autoAssignments[projectName] ?? existingClassifications[projectName],
+                          )}
                           onChange={(event) =>
                             setClassifications((prev) => ({
                               ...prev,
@@ -1029,16 +1212,13 @@ export default function UploadPage() {
                           <option value="individual">Individual</option>
                           <option value="collaborative">Collaborative</option>
                         </select>
-                        {autoAssignments[projectName] && (
-                          <div className="classificationStageHint">
-                            Auto-detected: {readableClassification(classifications[projectName])}
-                          </div>
-                        )}
                       </td>
                       <td>
                         <select
                           className="classificationStageSelect"
-                          value={projectTypes[projectName] ?? ""}
+                          value={toProjectTypeValue(
+                            projectTypes[projectName] ?? autoDetectedProjectTypes[projectName] ?? existingProjectTypes[projectName],
+                          )}
                           onChange={(event) =>
                             setProjectTypes((prev) => ({
                               ...prev,
@@ -1050,11 +1230,6 @@ export default function UploadPage() {
                           <option value="text">Text</option>
                           <option value="code">Code</option>
                         </select>
-                        {autoDetectedProjectTypes[projectName] && (
-                          <div className="classificationStageHint">
-                            Auto-detected: {autoDetectedProjectTypes[projectName] === "code" ? "Code" : "Text"}
-                          </div>
-                        )}
                       </td>
                     </tr>
                   ))}
@@ -1120,7 +1295,12 @@ export default function UploadPage() {
             Back
           </button>
 
-          <button type="button" className="uploadStagePrimaryBtn" onClick={onPrimaryAction} disabled={primaryDisabled}>
+          <button
+            type="button"
+            className={`uploadStagePrimaryBtn${classificationStageCompleted ? " uploadStagePrimaryBtn--completed" : ""}`}
+            onClick={onPrimaryAction}
+            disabled={primaryDisabled}
+          >
             {primaryLabel}
           </button>
         </div>
