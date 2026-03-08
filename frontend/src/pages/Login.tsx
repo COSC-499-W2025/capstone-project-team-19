@@ -21,8 +21,8 @@ export default function LoginPage() {
       const tok = await login(username, password);
       tokenStore.set(tok.access_token);
       nav("/", { replace: true });
-    } catch (e: any) {
-      setErr(e?.message ?? "Login failed");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Login failed");
     } finally {
       setLoading(false);
     }
