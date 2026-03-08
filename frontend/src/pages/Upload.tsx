@@ -3,6 +3,7 @@ import type { ChangeEvent, DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { getUsername } from "../auth/user";
 import UploadWizardShell from "../components/UploadWizardShell";
+import "./Upload.css";
 import {
   postProjectsUpload,
   postUploadClassifications,
@@ -291,7 +292,6 @@ export default function UploadPage() {
 
   const [uploadData, setUploadData] = useState<UploadRecord | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitInfo, setSubmitInfo] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [dedupCaseIndex, setDedupCaseIndex] = useState(0);
@@ -526,7 +526,6 @@ export default function UploadPage() {
     setSelectedFile(file);
     setUploadData(null);
     setSubmitError(null);
-    setSubmitInfo(null);
     setDedupCaseIndex(0);
     setDedupDecisions({});
     setPersistedDedupCases([]);
@@ -540,10 +539,23 @@ export default function UploadPage() {
     setStageIndex((prev) => prev - 1);
   }
 
-  function onProgressStepClick(targetIndex: number) {
+  async function onProgressStepClick(targetIndex: number) {
     if (isSubmitting) return;
-    if (targetIndex > stageIndex) return;
-    setStageIndex(targetIndex);
+
+    if (targetIndex <= stageIndex) {
+      setStageIndex(targetIndex);
+      return;
+    }
+
+    if (targetIndex !== stageIndex + 1) return;
+
+    const stageKey = STAGES[stageIndex]?.key;
+    if (!stageKey) return;
+
+    if (stageKey === "upload") await handleUploadNext();
+    else if (stageKey === "projects") handleProjectsNext();
+    else if (stageKey === "deduplication") await handleDedupNext();
+    else await handleClassificationNext();
   }
 
   function unlockAndGoTo(stageKey: UploadFlowStage) {
@@ -566,16 +578,15 @@ export default function UploadPage() {
     resetFlowForNewFile(file);
   }
 
-  async function handleUploadNext() {
-    if (!selectedFile) return;
+  async function handleUploadNext(): Promise<boolean> {
+    if (!selectedFile) return false;
 
     if (!isZipFile(selectedFile)) {
       setSubmitError("Only ZIP files are allowed.");
-      return;
+      return false;
     }
 
     setSubmitError(null);
-    setSubmitInfo(null);
     setIsSubmitting(true);
 
     try {
@@ -586,34 +597,36 @@ export default function UploadPage() {
 
       setUploadData(response.data);
       unlockAndGoTo("projects");
+      return true;
     } catch (e: unknown) {
       setSubmitError(e instanceof Error ? e.message : "Upload failed.");
+      return false;
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  function handleProjectsNext() {
-    if (!uploadData) return;
+  function handleProjectsNext(): boolean {
+    if (!uploadData) return false;
 
     if (discoveredProjects.length === 0) {
       setSubmitError("No projects found. Upload another ZIP file to continue.");
-      return;
+      return false;
     }
 
     setSubmitError(null);
     unlockAndGoTo("deduplication");
+    return true;
   }
 
-  async function handleDedupNext() {
-    if (!uploadData) return;
+  async function handleDedupNext(): Promise<boolean> {
+    if (!uploadData) return false;
 
     setSubmitError(null);
-    setSubmitInfo(null);
 
     if (visibleDedupCases.length === 0) {
       unlockAndGoTo("classification");
-      return;
+      return true;
     }
 
     const decisions: Record<string, DedupDecision> = {};
@@ -621,15 +634,14 @@ export default function UploadPage() {
       const selected = dedupDecisions[entry.projectName];
       if (!selected) {
         setSubmitError(`Please choose a decision for ${entry.projectName}.`);
-        return;
+        return false;
       }
       decisions[entry.projectName] = selected;
     }
 
     if (uploadData.status !== "needs_dedup") {
-      setSubmitInfo("Deduplication decisions updated.");
       unlockAndGoTo("classification");
-      return;
+      return true;
     }
 
     setIsSubmitting(true);
@@ -640,21 +652,22 @@ export default function UploadPage() {
       }
       setUploadData(response.data);
       unlockAndGoTo("classification");
+      return true;
     } catch (e: unknown) {
       setSubmitError(e instanceof Error ? e.message : "Failed to save deduplication decisions.");
+      return false;
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  async function handleClassificationNext() {
-    if (!uploadData) return;
+  async function handleClassificationNext(): Promise<boolean> {
+    if (!uploadData) return false;
 
     setSubmitError(null);
-    setSubmitInfo(null);
 
     if (!needsClassification && !needsProjectTypes) {
-      return;
+      return true;
     }
 
     let workingUpload = uploadData;
@@ -706,11 +719,10 @@ export default function UploadPage() {
       }
 
       setUploadData(workingUpload);
-      if (workingUpload.status === "needs_classification" || workingUpload.status === "needs_project_types") {
-        setSubmitInfo("Please complete all required fields.");
-      }
+      return true;
     } catch (e: unknown) {
       setSubmitError(e instanceof Error ? e.message : "Failed to save classification data.");
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -719,22 +731,10 @@ export default function UploadPage() {
   async function onPrimaryAction() {
     if (primaryDisabled) return;
 
-    if (currentStage.key === "upload") {
-      await handleUploadNext();
-      return;
-    }
-
-    if (currentStage.key === "projects") {
-      handleProjectsNext();
-      return;
-    }
-
-    if (currentStage.key === "deduplication") {
-      await handleDedupNext();
-      return;
-    }
-
-    await handleClassificationNext();
+    if (currentStage.key === "upload") await handleUploadNext();
+    else if (currentStage.key === "projects") handleProjectsNext();
+    else if (currentStage.key === "deduplication") await handleDedupNext();
+    else await handleClassificationNext();
   }
 
   function onSidebarNext() {
@@ -1099,7 +1099,7 @@ export default function UploadPage() {
                   className={`uploadStageProgressStepBtn${
                     idx < stageIndex ? " uploadStageProgressStepBtn--done" : ""
                   }${idx === stageIndex ? " uploadStageProgressStepBtn--active" : ""}`}
-                  disabled={idx > stageIndex || isSubmitting}
+                  disabled={isSubmitting}
                   onClick={() => onProgressStepClick(idx)}
                 >
                   {idx + 1}. {stage.label}
@@ -1113,8 +1113,6 @@ export default function UploadPage() {
         </div>
 
         {submitError && <p className="error uploadStatusLine">{submitError}</p>}
-        {submitInfo && <p className="uploadInfoLine">{submitInfo}</p>}
-
         {renderStageBody()}
 
         <div className="uploadStageActionRow">

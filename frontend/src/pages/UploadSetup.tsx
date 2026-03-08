@@ -1,5 +1,6 @@
 import { getUsername } from "../auth/user";
 import UploadWizardShell from "../components/UploadWizardShell";
+import "./Upload.css";
 
 export default function UploadSetupPage() {
   const username = getUsername();
