@@ -17,7 +17,11 @@ export function formatSkillName(name: string): string {
 export function toYMD(iso?: string | null) {
     if (!iso) return "";
 
-    const d = new Date(iso);
+    const normalized = iso
+        .replace(" ", "T")
+        .replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
+
+    const d = new Date(normalized);
 
     const formatted = d.toLocaleDateString("en-US", {
         month: "short",
