@@ -381,6 +381,11 @@ button {
   color: #111;
 }
 
+.uploadStageTab:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .uploadStageNavRow {
   margin-top: 18px;
   display: flex;
@@ -426,6 +431,11 @@ button {
 
 .uploadIntroText p:last-child {
   margin-bottom: 0;
+}
+
+.uploadScenarioLine {
+  font-size: 14px;
+  color: #555;
 }
 
 .uploadStructureCard {
