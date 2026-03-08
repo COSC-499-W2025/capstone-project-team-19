@@ -139,6 +139,8 @@ function getProjectsFromUpload(upload: UploadRecord | null): string[] {
 function getDiscoveredProjects(upload: UploadRecord | null): string[] {
   const state = uploadState(upload);
   const layout = layoutState(upload);
+  const zipName = typeof upload?.zip_name === "string" ? upload.zip_name.trim() : "";
+  const zipStem = zipName.toLowerCase().endsWith(".zip") ? zipName.slice(0, -4) : zipName;
 
   const dedupSkipped = asStringArray(state.dedup_skipped_projects);
   const dedupNewVersions = asStringMap(state.dedup_new_versions);
@@ -146,16 +148,23 @@ function getDiscoveredProjects(upload: UploadRecord | null): string[] {
   const dedupRenamedTo = uniqueStrings(Object.values(dedupNewVersions).filter((name) => name.trim().length > 0));
 
   const strayLocations = asStringArray(layout.stray_locations);
-  const rootName = typeof layout.root_name === "string" && layout.root_name.trim().length > 0 ? [layout.root_name] : [];
 
-  return uniqueStrings([
+  const discovered = uniqueStrings([
     ...getProjectsFromUpload(upload),
     ...dedupSkipped,
     ...dedupRenamedFrom,
     ...dedupRenamedTo,
     ...strayLocations,
-    ...rootName,
   ]);
+
+  return discovered.filter((name) => {
+    const normalized = name.trim().toLowerCase();
+    if (!normalized) return false;
+    if (normalized.endsWith(".zip")) return false;
+    if (zipName && normalized === zipName.toLowerCase()) return false;
+    if (zipStem && normalized === zipStem.toLowerCase()) return false;
+    return true;
+  });
 }
 
 function getKnownProjects(upload: UploadRecord | null): string[] {
@@ -165,10 +174,6 @@ function getKnownProjects(upload: UploadRecord | null): string[] {
     ...Object.keys(asStringMap(layout.auto_assignments)),
     ...objectKeys(uploadState(upload).dedup_project_keys),
   ]);
-}
-
-function getPendingProjects(upload: UploadRecord | null): string[] {
-  return asStringArray(layoutState(upload).pending_projects);
 }
 
 function getAutoAssignments(upload: UploadRecord | null): Record<string, string> {
@@ -290,6 +295,7 @@ export default function UploadPage() {
 
   const [dedupCaseIndex, setDedupCaseIndex] = useState(0);
   const [dedupDecisions, setDedupDecisions] = useState<Record<string, DedupDecisionValue>>({});
+  const [persistedDedupCases, setPersistedDedupCases] = useState<DedupCase[]>([]);
 
   const [classifications, setClassifications] = useState<Record<string, ProjectClassificationValue>>({});
   const [projectTypes, setProjectTypes] = useState<Record<string, ProjectTypeValue>>({});
@@ -308,15 +314,15 @@ export default function UploadPage() {
   );
   const projectNotes = useMemo(() => getProjectNotes(uploadData), [uploadData]);
 
-  const pendingProjects = useMemo(() => getPendingProjects(uploadData), [uploadData]);
   const projectsNeedingType = useMemo(() => getProjectsNeedingType(uploadData), [uploadData]);
   const autoAssignments = useMemo(() => getAutoAssignments(uploadData), [uploadData]);
   const autoDetectedProjectTypes = useMemo(() => getAutoDetectedProjectTypes(uploadData), [uploadData]);
 
   const dedupCases = useMemo(() => getDedupCases(uploadData), [uploadData]);
-  const currentDedupCase = dedupCases[dedupCaseIndex] ?? null;
+  const visibleDedupCases = dedupCases.length > 0 ? dedupCases : persistedDedupCases;
+  const currentDedupCase = visibleDedupCases[dedupCaseIndex] ?? null;
   const canGoToPreviousDedupCase = dedupCaseIndex > 0;
-  const canGoToNextDedupCase = dedupCaseIndex < dedupCases.length - 1;
+  const canGoToNextDedupCase = dedupCaseIndex < visibleDedupCases.length - 1;
   const savedDedupChoices = useMemo(
     () =>
       Object.entries(dedupDecisions).filter(
@@ -329,31 +335,42 @@ export default function UploadPage() {
   const needsClassification = uploadData?.status === "needs_classification";
   const needsProjectTypes = uploadData?.status === "needs_project_types";
 
-  const classificationRequiredProjects = useMemo(
-    () => (needsClassification ? uniqueStrings([...knownProjects, ...pendingProjects]) : []),
-    [knownProjects, needsClassification, pendingProjects],
+  const newVersionSourceByTarget = useMemo(() => {
+    const links: Record<string, string> = {};
+    for (const entry of visibleDedupCases) {
+      if (dedupDecisions[entry.projectName] !== "new_version") continue;
+      const target = entry.existingProjectName.trim();
+      if (!target || target === entry.projectName) continue;
+      links[target] = entry.projectName;
+    }
+    return links;
+  }, [dedupDecisions, visibleDedupCases]);
+
+  const classificationProjectsForDisplay = useMemo(
+    () => projectsForFlow.filter((projectName) => !newVersionSourceByTarget[projectName]),
+    [newVersionSourceByTarget, projectsForFlow],
   );
 
-  const completedClassificationCount = useMemo(() => {
-    return projectsForFlow.filter((projectName) => {
-      const classificationComplete =
-        !needsClassification || !classificationRequiredProjects.includes(projectName) || Boolean(classifications[projectName]);
-      const typeComplete = !needsProjectTypes || !projectsNeedingType.includes(projectName) || Boolean(projectTypes[projectName]);
-      return classificationComplete && typeComplete;
-    }).length;
-  }, [
-    classificationRequiredProjects,
-    classifications,
-    needsClassification,
-    needsProjectTypes,
-    projectTypes,
-    projectsForFlow,
-    projectsNeedingType,
-  ]);
+  const completedClassificationCount = useMemo(
+    () =>
+      classificationProjectsForDisplay.filter(
+        (projectName) => Boolean(classifications[projectName]) && Boolean(projectTypes[projectName]),
+      ).length,
+    [classificationProjectsForDisplay, classifications, projectTypes],
+  );
 
   const dedupResolved = useMemo(
-    () => dedupCases.length === 0 || dedupCases.every((entry) => Boolean(dedupDecisions[entry.projectName])),
-    [dedupCases, dedupDecisions],
+    () => visibleDedupCases.length === 0 || visibleDedupCases.every((entry) => Boolean(dedupDecisions[entry.projectName])),
+    [dedupDecisions, visibleDedupCases],
+  );
+
+  const allClassificationRowsComplete = useMemo(
+    () =>
+      classificationProjectsForDisplay.length > 0 &&
+      classificationProjectsForDisplay.every(
+        (projectName) => Boolean(classifications[projectName]) && Boolean(projectTypes[projectName]),
+      ),
+    [classificationProjectsForDisplay, classifications, projectTypes],
   );
 
   const classificationReady = useMemo(() => {
@@ -362,9 +379,11 @@ export default function UploadPage() {
 
     if (needsClassification) {
       hasRequirement = true;
-      if (classificationRequiredProjects.length === 0) return false;
-      for (const projectName of classificationRequiredProjects) {
-        if (!classifications[projectName]) return false;
+      if (knownProjects.length === 0) return false;
+      for (const projectName of knownProjects) {
+        const linkedSource = newVersionSourceByTarget[projectName];
+        const value = classifications[projectName] || (linkedSource ? classifications[linkedSource] : "");
+        if (!value) return false;
       }
     }
 
@@ -372,16 +391,19 @@ export default function UploadPage() {
       hasRequirement = true;
       if (projectsNeedingType.length === 0) return false;
       for (const projectName of projectsNeedingType) {
-        if (!projectTypes[projectName]) return false;
+        const linkedSource = newVersionSourceByTarget[projectName];
+        const value = projectTypes[projectName] || (linkedSource ? projectTypes[linkedSource] : "");
+        if (!value) return false;
       }
     }
 
     return hasRequirement;
   }, [
-    classificationRequiredProjects,
     classifications,
+    knownProjects,
     needsClassification,
     needsProjectTypes,
+    newVersionSourceByTarget,
     projectTypes,
     projectsNeedingType,
     uploadData,
@@ -394,13 +416,13 @@ export default function UploadPage() {
     }
 
     if (currentStage.key === "classification") {
-      if (uploadData && !needsClassification && !needsProjectTypes) return "Completed";
+      if (uploadData && !needsClassification && !needsProjectTypes && allClassificationRowsComplete) return "Completed";
       return "Submit and Continue";
     }
 
     if (currentStage.key === "deduplication") return "Resolve and Continue";
     return "Next";
-  }, [currentStage.key, isSubmitting, needsClassification, needsProjectTypes, uploadData]);
+  }, [allClassificationRowsComplete, currentStage.key, isSubmitting, needsClassification, needsProjectTypes, uploadData]);
 
   const primaryDisabled = useMemo(() => {
     if (isSubmitting) return true;
@@ -410,9 +432,11 @@ export default function UploadPage() {
     if (currentStage.key === "deduplication") return !uploadData || !dedupResolved;
 
     if (!uploadData) return true;
-    if (!needsClassification && !needsProjectTypes) return true;
+    if (!allClassificationRowsComplete) return true;
+    if (!needsClassification && !needsProjectTypes) return false;
     return !classificationReady;
   }, [
+    allClassificationRowsComplete,
     classificationReady,
     currentStage.key,
     dedupResolved,
@@ -424,6 +448,17 @@ export default function UploadPage() {
     uploadData,
   ]);
 
+  const sidebarNextDisabled = useMemo(() => {
+    if (isSubmitting) return true;
+    if (!uploadData) return true;
+    if (uploadData.status === "failed") return true;
+    return (
+      uploadData.status === "needs_dedup" ||
+      uploadData.status === "needs_classification" ||
+      uploadData.status === "needs_project_types"
+    );
+  }, [isSubmitting, uploadData]);
+
   const steps = [
     { label: "1. Consent", status: "inactive" as const, to: "/upload/consent" },
     { label: "2. Upload", status: "active" as const },
@@ -431,6 +466,12 @@ export default function UploadPage() {
   ];
 
   const sizeLabel = selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB` : null;
+
+  useEffect(() => {
+    if (dedupCases.length > 0) {
+      setPersistedDedupCases(dedupCases);
+    }
+  }, [dedupCases]);
 
   useEffect(() => {
     setDedupCaseIndex(0);
@@ -472,9 +513,9 @@ export default function UploadPage() {
   }, [autoAssignments, uploadData]);
 
   useEffect(() => {
-    if (dedupCaseIndex <= dedupCases.length - 1) return;
+    if (dedupCaseIndex <= visibleDedupCases.length - 1) return;
     setDedupCaseIndex(0);
-  }, [dedupCaseIndex, dedupCases.length]);
+  }, [dedupCaseIndex, visibleDedupCases.length]);
 
   function resetFlowForNewFile(file: File | null) {
     setSelectedFile(file);
@@ -483,6 +524,7 @@ export default function UploadPage() {
     setSubmitInfo(null);
     setDedupCaseIndex(0);
     setDedupDecisions({});
+    setPersistedDedupCases([]);
     setClassifications({});
     setProjectTypes({});
     setStageIndex(0);
@@ -562,19 +604,25 @@ export default function UploadPage() {
     setSubmitError(null);
     setSubmitInfo(null);
 
-    if (dedupCases.length === 0 || uploadData.status !== "needs_dedup") {
+    if (visibleDedupCases.length === 0) {
       unlockAndGoTo("classification");
       return;
     }
 
     const decisions: Record<string, DedupDecision> = {};
-    for (const entry of dedupCases) {
+    for (const entry of visibleDedupCases) {
       const selected = dedupDecisions[entry.projectName];
       if (!selected) {
         setSubmitError(`Please choose a decision for ${entry.projectName}.`);
         return;
       }
       decisions[entry.projectName] = selected;
+    }
+
+    if (uploadData.status !== "needs_dedup") {
+      setSubmitInfo("Deduplication decisions updated.");
+      unlockAndGoTo("classification");
+      return;
     }
 
     setIsSubmitting(true);
@@ -617,7 +665,8 @@ export default function UploadPage() {
         }
 
         for (const projectName of targets) {
-          const value = classifications[projectName];
+          const linkedSource = newVersionSourceByTarget[projectName];
+          const value = classifications[projectName] || (linkedSource ? classifications[linkedSource] : "");
           if (value !== "individual" && value !== "collaborative") {
             throw new Error(`Please choose a classification for ${projectName}.`);
           }
@@ -636,7 +685,8 @@ export default function UploadPage() {
         const project_types: Record<string, ProjectType> = {};
 
         for (const projectName of neededProjects) {
-          const value = projectTypes[projectName];
+          const linkedSource = newVersionSourceByTarget[projectName];
+          const value = projectTypes[projectName] || (linkedSource ? projectTypes[linkedSource] : "");
           if (value !== "code" && value !== "text") {
             throw new Error(`Please choose a project type for ${projectName}.`);
           }
@@ -684,6 +734,10 @@ export default function UploadPage() {
     await handleClassificationNext();
   }
 
+  function onSidebarNext() {
+    if (sidebarNextDisabled) return;
+  }
+
   function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     selectZipFile(file);
@@ -706,12 +760,17 @@ export default function UploadPage() {
 
         <div className="uploadIntroRow">
           <div className="uploadIntroText">
+            <p>Only ZIP files are accepted.</p>
             <p>
-              We treat each folder as one project. Optionally, organize projects under <code>individual/</code> and{" "}
-              <code>collaborative/</code> before zipping.
+              We treat each folder as one project. Optionally, you can organize projects under <code>individual/</code>{" "}
+              and <code>collaborative/</code>, then place project folders inside those. If you use <code>individual/</code>{" "}
+              and <code>collaborative/</code>, classification can be auto-detected. If not, we&apos;ll ask classification
+              during upload.
             </p>
-            <p>Only ZIP files are accepted. Other formats are rejected.</p>
-            <p>After upload, projects are compared with previous uploads to detect duplicates or existing history.</p>
+            <p>
+              After upload, projects are compared with other projects in the same or previous uploads to detect duplicates
+              or existing history.
+            </p>
           </div>
 
           <div className="uploadStructureCard" aria-label="Upload structure example">
@@ -804,7 +863,7 @@ export default function UploadPage() {
         <h2 className="wizardPlaceholderTitle">Deduplication</h2>
         <p className="wizardPlaceholderText">Review similar projects one-by-one and choose how each should be treated.</p>
 
-        {dedupCases.length === 0 ? (
+        {visibleDedupCases.length === 0 ? (
           savedDedupChoices.length === 0 ? (
             <div className="uploadEmptyState">No deduplication found.</div>
           ) : (
@@ -822,7 +881,7 @@ export default function UploadPage() {
         ) : (
           <>
             <div className="dedupStageCaseCount">
-              Case {dedupCaseIndex + 1} of {dedupCases.length}
+              Case {dedupCaseIndex + 1} of {visibleDedupCases.length}
             </div>
 
             {currentDedupCase && (
@@ -925,12 +984,12 @@ export default function UploadPage() {
         <h2 className="wizardPlaceholderTitle">Classification and Type</h2>
         <p className="wizardPlaceholderText">Review all projects and choose classification and project type.</p>
 
-        {projectsForFlow.length === 0 ? (
+        {classificationProjectsForDisplay.length === 0 ? (
           <div className="uploadEmptyState">No projects found.</div>
         ) : (
           <>
             <div className="classificationStageMeta">
-              {completedClassificationCount} of {projectsForFlow.length} completed
+              {completedClassificationCount} of {classificationProjectsForDisplay.length} completed
             </div>
 
             <div className="classificationStageTableWrap">
@@ -943,7 +1002,7 @@ export default function UploadPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {projectsForFlow.map((projectName) => (
+                  {classificationProjectsForDisplay.map((projectName) => (
                     <tr key={projectName}>
                       <td>{projectName}</td>
                       <td>
@@ -1007,7 +1066,14 @@ export default function UploadPage() {
   }
 
   return (
-    <UploadWizardShell username={username} steps={steps} actionLabel="Next" showAction={false}>
+    <UploadWizardShell
+      username={username}
+      steps={steps}
+      actionLabel="Next"
+      onAction={onSidebarNext}
+      actionDisabled={sidebarNextDisabled}
+      showAction
+    >
       <div className="wizardPlaceholderCard">
         <div className="uploadStageTabs" role="tablist" aria-label="Upload flow stages">
           {STAGES.map((stage, idx) => {
