@@ -25,11 +25,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         msg = parsed.detail;
       } else if (Array.isArray(parsed?.detail)) {
         msg = parsed.detail
-          .map((e: any) => {
-            const loc = Array.isArray(e?.loc) ? e.loc : [];
+          .map((e: unknown) => {
+            const err = e as { loc?: unknown; msg?: string };
+            const loc = Array.isArray(err?.loc) ? err.loc : [];
             const field = loc.length ? String(loc[loc.length - 1]) : "";
             const label = field ? field.charAt(0).toUpperCase() + field.slice(1) : "Input";
-            return `${label}: ${e?.msg ?? "Invalid value"}`;
+            return `${label}: ${err?.msg ?? "Invalid value"}`;
           })
           .join("\n");
       }
