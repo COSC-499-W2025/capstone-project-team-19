@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import ScoreInfoTooltip from "./ScoreInfoTooltip";
+import ScoreInfoTooltip from "../tabs/SkillTimeline/ScoreInfoTooltip";
 
 describe("ScoreInfoTooltip", () => {
 	it("renders ? button with aria-label", () => {

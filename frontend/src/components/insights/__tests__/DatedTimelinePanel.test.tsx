@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import DatedTimelinePanel from "./DatedTimelinePanel";
-import type { SkillTimelineDTO } from "../../../../api/insights";
+import DatedTimelinePanel from "../tabs/SkillTimeline/DatedTimelinePanel";
+import type { SkillTimelineDTO } from "../../../api/insights";
 
 const mockTimelineWithDated: SkillTimelineDTO = {
 	dated: [

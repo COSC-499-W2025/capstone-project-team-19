@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import RankedProjectsTab from "./RankedProjectsTab";
+import RankedProjectsTab from "../tabs/RankedProjectsTab";
 import * as insights from "../../../api/insights";
 
 vi.mock("../../../api/insights");

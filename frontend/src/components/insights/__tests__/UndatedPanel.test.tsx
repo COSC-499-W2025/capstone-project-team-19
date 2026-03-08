@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import UndatedPanel from "./UndatedPanel";
-import type { TimelineEventDTO } from "../../../../api/insights";
+import UndatedPanel from "../tabs/SkillTimeline/UndatedPanel";
+import type { TimelineEventDTO } from "../../../api/insights";
 
 const mockEvents: TimelineEventDTO[] = [
 	{

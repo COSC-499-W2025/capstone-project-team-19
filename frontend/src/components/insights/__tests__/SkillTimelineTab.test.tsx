@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import SkillTimelineTab from "./SkillTimelineTab";
-import * as insights from "../../../../api/insights";
+import SkillTimelineTab from "../tabs/SkillTimeline/SkillTimelineTab";
+import * as insights from "../../../api/insights";
 
-vi.mock("../../../../api/insights");
+vi.mock("../../../api/insights");
 
 const mockTimeline = {
 	dated: [
