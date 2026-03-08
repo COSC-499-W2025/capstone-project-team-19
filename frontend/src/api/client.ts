@@ -62,4 +62,17 @@ export const api = {
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
   postMultipart: <T>(path: string, formData: FormData) =>
     request<T>(path, { method: "POST", body: formData }),
+  getBlob: async (path: string): Promise<Blob> => {
+  const token = tokenStore.get();
+  const res = await fetch(`${BASE_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) {
+    const raw = await res.text();
+    throw new Error(raw || `${res.status} ${res.statusText}`);
+  }
+
+  return await res.blob();
+},
 };
