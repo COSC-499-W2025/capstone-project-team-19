@@ -3,6 +3,8 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 9 (Mar 2 - Mar 9)](#term-2-week-9-monday-march-2---sunday-march-9)
+- [Week 6-8 (Feb 9 - Mar 1)](#term-2-week-6-8-monday-february-9---sunday-march-1)
 - [Week 4-5 (Jan 26 - Feb 8)](#t2-week-4-5-monday-january-26---sunday-february-8)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12-18)](#t2-week-2-monday-january-12---sunday-january-18)
@@ -260,7 +262,7 @@ In [PR #450](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/450
 
 Next week, I want to continue the project versioning implementation by removing legacy code that is no longer up to date with the switch to `project_key`. I’ll also be starting the logic for building timelines, heatmaps, and project progression data, and I’d like to implement the API endpoints for those visuals as well.
 
-## (Term 2 Week 6-7) Monday February 9 - Sunday March 1
+## (Term 2 Week 6-8) Monday February 9 - Sunday March 1
 
 ![Screenshot of this week's peer evaluation](./screenshots/Timmi-Feb9-Mar1.png)
 
@@ -290,3 +292,34 @@ Because of the schema updates, this PR requires recreating the local database (`
 **Plan for Next Week**
 
 Next week, I plan on beginning to implement the frontend UI. I don't know yet which pages I will be assigned, the team will discuss this in our weekly Monday meeting. I will also begin structuring the frontend HTTP requests needed to call the backend API endpoints.
+
+## (Term 2 Week 9) Monday March 2 - Sunday March 9
+
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Mar2-Mar8.png)
+
+**Coding Tasks**
+
+This week I began implementing the frontend pages for the Insights page. The `Insights` page includes its own smaller header/subnav with state navigation between Ranked Projects, Skill Timeline, Chronological Skills, and Activity Heatmap. Since all those tabs are their own separate pages inside the `/insights` tab, I decided to only do two of them this week.
+
+I implemented the overall subnav of the Insights page and the Ranked Projects tab in [PR #524](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/524). The subnav allows the user to click between the different insights on the user's projects. I did not want each insight to be a separate page, so I used React state-based navigation to switch between tabs, where the tab chosen by the user decides which components are displayed. This means that the code needs to be clean, and everything needs to be its own component. I did my best to separate the logic and keep the components small, but functional.
+
+I also added the ability to change the project ranking order, similar to the functionality offered by our CLI. This allows the user to easily control which projects appear on their portfolio. This is done by clicking the buttons on the right of each project. Eventually, I would like to allow the user to drag and drop the different projects, but the buttons are fine for now. The user can also reset the ranking to AUTO (so the score reflects the ranking instead of the user ranking them) and save the order they change it to. This ensures that users retain control over which projects represent them, even if the automatically calculated ranking differs from their preferred presentation. Our system only shows the top 3 projects, and thus if the user decides a different project should be in the portfolio (even though it has a lower score) they can easily switch it out with another project.
+
+I also implemented the Skill Timeline tab in [PR #530](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/530). Even though I had a wireframe to follow, I spent time deciding on how to present the information in a way that was clear and digestible for the user. I settled on adding a second subnav on the side with the options Timeline, Current Totals, and Undated Skills. The second subnav includes:
+- A Timeline tab that shows all the skills our system detects the user to have, with their detected date. 
+- A Current Totals tab, which is a barchart of the skills, showing how the skills compare to each other. A review comment from Salma in this PR mentioned that the user should be able to tell which skills are text skills and which ones are code skills, so I implemented a toggle between all skills, code skills, and text skills in [PR #548](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/548) that changes which skills are displayed in the bar chart. This update on the bar chart required additional support from the backend, so the skills returned include the type of project it is attached to (code/text).
+- An Undated Skills tab to display the skills that do not have detected dates. This will only have skills displayed if our system could not find a reliable date for that skill *and* the user has not provided a date for the project that detected the skill.
+
+All the tabs (Timeline, Current Totals, and Undated Skills) have a "Sort by" option, where they can choose to sort by score, skill name, skill level (beginner, intermediate, advanced), or project name. This includes ascending and descending. 
+
+I additionally included a popup/modal (accessed via the question mark) on the Insights/Skill Timeline header that explains how our system detected the scores, as well as a hint to the bar chart telling the user to hover on a bar (in the bar chart) and see which projects contributed to the skill.
+
+**Testing**
+
+It was later in the week that I remembered we should be writing tests for our frontend. I took on the task of setting the test stack up in [PR #531](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/531). I decided on Vitest and the React Testing Library because we are using Vite. I added some baseline tests to ensure the tests are working, and updated the frontend `README.md` that explains how to run the tests.
+
+Since the testing environment was set up after my PR's, I could not write the tests for [PR #524](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/524), [PR #530](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/530), and [PR #548](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/548) until later. Once that testing PR was reviewed and merged, I wrote tests for all three of those PRs in [PR #550](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/550). These tests verify that components render correctly, modals appear based on state changes, and utility functions return the expected values.
+
+**Plan for Next Week**
+
+Next week I plan to finish implementing the Chronological Skills and Activity Heatmap tabs on the Insights page. I would also like to explore the private vs. public dashboards, since our current architecture does not directly support this distinction. It may require some more backend implementations so I wwant to start that as early as possible.
