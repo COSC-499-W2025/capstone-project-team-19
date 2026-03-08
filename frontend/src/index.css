@@ -363,32 +363,63 @@ button {
   opacity: 0.8;
 }
 
-.uploadStageTabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+.uploadStageProgress {
   margin-bottom: 18px;
 }
 
-.uploadStageTab {
-  border: 1px solid #c9c9c9;
-  background: var(--upload-bg);
-  color: #666;
-  border-radius: 8px;
-  padding: 8px 12px;
+.uploadStageProgressMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-size: 14px;
   font-weight: 600;
+  color: #444;
+  margin-bottom: 8px;
+}
+
+.uploadStageProgressStepNav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.uploadStageProgressStepBtn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.2;
+  color: #b9b9b9;
   cursor: pointer;
 }
 
-.uploadStageTab--active {
-  border-color: #111;
-  color: #111;
+.uploadStageProgressStepBtn:disabled {
+  cursor: default;
 }
 
-.uploadStageTab:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
+.uploadStageProgressStepBtn--done {
+  color: #666;
+}
+
+.uploadStageProgressStepBtn--active {
+  color: #111;
+  font-weight: 700;
+}
+
+.uploadStageProgressTrack {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #ececec;
+  overflow: hidden;
+}
+
+.uploadStageProgressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: #111;
+  transition: width 180ms ease;
 }
 
 .uploadStageNavRow {
@@ -459,7 +490,7 @@ button {
 
 .uploadIntroRow {
   display: grid;
-  grid-template-columns: 1fr 180px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 250px);
   gap: 16px;
   align-items: start;
 }
@@ -483,6 +514,31 @@ button {
   line-height: 1.35;
   color: #111;
   text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.uploadStructureTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #555;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.uploadStructurePre {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d8d8d8;
+  background: #fff;
+  color: #222;
+  font-size: 14px;
+  line-height: 1.45;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: pre;
+  overflow-x: auto;
 }
 
 .uploadFileInput {
@@ -918,6 +974,24 @@ button {
 
   .wizardActionBtn {
     max-width: 280px;
+  }
+
+  .uploadStageProgressMeta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .uploadStageProgressStepNav {
+    width: 100%;
+    overflow-x: auto;
+    gap: 12px;
+    padding-bottom: 2px;
+  }
+
+  .uploadStageProgressStepBtn {
+    white-space: nowrap;
+    font-size: 14px;
   }
 
   .uploadIntroRow {

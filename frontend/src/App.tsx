@@ -6,6 +6,7 @@ import RegisterPage from "./pages/Register";
 import HomePage from "./pages/Home";
 import { tokenStore } from "./auth/token";
 import UploadPage from "./pages/Upload";
+import UploadSetupPage from "./pages/UploadSetup";
 import ConsentPage from "./pages/Consent";
 import ProjectsPage from "./pages/Projects";
 import InsightsPage from "./pages/Insights";
@@ -56,6 +57,15 @@ export default function App() {
           element={
             <RequireAuth>
               <UploadPage />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/upload/setup"
+          element={
+            <RequireAuth>
+              <UploadSetupPage />
             </RequireAuth>
           }
         />

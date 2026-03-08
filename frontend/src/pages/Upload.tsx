@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { getUsername } from "../auth/user";
 import UploadWizardShell from "../components/UploadWizardShell";
 import {
@@ -281,9 +282,9 @@ function stageIndexByKey(key: UploadFlowStage): number {
 
 export default function UploadPage() {
   const username = getUsername();
+  const nav = useNavigate();
 
   const [stageIndex, setStageIndex] = useState(0);
-  const [maxUnlockedStageIndex, setMaxUnlockedStageIndex] = useState(0);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -304,6 +305,10 @@ export default function UploadPage() {
 
   const currentStage = useMemo(() => STAGES[stageIndex], [stageIndex]);
   const canGoBack = stageIndex > 0;
+  const stageProgressPercent = useMemo(() => {
+    if (STAGES.length <= 1) return 100;
+    return Math.round((stageIndex / (STAGES.length - 1)) * 100);
+  }, [stageIndex]);
 
   const projects = useMemo(() => getProjectsFromUpload(uploadData), [uploadData]);
   const discoveredProjects = useMemo(() => getDiscoveredProjects(uploadData), [uploadData]);
@@ -528,7 +533,6 @@ export default function UploadPage() {
     setClassifications({});
     setProjectTypes({});
     setStageIndex(0);
-    setMaxUnlockedStageIndex(0);
   }
 
   function onBack() {
@@ -536,10 +540,15 @@ export default function UploadPage() {
     setStageIndex((prev) => prev - 1);
   }
 
+  function onProgressStepClick(targetIndex: number) {
+    if (isSubmitting) return;
+    if (targetIndex > stageIndex) return;
+    setStageIndex(targetIndex);
+  }
+
   function unlockAndGoTo(stageKey: UploadFlowStage) {
     const idx = stageIndexByKey(stageKey);
     setStageIndex(idx);
-    setMaxUnlockedStageIndex((prev) => Math.max(prev, idx));
   }
 
   function selectZipFile(file: File | null) {
@@ -577,7 +586,6 @@ export default function UploadPage() {
 
       setUploadData(response.data);
       unlockAndGoTo("projects");
-      setSubmitInfo(`Upload created (ID ${response.data.upload_id}). Similarity checks include previous uploads.`);
     } catch (e: unknown) {
       setSubmitError(e instanceof Error ? e.message : "Upload failed.");
     } finally {
@@ -594,7 +602,6 @@ export default function UploadPage() {
     }
 
     setSubmitError(null);
-    setSubmitInfo("Proceed to deduplication review.");
     unlockAndGoTo("deduplication");
   }
 
@@ -633,7 +640,6 @@ export default function UploadPage() {
       }
       setUploadData(response.data);
       unlockAndGoTo("classification");
-      setSubmitInfo("Deduplication decisions saved.");
     } catch (e: unknown) {
       setSubmitError(e instanceof Error ? e.message : "Failed to save deduplication decisions.");
     } finally {
@@ -648,7 +654,6 @@ export default function UploadPage() {
     setSubmitInfo(null);
 
     if (!needsClassification && !needsProjectTypes) {
-      setSubmitInfo("Classification step is complete.");
       return;
     }
 
@@ -703,8 +708,6 @@ export default function UploadPage() {
       setUploadData(workingUpload);
       if (workingUpload.status === "needs_classification" || workingUpload.status === "needs_project_types") {
         setSubmitInfo("Please complete all required fields.");
-      } else {
-        setSubmitInfo("Classification step is complete.");
       }
     } catch (e: unknown) {
       setSubmitError(e instanceof Error ? e.message : "Failed to save classification data.");
@@ -736,6 +739,7 @@ export default function UploadPage() {
 
   function onSidebarNext() {
     if (sidebarNextDisabled) return;
+    nav("/upload/setup");
   }
 
   function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
@@ -762,10 +766,12 @@ export default function UploadPage() {
           <div className="uploadIntroText">
             <p>Only ZIP files are accepted.</p>
             <p>
-              We treat each folder as one project. Optionally, you can organize projects under <code>individual/</code>{" "}
-              and <code>collaborative/</code>, then place project folders inside those. If you use <code>individual/</code>{" "}
-              and <code>collaborative/</code>, classification can be auto-detected. If not, we&apos;ll ask classification
-              during upload.
+              We treat each folder inside a zip file as one project. Optionally, you can organize projects under{" "}
+              <code>individual/</code> and <code>collaborative/</code>, then place project folders inside those.
+            </p>
+            <p>
+              If you use <code>individual/</code> and <code>collaborative/</code>, classification can be auto-detected.
+              If not, we&apos;ll ask classification during upload.
             </p>
             <p>
               After upload, projects are compared with other projects in the same or previous uploads to detect duplicates
@@ -774,12 +780,15 @@ export default function UploadPage() {
           </div>
 
           <div className="uploadStructureCard" aria-label="Upload structure example">
-            <div>projects.zip</div>
-            <div>individual/</div>
-            <div>ProjectA/</div>
-            <div>ProjectB/</div>
-            <div>collaborative/</div>
-            <div>ProjectC/</div>
+            <div className="uploadStructureTitle">Example ZIP structure</div>
+            <pre className="uploadStructurePre">
+{`projects.zip
+    individual/
+        ProjectA/
+        ProjectB/
+    collaborative/
+        ProjectC/`}
+            </pre>
           </div>
         </div>
 
@@ -1075,28 +1084,32 @@ export default function UploadPage() {
       showAction
     >
       <div className="wizardPlaceholderCard">
-        <div className="uploadStageTabs" role="tablist" aria-label="Upload flow stages">
-          {STAGES.map((stage, idx) => {
-            const active = idx === stageIndex;
-            const disabled = idx > maxUnlockedStageIndex;
-
-            return (
-              <button
-                key={stage.key}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                disabled={disabled}
-                className={`uploadStageTab${active ? " uploadStageTab--active" : ""}`}
-                onClick={() => {
-                  if (disabled) return;
-                  setStageIndex(idx);
-                }}
-              >
-                {idx + 1}. {stage.label}
-              </button>
-            );
-          })}
+        <div className="uploadStageProgress" aria-label="Upload flow progress">
+          <div className="uploadStageProgressMeta">
+            <span>
+              Step {stageIndex + 1} of {STAGES.length}
+            </span>
+            <div className="uploadStageProgressStepNav" role="tablist" aria-label="Upload flow steps">
+              {STAGES.map((stage, idx) => (
+                <button
+                  key={stage.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={idx === stageIndex}
+                  className={`uploadStageProgressStepBtn${
+                    idx < stageIndex ? " uploadStageProgressStepBtn--done" : ""
+                  }${idx === stageIndex ? " uploadStageProgressStepBtn--active" : ""}`}
+                  disabled={idx > stageIndex || isSubmitting}
+                  onClick={() => onProgressStepClick(idx)}
+                >
+                  {idx + 1}. {stage.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="uploadStageProgressTrack">
+            <div className="uploadStageProgressFill" style={{ width: `${stageProgressPercent}%` }} />
+          </div>
         </div>
 
         {submitError && <p className="error uploadStatusLine">{submitError}</p>}
