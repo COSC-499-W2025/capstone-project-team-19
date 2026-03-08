@@ -271,7 +271,7 @@ export default function ProjectDetailPage() {
                   <button className="pdDeleteBtn" onClick={handleDeleteProject} disabled={deleting}>
                     {deleting ? "Deleting…" : "Yes, delete"}
                   </button>
-                  <button className="btn" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                  <button className="pdCancelBtn" onClick={() => setConfirmDelete(false)} disabled={deleting}>
                     Cancel
                   </button>
                 </div>

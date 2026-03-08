@@ -168,6 +168,18 @@
 .pdDeleteBtn:hover { background: #8e0019; }
 .pdDeleteBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+.pdCancelBtn {
+  background: #d9d9d9;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pdDeleteConfirm { align-self: flex-start; }
+
 .pdDeleteConfirm p { margin: 0 0 10px; font-size: 13px; color: #555; }
 
 .pdNavRow {
