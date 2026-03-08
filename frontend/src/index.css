@@ -358,6 +358,52 @@ button {
   opacity: 0.8;
 }
 
+.uploadStageTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.uploadStageTab {
+  border: 1px solid #c9c9c9;
+  background: #fff;
+  color: #666;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.uploadStageTab--active {
+  border-color: #111;
+  color: #111;
+}
+
+.uploadStageNavRow {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.uploadStageBackBtn {
+  height: 36px;
+  min-width: 96px;
+  border: 1px solid #222;
+  border-radius: 8px;
+  background: #fff;
+  color: #111;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.uploadStageBackBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .consentContent {
   max-width: 980px;
 }
