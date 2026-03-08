@@ -9,7 +9,7 @@ import UploadPage from "./pages/Upload";
 import UploadSetupPage from "./pages/UploadSetup";
 import ConsentPage from "./pages/Consent";
 import ProjectsPage from "./pages/Projects";
-import InsightsPage from "./pages/Insights";
+import InsightsPage from "./pages/InsightsPage";
 import OutputsPage from "./pages/Outputs";
 
 function RequireAuth({ children }: { children: ReactNode }) {
