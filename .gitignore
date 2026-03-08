@@ -24,6 +24,9 @@ Thumbs.db
 build/
 dist/
 
+# Vite dependency cache
+frontend/.vite/
+
 # SQLite database and WAL files
 *.db
 *.db-shm
