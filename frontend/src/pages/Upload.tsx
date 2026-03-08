@@ -4,9 +4,9 @@ import UploadWizardShell from "../components/UploadWizardShell";
 export default function UploadPage() {
   const username = getUsername();
   const steps = [
-    { label: "1. Consent", status: "disabled" as const },
+    { label: "1. Consent", status: "inactive" as const, to: "/upload/consent" },
     { label: "2. Upload", status: "active" as const },
-    { label: "3. Setup", status: "disabled" as const },
+    { label: "3. Setup", status: "disabled" as const, disabled: true },
   ];
 
   return (

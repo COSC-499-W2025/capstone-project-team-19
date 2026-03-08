@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import TopBar from "./TopBar";
 
 type StepStatus = "active" | "inactive" | "disabled";
@@ -6,6 +7,9 @@ type StepStatus = "active" | "inactive" | "disabled";
 export type WizardStep = {
   label: string;
   status: StepStatus;
+  to?: string;
+  onClick?: () => void;
+  disabled?: boolean;
 };
 
 type Props = {
@@ -25,6 +29,8 @@ export default function UploadWizardShell({
   onAction,
   actionDisabled = false,
 }: Props) {
+  const nav = useNavigate();
+
   return (
     <>
       <TopBar showNav username={username} />
@@ -36,16 +42,29 @@ export default function UploadWizardShell({
               <div className="wizardProgressTitle">Progress</div>
 
               <div className="wizardSteps">
-                {steps.map((step) => (
-                  <button
-                    key={step.label}
-                    type="button"
-                    className={`wizardStep wizardStep--${step.status}`}
-                    disabled
-                  >
-                    {step.label}
-                  </button>
-                ))}
+                {steps.map((step) => {
+                  const stepDisabled = step.disabled ?? (step.status === "disabled");
+                  const stepClickable = !stepDisabled && (Boolean(step.to) || Boolean(step.onClick));
+                  return (
+                    <button
+                      key={step.label}
+                      type="button"
+                      className={`wizardStep wizardStep--${step.status}${stepClickable ? " wizardStep--clickable" : ""}`}
+                      disabled={stepDisabled}
+                      aria-disabled={stepDisabled}
+                      onClick={() => {
+                        if (stepDisabled) return;
+                        if (step.onClick) {
+                          step.onClick();
+                          return;
+                        }
+                        if (step.to) nav(step.to);
+                      }}
+                    >
+                      {step.label}
+                    </button>
+                  );
+                })}
               </div>
 
               <button type="button" className="wizardActionBtn" onClick={onAction} disabled={actionDisabled}>

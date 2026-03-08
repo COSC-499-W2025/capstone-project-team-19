@@ -271,6 +271,17 @@ button {
   border-radius: 8px;
   font-size: 14px;
   font-weight: 700;
+  border: 2px solid transparent;
+  background: #f5f5f5;
+  color: #111;
+}
+
+.wizardStep:disabled {
+  opacity: 1;
+}
+
+.wizardStep--clickable {
+  cursor: pointer;
 }
 
 .wizardStep--active {
@@ -280,15 +291,15 @@ button {
 }
 
 .wizardStep--inactive {
-  border: 0;
-  background: #dbdbdb;
-  color: #c6c6c6;
+  border: 2px solid #c8c8c8;
+  background: #f5f5f5;
+  color: #c8c8c8;
 }
 
 .wizardStep--disabled {
-  border: 0;
-  background: #dbdbdb;
-  color: #d0d0d0;
+  border: 2px solid #c8c8c8;
+  background: #f5f5f5;
+  color: #c8c8c8;
 }
 
 .wizardActionBtn {
@@ -359,6 +370,10 @@ button {
 .consentSectionBlock {
   margin-bottom: 62px;
   color: #111;
+}
+
+.consentSectionBlock:first-of-type {
+  margin-top: 14px;
 }
 
 .consentSectionTitle {

@@ -15,12 +15,6 @@ export default function ConsentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const steps = [
-    { label: "1. Consent", status: "active" as const },
-    { label: "2. Upload", status: "disabled" as const },
-    { label: "3. Setup", status: "disabled" as const },
-  ];
-
   useEffect(() => {
     let active = true;
 
@@ -79,6 +73,11 @@ export default function ConsentPage() {
   }
 
   const controlsDisabled = loadingStatus || submitting;
+  const steps = [
+    { label: "1. Consent", status: "active" as const },
+    { label: "2. Upload", status: "inactive" as const, onClick: onNext, disabled: controlsDisabled },
+    { label: "3. Setup", status: "disabled" as const, disabled: true },
+  ];
 
   return (
     <UploadWizardShell
