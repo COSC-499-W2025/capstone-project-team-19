@@ -355,7 +355,6 @@ export default function ProjectDetailPage() {
                 <h4 className="pdFeedbackSkill">{skill}</h4>
                 {items.map((item, i) => (
                   <div key={item.feedback_id ?? i} className="pdFeedbackItem">
-                    <div className="pdFeedbackLabel">{item.criterion_label}</div>
                     {item.suggestion && (
                       <p className="pdFeedbackSuggestion">{item.suggestion}</p>
                     )}
