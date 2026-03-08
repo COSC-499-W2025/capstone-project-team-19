@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import { login } from "../api/auth";
 import { tokenStore } from "../auth/token";
+import { Button } from "../components/ui/button";
 
 export default function LoginPage() {
   const nav = useNavigate();
@@ -56,9 +57,10 @@ export default function LoginPage() {
             </div>
           )}
 
-          <button className="btn" type="submit" disabled={loading}>
+          <Button type="submit" disabled={loading} className="w-full mt-1.5">
             {loading ? "Logging in..." : "Login"}
-          </button>
+          </Button>
+
 
           <div className="helper">
             Don&apos;t have an account? <Link to="/register">Register here</Link>
