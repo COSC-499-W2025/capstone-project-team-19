@@ -169,6 +169,10 @@ export default function ProjectDetailPage() {
     return d;
   }
 
+  function formatSkillName(s: string) {
+    return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
   if (loading) {
     return (
       <>
@@ -352,7 +356,7 @@ export default function ProjectDetailPage() {
           ) : (
             Object.entries(feedbackBySkill).map(([skill, items]) => (
               <div key={skill} className="pdFeedbackGroup">
-                <h4 className="pdFeedbackSkill">{skill}</h4>
+                <h4 className="pdFeedbackSkill">{formatSkillName(skill)}</h4>
                 {items.map((item, i) => (
                   <div key={item.feedback_id ?? i} className="pdFeedbackItem">
                     {item.suggestion && (
