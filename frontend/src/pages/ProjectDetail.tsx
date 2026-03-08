@@ -10,10 +10,12 @@ import {
   getProject,
   getProjectDates,
   getProjectFeedback,
+  listProjects,
   patchProjectDates,
   resetProjectDates,
   uploadThumbnail,
   type FeedbackItem,
+  type Project,
   type ProjectDatesItem,
   type ProjectDetail,
 } from "../api/projects";
@@ -29,6 +31,7 @@ export default function ProjectDetailPage() {
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
   const [dates, setDates] = useState<ProjectDatesItem | null>(null);
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,13 +57,15 @@ export default function ProjectDetailPage() {
       fetchThumbnailUrl(projectId),
       getProjectDates(projectId),
       getProjectFeedback(projectId),
+      listProjects(),
     ])
-      .then(([proj, thumb, dateItem, fb]) => {
+      .then(([proj, thumb, dateItem, fb, projects]) => {
         setProject(proj);
         objectUrl = thumb;
         setThumbUrl(thumb);
         setDates(dateItem);
         setFeedback(fb);
+        setAllProjects(projects);
         setStartDate(dateItem?.start_date ?? "");
         setEndDate(dateItem?.end_date ?? "");
       })
@@ -184,6 +189,11 @@ export default function ProjectDetailPage() {
       </>
     );
   }
+
+  // Prev/next navigation
+  const currentIndex = allProjects.findIndex((p) => p.project_summary_id === projectId);
+  const prevProject = currentIndex > 0 ? allProjects[currentIndex - 1] : null;
+  const nextProject = currentIndex !== -1 && currentIndex < allProjects.length - 1 ? allProjects[currentIndex + 1] : null;
 
   // Group feedback by skill_name
   const feedbackBySkill = feedback.reduce<Record<string, FeedbackItem[]>>((acc, item) => {
@@ -320,6 +330,14 @@ export default function ProjectDetailPage() {
           <p className="pdSummaryText">
             {project.summary_text ?? <em>No summary yet.</em>}
           </p>
+          {project.project_mode === "collaborative" && (
+            <>
+              <h3 className="pdContribHeading">Contribution Summary</h3>
+              <p className="pdSummaryText">
+                {project.contributions?.manual_contribution_summary ?? <em>No contribution summary yet.</em>}
+              </p>
+            </>
+          )}
         </div>
 
         {/* Feedback */}
@@ -346,6 +364,21 @@ export default function ProjectDetailPage() {
             ))
           )}
         </div>
+        {/* Prev/Next navigation */}
+        {(prevProject || nextProject) && (
+          <div className="pdNavRow">
+            {prevProject ? (
+              <button className="pdNavBtn" onClick={() => nav(`/projects/${prevProject.project_summary_id}`)}>
+                ← {prevProject.project_name}
+              </button>
+            ) : <span />}
+            {nextProject && (
+              <button className="pdNavBtn" onClick={() => nav(`/projects/${nextProject.project_summary_id}`)}>
+                {nextProject.project_name} →
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </>
   );

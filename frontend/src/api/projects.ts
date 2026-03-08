@@ -23,6 +23,7 @@ export type ProjectDetail = {
   languages: string[];
   frameworks: string[];
   skills: string[];
+  contributions: { manual_contribution_summary?: string; [key: string]: unknown };
 };
 
 export type ProjectDatesItem = {
