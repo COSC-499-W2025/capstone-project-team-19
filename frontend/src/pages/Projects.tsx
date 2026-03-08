@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "./Projects.css";
 import TopBar from "../components/TopBar";
 import ProjectCard from "../components/project-card";
 import { listProjects, type Project } from "../api/projects";
