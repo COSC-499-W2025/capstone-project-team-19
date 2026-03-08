@@ -259,7 +259,7 @@ export default function ProjectDetailPage() {
           </div>
             {!confirmDelete ? (
               <button
-                className="pdDeleteBtn"
+                className="primaryBtn pdDeleteBtn"
                 onClick={() => setConfirmDelete(true)}
               >
                 Delete Project
@@ -268,10 +268,10 @@ export default function ProjectDetailPage() {
               <div className="pdDeleteConfirm">
                 <p>Are you sure? This cannot be undone.</p>
                 <div className="pdFormActions">
-                  <button className="pdDeleteBtn" onClick={handleDeleteProject} disabled={deleting}>
+                  <button className="primaryBtn pdDeleteBtn" onClick={handleDeleteProject} disabled={deleting}>
                     {deleting ? "Deleting…" : "Yes, delete"}
                   </button>
-                  <button className="pdCancelBtn" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                  <button className="btn" onClick={() => setConfirmDelete(false)} disabled={deleting}>
                     Cancel
                   </button>
                 </div>
@@ -315,9 +315,13 @@ export default function ProjectDetailPage() {
                 <button className="primaryBtn" onClick={handleSaveDates} disabled={savingDates}>
                   {savingDates ? "Saving…" : "Save"}
                 </button>
-                <button className="btn" onClick={handleCancelDates} disabled={savingDates}>Cancel</button>
+                <button className="btn" onClick={handleCancelDates} disabled={savingDates}>
+                  Cancel
+                </button>
                 {dates?.source === "MANUAL" && (
-                  <button className="btn" onClick={handleResetDates} disabled={savingDates}>Reset to auto</button>
+                  <button className="btn" onClick={handleResetDates} disabled={savingDates}>
+                    Reset to auto
+                  </button>
                 )}
               </div>
             </div>
