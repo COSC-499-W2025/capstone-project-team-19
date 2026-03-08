@@ -337,6 +337,11 @@ button {
   max-width: 760px;
 }
 
+.consentStatusLine {
+  margin: 0 0 14px;
+  font-size: 14px;
+}
+
 .consentSectionBlock {
   margin-bottom: 62px;
   color: #111;
