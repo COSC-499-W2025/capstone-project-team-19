@@ -45,11 +45,13 @@ Then confirm the backend is reachable:
 
 ## Testing
 
-The frontend uses **Vitest** and **React Testing Library** for tests.
+The frontend uses **Vitest** and **React Testing Library** for tests. Use Node `22.x` (recommended) for frontend tests.
+`vitest`/`jsdom` do not work reliably on Node `21.x` and can fail with `ERR_REQUIRE_ESM`.
 
 **Run tests once:**
 ```bash
 cd frontend
+npm install
 npm run test:run
 ```
 
