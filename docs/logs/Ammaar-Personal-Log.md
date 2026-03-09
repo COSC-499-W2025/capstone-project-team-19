@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 9 (Mar 2-8)](#t2-week-9-monday-march-2---sunday-march-8)
 - [Weeks 6 & 8 (Feb 9-Mar 1)](#t2-weeks-6--8-monday-february-9---sunday-march-1)
 - [Weeks 4-5 (Jan 26-Feb 8)](#t2-weeks-4-5-monday-january-26---sunday-february-8)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-january-19---sunday-january-25)
@@ -255,3 +256,15 @@ For PR reviews, I reviewed Salma's run analysis readiness PR ([#509](https://git
 I also helped Adara with Postman screenshots for our API endpoints for the video demo.
 
 Next week's focus: Start working on front-end pages and finish up any remaining API endpoints to ensure the front end works as intended.
+
+## (T2 Week 9) Monday March 2 - Sunday March 8
+
+![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Mar2-Mar8.png)
+
+Week recap: This week I worked on one feature PR, reviewed two PRs, and did the team log (Salma helped with adding the screenshots). This was my first week doing frontend work, so there was a lot of learning involved: getting the codebase set up, ensuring tests are working, and getting familiar with the frontend stack.
+
+For my feature PR ([#545](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/545)), I implemented the Outputs page in the frontend with resume creation, viewing, deletion, and export (DOCX/PDF). The page has a landing view with two cards (Resume Items and Portfolio Items), and the Resume Items view lets users list resumes, create new ones by selecting projects, view resume details, delete resumes, and export. I also fixed a backend bug where `detect_frameworks()` returned a Python set instead of a list, causing JSON serialization failures when creating resumes for code projects.
+
+For PR reviews, I reviewed Timmi's skill timeline PR ([#530](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/530)) which implements the Skill Timeline tab on the Insights page with three views: dated timeline, current totals, and undated skills. I found a date parsing bug where git dates (e.g., "2024-04-12 20:12:19 -0700") showed as "Invalid Date" because JavaScript's Date constructor needs ISO 8601 format, and suggested a regex fix in `toYMD` to normalize the format before parsing. I also reviewed Timmi's ranked projects PR ([#524](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/524)) which implements the Insights page sub-navigation and Ranked Projects tab with manual reordering via up/down arrows. I initially found an issue where the page sometimes required multiple refreshes to load, but it turned out to be Safari-specific so I approved.
+
+Next week's focus: Continue working on the output pages: implement edit resume and the portfolio page.
