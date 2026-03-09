@@ -457,3 +457,397 @@ button {
     font-size: 15px;
   }
 }
+
+/* ── Outputs page ── */
+
+.outputsLanding {
+  min-height: calc(100vh - 56px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 48px;
+}
+
+.outputCard {
+  width: 260px;
+  height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #e0e0e0;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.outputCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.outputCardIcon {
+  width: 100px;
+  height: 80px;
+  background: #ccc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.outputCardLabel {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Header bar used across sub-views */
+
+.outputsHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.outputsHeader h2 {
+  flex: 1;
+  margin: 0;
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+}
+
+.backBtn {
+  background: none;
+  border: 0;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.divider {
+  border: 0;
+  border-top: 1px solid #ccc;
+  margin: 16px 0;
+}
+
+/* Resume list */
+
+.resumeCards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resumeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  background: #e8e8e8;
+  border-radius: 8px;
+}
+
+.resumeInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resumeName {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.resumeDate {
+  font-size: 13px;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.resumeActions {
+  display: flex;
+  gap: 8px;
+}
+
+.actionBtn {
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: 0;
+}
+
+.actionBtn.dark {
+  background: #111;
+  color: #fff;
+}
+
+.actionBtn.outline {
+  background: #fff;
+  border: 2px solid #111;
+  color: #111;
+}
+
+.actionBtn.danger {
+  color: #b00020;
+  border-color: #b00020;
+}
+
+/* Create resume modal */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.modalContent {
+  background: #f2f2f2;
+  border-radius: 12px;
+  padding: 28px;
+  width: 90%;
+  max-width: 720px;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.modalClose {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  border: 0;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.resumeTitleInput {
+  font-size: 18px;
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid #111;
+  outline: none;
+  padding: 4px 0;
+  flex: 1;
+  max-width: 240px;
+}
+
+.editIcon {
+  font-size: 16px;
+  opacity: 0.5;
+}
+
+.modalFooter {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Project picker table */
+
+.projectTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.projectTable th {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 2px solid #111;
+  font-size: 14px;
+}
+
+.projectTable td {
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.projectTable tbody tr:hover {
+  background: #e0e0e0;
+}
+
+.projectTable input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Portfolio view */
+
+.portfolioCard {
+  max-width: 900px;
+}
+
+.portfolioProject {
+  padding: 12px 0;
+}
+
+.portfolioProject h3 {
+  margin: 0 0 8px;
+}
+
+.projectScore {
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.keyRole {
+  font-weight: 400;
+  font-style: italic;
+}
+
+.portfolioMeta p {
+  margin: 2px 0;
+  padding-left: 16px;
+  font-size: 14px;
+}
+
+.portfolioMeta ul {
+  margin: 2px 0;
+  padding-left: 40px;
+}
+
+.portfolioMeta li {
+  font-size: 14px;
+}
+
+.summaryIndent {
+  padding-left: 32px !important;
+}
+
+.projectDivider {
+  border: 0;
+  border-top: 1px solid #ccc;
+  margin: 16px 0;
+}
+
+/* Resume detail view */
+
+.resumeGroup {
+  margin-bottom: 24px;
+}
+
+.groupHeader {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 20px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #999;
+}
+
+.resumeProjectBlock {
+  background: #f2f2f2;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 10px;
+}
+
+.projectBlockName {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.projectField {
+  margin: 2px 0;
+  padding-left: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.bulletList {
+  margin: 2px 0;
+  padding-left: 24px;
+}
+
+.bulletList li {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.skillsSummaryBlock {
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: #f2f2f2;
+  border-radius: 8px;
+}
+
+.skillsSummaryBlock h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  border-bottom: 1px solid #999;
+  padding-bottom: 4px;
+}
+
+.skillsSummaryBlock p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+/* Export dropdown */
+
+.exportDropdown {
+  position: relative;
+  display: inline-flex;
+  align-self: stretch;
+}
+
+.exportDropdown .actionBtn {
+  height: 100%;
+}
+
+.exportMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+  min-width: 160px;
+  overflow: hidden;
+}
+
+.exportMenuItem {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.exportMenuItem:hover {
+  background: #f0f0f0;
+}

@@ -195,7 +195,7 @@ def detect_frameworks(conn, project_name, user_id, zip_path):
 
     project_key = get_project_key(conn, user_id, project_name)
     if project_key is None:
-        return set()
+        return []
 
     # Use the analysis/zip_data path (used in parsing.py)
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -214,7 +214,7 @@ def detect_frameworks(conn, project_name, user_id, zip_path):
 
     files = cur.fetchall()
     if not files:
-        return frameworks  # empty set
+        return sorted(frameworks)
 
     for (file_path,) in files:
         full_path = os.path.join(base_path, file_path)
@@ -232,4 +232,4 @@ def detect_frameworks(conn, project_name, user_id, zip_path):
         except Exception as e:
             print(f"Could not read {file_path}: {e}")
 
-    return frameworks
+    return sorted(frameworks)
