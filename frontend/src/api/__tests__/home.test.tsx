@@ -25,7 +25,7 @@ beforeEach(() => {
 });
 
 describe("Home and navigation", () => {
-  it("Home shows username from token and Start analyzing navigates to /upload", async () => {
+  it("Home shows username from token and Start analyzing navigates to /upload/consent", async () => {
     const user = userEvent.setup();
     tokenStore.set(makeJwt({ sub: "1", username: "testuser" }));
 
@@ -33,7 +33,7 @@ describe("Home and navigation", () => {
       <MemoryRouter initialEntries={["/"]}>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/upload/consent" element={<div data-testid="upload">upload</div>} />
+          <Route path="/upload/consent" element={<div data-testid="consent">consent</div>} />
         </Routes>
       </MemoryRouter>
     );
@@ -41,7 +41,7 @@ describe("Home and navigation", () => {
     expect(await screen.findByText("Hello, testuser!")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Start analyzing" }));
-    expect(await screen.findByTestId("upload")).toBeInTheDocument();
+    expect(await screen.findByTestId("consent")).toBeInTheDocument();
   });
 
   it("Clicking resuME logo navigates back to home", async () => {

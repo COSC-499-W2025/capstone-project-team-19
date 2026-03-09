@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getUsername } from "../auth/user";
-import UploadWizardShell from "../components/UploadWizardShell";
-import { getConsentStatus, postExternalConsent, postInternalConsent } from "../api/consent";
-import type { ConsentStatusValue } from "../api/consent";
+import { getUsername } from "../../../auth/user";
+import UploadWizardShell from "../../../components/UploadWizardShell";
+import { getConsentStatus, postExternalConsent, postInternalConsent } from "../../../api/consent";
+import type { ConsentStatusValue } from "../../../api/consent";
 
 export default function ConsentPage() {
   const username = getUsername();
