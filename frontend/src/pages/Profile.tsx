@@ -68,7 +68,7 @@ export default function ProfilePage() {
 
                   <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2">
                     <p className="text-xs font-medium text-indigo-700">Profile completeness</p>
-                    <p className="mt-1 text-sm text-indigo-900">UI only for now. Backend fields coming soon.</p>
+                    <p className="mt-1 text-sm text-indigo-900">UI only for now. Backend support implemented later.</p>
                   </div>
                 </CardContent>
               </Card>
@@ -78,7 +78,7 @@ export default function ProfilePage() {
               <div>
                 <h2 className="text-xl font-semibold tracking-tight text-slate-900">Profile overview</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Your recent activity and account security controls.
+                  Your account activity,personal information and security controls.
                 </p>
               </div>
 
@@ -86,7 +86,7 @@ export default function ProfilePage() {
                 {STAT_CARDS.map(({ label, icon: Icon, accent }) => (
                   <Card
                     key={label}
-                    className="rounded-2xl border-slate-200/80 bg-white shadow-sm transition-transform duration-200 hover:-translate-y-0.5"
+                    className="rounded-2xl border-slate-200/80 bg-white shadow-sm"
                   >
                     <CardContent className="flex items-center gap-4 p-5">
                       <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${accent}`}>
