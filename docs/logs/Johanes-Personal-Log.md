@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 9 (March 2-March 8)](#t2-week-9-monday-2nd-march-sunday-8th-march)
 - [Week 6-8 (Feb 9-March 1)](#t2-week-6-8-monday-9th-february--sunday-1st-march)
 - [Week 4&5 (Jan 26-Feb 8)](#t2-week-45-monday-26th-january---sunday-8th-february)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-19th-january---sunday-25th-january)
@@ -189,3 +190,27 @@ Third PR: #499
 Skill timeline api will be useful for creating a skill progression graph/dashboard in the frontend. It returns the cumulative score of all skills gained grouped by date. Cumulative formula is currently using : `1-(1-current)*(1-new)`, which considered better than capping or taking the maximum of comparison between two scores. This formula consider the skills gained from the second project with lower weight knowing that the user has previous knowledge of the corresponding skills.
 
 I didn't review much PR on these three weeks, I reviewed adara's pr on summary api, questioning about the status after adding summary that remain the same. I also reviewed salma's pr on updating api.md
+
+## (T2 Week 9) Monday 2nd March-Sunday 8th March
+![Screenshot of week 9_T2 peer eval](./screenshots/Johanes-March2-March8.png)
+Week recap:
+This week, I worked on 2 PRs:
+
+First PR: #535
+This is a PR for projects page. There are 2 pages that is implemented in this PR, /projects and /projects/{project_id}. /projects page shows list of the projects along with it's thumbnail. While /projects/{project_id}, is the project detail when user click a certain project in /projects page. The projects/{project_id} page shows the thumbnail and allows user to edit and remove thumbnail, edit date or reset date into auto which goes back into our initial date detection, summary including contribution summary if it is collaborative, and feedbacks. It also has navigation to next/previous project following the order in the projects page, if next/previous project exist.
+
+I got feedback from salma and adara on this PR about some unused styling sheet, and confirmation for removing thumbnail.
+
+Second PR: #553
+It is to test the page whether it is showing to the user as expected. Test cases are listed in the PR description.
+
+PRs I reviewed:
+#522: I reviewed this PR regarding the error message returned to be more specific.
+
+#533: I reviewed this PR regarding the error in test due to changing token from the previous PRs.
+
+#540: Approved this PR.
+
+
+Next week plan: 
+Probably designing web portfolio layout and implementing it.
