@@ -204,5 +204,13 @@ I got feedback from salma and adara on this PR about some unused styling sheet, 
 Second PR: #553
 It is to test the page whether it is showing to the user as expected. Test cases are listed in the PR description.
 
+PRs I reviewed:
+#522: I reviewed this PR regarding the error message returned to be more specific.
+
+#533: I reviewed this PR regarding the error in test due to changing token from the previous PRs.
+
+#540: Approved this PR.
+
+
 Next week plan: 
 Probably designing web portfolio layout and implementing it.
