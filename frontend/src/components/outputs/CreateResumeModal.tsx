@@ -58,23 +58,14 @@ export default function CreateResumeModal({ onClose, onCreated }: Props) {
           &times;
         </button>
 
-        <div className="modalHeader">
-          <div className="titleRow">
-            <input
-              className="resumeTitleInput"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Resume Title"
-            />
-            <span className="editIcon">&#9998;</span>
-          </div>
-          <button
-            className="primaryBtn"
-            onClick={handleCreate}
-            disabled={creating}
-          >
-            {creating ? "Creating..." : "Create Resume"}
-          </button>
+        <div className="titleRow">
+          <input
+            className="resumeTitleInput"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Resume Title"
+          />
+          <span className="editIcon">&#9998;</span>
         </div>
 
         <hr className="divider" />
@@ -116,6 +107,16 @@ export default function CreateResumeModal({ onClose, onCreated }: Props) {
             </tbody>
           </table>
         )}
+
+        <div className="modalFooter">
+          <button
+            className="primaryBtn"
+            onClick={handleCreate}
+            disabled={creating}
+          >
+            {creating ? "Creating..." : "Create Resume"}
+          </button>
+        </div>
       </div>
     </div>
   );
