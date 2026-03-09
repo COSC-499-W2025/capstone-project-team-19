@@ -52,7 +52,7 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
                     <button type="button" className={totalsView === "text" ? "active" : ""} onClick={() => setTotalsView("text")}>Text</button>
                 </div>
             </div>
-
+            
             {filteredEntries.length === 0 ? (
                 <p className="skill-totals-empty">No {totalsView} skills available.</p>
             ) : sorted.map(([skillName, data]) => {
