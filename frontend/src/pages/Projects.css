@@ -1,0 +1,35 @@
+.projectGrid {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 180px);
+  gap: 20px;
+}
+
+.projectCard {
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f2f2f2;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.projectCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.projectCardThumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background-size: cover;
+  background-position: center;
+}
+
+.projectCardTitle {
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
