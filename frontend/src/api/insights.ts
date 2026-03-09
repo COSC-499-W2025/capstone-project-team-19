@@ -41,6 +41,7 @@ export type TimelineEventDTO = {
     level: string;
     score: number;
     project_name: string;
+    skill_type?: "text" | "code";
 };
 
 export type CumulativeSkillDTO = {
@@ -57,6 +58,7 @@ export type DateGroupDTO = {
 export type CurrentTotalDTO = {
     cumulative_score: number;
     projects: string[];
+    skill_type?: "text" | "code";
 };
 
 export type TimelineSummaryDTO = {

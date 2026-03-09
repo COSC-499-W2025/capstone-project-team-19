@@ -1,19 +1,32 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { SkillTimelineDTO } from "../../../../api/insights";
 import { formatSkillName } from "./utils/formatHelpers";
 import TimelineSortControls from "./TimelineSortControls";
 import type { TimelineSortField, SortDirection } from "./utils/timelineSortTypes";
 
+type TotalsView = "all" | "code" | "text";
+
 export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }) {
     const [sortField, setSortField] = useState<TimelineSortField>("score");
     const [sortDir, setSortDir] = useState<SortDirection>("desc");
+    const [totalsView, setTotalsView] = useState<TotalsView>("all");
 
     const entries = Object.entries(timeline.current_totals);
 
-    if (entries.length === 0) return <p>No totals.</p>;
+    //default toggle is all skill types (code/text)
+    const filteredEntries = useMemo(() => {
+        if (totalsView === "all") return entries;
+        return entries.filter(([, data]) => data.skill_type === totalsView);
+    }, [entries, totalsView]);
 
-    const maxScore = Math.max(...entries.map(([, d]) => d.cumulative_score), 1);
-    const sorted = [...entries].sort((a, b) => {
+    if (entries.length === 0) return (
+        <div className="skill-timeline-panel">
+            <p>No totals.</p>
+        </div>
+    );
+
+    const maxScore = Math.max(...filteredEntries.map(([, d]) => d.cumulative_score), 1);
+    const sorted = [...filteredEntries].sort((a, b) => {
         if (sortField === "score") {
             const cmp = a[1].cumulative_score - b[1].cumulative_score;
             return sortDir === "asc" ? cmp : -cmp;
@@ -24,15 +37,25 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
 
     return (
         <div className="skill-totals">
-            <TimelineSortControls
-                sortField={sortField}
-                setSortField={setSortField}
-                sortDir={sortDir}
-                setSortDir={setSortDir}
-                fields={["skill_name", "score"]}
-            />
+            <div className="skill-totals-toolbar">
+                <TimelineSortControls
+                    sortField={sortField}
+                    setSortField={setSortField}
+                    sortDir={sortDir}
+                    setSortDir={setSortDir}
+                    fields={["skill_name", "score"]}
+                />
 
-            {sorted.map(([skillName, data]) => {
+                <div className="skill-totals-toggle">
+                    <button type="button" className={totalsView === "all" ? "active" : ""} onClick={() => setTotalsView("all")}>All</button>
+                    <button type="button" className={totalsView === "code" ? "active" : ""} onClick={() => setTotalsView("code")}>Code</button>
+                    <button type="button" className={totalsView === "text" ? "active" : ""} onClick={() => setTotalsView("text")}>Text</button>
+                </div>
+            </div>
+
+            {filteredEntries.length === 0 ? (
+                <p className="skill-totals-empty">No {totalsView} skills available.</p>
+            ) : sorted.map(([skillName, data]) => {
                 const pct = (data.cumulative_score / maxScore) * 100;
 
                 return (
