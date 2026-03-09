@@ -1,313 +1,51 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { getUsername } from "../auth/user";
-import UploadWizardShell from "../components/UploadWizardShell";
-import "./Upload.css";
+import { getUsername } from "../../../auth/user";
+import UploadWizardShell from "../../../components/UploadWizardShell";
+import "../UploadShared.css";
+import "./UploadPage.css";
+import UploadStage from "./stages/UploadStage";
+import ProjectsStage from "./stages/ProjectsStage";
+import DedupStage from "./stages/DedupStage";
+import ClassificationStage from "./stages/ClassificationStage";
 import {
   postProjectsUpload,
   postUploadClassifications,
   postUploadDedupResolve,
   postUploadProjectTypes,
-} from "../api/uploads";
+} from "../../../api/uploads";
 import type {
   DedupDecision,
   ProjectClassification,
   ProjectType,
   UploadRecord,
-} from "../api/uploads";
-
-type UploadFlowStage = "upload" | "projects" | "deduplication" | "classification";
-
-type StageDef = {
-  key: UploadFlowStage;
-  label: string;
-};
-
-type DedupDecisionValue = "" | DedupDecision;
-type VisibleDedupDecision = Exclude<DedupDecision, "skip">;
-type ProjectClassificationValue = "" | ProjectClassification;
-type ProjectTypeValue = "" | ProjectType;
-
-type DedupCase = {
-  projectName: string;
-  existingProjectName: string;
-  similarityLabel?: string;
-  pathLabel?: string;
-  filesLabel?: string;
-};
-
-const STAGES: StageDef[] = [
-  { key: "upload", label: "Upload" },
-  { key: "projects", label: "Projects" },
-  { key: "deduplication", label: "Deduplication" },
-  { key: "classification", label: "Classification" },
-];
-
-function asRecord(value: unknown): Record<string, unknown> {
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        return parsed as Record<string, unknown>;
-      }
-    } catch {
-      return {};
-    }
-    return {};
-  }
-
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return value as Record<string, unknown>;
-}
-
-function asStringArray(value: unknown): string[] {
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      if (Array.isArray(parsed)) {
-        return parsed.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
-      }
-    } catch {
-      return [];
-    }
-  }
-
-  if (!Array.isArray(value)) return [];
-  return value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
-}
-
-function asStringMap(value: unknown): Record<string, string> {
-  const out: Record<string, string> = {};
-  const obj = asRecord(value);
-  for (const [k, v] of Object.entries(obj)) {
-    if (typeof v === "string" && v.trim().length > 0) out[k] = v;
-  }
-  return out;
-}
-
-function objectKeys(value: unknown): string[] {
-  return Object.keys(asRecord(value)).filter((key) => key.trim().length > 0);
-}
-
-function uniqueStrings(items: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const item of items) {
-    if (seen.has(item)) continue;
-    seen.add(item);
-    out.push(item);
-  }
-  return out;
-}
-
-function uploadState(upload: UploadRecord | null): Record<string, unknown> {
-  return asRecord(upload?.state);
-}
-
-function layoutState(upload: UploadRecord | null): Record<string, unknown> {
-  return asRecord(uploadState(upload).layout);
-}
-
-function getProjectsFromUpload(upload: UploadRecord | null): string[] {
-  const layout = layoutState(upload);
-  const pending = asStringArray(layout.pending_projects);
-  const layoutProjects = asStringArray(layout.projects);
-  const auto = Object.keys(asStringMap(layout.auto_assignments));
-  const state = uploadState(upload);
-  const keyed = objectKeys(state.dedup_project_keys);
-  const versionKeyed = objectKeys(state.dedup_version_keys);
-  const asks = objectKeys(state.dedup_asks);
-  const resolved = objectKeys(state.dedup_resolved);
-  const classified = objectKeys(state.classifications);
-  const typeAuto = objectKeys(state.project_types_auto);
-  const typeManual = objectKeys(state.project_types_manual);
-  const filetypeIndex = objectKeys(state.project_filetype_index);
-
-  return uniqueStrings([
-    ...pending,
-    ...layoutProjects,
-    ...auto,
-    ...keyed,
-    ...versionKeyed,
-    ...asks,
-    ...resolved,
-    ...classified,
-    ...typeAuto,
-    ...typeManual,
-    ...filetypeIndex,
-  ]);
-}
-
-function getDiscoveredProjects(upload: UploadRecord | null): string[] {
-  const state = uploadState(upload);
-  const layout = layoutState(upload);
-  const zipName = typeof upload?.zip_name === "string" ? upload.zip_name.trim() : "";
-  const zipStem = zipName.toLowerCase().endsWith(".zip") ? zipName.slice(0, -4) : zipName;
-
-  const dedupSkipped = asStringArray(state.dedup_skipped_projects);
-  const dedupNewVersions = asStringMap(state.dedup_new_versions);
-  const dedupRenamedFrom = Object.keys(dedupNewVersions);
-  const dedupRenamedTo = uniqueStrings(Object.values(dedupNewVersions).filter((name) => name.trim().length > 0));
-
-  const strayLocations = asStringArray(layout.stray_locations);
-
-  const discovered = uniqueStrings([
-    ...getProjectsFromUpload(upload),
-    ...dedupSkipped,
-    ...dedupRenamedFrom,
-    ...dedupRenamedTo,
-    ...strayLocations,
-  ]);
-
-  return discovered.filter((name) => {
-    const normalized = name.trim().toLowerCase();
-    if (!normalized) return false;
-    if (normalized.endsWith(".zip")) return false;
-    if (zipName && normalized === zipName.toLowerCase()) return false;
-    if (zipStem && normalized === zipStem.toLowerCase()) return false;
-    return true;
-  });
-}
-
-function getKnownProjects(upload: UploadRecord | null): string[] {
-  const layout = layoutState(upload);
-  return uniqueStrings([
-    ...asStringArray(layout.pending_projects),
-    ...Object.keys(asStringMap(layout.auto_assignments)),
-    ...objectKeys(uploadState(upload).dedup_project_keys),
-  ]);
-}
-
-function getAutoAssignments(upload: UploadRecord | null): Record<string, string> {
-  return asStringMap(layoutState(upload).auto_assignments);
-}
-
-function getExistingClassifications(upload: UploadRecord | null): Record<string, string> {
-  return asStringMap(uploadState(upload).classifications);
-}
-
-function getExistingProjectTypes(upload: UploadRecord | null): Record<string, string> {
-  const state = uploadState(upload);
-  return {
-    ...asStringMap(state.project_types_auto),
-    ...asStringMap(state.project_types_manual),
-  };
-}
-
-function getAutoDetectedProjectTypes(upload: UploadRecord | null): Record<string, ProjectType> {
-  const state = uploadState(upload);
-  const raw = asStringMap(state.project_types_auto);
-  const out: Record<string, ProjectType> = {};
-  for (const [projectName, value] of Object.entries(raw)) {
-    if (value === "code" || value === "text") out[projectName] = value;
-  }
-
-  const index = asRecord(state.project_filetype_index);
-  for (const [projectName, rawFlags] of Object.entries(index)) {
-    if (out[projectName]) continue;
-    const flags = asRecord(rawFlags);
-    const hasCode = Boolean(flags.has_code);
-    const hasText = Boolean(flags.has_text);
-    if (hasCode && !hasText) out[projectName] = "code";
-    else if (!hasCode && hasText) out[projectName] = "text";
-  }
-
-  return out;
-}
-
-function getProjectsNeedingType(upload: UploadRecord | null): string[] {
-  const state = uploadState(upload);
-  return uniqueStrings([...asStringArray(state.project_types_mixed), ...asStringArray(state.project_types_unknown)]);
-}
-
-function toProjectClassificationValue(value: string | undefined): ProjectClassificationValue {
-  if (value === "individual" || value === "collaborative") return value;
-  return "";
-}
-
-function toProjectTypeValue(value: string | undefined): ProjectTypeValue {
-  if (value === "code" || value === "text") return value;
-  return "";
-}
-
-function getDedupCases(upload: UploadRecord | null): DedupCase[] {
-  const asks = asRecord(uploadState(upload).dedup_asks);
-  return Object.entries(asks).map(([projectName, raw]) => {
-    const ask = asRecord(raw);
-    const existingProjectName =
-      typeof ask.existing === "string" && ask.existing.trim().length > 0 ? ask.existing : "existing project";
-    const similarity = typeof ask.similarity === "number" ? Math.round(ask.similarity * 100) : null;
-    const pathSimilarity = typeof ask.path_similarity === "number" ? Math.round(ask.path_similarity * 100) : null;
-    const fileCount = typeof ask.file_count === "number" ? ask.file_count : null;
-
-    return {
-      projectName,
-      existingProjectName,
-      similarityLabel: similarity !== null ? `${similarity}% match` : undefined,
-      pathLabel: pathSimilarity !== null ? `Path ${pathSimilarity}% similar` : undefined,
-      filesLabel: fileCount !== null ? `${fileCount} files` : undefined,
-    };
-  });
-}
-
-function getProjectNotes(upload: UploadRecord | null): Record<string, string[]> {
-  const notes: Record<string, string[]> = {};
-
-  function addNote(projectName: string, note: string) {
-    if (!projectName.trim() || !note.trim()) return;
-    if (!notes[projectName]) notes[projectName] = [];
-    if (!notes[projectName].includes(note)) notes[projectName].push(note);
-  }
-
-  const state = uploadState(upload);
-  const layout = layoutState(upload);
-  const currentUploadProjects = new Set<string>([
-    ...asStringArray(layout.pending_projects),
-    ...Object.keys(asStringMap(layout.auto_assignments)),
-  ]);
-  const asks = asRecord(state.dedup_asks);
-  for (const [projectName, raw] of Object.entries(asks)) {
-      const existing = asRecord(raw).existing;
-      if (typeof existing === "string" && existing.trim().length > 0) {
-      if (existing !== projectName && currentUploadProjects.has(existing)) {
-        addNote(projectName, `Similar to another project in this upload "${existing}".`);
-      } else {
-        addNote(projectName, `Similar to previously analyzed project "${existing}".`);
-      }
-    } else {
-      addNote(projectName, "Similar to a previously analyzed project.");
-    }
-  }
-
-  const newVersions = asStringMap(state.dedup_new_versions);
-  for (const [projectName, existingProject] of Object.entries(newVersions)) {
-    addNote(projectName, `Matched to existing project history "${existingProject}" from earlier uploads.`);
-  }
-
-  const skipped = asStringArray(state.dedup_skipped_projects);
-  for (const projectName of skipped) {
-    addNote(projectName, "Already analyzed in a previous upload and skipped here.");
-  }
-
-  const warnings = asStringMap(state.dedup_warnings);
-  for (const [projectName, warning] of Object.entries(warnings)) {
-    addNote(projectName, warning);
-  }
-
-  return notes;
-}
-
-function isZipFile(file: File): boolean {
-  const lowerName = file.name.toLowerCase();
-  const lowerType = file.type.toLowerCase();
-  return (
-    lowerName.endsWith(".zip") ||
-    lowerType === "application/zip" ||
-    lowerType === "application/x-zip-compressed" ||
-    lowerType === "multipart/x-zip"
-  );
-}
+} from "../../../api/uploads";
+import type {
+  DedupCase,
+  DedupDecisionValue,
+  ProjectClassificationValue,
+  ProjectTypeValue,
+  VisibleDedupDecision,
+} from "./uploadTypes";
+import { STAGES } from "./uploadTypes";
+import {
+  asStringMap,
+  getAutoAssignments,
+  getAutoDetectedProjectTypes,
+  getDedupCases,
+  getDiscoveredProjects,
+  getExistingClassifications,
+  getExistingProjectTypes,
+  getKnownProjects,
+  getProjectNotes,
+  getProjectsFromUpload,
+  getProjectsNeedingType,
+  isZipFile,
+  toProjectClassificationValue,
+  toProjectTypeValue,
+  uploadState,
+} from "./uploadHelpers";
 
 export default function UploadPage() {
   const username = getUsername();
@@ -660,7 +398,7 @@ export default function UploadPage() {
 
     const seededClassifications = {
       ...autoAssignments,
-      ...getExistingClassifications(uploadData),
+      ...existingClassifications,
     };
     setClassifications((prev) => {
       const next = { ...prev };
@@ -672,7 +410,7 @@ export default function UploadPage() {
       return next;
     });
 
-    const seededTypes = getExistingProjectTypes(uploadData);
+    const seededTypes = existingProjectTypes;
     setProjectTypes((prev) => {
       const next = { ...prev };
       for (const [projectName, value] of Object.entries(seededTypes)) {
@@ -682,7 +420,7 @@ export default function UploadPage() {
       }
       return next;
     });
-  }, [autoAssignments, uploadData]);
+  }, [autoAssignments, existingClassifications, existingProjectTypes, uploadData]);
 
   useEffect(() => {
     if (dedupCaseIndex <= visibleDedupCases.length - 1) return;
@@ -707,6 +445,13 @@ export default function UploadPage() {
     setStageIndex((prev) => prev - 1);
   }
 
+  async function runCurrentStageAction(stageKey: (typeof STAGES)[number]["key"]): Promise<boolean> {
+    if (stageKey === "upload") return handleUploadNext();
+    if (stageKey === "projects") return handleProjectsNext();
+    if (stageKey === "deduplication") return handleDedupNext();
+    return handleClassificationNext();
+  }
+
   async function onProgressStepClick(targetIndex: number) {
     if (isSubmitting) return;
 
@@ -719,11 +464,7 @@ export default function UploadPage() {
 
     const stageKey = STAGES[stageIndex]?.key;
     if (!stageKey) return;
-
-    if (stageKey === "upload") await handleUploadNext();
-    else if (stageKey === "projects") handleProjectsNext();
-    else if (stageKey === "deduplication") await handleDedupNext();
-    else await handleClassificationNext();
+    await runCurrentStageAction(stageKey);
   }
 
   function selectZipFile(file: File | null) {
@@ -922,11 +663,7 @@ export default function UploadPage() {
 
   async function onPrimaryAction() {
     if (primaryDisabled) return;
-
-    if (currentStage.key === "upload") await handleUploadNext();
-    else if (currentStage.key === "projects") handleProjectsNext();
-    else if (currentStage.key === "deduplication") await handleDedupNext();
-    else await handleClassificationNext();
+    await runCurrentStageAction(currentStage.key);
   }
 
   function onSidebarNext() {
@@ -949,301 +686,71 @@ export default function UploadPage() {
     selectZipFile(file);
   }
 
-  function renderUploadStage() {
-    return (
-      <div className="uploadStagePanel">
-        <h2 className="wizardPlaceholderTitle">Upload</h2>
-
-        <div className="uploadIntroRow">
-          <div className="uploadIntroText">
-            <p>Only ZIP files are accepted.</p>
-            <p>
-              We treat each folder inside a zip file as one project. Optionally, you can organize projects under{" "}
-              <code>individual/</code> and <code>collaborative/</code>, then place project folders inside those.
-            </p>
-            <p>
-              If you use <code>individual/</code> and <code>collaborative/</code>, classification can be auto-detected.
-              If not, we&apos;ll ask classification during upload.
-            </p>
-            <p>
-              After upload, projects are compared with other projects in the same or previous uploads to detect duplicates
-              or existing history.
-            </p>
-          </div>
-
-          <div className="uploadStructureCard" aria-label="Upload structure example">
-            <div className="uploadStructureTitle">Example ZIP structure</div>
-            <pre className="uploadStructurePre">
-{`projects.zip
-    individual/
-        ProjectA/
-        ProjectB/
-    collaborative/
-        ProjectC/`}
-            </pre>
-          </div>
-        </div>
-
-        <input
-          ref={uploadInputRef}
-          type="file"
-          accept=".zip,application/zip,application/x-zip-compressed"
-          className="uploadFileInput"
-          onChange={handleFileSelect}
-        />
-
-        <div
-          className={`uploadDropZone${dragActive ? " uploadDropZone--active" : ""}`}
+  function renderStageBody() {
+    if (currentStage.key === "upload") {
+      return (
+        <UploadStage
+          selectedFile={selectedFile}
+          sizeLabel={sizeLabel}
+          dragActive={dragActive}
+          uploadInputRef={uploadInputRef}
+          onFileInputChange={handleFileSelect}
           onDragOver={(event) => {
             event.preventDefault();
             setDragActive(true);
           }}
           onDragLeave={() => setDragActive(false)}
           onDrop={handleDrop}
-        >
-          <div className="uploadDropLeft">
-            <div className="uploadDropTitle">Select a file or drag and drop here</div>
-            <div className="uploadDropHint">ZIP file only</div>
-          </div>
+          onSelectFileClick={() => uploadInputRef.current?.click()}
+        />
+      );
+    }
 
-          <button type="button" className="uploadSelectBtn" onClick={() => uploadInputRef.current?.click()}>
-            SELECT FILE
-          </button>
-        </div>
+    if (currentStage.key === "projects") {
+      return <ProjectsStage discoveredProjects={discoveredProjects} projectNotes={projectNotes} />;
+    }
 
-        <div className="uploadFileAddedBlock">
-          <h3 className="uploadFileAddedTitle">File added</h3>
-          <p className="uploadFileAddedHint">
-            If you want to change your file selection, choose a new ZIP using the SELECT FILE button above.
-          </p>
-          {selectedFile ? (
-            <div className="uploadFileRow">
-              <span className="uploadFileName">{selectedFile.name}</span>
-              <span className="uploadFileSize">{sizeLabel}</span>
-            </div>
-          ) : (
-            <div className="uploadFileEmpty">No file selected yet.</div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  function renderProjectsStage() {
-    return (
-      <div className="projectsStagePanel">
-        <h2 className="wizardPlaceholderTitle">Projects</h2>
-        <p className="wizardPlaceholderText">Parsed projects from this ZIP are shown before deduplication.</p>
-
-        {discoveredProjects.length === 0 ? (
-          <div className="uploadEmptyState">No projects found.</div>
-        ) : (
-          <ul className="projectsStageList">
-            {discoveredProjects.map((projectName) => (
-              <li key={projectName} className="projectsStageListItem">
-                <div>{projectName}</div>
-                {projectNotes[projectName]?.map((note) => (
-                  <div key={`${projectName}-${note}`} className="projectsStageListNote">
-                    {note}
-                  </div>
-                ))}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    );
-  }
-
-  function renderDedupStage() {
-    function dedupLabel(choice: VisibleDedupDecision): string {
-      if (choice === "new_project") return "New project";
-      return "New version";
+    if (currentStage.key === "deduplication") {
+      return (
+        <DedupStage
+          visibleDedupCases={visibleDedupCases}
+          currentDedupCase={currentDedupCase}
+          dedupCaseIndex={dedupCaseIndex}
+          dedupDecisions={dedupDecisions}
+          savedDedupChoices={savedDedupChoices}
+          canGoToPreviousDedupCase={canGoToPreviousDedupCase}
+          canGoToNextDedupCase={canGoToNextDedupCase}
+          onDecisionChange={(projectName, value) => setDedupDecisions((prev) => ({ ...prev, [projectName]: value }))}
+          onPreviousCase={() => setDedupCaseIndex((prev) => prev - 1)}
+          onNextCase={() => setDedupCaseIndex((prev) => prev + 1)}
+        />
+      );
     }
 
     return (
-      <div className="dedupStagePanel">
-        <h2 className="wizardPlaceholderTitle">Deduplication</h2>
-        <p className="wizardPlaceholderText">Review similar projects one-by-one and choose how each should be treated.</p>
-
-        {visibleDedupCases.length === 0 ? (
-          savedDedupChoices.length === 0 ? (
-            <div className="uploadEmptyState">No deduplication found.</div>
-          ) : (
-            <div className="dedupSavedPanel">
-              <div className="dedupSavedTitle">Saved decisions</div>
-              <ul className="dedupSavedList">
-                {savedDedupChoices.map(([projectName, choice]) => (
-                  <li key={projectName} className="dedupSavedItem">
-                    <strong>{projectName}</strong>: {dedupLabel(choice)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )
-        ) : (
-          <>
-            <div className="dedupStageCaseCount">
-              Case {dedupCaseIndex + 1} of {visibleDedupCases.length}
-            </div>
-
-            {currentDedupCase && (
-              <div className="dedupStageCard">
-                <div className="dedupStageSummary">
-                  Project "{currentDedupCase.projectName}" looks related to "{currentDedupCase.existingProjectName}".
-                </div>
-
-                <div className="dedupStageBadges">
-                  {currentDedupCase.similarityLabel && <span className="dedupStageBadge">{currentDedupCase.similarityLabel}</span>}
-                  {currentDedupCase.pathLabel && <span className="dedupStageBadge">{currentDedupCase.pathLabel}</span>}
-                  {currentDedupCase.filesLabel && <span className="dedupStageBadge">{currentDedupCase.filesLabel}</span>}
-                </div>
-
-                <label className="dedupStageOption">
-                  <input
-                    type="radio"
-                    name={`dedup-${currentDedupCase.projectName}`}
-                    value="new_project"
-                    checked={dedupDecisions[currentDedupCase.projectName] === "new_project"}
-                    onChange={() =>
-                      setDedupDecisions((prev) => ({ ...prev, [currentDedupCase.projectName]: "new_project" }))
-                    }
-                  />
-                  <span>New project (separate, no merge history created)</span>
-                </label>
-
-                <label className="dedupStageOption">
-                  <input
-                    type="radio"
-                    name={`dedup-${currentDedupCase.projectName}`}
-                    value="new_version"
-                    checked={dedupDecisions[currentDedupCase.projectName] === "new_version"}
-                    onChange={() =>
-                      setDedupDecisions((prev) => ({ ...prev, [currentDedupCase.projectName]: "new_version" }))
-                    }
-                  />
-                  <span>New version (links to existing history)</span>
-                </label>
-
-              </div>
-            )}
-
-            {savedDedupChoices.length > 0 && (
-              <div className="dedupSavedPanel">
-                <div className="dedupSavedTitle">Saved decisions</div>
-                <ul className="dedupSavedList">
-                  {savedDedupChoices.map(([projectName, choice]) => (
-                    <li key={projectName} className="dedupSavedItem">
-                      <strong>{projectName}</strong>: {dedupLabel(choice)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <div className="dedupStagePager">
-              <button
-                type="button"
-                className="dedupStagePagerBtn"
-                onClick={() => setDedupCaseIndex((prev) => prev - 1)}
-                disabled={!canGoToPreviousDedupCase}
-              >
-                Previous case
-              </button>
-              <button
-                type="button"
-                className="dedupStagePagerBtn"
-                onClick={() => setDedupCaseIndex((prev) => prev + 1)}
-                disabled={!canGoToNextDedupCase}
-              >
-                Next case
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+      <ClassificationStage
+        classificationProjectsForDisplay={classificationProjectsForDisplay}
+        completedClassificationCount={completedClassificationCount}
+        classifications={classifications}
+        projectTypes={projectTypes}
+        autoAssignments={autoAssignments}
+        autoDetectedProjectTypes={autoDetectedProjectTypes}
+        existingClassifications={existingClassifications}
+        existingProjectTypes={existingProjectTypes}
+        onClassificationChange={(projectName, value) =>
+          setClassifications((prev) => ({
+            ...prev,
+            [projectName]: value,
+          }))
+        }
+        onProjectTypeChange={(projectName, value) =>
+          setProjectTypes((prev) => ({
+            ...prev,
+            [projectName]: value,
+          }))
+        }
+      />
     );
-  }
-
-  function renderClassificationStage() {
-    return (
-      <div className="classificationStagePanel">
-        <h2 className="wizardPlaceholderTitle">Classification and Type</h2>
-        <p className="wizardPlaceholderText">Review all projects and choose classification and project type.</p>
-
-        {classificationProjectsForDisplay.length === 0 ? (
-          <div className="uploadEmptyState">No projects found.</div>
-        ) : (
-          <>
-            <div className="classificationStageMeta">
-              {completedClassificationCount} of {classificationProjectsForDisplay.length} completed
-            </div>
-
-            <div className="classificationStageTableWrap">
-              <table className="classificationStageTable">
-                <thead>
-                  <tr>
-                    <th>Projects</th>
-                    <th>Classification</th>
-                    <th>Type</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {classificationProjectsForDisplay.map((projectName) => (
-                    <tr key={projectName}>
-                      <td>{projectName}</td>
-                      <td>
-                        <select
-                          className="classificationStageSelect"
-                          value={toProjectClassificationValue(
-                            classifications[projectName] ?? autoAssignments[projectName] ?? existingClassifications[projectName],
-                          )}
-                          onChange={(event) =>
-                            setClassifications((prev) => ({
-                              ...prev,
-                              [projectName]: event.target.value as ProjectClassificationValue,
-                            }))
-                          }
-                        >
-                          <option value="">Select</option>
-                          <option value="individual">Individual</option>
-                          <option value="collaborative">Collaborative</option>
-                        </select>
-                      </td>
-                      <td>
-                        <select
-                          className="classificationStageSelect"
-                          value={toProjectTypeValue(
-                            projectTypes[projectName] ?? autoDetectedProjectTypes[projectName] ?? existingProjectTypes[projectName],
-                          )}
-                          onChange={(event) =>
-                            setProjectTypes((prev) => ({
-                              ...prev,
-                              [projectName]: event.target.value as ProjectTypeValue,
-                            }))
-                          }
-                        >
-                          <option value="">Select</option>
-                          <option value="text">Text</option>
-                          <option value="code">Code</option>
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </div>
-    );
-  }
-
-  function renderStageBody() {
-    if (currentStage.key === "upload") return renderUploadStage();
-    if (currentStage.key === "projects") return renderProjectsStage();
-    if (currentStage.key === "deduplication") return renderDedupStage();
-    return renderClassificationStage();
   }
 
   return (
