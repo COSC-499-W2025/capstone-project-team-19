@@ -2,6 +2,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 9 (March 2-March 8)](#t2-week-9-monday-march-2---sunday-march-8)
 - [Week 8 (Feb 9-March 1)](#t2-week-8-monday-february-9---sunday-march-1)
 - [Week 4 (Jan 26-Feb 8)](#t2-week-4-monday-january-26---sunday-february-8)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-january-19---sunday-january-25)
@@ -234,5 +235,25 @@ PRs I reviewed:
 
 Next Week:
 I plan to work on making some frontend pages ( not sure which ones yet I will discuss with my team). 
+
+## (T2 Week 9) Monday March 2 - Sunday March 8
+![Screenshot of this week's peer eval](./screenshots/Ivona-March.2-8.PNG)
+
+This sprint, I attended team meetings worked on researching what CSS framewoorks / libraries we could use for the frontend. Worked on my PRs, reviewed teammates PRs.
+
+Coding PRs:
+I worked on PR ([#552](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/552)) which was to set up Tailwind CSS and shadcn/ui to be used for consitent and easier ui design.
+
+I worked on PR ([#560](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/560)) which created the UI for the profile page and added tests I did this using vitest and I created the page using tailwind and shadcn. Our project doesn't support the backend for the components on the profile page yet which is why I haven't connected the functionality yet, I will be doing that next week.
+
+
+PRs I reviewed:
+
+1st PR review (Johanne's): ([#553](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/553)) on testing the projects page of the frontend.
+
+2nd PR review (Timmi's) ([#550](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/550)) on testing the Insights page of the frontend.
+
+Next Week:
+I plan to work on adding the backend support for the components I added in the profile's page. And helping the team make the ui consitent across all pages with Tailwind + shadcn (if thats what we decide on in the team meeting).
 
 
