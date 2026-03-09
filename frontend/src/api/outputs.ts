@@ -54,27 +54,6 @@ export interface RankedProject {
   manual_rank: number | null;
 }
 
-export interface PortfolioProject {
-  project_summary_id: number | null;
-  project_name: string;
-  display_name: string;
-  project_type: string | null;
-  project_mode: string | null;
-  score: number;
-  duration: string | null;
-  languages: string[];
-  frameworks: string[];
-  activity: string | null;
-  skills: string[];
-  summary_text: string | null;
-  contribution_bullets: string[];
-}
-
-export interface PortfolioDetail {
-  projects: PortfolioProject[];
-  rendered_text: string | null;
-}
-
 /* ── Resume API ── */
 
 export function listResumes() {
@@ -96,12 +75,6 @@ export function deleteResume(id: number) {
   return api.delete<ApiResponse<null>>(`/resume/${id}`);
 }
 
-/* ── Portfolio API ── */
-
-export function getPortfolio() {
-  return api.get<ApiResponse<PortfolioDetail>>("/portfolio/generate", );
-}
-
 /* ── Projects (for resume creation picker) ── */
 
 export function getRankedProjects() {
@@ -120,16 +93,6 @@ export async function downloadResumeDocx(id: number) {
 export async function downloadResumePdf(id: number) {
   const blob = await api.getBlob(`/resume/${id}/export/pdf`);
   triggerDownload(blob, `resume_${id}.pdf`);
-}
-
-export async function downloadPortfolioDocx() {
-  const blob = await api.getBlob("/portfolio/export/docx");
-  triggerDownload(blob, "portfolio.docx");
-}
-
-export async function downloadPortfolioPdf() {
-  const blob = await api.getBlob("/portfolio/export/pdf");
-  triggerDownload(blob, "portfolio.pdf");
 }
 
 function triggerDownload(blob: Blob, filename: string) {
