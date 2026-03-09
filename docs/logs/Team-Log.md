@@ -835,9 +835,5 @@ The plan is to integrate a UI component library and update the Figma designs wit
 
 | GitHub Username | Screenshots                                                              |
 | --------------- | ------------------------------------------------------------------------ |
-| `AdaraPutri`    |                                                                          |
-| `ammaarkhan`    | ![In review tasks for Ammaar](screenshots/InReview-Ammaar-week9.png)     |
 | `ivonanicetin`  | ![In review tasks for Ivona](screenshots/InReview-Ivona-week9.png)       |
-| `johaneshp`     | ![In review tasks for Johanes](screenshots/InReview-Johanes-week9.png)   |
-| `salmavkh`      | ![In review tasks for Salma](screenshots/InReview-Salma-week9.png)       |
-| `taoTimTim`     | ![In review tasks for Timmi](screenshots/InReview-Timmi-week9.png)       |
+
