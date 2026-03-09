@@ -7,6 +7,7 @@ describe('api client', () => {
     it('exports all expected client methods', () => {
         expect(api).toHaveProperty('get')
         expect(api).toHaveProperty('postJson')
+        expect(api).toHaveProperty('postMultipart')
         expect(api).toHaveProperty('putJson')
         expect(api).toHaveProperty('patchJson')
         expect(api).toHaveProperty('post')
@@ -15,6 +16,7 @@ describe('api client', () => {
         expect(typeof api.putJson).toBe('function')
         expect(typeof api.patchJson).toBe('function')
         expect(typeof api.post).toBe('function')
+        expect(typeof api.postMultipart).toBe('function')
     })
 
     describe('request behavior', () => {
