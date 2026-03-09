@@ -319,6 +319,8 @@ describe('ProjectDetailPage', () => {
             render(<ProjectDetailPage />)
             await waitFor(() => screen.getByText('Remove Thumbnail'))
             await user.click(screen.getByText('Remove Thumbnail'))
+            await waitFor(() => screen.getByText('Yes, remove'))
+            await user.click(screen.getByText('Yes, remove'))
             await waitFor(() => {
                 expect(deleteThumbnail).toHaveBeenCalledWith(42)
                 expect(screen.getByText('No Image')).toBeInTheDocument()
