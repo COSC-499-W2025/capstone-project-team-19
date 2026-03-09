@@ -281,7 +281,7 @@ In addition, I modified the Figma files to update the upload pages design and im
 
 I also reviewed some PRs, three of them are:
 
-- PR [#531](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/531) on the frontend test stack, where I suggested adding Node.js version requirements and clearer testing instructions in the README.
+- PR [#531](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/531) on the frontend test stack, where I suggested adding Node version requirements and clearer testing instructions in the README.
 - PR [#530](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/530) on insights/skill-timeline, where I suggested dividing the skills bar chart into separate sections for text and code.
 - PR [#535](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/535) on frontend/projects, where I corrected some invalid syntax, pointed out missing client method exports, and provided UI improvement suggestions.
 
