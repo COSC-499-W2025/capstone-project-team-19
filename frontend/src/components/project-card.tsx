@@ -10,7 +10,7 @@ type Props = {
 function fallbackColor(): string {
   const rgb=[0.7246,0.7246, 0.7246
   ];
-  return `hsl(${rgb}, 50%, 68%)`;
+  return `rgb(${rgb.map((c) => Math.round(c * 255)).join(",")})`;
 }
 
 export default function ProjectCard({ projectId, name }: Props) {

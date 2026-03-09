@@ -45,6 +45,7 @@ export default function ProjectDetailPage() {
   // Thumbnail
   const [thumbLoading, setThumbLoading] = useState(false);
   const [thumbError, setThumbError] = useState<string | null>(null);
+  const [confirmRemoveThumbnail, setConfirmRemoveThumbnail] = useState(false);
 
   // Delete
   const [deleting, setDeleting] = useState(false);
@@ -208,6 +209,29 @@ export default function ProjectDetailPage() {
 
   return (
     <>
+      {confirmRemoveThumbnail && (
+        <div className="pdModalOverlay">
+          <div className="pdModal">
+            <p>Remove this thumbnail? This cannot be undone.</p>
+            <div className="pdFormActions">
+              <button
+                className="btn pdThumbBtnDanger"
+                onClick={() => { setConfirmRemoveThumbnail(false); handleRemoveThumbnail(); }}
+                disabled={thumbLoading}
+              >
+                {thumbLoading ? "Removing…" : "Yes, remove"}
+              </button>
+              <button
+                className="btn"
+                onClick={() => setConfirmRemoveThumbnail(false)}
+                disabled={thumbLoading}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <TopBar showNav username={username} />
       <div className="content">
         <button className="pdBackBtn" onClick={() => nav("/projects")}>← Back to Projects</button>
@@ -241,7 +265,7 @@ export default function ProjectDetailPage() {
               {thumbUrl && (
                 <button
                   className="btn pdThumbBtnDanger"
-                  onClick={handleRemoveThumbnail}
+                  onClick={() => setConfirmRemoveThumbnail(true)}
                   disabled={thumbLoading}
                 >
                   Remove Thumbnail
