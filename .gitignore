@@ -29,6 +29,9 @@ dist/
 # User's uploaded files (so that it is not accessible through our public github repo)
 zip_data/
 
+# Other folders
+frontend/
+
 # Google Drive Auth
 token.json
 credentials.json
