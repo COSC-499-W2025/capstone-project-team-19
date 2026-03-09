@@ -12,6 +12,7 @@ import ProjectsPage from "./pages/Projects";
 import ProjectDetailPage from "./pages/ProjectDetail";
 import InsightsPage from "./pages/InsightsPage";
 import OutputsPage from "./pages/Outputs";
+import ProfilePage from "./pages/Profile";
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const token = tokenStore.get();
@@ -103,6 +104,15 @@ export default function App() {
           element={
             <RequireAuth>
               <OutputsPage />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <RequireAuth>
+              <ProfilePage />
             </RequireAuth>
           }
         />

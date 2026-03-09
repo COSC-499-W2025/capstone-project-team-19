@@ -35,8 +35,12 @@ export default function TopBar({ showNav = false, username }: Props) {
 
         {showNav && (
           <div className="userArea">
-            <div className="avatar" />
-            <div className="username">{username ?? "username"}</div>
+            <Link to="/profile" className="navLink" aria-label="Open profile">
+              <div className="avatar" />
+            </Link>
+            <Link to="/profile" className="username" aria-label="Open profile">
+              {username ?? "username"}
+            </Link>
           </div>
         )}
       </div>
