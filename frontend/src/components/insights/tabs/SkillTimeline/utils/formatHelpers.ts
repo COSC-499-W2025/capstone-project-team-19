@@ -19,6 +19,7 @@ export function toYMD(iso?: string | null) {
 
     const normalized = iso
         .replace(" ", "T")
+        .replace(/ ([+-])/, "$1")
         .replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
 
     const d = new Date(normalized);
