@@ -254,6 +254,13 @@
   color: #111;
 }
 
+.uploadFileAddedHint {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.35;
+  color: #111;
+}
+
 .uploadFileRow {
   border: 1px solid #d8d8d8;
   border-radius: 10px;

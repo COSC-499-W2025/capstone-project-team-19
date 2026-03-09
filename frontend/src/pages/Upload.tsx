@@ -25,6 +25,7 @@ type StageDef = {
 };
 
 type DedupDecisionValue = "" | DedupDecision;
+type VisibleDedupDecision = Exclude<DedupDecision, "skip">;
 type ProjectClassificationValue = "" | ProjectClassification;
 type ProjectTypeValue = "" | ProjectType;
 
@@ -260,11 +261,20 @@ function getProjectNotes(upload: UploadRecord | null): Record<string, string[]> 
   }
 
   const state = uploadState(upload);
+  const layout = layoutState(upload);
+  const currentUploadProjects = new Set<string>([
+    ...asStringArray(layout.pending_projects),
+    ...Object.keys(asStringMap(layout.auto_assignments)),
+  ]);
   const asks = asRecord(state.dedup_asks);
   for (const [projectName, raw] of Object.entries(asks)) {
-    const existing = asRecord(raw).existing;
-    if (typeof existing === "string" && existing.trim().length > 0) {
-      addNote(projectName, `Similar to previously analyzed project "${existing}".`);
+      const existing = asRecord(raw).existing;
+      if (typeof existing === "string" && existing.trim().length > 0) {
+      if (existing !== projectName && currentUploadProjects.has(existing)) {
+        addNote(projectName, `Similar to another project in this upload "${existing}".`);
+      } else {
+        addNote(projectName, `Similar to previously analyzed project "${existing}".`);
+      }
     } else {
       addNote(projectName, "Similar to a previously analyzed project.");
     }
@@ -352,8 +362,7 @@ export default function UploadPage() {
   const savedDedupChoices = useMemo(
     () =>
       Object.entries(dedupDecisions).filter(
-        (entry): entry is [string, DedupDecision] =>
-          entry[1] === "new_project" || entry[1] === "new_version" || entry[1] === "skip",
+        (entry): entry is [string, VisibleDedupDecision] => entry[1] === "new_project" || entry[1] === "new_version",
       ),
     [dedupDecisions],
   );
@@ -635,9 +644,14 @@ export default function UploadPage() {
     setDedupCaseIndex(0);
     const existingDecisions = asStringMap(uploadState(uploadData).dedup_resolved);
     setDedupDecisions((prev) => {
-      const next = { ...prev };
+      const next: Record<string, DedupDecisionValue> = {};
+      for (const [projectName, value] of Object.entries(prev)) {
+        if (value === "new_project" || value === "new_version") {
+          next[projectName] = value;
+        }
+      }
       for (const [projectName, value] of Object.entries(existingDecisions)) {
-        if (value === "new_project" || value === "new_version" || value === "skip") {
+        if (value === "new_project" || value === "new_version") {
           next[projectName] = value;
         }
       }
@@ -999,6 +1013,9 @@ export default function UploadPage() {
 
         <div className="uploadFileAddedBlock">
           <h3 className="uploadFileAddedTitle">File added</h3>
+          <p className="uploadFileAddedHint">
+            If you want to change your file selection, choose a new ZIP using the SELECT FILE button above.
+          </p>
           {selectedFile ? (
             <div className="uploadFileRow">
               <span className="uploadFileName">{selectedFile.name}</span>
@@ -1039,10 +1056,9 @@ export default function UploadPage() {
   }
 
   function renderDedupStage() {
-    function dedupLabel(choice: DedupDecision): string {
+    function dedupLabel(choice: VisibleDedupDecision): string {
       if (choice === "new_project") return "New project";
-      if (choice === "new_version") return "New version";
-      return "Skip";
+      return "New version";
     }
 
     return (
@@ -1109,16 +1125,6 @@ export default function UploadPage() {
                   <span>New version (links to existing history)</span>
                 </label>
 
-                <label className="dedupStageOption">
-                  <input
-                    type="radio"
-                    name={`dedup-${currentDedupCase.projectName}`}
-                    value="skip"
-                    checked={dedupDecisions[currentDedupCase.projectName] === "skip"}
-                    onChange={() => setDedupDecisions((prev) => ({ ...prev, [currentDedupCase.projectName]: "skip" }))}
-                  />
-                  <span>Skip this project</span>
-                </label>
               </div>
             )}
 
