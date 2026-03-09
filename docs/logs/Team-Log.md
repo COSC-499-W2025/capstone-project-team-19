@@ -787,6 +787,8 @@ The Projects page was implemented in [PR #535](https://github.com/COSC-499-W2025
 
 Tailwind CSS and shadcn/ui were set up in [PR #552](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/552) to provide a consistent component library and styling system for the frontend.
 
+The UI for the user's Profile page was implemented in [PR #560](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/560).
+
 ### Testing or debugging tasks
 
 Frontend tests for the Login, Register, and Home pages were added in [PR #533](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/533), covering component rendering, API call mocking, navigation, token storage, and error messaging. Tests for the Insights page (ranked projects and skill timeline tabs) were added in [PR #550](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/550). Tests for the Projects page were added in [PR #553](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/553), covering project list loading and rendering, as well as project detail views.
@@ -832,8 +834,5 @@ The plan is to integrate a UI component library and update the Figma designs wit
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-week9.png)       |
 
 ### Table view of under review tasks by username
-
-| GitHub Username | Screenshots                                                              |
-| --------------- | ------------------------------------------------------------------------ |
-| `ivonanicetin`  | ![In review tasks for Ivona](screenshots/InReview-Ivona-week9.png)       |
+ |
 
