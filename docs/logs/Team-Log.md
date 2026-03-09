@@ -8,7 +8,8 @@
 - [Week 2 (Jan 12-18)](#term-2-week-2-monday-january-12---sunday-january-18)
 - [Week 3 (Jan 19-25)](#term-2-week-3-monday-january-19---sunday-january-25)
 - [Week 4 + 5 (Jan 26 - Feb 8)](#term-2-week-4-5-monday-january-26---sunday-february-8)
-- [Week 6 + 7 (Feb 9 - Mar 1)](#term-2-week-6-7-monday-february-9---sunday-march-1)
+- [Week 6-8 (Feb 9 - Mar 1)](#term-2-week-6-8-monday-february-9---sunday-march-1)
+- [Week 9 (Mar 2-8)](#term-2-week-9-monday-march-2---sunday-march-8)
 
 ### Term 1
 
@@ -688,7 +689,7 @@ Next week, the team will focus on completing the remaining work for project vers
 | `johaneshp`     | ![In progress tasks for Johanes](screenshots/InProgress-Johanes-week5.png) |
 
 
-## (Term 2 Week 6-7) Monday February 9 - Sunday March 1
+## (Term 2 Week 6-8) Monday February 9 - Sunday March 1
 
 **Connection to previous week:**  
 
@@ -763,4 +764,80 @@ The plan is to begin implementing the frontend. A PR for setting up React and Vi
 
 | GitHub Username | Screenshots                                                                |
 | --------------- | -------------------------------------------------------------------------- |
-| `AdaraPutri`    | ![Uncompleted tasks for Adara](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/500) | 
+| `AdaraPutri`    | ![Uncompleted tasks for Adara](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/500) |
+
+
+## (Term 2 Week 9) Monday March 2 - Sunday March 8
+
+**Connection to previous week:**
+
+In weeks 6-8, we finalized all remaining backend API endpoints, completed project versioning, and built out the core analytics layer (ranked projects, skill timelines, activity heatmaps). The plan was to begin implementing the frontend once the React + Vite setup PR was completed and merged.
+
+### Coding tasks
+
+This week marked the official start of frontend development. The React + Vite frontend scaffold was completed and merged in [PR #500](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/500), establishing the base project structure under `/frontend` with environment configuration for backend connectivity.
+
+With the scaffold in place, the authentication and home page UI was implemented in [PR #522](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/522), wiring Login and Register pages to the existing FastAPI auth endpoints with token storage and navigation handling. The frontend test stack (Vitest + React Testing Library) was set up in [PR #531](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/531), providing the foundation for all frontend testing going forward.
+
+The Insights page began taking shape with ranked projects implemented in [PR #524](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/524), displaying project cards ranked by contribution and progression data. The skill timeline feature was implemented in [PR #530](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/530), with a follow-up PR adding a Code/Text/All toggle to the bar chart in [PR #548](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/548).
+
+The upload wizard was started with the consent flow UI built in [PR #540](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/540), implementing the first step of the upload process with a shared wizard layout. The full upload flow (Upload, Projects, Deduplication, Classification stages) was completed in [PR #551](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/551).
+
+The Projects page was implemented in [PR #535](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/535), displaying a list of projects with thumbnails and individual project detail views. The Resume Output page was implemented in [PR #545](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/545), supporting resume creation, viewing, deletion, and export to DOCX/PDF. This PR also fixed a backend bug where `detect_frameworks()` returned a Python `set` instead of a list, causing JSON serialization failures during resume creation for code projects.
+
+Tailwind CSS and shadcn/ui were set up in [PR #552](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/552) to provide a consistent component library and styling system for the frontend.
+
+### Testing or debugging tasks
+
+Frontend tests for the Login, Register, and Home pages were added in [PR #533](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/533), covering component rendering, API call mocking, navigation, token storage, and error messaging. Tests for the Insights page (ranked projects and skill timeline tabs) were added in [PR #550](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/550). Tests for the Projects page were added in [PR #553](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/553), covering project list loading and rendering, as well as project detail views.
+
+A bug in the project feedback endpoint was fixed in [PR #514](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/514), where a `project_key` vs `project_name` type mismatch caused the endpoint to return empty arrays. The test helper had the same bug, which was masking the issue. README and API documentation were also updated in [PR #515](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/515) with clarified setup instructions and fixes to duplicated and inconsistent sections.
+
+### Reviewing or collaboration tasks
+
+Several frontend PRs this week had dependency chains that required coordinated rebasing. The Insights page PRs (#524, #530, #548) branched off the frontend setup (#500) and login (#522) PRs, so they needed rebasing once those were merged. The test stack PR (#531) was also a prerequisite for the test PRs (#533, #550, #553). The team coordinated reviews to unblock these chains efficiently.
+
+### Issues or blockers
+
+A backend serialization bug was discovered while building the Resume Output page: `detect_frameworks()` returned a Python `set` which is not JSON-serializable, causing resume creation to fail for code projects. This was caught and fixed within [PR #545](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/545). No other major blockers were encountered.
+
+### Plan / goals for next week
+
+The plan is to integrate a UI component library and update the Figma designs with a refined color palette to modernize the look and feel. From there, we will flesh out the pages we've started on (Insights, Upload, Projects, Resume Output) and work towards completing the full end-to-end flow on the frontend, including the portfolio view. We will also continue adding frontend tests as pages are finalized.
+
+### Burnup chart
+
+![Burnup chart for Mar 2 - Mar 8](screenshots/week9_T2-burnupchart.png)
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshots                                                        |
+| --------------- | ------------------------------------------------------------------ |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-week9.png)       |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-week9.png)     |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-week9.png)       |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-week9.png)   |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-week9.png)       |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-week9.png)       |
+
+### Table view of under review tasks by username
+
+| GitHub Username | Screenshots                                                              |
+| --------------- | ------------------------------------------------------------------------ |
+| `AdaraPutri`    |                                                                          |
+| `ammaarkhan`    | ![In review tasks for Ammaar](screenshots/InReview-Ammaar-week9.png)     |
+| `ivonanicetin`  | ![In review tasks for Ivona](screenshots/InReview-Ivona-week9.png)       |
+| `johaneshp`     | ![In review tasks for Johanes](screenshots/InReview-Johanes-week9.png)   |
+| `salmavkh`      | ![In review tasks for Salma](screenshots/InReview-Salma-week9.png)       |
+| `taoTimTim`     | ![In review tasks for Timmi](screenshots/InReview-Timmi-week9.png)       |
