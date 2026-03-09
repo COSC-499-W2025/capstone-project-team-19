@@ -35,6 +35,19 @@ const mockTimelineCodeOnly: SkillTimelineDTO = {
 	summary: { total_skills: 1, total_projects: 1, date_range: {}, skill_names: [] },
 };
 
+const mockTimelineMultiProject: SkillTimelineDTO = {
+	dated: [],
+	undated: [],
+	current_totals: {
+		"api design": {
+			cumulative_score: 0.95,
+			projects: ["Backend API", "Frontend Client", "Mobile App"],
+			skill_type: "code",
+		},
+	},
+	summary: { total_skills: 1, total_projects: 3, date_range: {}, skill_names: [] },
+};
+
 describe("TotalsPanel", () => {
 	it("shows empty state when no totals", () => {
 		const empty: SkillTimelineDTO = {
@@ -85,5 +98,18 @@ describe("TotalsPanel", () => {
 	it("shows sort controls", () => {
 		render(<TotalsPanel timeline={mockTimelineWithBoth} />);
 		expect(screen.getByText(/sort by/i)).toBeInTheDocument();
+	});
+
+	it("shows contributing projects in tooltip for each skill", () => {
+		render(<TotalsPanel timeline={mockTimelineWithBoth} />);
+		expect(screen.getByText("My App")).toBeInTheDocument();
+		expect(screen.getByText("Essay")).toBeInTheDocument();
+	});
+
+	it("shows all projects when skill has multiple contributors", () => {
+		render(<TotalsPanel timeline={mockTimelineMultiProject} />);
+		expect(screen.getByText("Backend API")).toBeInTheDocument();
+		expect(screen.getByText("Frontend Client")).toBeInTheDocument();
+		expect(screen.getByText("Mobile App")).toBeInTheDocument();
 	});
 });
