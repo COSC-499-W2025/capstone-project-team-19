@@ -34,6 +34,8 @@ describe('api client', () => {
             localStorage.clear()
         })
 
+        const TOKEN_KEY = 'resuME_token'
+
         it('calls fetch with BASE_URL + path', async () => {
             await api.get('/users')
 

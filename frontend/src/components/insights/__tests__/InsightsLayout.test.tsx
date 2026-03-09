@@ -1,0 +1,86 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import InsightsLayout from "../InsightsLayout";
+import * as insights from "../../../api/insights";
+
+vi.mock("../../../api/insights");
+
+const mockRankings = {
+	success: true,
+	data: {
+		rankings: [
+			{ rank: 1, project_summary_id: 101, project_name: "Project A", score: 0.8, manual_rank: null },
+		],
+	},
+	error: null,
+};
+
+const mockTimeline = {
+	success: true,
+	data: {
+		dated: [],
+		undated: [],
+		current_totals: {},
+		summary: { total_skills: 0, total_projects: 0, date_range: {}, skill_names: [] },
+	},
+	error: null,
+};
+
+describe("InsightsLayout", () => {
+	beforeEach(() => {
+		vi.mocked(insights.getRanking).mockResolvedValue(mockRankings);
+		vi.mocked(insights.getSkillTimeline).mockResolvedValue(mockTimeline);
+	});
+
+	it("renders Insights header and subnav", async () => {
+		render(<InsightsLayout />);
+		await waitFor(() => {
+			expect(screen.getByRole("heading", { name: /insights/i })).toBeInTheDocument();
+		});
+		expect(screen.getByRole("button", { name: /ranked projects/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /skill timeline/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /chronological skills/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /activity heatmap/i })).toBeInTheDocument();
+	});
+
+	it("shows Ranked Projects tab by default", async () => {
+		render(<InsightsLayout />);
+		await waitFor(() => {
+			expect(screen.getByRole("button", { name: /ranked projects/i })).toHaveClass("active");
+		});
+	});
+
+	it("switches to Skill Timeline when clicked", async () => {
+		const user = userEvent.setup();
+		render(<InsightsLayout />);
+		await waitFor(() => {
+			expect(screen.getByText("Project A")).toBeInTheDocument();
+		});
+		await user.click(screen.getByRole("button", { name: /skill timeline/i }));
+		expect(screen.getByRole("button", { name: /skill timeline/i })).toHaveClass("active");
+		expect(screen.getByRole("button", { name: /ranked projects/i })).not.toHaveClass("active");
+	});
+
+	it("switches to Chronological Skills when clicked", async () => {
+		const user = userEvent.setup();
+		render(<InsightsLayout />);
+		await waitFor(() => {
+			expect(screen.getByText("Project A")).toBeInTheDocument();
+		});
+		await user.click(screen.getByRole("button", { name: /chronological skills/i }));
+		expect(screen.getByRole("button", { name: /chronological skills/i })).toHaveClass("active");
+		expect(screen.getAllByText(/chronological skills/i).length).toBeGreaterThan(0);
+	});
+
+	it("switches to Activity Heatmap when clicked", async () => {
+		const user = userEvent.setup();
+		render(<InsightsLayout />);
+		await waitFor(() => {
+			expect(screen.getByText("Project A")).toBeInTheDocument();
+		});
+		await user.click(screen.getByRole("button", { name: /activity heatmap/i }));
+		expect(screen.getByRole("button", { name: /activity heatmap/i })).toHaveClass("active");
+		expect(screen.getAllByText(/activity heatmap/i).length).toBeGreaterThan(0);
+	});
+});

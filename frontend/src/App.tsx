@@ -9,6 +9,7 @@ import UploadPage from "./pages/upload/upload/UploadPage";
 import UploadSetupPage from "./pages/upload/setup/SetupPage";
 import ConsentPage from "./pages/upload/consent/ConsentPage";
 import ProjectsPage from "./pages/Projects";
+import ProjectDetailPage from "./pages/ProjectDetail";
 import InsightsPage from "./pages/InsightsPage";
 import OutputsPage from "./pages/Outputs";
 
@@ -75,6 +76,15 @@ export default function App() {
           element={
             <RequireAuth>
               <ProjectsPage />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/projects/:id"
+          element={
+            <RequireAuth>
+              <ProjectDetailPage />
             </RequireAuth>
           }
         />

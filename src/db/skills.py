@@ -89,7 +89,7 @@ def get_skill_events(conn, user_id):
         1. Manual override from project_summaries.manual_end_date (if set)
         2. text_activity_contribution.end_date (automatic detection)
 
-    Returns tuples: (skill_name, level, score, project_name, actual_activity_date, recorded_at)
+    Returns tuples: (skill_name, level, score, project_name, actual_activity_date, recorded_at, project_type)
     """
 
     query = """
@@ -136,7 +136,8 @@ def get_skill_events(conn, user_id):
                     ELSE NULL
                 END
             ) AS actual_activity_date,
-            lv.recorded_at
+            lv.recorded_at,
+            lv.project_type
         FROM project_skills ps
         INNER JOIN latest_version lv
             ON ps.user_id = lv.user_id
