@@ -1,6 +1,8 @@
 import type { ProjectType, UploadRecord } from "../../../api/uploads";
 import type { DedupCase, ProjectClassificationValue, ProjectTypeValue } from "./uploadTypes";
 
+export const SKIPPED_PROJECT_NOTE = "Already analyzed in a previous upload and skipped here.";
+
 export function asRecord(value: unknown): Record<string, unknown> {
   if (typeof value === "string") {
     try {
@@ -244,7 +246,7 @@ export function getProjectNotes(upload: UploadRecord | null): Record<string, str
 
   const skipped = asStringArray(state.dedup_skipped_projects);
   for (const projectName of skipped) {
-    addNote(projectName, "Already analyzed in a previous upload and skipped here.");
+    addNote(projectName, SKIPPED_PROJECT_NOTE);
   }
 
   const warnings = asStringMap(state.dedup_warnings);

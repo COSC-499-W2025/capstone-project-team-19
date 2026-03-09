@@ -42,6 +42,7 @@ import {
   getProjectsFromUpload,
   getProjectsNeedingType,
   isZipFile,
+  SKIPPED_PROJECT_NOTE,
   toProjectClassificationValue,
   toProjectTypeValue,
   uploadState,
@@ -85,6 +86,12 @@ export default function UploadPage() {
     [projects, discoveredProjects],
   );
   const projectNotes = useMemo(() => getProjectNotes(uploadData), [uploadData]);
+  const allProjectsPreviouslySkipped = useMemo(
+    () =>
+      discoveredProjects.length > 0 &&
+      discoveredProjects.every((projectName) => projectNotes[projectName]?.includes(SKIPPED_PROJECT_NOTE)),
+    [discoveredProjects, projectNotes],
+  );
 
   const projectsNeedingType = useMemo(() => getProjectsNeedingType(uploadData), [uploadData]);
   const autoAssignments = useMemo(() => getAutoAssignments(uploadData), [uploadData]);
@@ -312,7 +319,9 @@ export default function UploadPage() {
     if (isSubmitting) return true;
 
     if (currentStage.key === "upload") return !selectedFile;
-    if (currentStage.key === "projects") return !uploadData || discoveredProjects.length === 0;
+    if (currentStage.key === "projects") {
+      return !uploadData || discoveredProjects.length === 0 || allProjectsPreviouslySkipped;
+    }
     if (currentStage.key === "deduplication") return !uploadData || !dedupResolved;
 
     if (!uploadData) return true;
@@ -327,6 +336,7 @@ export default function UploadPage() {
     classificationStageCompleted,
     currentStage.key,
     dedupResolved,
+    allProjectsPreviouslySkipped,
     discoveredProjects.length,
     isSubmitting,
     needsClassification,
@@ -515,6 +525,10 @@ export default function UploadPage() {
 
     if (discoveredProjects.length === 0) {
       setSubmitError("No projects found. Upload another ZIP file to continue.");
+      return false;
+    }
+    if (allProjectsPreviouslySkipped) {
+      setSubmitError("No projects to analyze in this upload because all detected projects were previously skipped.");
       return false;
     }
 
@@ -707,7 +721,13 @@ export default function UploadPage() {
     }
 
     if (currentStage.key === "projects") {
-      return <ProjectsStage discoveredProjects={discoveredProjects} projectNotes={projectNotes} />;
+      return (
+        <ProjectsStage
+          discoveredProjects={discoveredProjects}
+          projectNotes={projectNotes}
+          allProjectsPreviouslySkipped={allProjectsPreviouslySkipped}
+        />
+      );
     }
 
     if (currentStage.key === "deduplication") {

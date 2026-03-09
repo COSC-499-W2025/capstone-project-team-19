@@ -1,9 +1,10 @@
 type Props = {
   discoveredProjects: string[];
   projectNotes: Record<string, string[]>;
+  allProjectsPreviouslySkipped: boolean;
 };
 
-export default function ProjectsStage({ discoveredProjects, projectNotes }: Props) {
+export default function ProjectsStage({ discoveredProjects, projectNotes, allProjectsPreviouslySkipped }: Props) {
   return (
     <div className="projectsStagePanel">
       <h2 className="wizardPlaceholderTitle">Projects</h2>
@@ -24,6 +25,12 @@ export default function ProjectsStage({ discoveredProjects, projectNotes }: Prop
             </li>
           ))}
         </ul>
+      )}
+
+      {allProjectsPreviouslySkipped && (
+        <p className="wizardPlaceholderText projectsStageBlockedNote">
+          You cannot continue because all detected projects were already analyzed in previous uploads.
+        </p>
       )}
     </div>
   );
