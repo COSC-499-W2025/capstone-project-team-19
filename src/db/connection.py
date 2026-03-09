@@ -19,6 +19,8 @@ def connect(db_path: str | Path | None = None) -> sqlite3.Connection:
     if target != ":memory:":
         Path(target).parent.mkdir(parents=True, exist_ok=True)
 
+    # FastAPI may finalize sync generator dependencies in a different worker thread.
+    # Allow the same connection object to be used across threads for request lifetime.
     conn = sqlite3.connect(target, check_same_thread=False)
     conn.execute("PRAGMA foreign_keys=ON;")
     if target != ":memory:":

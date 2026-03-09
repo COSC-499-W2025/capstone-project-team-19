@@ -25,8 +25,8 @@ export default function RegisterPage() {
     try {
       await register(username, password);
       nav("/login", { replace: true });
-    } catch (e: any) {
-      setErr(e?.message ?? "Register failed");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Register failed");
     } finally {
       setLoading(false);
     }

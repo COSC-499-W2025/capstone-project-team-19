@@ -4,13 +4,17 @@ import { api } from '../client'
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 describe('api client', () => {
-    it('exports get, postJson, and postForm methods', () => {
+    it('exports all expected client methods', () => {
         expect(api).toHaveProperty('get')
         expect(api).toHaveProperty('postJson')
-        expect(api).toHaveProperty('postForm')
+        expect(api).toHaveProperty('putJson')
+        expect(api).toHaveProperty('patchJson')
+        expect(api).toHaveProperty('post')
         expect(typeof api.get).toBe('function')
         expect(typeof api.postJson).toBe('function')
-        expect(typeof api.postForm).toBe('function')
+        expect(typeof api.putJson).toBe('function')
+        expect(typeof api.patchJson).toBe('function')
+        expect(typeof api.post).toBe('function')
     })
 
     describe('request behavior', () => {
@@ -42,7 +46,7 @@ describe('api client', () => {
         })
 
         it('attaches Authorization header when token exists', async () => {
-            localStorage.setItem('token', 'secret-123')
+            localStorage.setItem('resuME_token', 'secret-123')
             await api.get('/me')
 
             expect(mockFetch).toHaveBeenCalledWith(
