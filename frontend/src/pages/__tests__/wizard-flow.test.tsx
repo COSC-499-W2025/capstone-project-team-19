@@ -77,18 +77,18 @@ describe("upload wizard flow", () => {
     await user.click(yesButtons[1]);
     await user.click(screen.getByRole("button", { name: "Next" }));
 
-    await screen.findByText("Upload Placeholder");
+    await screen.findByText("Only ZIP files are accepted.");
 
     expect(mockedPostInternalConsent).toHaveBeenCalledWith("accepted");
     expect(mockedPostExternalConsent).toHaveBeenCalledWith("accepted");
     expect(window.location.pathname).toBe("/upload/upload");
   });
 
-  it("/upload/upload renders placeholder with active step 2", async () => {
+  it("/upload/upload renders step 2 with active sidebar state", async () => {
     setRoute("/upload/upload");
     render(<App />);
 
-    await screen.findByText("Upload Placeholder");
+    await screen.findByText("Only ZIP files are accepted.");
     const step2 = screen.getByRole("button", { name: "2. Upload" });
     expect(step2).toHaveClass("wizardStep--active");
   });
@@ -97,7 +97,7 @@ describe("upload wizard flow", () => {
     setRoute("/upload/upload");
     const { container } = render(<App />);
 
-    await screen.findByText("Upload Placeholder");
+    await screen.findByText("Only ZIP files are accepted.");
     expect(container.querySelector(".wizardSidebar")).not.toBeNull();
     expect(container.querySelector(".wizardDivider")).not.toBeNull();
   });

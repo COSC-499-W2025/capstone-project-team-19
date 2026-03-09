@@ -19,6 +19,7 @@ type Props = {
   children: ReactNode;
   onAction?: () => void;
   actionDisabled?: boolean;
+  showAction?: boolean;
 };
 
 export default function UploadWizardShell({
@@ -28,6 +29,7 @@ export default function UploadWizardShell({
   children,
   onAction,
   actionDisabled = false,
+  showAction = true,
 }: Props) {
   const nav = useNavigate();
 
@@ -67,9 +69,11 @@ export default function UploadWizardShell({
                 })}
               </div>
 
-              <button type="button" className="wizardActionBtn" onClick={onAction} disabled={actionDisabled}>
-                {actionLabel}
-              </button>
+              {showAction && (
+                <button type="button" className="wizardActionBtn" onClick={onAction} disabled={actionDisabled}>
+                  {actionLabel}
+                </button>
+              )}
             </div>
           </aside>
 

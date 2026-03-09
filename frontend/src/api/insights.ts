@@ -33,3 +33,54 @@ export function patchProjectRank(projectId: number, rank: number | null) {
 export function resetRanking() {
     return api.post<ProjectRankingDTO>(`${BASE_URL}/ranking/reset`);
 }
+
+// Get Skill Timeline
+
+export type TimelineEventDTO = {
+    skill_name: string;
+    level: string;
+    score: number;
+    project_name: string;
+    skill_type?: "text" | "code";
+};
+
+export type CumulativeSkillDTO = {
+    cumulative_score: number;
+    projects: string[];
+};
+
+export type DateGroupDTO = {
+    date: string;
+    events: TimelineEventDTO[];
+    cumulative_skills: Record<string, CumulativeSkillDTO>;
+};
+
+export type CurrentTotalDTO = {
+    cumulative_score: number;
+    projects: string[];
+    skill_type?: "text" | "code";
+};
+
+export type TimelineSummaryDTO = {
+    total_skills: number;
+    total_projects: number;
+    date_range: { earliest?: string | null; latest?: string | null };
+    skill_names: string[];
+};
+
+export type SkillTimelineDTO = {
+    dated: DateGroupDTO[];
+    undated: TimelineEventDTO[];
+    current_totals: Record<string, CurrentTotalDTO>;
+    summary: TimelineSummaryDTO;
+};
+
+export type SkillTimelineApiResponse = {
+    success: boolean;
+    data: SkillTimelineDTO;
+    error: { message: string; code: number } | null;
+};
+
+export function getSkillTimeline() {
+    return api.get<SkillTimelineApiResponse>("/skills/timeline");
+}

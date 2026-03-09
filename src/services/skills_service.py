@@ -24,9 +24,10 @@ def _diminishing_return(current: float, new_score: float) -> float:
 def get_skill_timeline_data(conn, user_id: int) -> Dict[str, Any]:
     dated, undated = get_skill_timeline(conn, user_id)
 
-    # Running state: cumulative score and contributing projects per skill
+    # Running state: cumulative score, contributing projects, and skill type per skill
     cumulative: Dict[str, float] = {}
     projects_by_skill: Dict[str, List[str]] = {}
+    skill_type_by_skill: Dict[str, str] = {}
 
     # Group dated events by date and compute cumulative scores
     date_groups = []
@@ -43,6 +44,8 @@ def get_skill_timeline_data(conn, user_id: int) -> Dict[str, Any]:
                 projects_by_skill[skill] = []
             if e["project_name"] not in projects_by_skill[skill]:
                 projects_by_skill[skill].append(e["project_name"])
+            if skill not in skill_type_by_skill and "skill_type" in e:
+                skill_type_by_skill[skill] = e["skill_type"]
 
         date_groups.append({
             "date": date_key,
@@ -52,6 +55,7 @@ def get_skill_timeline_data(conn, user_id: int) -> Dict[str, Any]:
                     "level": e["level"],
                     "score": e["score"],
                     "project_name": e["project_name"],
+                    "skill_type": e.get("skill_type", "unknown"),
                 }
                 for e in events
             ],
@@ -70,6 +74,7 @@ def get_skill_timeline_data(conn, user_id: int) -> Dict[str, Any]:
             "level": e["level"],
             "score": e["score"],
             "project_name": e["project_name"],
+            "skill_type": e.get("skill_type", "unknown"),
         }
         for e in undated
     ]
@@ -87,11 +92,14 @@ def get_skill_timeline_data(conn, user_id: int) -> Dict[str, Any]:
             current_projects[skill] = []
         if e["project_name"] not in current_projects[skill]:
             current_projects[skill].append(e["project_name"])
+        if skill not in skill_type_by_skill and "skill_type" in e:
+            skill_type_by_skill[skill] = e["skill_type"]
 
     current_totals_dto = {
         skill: {
             "cumulative_score": round(score, 4),
             "projects": current_projects[skill],
+            "skill_type": skill_type_by_skill.get(skill, "unknown"),
         }
         for skill, score in current_totals.items()
     }

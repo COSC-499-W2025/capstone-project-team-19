@@ -1,105 +1,25 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getUsername } from "../auth/user";
 import UploadWizardShell from "../components/UploadWizardShell";
-import { getConsentStatus, postExternalConsent, postInternalConsent } from "../api/consent";
-import type { ConsentStatusValue } from "../api/consent";
 
 export default function ConsentPage() {
   const username = getUsername();
   const nav = useNavigate();
-  const [internalConsent, setInternalConsent] = useState<ConsentStatusValue | null>(null);
-  const [externalConsent, setExternalConsent] = useState<ConsentStatusValue | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(true);
-  const [statusError, setStatusError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadStatus() {
-      setLoadingStatus(true);
-      setStatusError(null);
-      try {
-        const res = await getConsentStatus();
-        if (!active) return;
-        setInternalConsent(res.data?.internal_consent ?? null);
-        setExternalConsent(res.data?.external_consent ?? null);
-      } catch (e: unknown) {
-        if (!active) return;
-        setStatusError(e instanceof Error ? e.message : "Failed to load consent status.");
-      } finally {
-        if (active) setLoadingStatus(false);
-      }
-    }
-
-    loadStatus();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  async function onNext() {
-    setSubmitError(null);
-
-    if (internalConsent !== "accepted") {
-      setSubmitError("Please select \"Yes, I consent.\" for user consent to continue.");
-      return;
-    }
-    if (!externalConsent) {
-      setSubmitError("Please select an external service consent option to continue.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const internalRes = await postInternalConsent(internalConsent);
-      if (!internalRes.success) {
-        throw new Error(internalRes.error?.message ?? "Failed to save internal consent.");
-      }
-
-      const externalRes = await postExternalConsent(externalConsent);
-      if (!externalRes.success) {
-        throw new Error(externalRes.error?.message ?? "Failed to save external consent.");
-      }
-
-      nav("/upload/upload");
-    } catch (e: unknown) {
-      setSubmitError(e instanceof Error ? e.message : "Failed to save consent choices.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  const controlsDisabled = loadingStatus || submitting;
   const steps = [
     { label: "1. Consent", status: "active" as const },
-    { label: "2. Upload", status: "inactive" as const, onClick: onNext, disabled: controlsDisabled },
-    { label: "3. Setup", status: "disabled" as const, disabled: true },
+    { label: "2. Upload", status: "disabled" as const },
+    { label: "3. Setup", status: "disabled" as const },
   ];
 
   return (
     <UploadWizardShell
       username={username}
       steps={steps}
-      actionLabel={submitting ? "Saving..." : "Next"}
-      onAction={onNext}
-      actionDisabled={controlsDisabled}
+      actionLabel="Next"
+      onAction={() => nav("/upload/upload")}
     >
       <div className="consentContent">
-        {loadingStatus && <p className="consentStatusLine">Loading saved consent status...</p>}
-        {statusError && (
-          <p className="error consentStatusLine" style={{ whiteSpace: "pre-line" }}>
-            {statusError}
-          </p>
-        )}
-        {submitError && (
-          <p className="error consentStatusLine" style={{ whiteSpace: "pre-line" }}>
-            {submitError}
-          </p>
-        )}
-
         <section className="consentSectionBlock">
           <h2 className="consentSectionTitle">USER CONSENT NOTICE</h2>
 
@@ -124,15 +44,7 @@ export default function ConsentPage() {
           </p>
 
           <label className="consentChoice">
-            <input
-              className="consentChoiceRadio"
-              type="radio"
-              name="internal-consent"
-              value="accepted"
-              checked={internalConsent === "accepted"}
-              disabled={controlsDisabled}
-              onChange={() => setInternalConsent("accepted")}
-            />
+            <input className="consentChoiceRadio" type="radio" name="internal-consent" value="accepted" />
             <span>Yes, I consent.</span>
           </label>
         </section>
@@ -159,28 +71,12 @@ export default function ConsentPage() {
           </p>
 
           <label className="consentChoice">
-            <input
-              className="consentChoiceRadio"
-              type="radio"
-              name="external-consent"
-              value="accepted"
-              checked={externalConsent === "accepted"}
-              disabled={controlsDisabled}
-              onChange={() => setExternalConsent("accepted")}
-            />
+            <input className="consentChoiceRadio" type="radio" name="external-consent" value="accepted" />
             <span>Yes, I consent.</span>
           </label>
 
           <label className="consentChoice">
-            <input
-              className="consentChoiceRadio"
-              type="radio"
-              name="external-consent"
-              value="rejected"
-              checked={externalConsent === "rejected"}
-              disabled={controlsDisabled}
-              onChange={() => setExternalConsent("rejected")}
-            />
+            <input className="consentChoiceRadio" type="radio" name="external-consent" value="rejected" />
             <span>No, I don&apos;t want to use LLM.</span>
           </label>
         </section>

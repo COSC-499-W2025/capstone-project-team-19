@@ -5,9 +5,11 @@ import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import HomePage from "./pages/Home";
 import { tokenStore } from "./auth/token";
-import UploadPage from "./pages/Upload";
-import ConsentPage from "./pages/Consent";
+import UploadPage from "./pages/upload/upload/UploadPage";
+import UploadSetupPage from "./pages/upload/setup/SetupPage";
+import ConsentPage from "./pages/upload/consent/ConsentPage";
 import ProjectsPage from "./pages/Projects";
+import ProjectDetailPage from "./pages/ProjectDetail";
 import InsightsPage from "./pages/InsightsPage";
 import OutputsPage from "./pages/Outputs";
 import ProfilePage from "./pages/Profile";
@@ -62,10 +64,28 @@ export default function App() {
         />
 
         <Route
+          path="/upload/setup"
+          element={
+            <RequireAuth>
+              <UploadSetupPage />
+            </RequireAuth>
+          }
+        />
+
+        <Route
           path="/projects"
           element={
             <RequireAuth>
               <ProjectsPage />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/projects/:id"
+          element={
+            <RequireAuth>
+              <ProjectDetailPage />
             </RequireAuth>
           }
         />
