@@ -4,7 +4,8 @@
 
 ### Term 2
 
-- [T2 Weeks 6–8 (Feb 9–Mar 1)](#t2-weeks-6-8-monday-february-9---sunday-march-1)
+- [Week 9 (Mar 2–8)](#t2-week-9-monday-2nd---sunday-8th-march)
+- [Weeks 6–8 (Feb 9–Mar 1)](#t2-weeks-6-8-monday-february-9---sunday-march-1)
 - [Weeks 4–5 (Jan 26–Feb 8)](#t2-weeks-4-5-monday-january-26---sunday-february-8)
 - [Week 3 (Jan 19–25)](#t2-week-3-monday-january-19---sunday-january-25)
 - [Week 2 (Jan 12–18)](#t2-week-2-monday-january-12---sunday-january-18)
@@ -245,7 +246,7 @@ I reviewed some PRs, four of them are:
 
 Next week: I plan to implement the API endpoint for running the analysis (POST /projects/upload/{upload_id}/run). This might require additional endpoints such as run preferences (per upload), project and contribution summaries, project role inputs, and others.
 
-## (T2 Weeks 6-8) Monday February 9 - Sunday March 1
+## (Weeks 6-8) Monday February 9 - Sunday March 1
 
 ![Screenshot of this week's peer evaluation](./screenshots/Salma-Feb9-Mar1.PNG)
 
@@ -267,3 +268,21 @@ I also reviewed some PRs, four of them are:
 - Adara's PR [#497](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/497) on activity heatmap features. I suggested a few documentation improvements and clean the unused imports.
 
 Next week plan: I plan to address some comments on my PR and plan to work on implementing the frontend.
+
+## (T2 Week 9) Monday 2nd - Sunday 8th March
+
+![Screenshot of this week's peer evaluation](./screenshots/Salma-Mar2-Mar8.PNG)
+
+I worked on PR [#540](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/540), where I implemented the frontend for the upload consent flow. This included building the consent page UI based on the Figma design, adding the shared upload wizard layout, connecting the consent APIs, and adding supporting frontend tests.
+
+I worked on PR [#551](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/551) where I implemented the frontend for the upload flow page as a continuation of the consent step. This included building the four-stage upload flow: Upload, Projects, Deduplication, and Classification. It also involved integrating the related APIs and making styling updates specific to the upload experience.
+
+In addition, I modified the Figma files to update the upload pages design and improve the overall UI.
+
+I also reviewed some PRs, three of them are:
+
+- PR [#531](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/531) on the frontend test stack, where I suggested adding Node version requirements and clearer testing instructions in the README.
+- PR [#530](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/530) on insights/skill-timeline, where I suggested dividing the skills bar chart into separate sections for text and code.
+- PR [#535](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/535) on frontend/projects, where I corrected some invalid syntax, pointed out missing client method exports, and provided UI improvement suggestions.
+
+Next week: I plan to continue implementing the remaining pages in the upload tab (step 3 for setup). I may also update the Figma files with a new color scheme and apply those color changes across the codebase.
