@@ -48,7 +48,7 @@ describe('api client', () => {
         })
 
         it('attaches Authorization header when token exists', async () => {
-            localStorage.setItem('resuME_resuME_token', 'secret-123')
+            localStorage.setItem('resuME_token', 'secret-123')
             await api.get('/me')
 
             expect(mockFetch).toHaveBeenCalledWith(
