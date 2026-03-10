@@ -755,3 +755,20 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS user_education_entries (
+    entry_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL,
+    entry_type    TEXT NOT NULL CHECK (entry_type IN ('education', 'certificate')),
+    title         TEXT NOT NULL,
+    organization  TEXT,
+    date_text     TEXT,
+    description   TEXT,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_education_entries_user_order
+    ON user_education_entries(user_id, display_order, entry_id);
