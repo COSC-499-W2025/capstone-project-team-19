@@ -121,7 +121,7 @@ def test_missing_config_file_is_skipped(conn):
         conn.commit()
 
         frameworks = fd.detect_frameworks(conn, "projB", 2, zip_name + ".zip")
-        assert frameworks == set()
+        assert frameworks == []
     finally:
         _cleanup_zip_data(zip_name)
 
@@ -145,7 +145,7 @@ def test_unreadable_config_entry_is_handled_gracefully(conn):
 
         # Should not raise, and should simply return empty set
         frameworks = fd.detect_frameworks(conn, "projD", 4, zip_name + ".zip")
-        assert frameworks == set()
+        assert frameworks == []
     finally:
         _cleanup_zip_data(zip_name)
 
@@ -170,7 +170,7 @@ def test_no_frameworks_present_returns_empty(conn):
         conn, "no_frameworks_zip", "requirements.txt", "requests==2.31.0\nnumpy==1.24.0\n",
         "emptyProj", 12, []
     )
-    assert frameworks == set()
+    assert frameworks == []
 
 def test_detects_python_web_frameworks(conn):
     """Detects multiple Python web frameworks from requirements.txt"""
