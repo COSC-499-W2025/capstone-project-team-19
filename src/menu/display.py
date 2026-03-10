@@ -22,10 +22,10 @@ def show_start_menu(username: str) -> int:
     print("10. Edit project dates")
     print("11. Manage project thumbnails")
     print("12. View all projects")
-    print("13. Exit")
+    print("13. Edit profile")
+    print("14. Exit")
     while True:
-        choice = input("\nPlease select an option (1-13): ").strip()
-        if choice in {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13"}:
+        choice = input("\nPlease select an option (1-14): ").strip()
+        if choice in {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14"}:
             return int(choice)
-        print("Invalid choice. Please enter a number between 1 and 13.")
-
+        print("Invalid choice. Please enter a number between 1 and 14.")

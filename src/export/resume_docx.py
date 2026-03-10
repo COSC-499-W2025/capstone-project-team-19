@@ -35,6 +35,11 @@ from src.export.resume_helpers import (
     filter_skills_by_highlighted,
 )
 
+from src.db import (
+    build_contact_line,
+    get_visible_profile_text,
+)
+
 def _clean_str(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
@@ -117,6 +122,7 @@ def export_resume_record_to_docx(
     out_dir: str = "./out",
     highlighted_skills: Optional[List[str]] = None,
     highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,
+    user_profile: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """
     record is the dict returned by get_resume_snapshot(...).
@@ -136,8 +142,12 @@ def export_resume_record_to_docx(
     # doc.add_heading(f"Resume — {username}", level=0)
     # doc.add_paragraph(f"Generated on {stamp_display}")
 
+    profile = user_profile or {}
     doc.add_heading(username.upper(), level=0)
-    doc.add_paragraph("Phone | Email | LinkedIn | Location")
+
+    contact_line = build_contact_line(profile)
+    if contact_line:
+        doc.add_paragraph(contact_line)
 
     resume_json = record.get("resume_json")
     rendered_text = record.get("rendered_text")
@@ -168,8 +178,10 @@ def export_resume_record_to_docx(
     # ---------------------------
 
     # PROFILE (placeholder)
-    add_section_heading(doc, "Profile")
-    add_placeholder(doc, "To be updated later.")
+    profile_text = get_visible_profile_text(profile)
+    if profile_text:
+        add_section_heading(doc, "Profile")
+        doc.add_paragraph(profile_text)
 
     # SKILLS (same logic as before)
     add_section_heading(doc, "Skills")
