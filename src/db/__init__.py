@@ -263,7 +263,8 @@ from src.db.project_feedback import (
 
 from src.db.user_profile import (
     build_contact_line,
-    get_visible_profile_text
+    get_visible_profile_text,
+    get_user_profile,
 )
 __all__ = [
     "connect",
@@ -399,5 +400,6 @@ __all__ = [
     "has_skill_preferences",
     "build_contact_line",
     "get_visible_profile_text",
+    "get_user_profile",
 ]
 
