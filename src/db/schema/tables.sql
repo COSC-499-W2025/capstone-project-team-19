@@ -749,6 +749,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     user_id       INTEGER PRIMARY KEY,
     phone         TEXT,
     linkedin      TEXT,
+    github        TEXT,
     location      TEXT,
     profile_text  TEXT,
     updated_at    TEXT NOT NULL DEFAULT (datetime('now')),

@@ -2,7 +2,7 @@
 """
 Export a saved resume snapshot (stored JSON) directly to a PDF using ReportLab (Platypus).
 
-Layout (requested):
+Layout:
 - Name (largest)
 - line between name and contact
 - Contact line
@@ -25,6 +25,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from xml.sax.saxutils import escape
+
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_LEFT
@@ -46,7 +48,7 @@ from src.export.resume_helpers import (
 )
 
 from src.db import (
-    build_contact_line,
+    get_contact_parts,
     get_visible_profile_text,
 )
 
@@ -99,6 +101,27 @@ def _resume_key_role(p: Dict[str, Any]) -> str | None:
     if manual_role:
         return manual_role
     return _clean_str(p.get("key_role"))
+
+
+def _pdf_contact_html(profile: Dict[str, Any]) -> str | None:
+    parts = get_contact_parts(profile)
+    chunks: List[str] = []
+
+    if parts["phone"]:
+        chunks.append(escape(parts["phone"]))
+    if parts["email"]:
+        chunks.append(escape(parts["email"]))
+    if parts["linkedin"]:
+        chunks.append(f'<link href="{escape(parts["linkedin"])}">LinkedIn</link>')
+    if parts["github"]:
+        chunks.append(f'<link href="{escape(parts["github"])}">GitHub</link>')
+    if parts["location"]:
+        chunks.append(escape(parts["location"]))
+
+    if not chunks:
+        return None
+
+    return " | ".join(chunks)
 
 
 def export_resume_record_to_pdf(
@@ -224,9 +247,9 @@ def export_resume_record_to_pdf(
     story.append(Paragraph(username.upper(), NameStyle))
     story.append(rule())
 
-    contact_line = build_contact_line(profile)
-    if contact_line:
-        story.append(Paragraph(contact_line, ContactStyle))
+    contact_html = _pdf_contact_html(profile)
+    if contact_html:
+        story.append(Paragraph(contact_html, ContactStyle))
 
     # If JSON is broken, dump rendered_text as paragraphs
     if snapshot is None:
@@ -252,7 +275,7 @@ def export_resume_record_to_pdf(
     if profile_text:
         story.append(section_gap())
         story.append(Paragraph("PROFILE", SectionStyle))
-        story.append(Paragraph(profile_text, Body))
+        story.append(Paragraph(escape(profile_text), Body))
 
     # ---------------------------
     # SKILLS
