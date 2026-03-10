@@ -4,12 +4,10 @@ Export a saved resume snapshot (stored JSON) to a Word (.docx) document.
 Output format:
 - Name
 - Contact
-- Profile 
-- Skills 
-- Projects 
-- Education & certificates
-
-Some items are placeholders for now and will be updated later.
+- Profile
+- Skills
+- Projects
+- Education & certificates (only shown if entries exist)
 
 Saves to ./out/ (created if missing).
 """
@@ -29,7 +27,6 @@ from docx.oxml.ns import qn
 from src.export.resume_helpers import (
     format_date_range,
     add_section_heading,
-    add_placeholder,
     add_bullet,
     add_role_date_line,
     _project_sort_key,
@@ -41,6 +38,7 @@ from src.db import (
     get_contact_parts,
     get_visible_profile_text,
 )
+
 
 def _clean_str(value: Any) -> str | None:
     if not isinstance(value, str):
@@ -74,16 +72,6 @@ def _resume_display_name(p: Dict[str, Any]) -> str:
     return p.get("project_name") or "Unnamed project"
 
 
-def _resume_summary_text(p: Dict[str, Any]) -> str | None:
-    summary_override = _clean_str(p.get("resume_summary_override"))
-    if summary_override:
-        return summary_override
-    manual_summary = _clean_str(p.get("manual_summary_text"))
-    if manual_summary:
-        return manual_summary
-    return _clean_str(p.get("summary_text"))
-
-
 def _resume_contribution_bullets(p: Dict[str, Any]) -> List[str]:
     resume_bullets = _clean_bullets(p.get("resume_contributions_override"))
     if resume_bullets:
@@ -95,7 +83,6 @@ def _resume_contribution_bullets(p: Dict[str, Any]) -> List[str]:
 
 
 def _resume_key_role(p: Dict[str, Any]) -> str | None:
-    """Resolve key role with priority: resume override → manual override → base."""
     resume_role = _clean_str(p.get("resume_key_role_override"))
     if resume_role:
         return resume_role
@@ -112,15 +99,7 @@ def _safe_slug(s: str) -> str:
     return s or "user"
 
 
-def _add_bullet(doc: Document, text: str) -> None:
-    p = doc.add_paragraph(text, style="List Bullet")
-    p.paragraph_format.space_after = 0
-    
-
 def _add_hyperlink(paragraph, url: str, text: str) -> None:
-    """
-    Add a clickable hyperlink to a python-docx paragraph.
-    """
     part = paragraph.part
     r_id = part.relate_to(
         url,
@@ -152,6 +131,31 @@ def _add_hyperlink(paragraph, url: str, text: str) -> None:
     paragraph._p.append(hyperlink)
 
 
+def _render_education_entries(doc: Document, education_entries: List[Dict[str, Any]]) -> None:
+    for entry in education_entries:
+        title = entry.get("title") or "Untitled"
+        p = doc.add_paragraph()
+        run = p.add_run(title)
+        run.bold = True
+
+        details = []
+        if entry.get("organization"):
+            details.append(str(entry["organization"]).strip())
+        if entry.get("date_text"):
+            details.append(str(entry["date_text"]).strip())
+
+        if details:
+            meta = doc.add_paragraph(" | ".join(details))
+            if meta.runs:
+                meta.runs[0].italic = True
+
+        description = _clean_str(entry.get("description"))
+        if description:
+            doc.add_paragraph(description)
+
+        doc.add_paragraph("")
+
+
 def export_resume_record_to_docx(
     *,
     username: str,
@@ -160,27 +164,22 @@ def export_resume_record_to_docx(
     highlighted_skills: Optional[List[str]] = None,
     highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,
     user_profile: Optional[Dict[str, Any]] = None,
+    education_entries: Optional[List[Dict[str, Any]]] = None,
 ) -> Path:
-    """
-    record is the dict returned by get_resume_snapshot(...).
-    Must contain resume_json (preferred) or rendered_text (fallback).
-    """
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
     now = datetime.now()
-    stamp_filename = now.strftime("%Y-%m-%d_%H-%M-%S")   
-    stamp_display = now.strftime("%Y-%m-%d at %H:%M:%S") 
-    
+    stamp_filename = now.strftime("%Y-%m-%d_%H-%M-%S")
+
     filename = f"resume_{_safe_slug(username)}_{stamp_filename}.docx"
     filepath = out_path / filename
 
     doc = Document()
-    # doc.add_heading(f"Resume — {username}", level=0)
-    # doc.add_paragraph(f"Generated on {stamp_display}")
 
     profile = user_profile or {}
     contact_parts = get_contact_parts(profile)
+    education_entries = education_entries or []
 
     doc.add_heading(username.upper(), level=0)
 
@@ -218,7 +217,6 @@ def export_resume_record_to_docx(
         except Exception:
             snapshot = None
 
-    # If JSON is broken, fall back to dumping rendered_text as plain paragraphs.
     if snapshot is None:
         doc.add_heading("Resume Snapshot", level=1)
         if isinstance(rendered_text, str) and rendered_text.strip():
@@ -232,17 +230,11 @@ def export_resume_record_to_docx(
     projects: List[Dict[str, Any]] = snapshot.get("projects") or []
     agg: Dict[str, Any] = snapshot.get("aggregated_skills") or {}
 
-    # ---------------------------
-    # Skills Summary (FIRST)
-    # ---------------------------
-
-    # PROFILE (placeholder)
     profile_text = get_visible_profile_text(profile)
     if profile_text:
         add_section_heading(doc, "Profile")
         doc.add_paragraph(profile_text)
 
-    # SKILLS (same logic as before)
     add_section_heading(doc, "Skills")
 
     def add_skill_line(label: str, items: List[str]) -> None:
@@ -257,10 +249,8 @@ def export_resume_record_to_docx(
     )
 
     add_skill_line("Languages", languages)
-
     add_skill_line("Frameworks", agg.get("frameworks") or [])
 
-    # Compute effective highlighted skills (union of per-project or flat list)
     effective_highlighted = highlighted_skills
     if highlighted_skills_by_project is not None:
         all_hl: set = set()
@@ -283,23 +273,19 @@ def export_resume_record_to_docx(
     projects_sorted = sorted(
         projects,
         key=_project_sort_key,
-        reverse=True,  # most recent first
+        reverse=True,
     )
 
-    # PROJECTS (no code/text/individual/collaborative labels)
     add_section_heading(doc, "Projects")
 
     for p in projects_sorted:
         project_name = _resume_display_name(p)
         doc.add_heading(project_name, level=2)
 
-        # Resolve key role with priority: resume override → manual override → base
         role = _resume_key_role(p) or "[Role]"
-
         date_line = format_date_range(p.get("start_date"), p.get("end_date"))
         add_role_date_line(doc, role, date_line)
 
-        # bullets - priority: overrides first, then base contribution_bullets
         custom_bullets = _resume_contribution_bullets(p)
         contrib_bullets = _clean_bullets(p.get("contribution_bullets") or [])
 
@@ -326,9 +312,9 @@ def export_resume_record_to_docx(
 
         doc.add_paragraph("")
 
-    # Education & Certificates (placeholder)
-    add_section_heading(doc, "Education & Certificates")
-    add_placeholder(doc, "To be updated later.")
+    if education_entries:
+        add_section_heading(doc, "Education & Certificates")
+        _render_education_entries(doc, education_entries)
 
     doc.save(str(filepath))
     return filepath
