@@ -45,6 +45,10 @@ from src.export.resume_helpers import (
     filter_skills_by_highlighted,
 )
 
+from src.db import (
+    build_contact_line,
+    get_visible_profile_text,
+)
 
 def _safe_slug(s: str) -> str:
     s = (s or "").strip().lower()
@@ -104,6 +108,7 @@ def export_resume_record_to_pdf(
     out_dir: str = "./out",
     highlighted_skills: Optional[List[str]] = None,
     highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,
+    user_profile: Optional[Dict[str, Any]] = None,
 ) -> Path:
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
@@ -214,9 +219,14 @@ def export_resume_record_to_pdf(
     # ---------------------------
     # Header
     # ---------------------------
+    profile = user_profile or {}
+
     story.append(Paragraph(username.upper(), NameStyle))
-    story.append(rule())  # line between name and contact
-    story.append(Paragraph("Phone | Email | LinkedIn | Location", ContactStyle))
+    story.append(rule())
+
+    contact_line = build_contact_line(profile)
+    if contact_line:
+        story.append(Paragraph(contact_line, ContactStyle))
 
     # If JSON is broken, dump rendered_text as paragraphs
     if snapshot is None:
@@ -238,9 +248,11 @@ def export_resume_record_to_pdf(
     # ---------------------------
     # PROFILE
     # ---------------------------
-    story.append(section_gap())
-    story.append(Paragraph("PROFILE", SectionStyle))
-    story.append(Paragraph("To be updated later.", PlaceholderItalic))
+    profile_text = get_visible_profile_text(profile)
+    if profile_text:
+        story.append(section_gap())
+        story.append(Paragraph("PROFILE", SectionStyle))
+        story.append(Paragraph(profile_text, Body))
 
     # ---------------------------
     # SKILLS
