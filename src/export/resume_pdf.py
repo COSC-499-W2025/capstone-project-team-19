@@ -6,15 +6,10 @@ Layout:
 - Name (largest)
 - line between name and contact
 - Contact line
-- PROFILE (placeholder)
+- PROFILE (only shown if populated)
 - SKILLS
-- PROJECTS (experience-style per project)
-- EDUCATION & CERTIFICATES (placeholder)
-- Add spacing BETWEEN sections (Profile/Skills/Projects/Education)
-
-Notes:
-- Uses snapshot JSON from get_resume_snapshot(...). No external converters needed.
-- Long lines/bullets wrap automatically (Platypus Paragraph + ListFlowable).
+- PROJECTS
+- EDUCATION & CERTIFICATES (only shown if entries exist)
 """
 
 from __future__ import annotations
@@ -51,6 +46,7 @@ from src.db import (
     get_contact_parts,
     get_visible_profile_text,
 )
+
 
 def _safe_slug(s: str) -> str:
     s = (s or "").strip().lower()
@@ -93,7 +89,6 @@ def _clean_str(value: Any) -> str | None:
 
 
 def _resume_key_role(p: Dict[str, Any]) -> str | None:
-    """Resolve key role with priority: resume override → manual override → base."""
     resume_role = _clean_str(p.get("resume_key_role_override"))
     if resume_role:
         return resume_role
@@ -132,6 +127,7 @@ def export_resume_record_to_pdf(
     highlighted_skills: Optional[List[str]] = None,
     highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,
     user_profile: Optional[Dict[str, Any]] = None,
+    education_entries: Optional[List[Dict[str, Any]]] = None,
 ) -> Path:
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
@@ -164,7 +160,6 @@ def export_resume_record_to_pdf(
 
     styles = getSampleStyleSheet()
 
-    # --- Sizing order requested: Name (biggest) > Section > Project title ---
     NameStyle = ParagraphStyle(
         "NameStyle",
         parent=styles["Normal"],
@@ -222,27 +217,16 @@ def export_resume_record_to_pdf(
         spaceAfter=2,
     )
 
-    PlaceholderItalic = ParagraphStyle(
-        "PlaceholderItalic",
-        parent=Body,
-        fontName="Helvetica-Oblique",
-        spaceAfter=0,
-    )
-
     def rule() -> HRFlowable:
-        # Only used for name->contact separator now
         return HRFlowable(width="100%", thickness=0.8, lineCap="round", spaceBefore=6, spaceAfter=10)
 
     def section_gap() -> Spacer:
-        # spacing BETWEEN sections (requested)
         return Spacer(1, 14)
 
     story: List[Any] = []
 
-    # ---------------------------
-    # Header
-    # ---------------------------
     profile = user_profile or {}
+    education_entries = education_entries or []
 
     story.append(Paragraph(username.upper(), NameStyle))
     story.append(rule())
@@ -251,7 +235,6 @@ def export_resume_record_to_pdf(
     if contact_html:
         story.append(Paragraph(contact_html, ContactStyle))
 
-    # If JSON is broken, dump rendered_text as paragraphs
     if snapshot is None:
         story.append(section_gap())
         story.append(Paragraph("RESUME SNAPSHOT", SectionStyle))
@@ -268,18 +251,12 @@ def export_resume_record_to_pdf(
     projects: List[Dict[str, Any]] = snapshot.get("projects") or []
     agg: Dict[str, Any] = snapshot.get("aggregated_skills") or {}
 
-    # ---------------------------
-    # PROFILE
-    # ---------------------------
     profile_text = get_visible_profile_text(profile)
     if profile_text:
         story.append(section_gap())
         story.append(Paragraph("PROFILE", SectionStyle))
         story.append(Paragraph(escape(profile_text), Body))
 
-    # ---------------------------
-    # SKILLS
-    # ---------------------------
     story.append(section_gap())
     story.append(Paragraph("SKILLS", SectionStyle))
 
@@ -295,10 +272,8 @@ def export_resume_record_to_pdf(
     )
 
     add_skill_line("Languages", languages)
-
     add_skill_line("Frameworks", agg.get("frameworks") or [])
 
-    # Compute effective highlighted skills (union of per-project or flat list)
     effective_highlighted = highlighted_skills
     if highlighted_skills_by_project is not None:
         all_hl: set = set()
@@ -318,9 +293,6 @@ def export_resume_record_to_pdf(
     add_skill_line("Technical skills", tech_skills)
     add_skill_line("Writing skills", writing_skills)
 
-    # ---------------------------
-    # PROJECTS
-    # ---------------------------
     story.append(section_gap())
     story.append(Paragraph("PROJECTS", SectionStyle))
 
@@ -336,7 +308,6 @@ def export_resume_record_to_pdf(
             or p.get("project_name")
             or "Unnamed project"
         )
-        # Resolve key role with priority: resume override → manual override → base
         role = _resume_key_role(p) or "[Role]"
         date_line = format_date_range(p.get("start_date"), p.get("end_date"))
         meta = f"{role} | {date_line}" if date_line else role
@@ -344,7 +315,6 @@ def export_resume_record_to_pdf(
         story.append(Paragraph(str(title), ProjectTitleStyle))
         story.append(Paragraph(meta, MetaItalic))
 
-        # Priority: resume-specific override > global override > base field
         bullets = _clean_bullets(
             p.get("resume_contributions_override")
             or p.get("manual_contribution_bullets")
@@ -373,12 +343,28 @@ def export_resume_record_to_pdf(
 
         story.append(Spacer(1, 10))
 
-    # ---------------------------
-    # EDUCATION & CERTIFICATES
-    # ---------------------------
-    story.append(section_gap())
-    story.append(Paragraph("EDUCATION & CERTIFICATES", SectionStyle))
-    story.append(Paragraph("To be updated later.", PlaceholderItalic))
+    if education_entries:
+        story.append(section_gap())
+        story.append(Paragraph("EDUCATION & CERTIFICATES", SectionStyle))
+
+        for entry in education_entries:
+            title = entry.get("title") or "Untitled"
+            story.append(Paragraph(escape(str(title)), ProjectTitleStyle))
+
+            details = []
+            if entry.get("organization"):
+                details.append(str(entry["organization"]).strip())
+            if entry.get("date_text"):
+                details.append(str(entry["date_text"]).strip())
+
+            if details:
+                story.append(Paragraph(escape(" | ".join(details)), MetaItalic))
+
+            description = _clean_str(entry.get("description"))
+            if description:
+                story.append(Paragraph(escape(description), Body))
+
+            story.append(Spacer(1, 10))
 
     doc.build(story)
     return filepath
