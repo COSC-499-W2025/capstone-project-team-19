@@ -1,29 +1,52 @@
 import json
 from pathlib import Path
+import xml.etree.ElementTree as ET
+import zipfile
 
 import pytest
-from docx import Document
+import src.export.resume_docx as exp
+import src.menu.resume.flow as flow
+
+
+W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+R_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 
 
 def _doc_text(path: Path) -> str:
-    doc = Document(str(path))
-    return "\n".join(p.text for p in doc.paragraphs if p.text is not None)
+    with zipfile.ZipFile(path, "r") as zf:
+        xml_bytes = zf.read("word/document.xml")
+
+    root = ET.fromstring(xml_bytes)
+    paragraphs = []
+    for p in root.iter(f"{{{W_NS}}}p"):
+        text = "".join(node.text or "" for node in p.iter(f"{{{W_NS}}}t")).strip()
+        if text:
+            paragraphs.append(text)
+    return "\n".join(paragraphs)
+
+
+def _docx_hyperlink_targets(path: Path) -> list[str]:
+    with zipfile.ZipFile(path, "r") as zf:
+        rels_bytes = zf.read("word/_rels/document.xml.rels")
+
+    root = ET.fromstring(rels_bytes)
+    targets = []
+    for rel in root.iter(f"{{{R_NS}}}Relationship"):
+        target = rel.attrib.get("Target")
+        if target:
+            targets.append(target)
+    return targets
 
 
 def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     """
-    Covers: deterministic filename via frozen datetime + structure/order:
-    Name -> Contact -> (PROFILE, SKILLS, PROJECTS, EDUCATION & CERTIFICATES)
-    Projects are sorted by most-recent end_date/start_date first.
+    Covers:
+    - deterministic filename via frozen datetime
+    - structure/order:
+      Name -> Contact -> PROFILE -> SKILLS -> PROJECTS -> EDUCATION & CERTIFICATES
+    - projects sorted by most-recent end_date/start_date first
+    - LinkedIn/GitHub shown as labels, with real hyperlink targets in the docx
     """
-    import src.export.resume_docx as exp
-    from docx import Document
-
-    def _doc_text(path: Path) -> str:
-        doc = Document(str(path))
-        return "\n".join(p.text for p in doc.paragraphs if p.text is not None)
-
-    # Freeze datetime.now() used by exporter
     class _FakeDatetime:
         @staticmethod
         def now():
@@ -38,19 +61,14 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
 
     monkeypatch.setattr(exp, "datetime", _FakeDatetime)
 
-    # New-format snapshot (sections + projects w/ role + dates + bullets)
     snapshot = {
-        "contact_line": "Phone | Email | LinkedIn | Location",
-        "profile_text": "To be updated later.",
-        "education_text": "To be updated later.",
         "aggregated_skills": {
-            "languages": ["Python 88%", "SQL 12%"], 
+            "languages": ["Python 88%", "SQL 12%"],
             "frameworks": ["FastAPI"],
             "technical_skills": ["Algorithms"],
             "writing_skills": ["Clear communication"],
         },
         "projects": [
-            # INTENTIONALLY unsorted input (older first) so we can assert sorting.
             {
                 "project_name": "older_project",
                 "role": "[Role]",
@@ -71,17 +89,43 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     record = {"resume_json": json.dumps(snapshot), "rendered_text": "fallback"}
     out_dir = tmp_path / "out"
 
-    path = exp.export_resume_record_to_docx(username="john", record=record, out_dir=str(out_dir))
+    user_profile = {
+        "email": "john@example.com",
+        "phone": "1234567890",
+        "linkedin": "https://linkedin.com/in/john",
+        "github": "https://github.com/john",
+        "location": "Kelowna, BC",
+        "profile_text": "Software and data student building practical tools.",
+    }
+
+    path = exp.export_resume_record_to_docx(
+        username="john",
+        record=record,
+        out_dir=str(out_dir),
+        user_profile=user_profile,
+    )
 
     assert out_dir.exists()
     assert path.exists()
     assert path.name == "resume_john_2026-01-10_15-36-58.docx"
 
     txt = _doc_text(path)
+    hyperlink_targets = _docx_hyperlink_targets(path)
 
-    # Name should appear (exact heading string depends on your implementation;
-    # this assertion is flexible and just ensures "john" is present early)
     assert "john" in txt.lower()
+
+    # Contact line pieces appear as visible text
+    assert "1234567890" in txt
+    assert "john@example.com" in txt
+    assert "LinkedIn" in txt
+    assert "GitHub" in txt
+    assert "Kelowna, BC" in txt
+
+    # URLs should be hyperlink targets, not visible text
+    assert "https://linkedin.com/in/john" in hyperlink_targets
+    assert "https://github.com/john" in hyperlink_targets
+    assert "https://linkedin.com/in/john" not in txt
+    assert "https://github.com/john" not in txt
 
     # Required sections exist
     assert "PROFILE" in txt
@@ -97,6 +141,9 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     assert -1 not in (idx_profile, idx_skills, idx_projects, idx_edu)
     assert idx_profile < idx_skills < idx_projects < idx_edu
 
+    # Profile paragraph rendered
+    assert "Software and data student building practical tools." in txt
+
     # Skills lines rendered
     assert "Languages:" in txt
     assert ("Python" in txt) and ("SQL" in txt)
@@ -107,7 +154,7 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     assert "Writing skills:" in txt
     assert "Clear communication" in txt
 
-    # Projects content: role/date line should show up (format may vary slightly)
+    # Projects content
     assert "newer_project" in txt
     assert "older_project" in txt
     assert "[Role]" in txt
@@ -120,16 +167,89 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     # Sorting check: newer should appear before older
     assert txt.find("newer_project") < txt.find("older_project")
 
-    # Optional: verify date range text appears somewhere (don’t overfit formatting)
+    # Optional: verify years appear somewhere
     assert "2025" in txt and "2024" in txt
+
+
+def test_resume_export_omits_contact_line_and_profile_section_when_profile_empty(monkeypatch, tmp_path):
+    """
+    Covers:
+    - empty standalone profile should not render contact info
+    - PROFILE section should be omitted when profile_text is empty
+    """
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    if fmt == "%Y-%m-%d_%H-%M-%S":
+                        return "2026-01-10_15-36-58"
+                    if fmt == "%Y-%m-%d at %H:%M:%S":
+                        return "2026-01-10 at 15:36:58"
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {
+            "languages": ["Python 88%"],
+            "frameworks": [],
+            "technical_skills": [],
+            "writing_skills": [],
+        },
+        "projects": [
+            {
+                "project_name": "projA",
+                "start_date": "2025-08-01",
+                "end_date": "2025-11-01",
+                "contribution_bullets": ["Bullet A"],
+            }
+        ],
+    }
+
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": "fallback"}
+    out_dir = tmp_path / "out"
+
+    empty_profile = {
+        "email": None,
+        "phone": None,
+        "linkedin": None,
+        "github": None,
+        "location": None,
+        "profile_text": None,
+    }
+
+    path = exp.export_resume_record_to_docx(
+        username="john",
+        record=record,
+        out_dir=str(out_dir),
+        user_profile=empty_profile,
+    )
+
+    txt = _doc_text(path)
+    hyperlink_targets = _docx_hyperlink_targets(path)
+
+    assert "john" in txt.lower()
+    assert "SKILLS" in txt
+    assert "PROJECTS" in txt
+    assert "EDUCATION & CERTIFICATES" in txt
+
+    assert "PROFILE" not in txt
+    assert "john@example.com" not in txt
+    assert "1234567890" not in txt
+    assert "LinkedIn" not in txt
+    assert "GitHub" not in txt
+    assert "Kelowna, BC" not in txt
+
+    assert all("linkedin.com" not in target for target in hyperlink_targets)
+    assert all("github.com" not in target for target in hyperlink_targets)
 
 
 def test_resume_export_nonhappy_no_saved_resumes(monkeypatch, capsys):
     """
     Covers: R2 (flow handler: list_resumes empty)
     """
-    import src.menu.resume.flow as flow
-
     monkeypatch.setattr(flow, "list_resumes", lambda conn, user_id: [])
     ok = flow._handle_export_resume_docx(conn=None, user_id=1, username="john")
     out = capsys.readouterr().out
@@ -141,8 +261,6 @@ def test_resume_export_nonhappy_cancel_invalid_selection(monkeypatch, capsys):
     """
     Covers: R3 + R4 (cancel, invalid index)
     """
-    import src.menu.resume.flow as flow
-
     resumes = [{"id": 11, "name": "Resume A", "created_at": "2026-01-01"}]
     monkeypatch.setattr(flow, "list_resumes", lambda conn, user_id: resumes)
     monkeypatch.setattr(
@@ -171,8 +289,6 @@ def test_resume_export_nonhappy_record_missing(monkeypatch, capsys):
     """
     Covers: R5 (get_resume_snapshot returns None)
     """
-    import src.menu.resume.flow as flow
-
     resumes = [{"id": 11, "name": "Resume A", "created_at": "2026-01-01"}]
     monkeypatch.setattr(flow, "list_resumes", lambda conn, user_id: resumes)
     monkeypatch.setattr(flow, "get_resume_snapshot", lambda conn, user_id, rid: None)
@@ -188,8 +304,6 @@ def test_resume_export_fallback_to_rendered_text(monkeypatch, tmp_path):
     """
     Covers: R6 + R7 (malformed JSON -> fallback; missing rendered_text -> message)
     """
-    import src.export.resume_docx as exp
-
     class _FakeDatetime:
         @staticmethod
         def now():
@@ -222,9 +336,6 @@ def test_resume_export_fallback_to_rendered_text(monkeypatch, tmp_path):
 
 def test_resume_export_uses_key_role(monkeypatch, tmp_path):
     """Test that export uses resolved key_role instead of [Role] placeholder."""
-    import src.export.resume_docx as exp
-    from docx import Document
-
     class _FakeDatetime:
         @staticmethod
         def now():
@@ -259,9 +370,6 @@ def test_resume_export_uses_key_role(monkeypatch, tmp_path):
 
 def test_resume_export_key_role_override_priority(monkeypatch, tmp_path):
     """Test that resume_key_role_override takes priority over base key_role."""
-    import src.export.resume_docx as exp
-    from docx import Document
-
     class _FakeDatetime:
         @staticmethod
         def now():
@@ -290,7 +398,6 @@ def test_resume_export_key_role_override_priority(monkeypatch, tmp_path):
     path = exp.export_resume_record_to_docx(username="jane", record=record, out_dir=str(out_dir))
 
     txt = _doc_text(path)
-    # Should use the resume override (highest priority)
     assert "Lead Developer" in txt
     assert "Senior Developer" not in txt
     assert "[Role]" not in txt
@@ -298,9 +405,6 @@ def test_resume_export_key_role_override_priority(monkeypatch, tmp_path):
 
 def test_resume_export_fallback_to_role_placeholder(monkeypatch, tmp_path):
     """Test that export falls back to [Role] when no key_role is set."""
-    import src.export.resume_docx as exp
-    from docx import Document
-
     class _FakeDatetime:
         @staticmethod
         def now():
@@ -316,7 +420,6 @@ def test_resume_export_fallback_to_role_placeholder(monkeypatch, tmp_path):
         "projects": [
             {
                 "project_name": "test_project",
-                # No key_role set
                 "contribution_bullets": ["Did stuff"],
             },
         ],
