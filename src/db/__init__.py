@@ -266,6 +266,14 @@ from src.db.user_profile import (
     get_visible_profile_text,
     get_user_profile,
 )
+
+from src.db.user_education import (
+    list_user_education_entries,
+    add_user_education_entry,
+    delete_user_education_entry,
+)
+
+
 __all__ = [
     "connect",
     "init_schema",
@@ -401,5 +409,8 @@ __all__ = [
     "get_contact_parts",
     "get_visible_profile_text",
     "get_user_profile",
+    "list_user_education_entries",
+    "add_user_education_entry",
+    "delete_user_education_entry",
 ]
 
