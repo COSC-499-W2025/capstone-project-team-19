@@ -131,8 +131,8 @@ def _add_hyperlink(paragraph, url: str, text: str) -> None:
     paragraph._p.append(hyperlink)
 
 
-def _render_education_entries(doc: Document, education_entries: List[Dict[str, Any]]) -> None:
-    for entry in education_entries:
+def _render_education_entries(doc: Document, entries: List[Dict[str, Any]]) -> None:
+    for entry in entries:
         title = entry.get("title") or "Untitled"
         p = doc.add_paragraph()
         run = p.add_run(title)
@@ -312,9 +312,16 @@ def export_resume_record_to_docx(
 
         doc.add_paragraph("")
 
-    if education_entries:
-        add_section_heading(doc, "Education & Certificates")
-        _render_education_entries(doc, education_entries)
+    education_only = [e for e in education_entries if e.get("entry_type") == "education"]
+    certificate_only = [e for e in education_entries if e.get("entry_type") == "certificate"]
+
+    if education_only:
+        add_section_heading(doc, "Education")
+        _render_education_entries(doc, education_only)
+
+    if certificate_only:
+        add_section_heading(doc, "Certificates")
+        _render_education_entries(doc, certificate_only)
 
     doc.save(str(filepath))
     return filepath

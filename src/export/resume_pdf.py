@@ -343,11 +343,8 @@ def export_resume_record_to_pdf(
 
         story.append(Spacer(1, 10))
 
-    if education_entries:
-        story.append(section_gap())
-        story.append(Paragraph("EDUCATION & CERTIFICATES", SectionStyle))
-
-        for entry in education_entries:
+    def _render_education_block(entries: List[Dict[str, Any]]) -> None:
+        for entry in entries:
             title = entry.get("title") or "Untitled"
             story.append(Paragraph(escape(str(title)), ProjectTitleStyle))
 
@@ -365,6 +362,19 @@ def export_resume_record_to_pdf(
                 story.append(Paragraph(escape(description), Body))
 
             story.append(Spacer(1, 10))
+
+    education_only = [e for e in education_entries if e.get("entry_type") == "education"]
+    certificate_only = [e for e in education_entries if e.get("entry_type") == "certificate"]
+
+    if education_only:
+        story.append(section_gap())
+        story.append(Paragraph("EDUCATION", SectionStyle))
+        _render_education_block(education_only)
+
+    if certificate_only:
+        story.append(section_gap())
+        story.append(Paragraph("CERTIFICATES", SectionStyle))
+        _render_education_block(certificate_only)
 
     doc.build(story)
     return filepath
