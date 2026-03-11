@@ -6,6 +6,7 @@ from src.db.user_profile import (
     upsert_user_profile,
     get_contact_parts,
     get_visible_profile_text,
+    get_resume_name,
 )
 
 
@@ -23,6 +24,7 @@ def test_get_user_profile_defaults_for_new_user():
 
     assert profile["user_id"] == user_id
     assert profile["email"] is None
+    assert profile["full_name"] is None
     assert profile["phone"] is None
     assert profile["linkedin"] is None
     assert profile["github"] is None
@@ -38,6 +40,7 @@ def test_upsert_user_profile_inserts_profile_and_updates_users_email():
         conn,
         user_id,
         email="alice@example.com",
+        full_name="Alice Tan",
         phone="1234567890",
         linkedin="https://linkedin.com/in/alice",
         github="https://github.com/alice",
@@ -47,6 +50,7 @@ def test_upsert_user_profile_inserts_profile_and_updates_users_email():
 
     profile = get_user_profile(conn, user_id)
     assert profile["email"] == "alice@example.com"
+    assert profile["full_name"] == "Alice Tan"
     assert profile["phone"] == "1234567890"
     assert profile["linkedin"] == "https://linkedin.com/in/alice"
     assert profile["github"] == "https://github.com/alice"
@@ -68,6 +72,7 @@ def test_upsert_user_profile_updates_existing_values():
         conn,
         user_id,
         email="alice@example.com",
+        full_name="Alice Tan",
         phone="123",
         linkedin="https://linkedin.com/in/alice",
         github="https://github.com/alice",
@@ -79,6 +84,7 @@ def test_upsert_user_profile_updates_existing_values():
         conn,
         user_id,
         email="newalice@example.com",
+        full_name="Alice Wong",
         phone="999",
         linkedin="https://linkedin.com/in/newalice",
         github=None,
@@ -88,6 +94,7 @@ def test_upsert_user_profile_updates_existing_values():
 
     profile = get_user_profile(conn, user_id)
     assert profile["email"] == "newalice@example.com"
+    assert profile["full_name"] == "Alice Wong"
     assert profile["phone"] == "999"
     assert profile["linkedin"] == "https://linkedin.com/in/newalice"
     assert profile["github"] is None
@@ -103,6 +110,7 @@ def test_upsert_user_profile_can_clear_all_fields():
         conn,
         user_id,
         email="alice@example.com",
+        full_name="Alice Tan",
         phone="123",
         linkedin="https://linkedin.com/in/alice",
         github="https://github.com/alice",
@@ -114,6 +122,7 @@ def test_upsert_user_profile_can_clear_all_fields():
         conn,
         user_id,
         email=None,
+        full_name=None,
         phone=None,
         linkedin=None,
         github=None,
@@ -123,6 +132,7 @@ def test_upsert_user_profile_can_clear_all_fields():
 
     profile = get_user_profile(conn, user_id)
     assert profile["email"] is None
+    assert profile["full_name"] is None
     assert profile["phone"] is None
     assert profile["linkedin"] is None
     assert profile["github"] is None
@@ -138,6 +148,7 @@ def test_upsert_user_profile_normalizes_blank_strings_to_none():
         conn,
         user_id,
         email="   ",
+        full_name="   ",
         phone="",
         linkedin="   ",
         github="",
@@ -147,6 +158,7 @@ def test_upsert_user_profile_normalizes_blank_strings_to_none():
 
     profile = get_user_profile(conn, user_id)
     assert profile["email"] is None
+    assert profile["full_name"] is None
     assert profile["phone"] is None
     assert profile["linkedin"] is None
     assert profile["github"] is None
@@ -179,3 +191,9 @@ def test_get_visible_profile_text_returns_none_when_empty():
     assert get_visible_profile_text({"profile_text": ""}) is None
     assert get_visible_profile_text({"profile_text": "   "}) is None
     assert get_visible_profile_text({"profile_text": "Hello"}) == "Hello"
+
+
+def test_get_resume_name_prefers_full_name_and_falls_back_to_username():
+    assert get_resume_name({"full_name": "Alice Tan"}, "alice123") == "Alice Tan"
+    assert get_resume_name({"full_name": ""}, "alice123") == "alice123"
+    assert get_resume_name({"full_name": None}, "alice123") == "alice123"

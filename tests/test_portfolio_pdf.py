@@ -427,3 +427,34 @@ def test_export_portfolio_pdf_before_after_edit_display_name_summary_and_contrib
 
     assert "Did X" not in t3
     assert "Did Y" in t3
+
+
+def test_export_portfolio_pdf_uses_full_name_from_profile(monkeypatch, tmp_path, conn):
+    """
+    Portfolio PDF header should use full_name when profile data exists.
+    """
+    from src.export import portfolio_pdf as mod
+
+    conn.execute(
+        "INSERT INTO users (user_id, username) VALUES (?, ?)",
+        (1, "Salma"),
+    )
+    conn.execute(
+        "INSERT INTO user_profiles (user_id, full_name) VALUES (?, ?)",
+        (1, "Salma Yusuf"),
+    )
+    conn.commit()
+
+    monkeypatch.setattr(mod, "collect_project_data", lambda _conn, _user_id: [])
+    monkeypatch.setattr(mod, "get_project_summary_row", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(mod, "get_project_thumbnail_path", lambda *_args, **_kwargs: None)
+
+    pdf_path = mod.export_portfolio_to_pdf(
+        conn=conn,
+        user_id=1,
+        username="Salma",
+        out_dir=str(tmp_path),
+    )
+
+    text = _extract_pdf_text(pdf_path)
+    assert "Portfolio - Salma Yusuf" in text

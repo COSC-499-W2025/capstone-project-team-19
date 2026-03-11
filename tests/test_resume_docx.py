@@ -90,6 +90,7 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     out_dir = tmp_path / "out"
 
     user_profile = {
+        "full_name": None,
         "email": "john@example.com",
         "phone": "1234567890",
         "linkedin": "https://linkedin.com/in/john",
@@ -212,6 +213,7 @@ def test_resume_export_omits_contact_line_and_profile_section_when_profile_empty
     out_dir = tmp_path / "out"
 
     empty_profile = {
+        "full_name": None,
         "email": None,
         "phone": None,
         "linkedin": None,
@@ -431,3 +433,44 @@ def test_resume_export_fallback_to_role_placeholder(monkeypatch, tmp_path):
 
     txt = _doc_text(path)
     assert "[Role]" in txt
+    
+
+def test_resume_export_uses_full_name_when_present(monkeypatch, tmp_path):
+    """Test that DOCX export uses full_name instead of username when present."""
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {},
+        "projects": [],
+    }
+
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
+    out_dir = tmp_path / "out"
+
+    user_profile = {
+        "full_name": "John Tan",
+        "email": None,
+        "phone": None,
+        "linkedin": None,
+        "github": None,
+        "location": None,
+        "profile_text": None,
+    }
+
+    path = exp.export_resume_record_to_docx(
+        username="john123",
+        record=record,
+        out_dir=str(out_dir),
+        user_profile=user_profile,
+    )
+
+    txt = _doc_text(path)
+    assert "JOHN TAN" in txt
