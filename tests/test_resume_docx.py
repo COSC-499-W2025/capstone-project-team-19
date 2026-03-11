@@ -43,9 +43,10 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     Covers:
     - deterministic filename via frozen datetime
     - structure/order:
-      Name -> Contact -> PROFILE -> SKILLS -> PROJECTS -> EDUCATION & CERTIFICATES
+      Name -> Contact -> PROFILE -> SKILLS -> PROJECTS -> EDUCATION -> CERTIFICATES
     - projects sorted by most-recent end_date/start_date first
     - LinkedIn/GitHub shown as labels, with real hyperlink targets in the docx
+    - education + certificate entries render as separate sections
     """
     class _FakeDatetime:
         @staticmethod
@@ -98,11 +99,31 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
         "profile_text": "Software and data student building practical tools.",
     }
 
+    education_entries = [
+        {
+            "entry_id": 1,
+            "entry_type": "education",
+            "title": "BSc in Computer Science",
+            "organization": "UBCO",
+            "date_text": "2022 - 2026",
+            "description": "Major in data science.",
+        },
+        {
+            "entry_id": 2,
+            "entry_type": "certificate",
+            "title": "AWS Cloud Practitioner",
+            "organization": "Amazon Web Services",
+            "date_text": "2025",
+            "description": "Foundational cloud certification.",
+        },
+    ]
+
     path = exp.export_resume_record_to_docx(
         username="john",
         record=record,
         out_dir=str(out_dir),
         user_profile=user_profile,
+        education_entries=education_entries,
     )
 
     assert out_dir.exists()
@@ -131,15 +152,18 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     assert "PROFILE" in txt
     assert "SKILLS" in txt
     assert "PROJECTS" in txt
-    assert "EDUCATION & CERTIFICATES" in txt
+    assert "EDUCATION" in txt
+    assert "CERTIFICATES" in txt
+    assert "EDUCATION & CERTIFICATES" not in txt
 
-    # Order: PROFILE -> SKILLS -> PROJECTS -> EDUCATION
+    # Order: PROFILE -> SKILLS -> PROJECTS -> EDUCATION -> CERTIFICATES
     idx_profile = txt.find("PROFILE")
     idx_skills = txt.find("SKILLS")
     idx_projects = txt.find("PROJECTS")
-    idx_edu = txt.find("EDUCATION & CERTIFICATES")
-    assert -1 not in (idx_profile, idx_skills, idx_projects, idx_edu)
-    assert idx_profile < idx_skills < idx_projects < idx_edu
+    idx_education = txt.find("EDUCATION")
+    idx_certificates = txt.find("CERTIFICATES")
+    assert -1 not in (idx_profile, idx_skills, idx_projects, idx_education, idx_certificates)
+    assert idx_profile < idx_skills < idx_projects < idx_education < idx_certificates
 
     # Profile paragraph rendered
     assert "Software and data student building practical tools." in txt
@@ -167,15 +191,26 @@ def test_resume_export_happy_json_structure_and_order(monkeypatch, tmp_path):
     # Sorting check: newer should appear before older
     assert txt.find("newer_project") < txt.find("older_project")
 
+    # Education + certificate content
+    assert "BSc in Computer Science" in txt
+    assert "UBCO" in txt
+    assert "2022 - 2026" in txt
+    assert "Major in data science." in txt
+
+    assert "AWS Cloud Practitioner" in txt
+    assert "Amazon Web Services" in txt
+    assert "Foundational cloud certification." in txt
+
     # Optional: verify years appear somewhere
     assert "2025" in txt and "2024" in txt
 
 
-def test_resume_export_omits_contact_line_and_profile_section_when_profile_empty(monkeypatch, tmp_path):
+def test_resume_export_omits_contact_line_profile_and_education_sections_when_empty(monkeypatch, tmp_path):
     """
     Covers:
     - empty standalone profile should not render contact info
     - PROFILE section should be omitted when profile_text is empty
+    - EDUCATION / CERTIFICATES should be omitted when no entries exist
     """
     class _FakeDatetime:
         @staticmethod
@@ -225,6 +260,7 @@ def test_resume_export_omits_contact_line_and_profile_section_when_profile_empty
         record=record,
         out_dir=str(out_dir),
         user_profile=empty_profile,
+        education_entries=[],
     )
 
     txt = _doc_text(path)
@@ -233,9 +269,10 @@ def test_resume_export_omits_contact_line_and_profile_section_when_profile_empty
     assert "john" in txt.lower()
     assert "SKILLS" in txt
     assert "PROJECTS" in txt
-    assert "EDUCATION & CERTIFICATES" in txt
 
     assert "PROFILE" not in txt
+    assert "EDUCATION" not in txt
+    assert "CERTIFICATES" not in txt
     assert "john@example.com" not in txt
     assert "1234567890" not in txt
     assert "LinkedIn" not in txt
@@ -244,6 +281,54 @@ def test_resume_export_omits_contact_line_and_profile_section_when_profile_empty
 
     assert all("linkedin.com" not in target for target in hyperlink_targets)
     assert all("github.com" not in target for target in hyperlink_targets)
+
+
+def test_resume_export_shows_only_certificate_section_when_only_certificates_exist(monkeypatch, tmp_path):
+    """
+    Covers:
+    - separate section rendering when only certificate entries exist
+    """
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {},
+        "projects": [],
+    }
+
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
+    out_dir = tmp_path / "out"
+
+    education_entries = [
+        {
+            "entry_id": 2,
+            "entry_type": "certificate",
+            "title": "AWS Cloud Practitioner",
+            "organization": "Amazon Web Services",
+            "date_text": "2025",
+            "description": "Foundational cloud certification.",
+        },
+    ]
+
+    path = exp.export_resume_record_to_docx(
+        username="john",
+        record=record,
+        out_dir=str(out_dir),
+        education_entries=education_entries,
+    )
+
+    txt = _doc_text(path)
+
+    assert "CERTIFICATES" in txt
+    assert "AWS Cloud Practitioner" in txt
+    assert "EDUCATION" not in txt
 
 
 def test_resume_export_nonhappy_no_saved_resumes(monkeypatch, capsys):

@@ -120,12 +120,32 @@ def test_resume_pdf_contains_sections_and_orders_projects(monkeypatch, tmp_path)
         "profile_text": "Software and data student building practical tools.",
     }
 
+    education_entries = [
+        {
+            "entry_id": 1,
+            "entry_type": "education",
+            "title": "BSc in Computer Science",
+            "organization": "UBCO",
+            "date_text": "2022 - 2026",
+            "description": "Major in data science.",
+        },
+        {
+            "entry_id": 2,
+            "entry_type": "certificate",
+            "title": "AWS Cloud Practitioner",
+            "organization": "Amazon Web Services",
+            "date_text": "2025",
+            "description": "Foundational cloud certification.",
+        },
+    ]
+
     out_dir = tmp_path / "out"
     path = exp.export_resume_record_to_pdf(
         username="john",
         record=record,
         out_dir=str(out_dir),
         user_profile=user_profile,
+        education_entries=education_entries,
     )
 
     text = _pdf_text(path)
@@ -136,6 +156,8 @@ def test_resume_pdf_contains_sections_and_orders_projects(monkeypatch, tmp_path)
     assert "SKILLS" in text
     assert "PROJECTS" in text
     assert "EDUCATION" in text
+    assert "CERTIFICATES" in text
+    assert "EDUCATION & CERTIFICATES" not in text
 
     # profile/contact info
     assert "1234567890" in text
@@ -144,6 +166,12 @@ def test_resume_pdf_contains_sections_and_orders_projects(monkeypatch, tmp_path)
     assert "GitHub" in text
     assert "Kelowna, BC" in text
     assert "Software and data student building practical tools." in text
+
+    # education content
+    assert "BSc in Computer Science" in text
+    assert "UBCO" in text
+    assert "AWS Cloud Practitioner" in text
+    assert "Amazon Web Services" in text
 
     # URLs should exist as real PDF links, not as visible text
     assert "https://linkedin.com/in/john" in link_targets
@@ -156,7 +184,7 @@ def test_resume_pdf_contains_sections_and_orders_projects(monkeypatch, tmp_path)
 
 
 @pytest.mark.pdf_text
-def test_resume_pdf_omits_contact_and_profile_when_profile_empty(monkeypatch, tmp_path):
+def test_resume_pdf_omits_contact_profile_and_education_sections_when_empty(monkeypatch, tmp_path):
     class _FakeDatetime:
         @staticmethod
         def now():
@@ -202,6 +230,7 @@ def test_resume_pdf_omits_contact_and_profile_when_profile_empty(monkeypatch, tm
         record=record,
         out_dir=str(out_dir),
         user_profile=empty_profile,
+        education_entries=[],
     )
 
     text = _pdf_text(path)
@@ -209,9 +238,10 @@ def test_resume_pdf_omits_contact_and_profile_when_profile_empty(monkeypatch, tm
 
     assert "SKILLS" in text
     assert "PROJECTS" in text
-    assert "EDUCATION" in text
 
     assert "PROFILE" not in text
+    assert "EDUCATION" not in text
+    assert "CERTIFICATES" not in text
     assert "john@example.com" not in text
     assert "1234567890" not in text
     assert "LinkedIn" not in text
@@ -220,6 +250,50 @@ def test_resume_pdf_omits_contact_and_profile_when_profile_empty(monkeypatch, tm
 
     assert all("linkedin.com" not in target for target in link_targets)
     assert all("github.com" not in target for target in link_targets)
+
+
+@pytest.mark.pdf_text
+def test_resume_pdf_shows_only_education_section_when_only_education_entries_exist(monkeypatch, tmp_path):
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {},
+        "projects": [],
+    }
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
+
+    education_entries = [
+        {
+            "entry_id": 1,
+            "entry_type": "education",
+            "title": "BSc in Computer Science",
+            "organization": "UBCO",
+            "date_text": "2022 - 2026",
+            "description": "Major in data science.",
+        },
+    ]
+
+    out_dir = tmp_path / "out"
+    path = exp.export_resume_record_to_pdf(
+        username="john",
+        record=record,
+        out_dir=str(out_dir),
+        education_entries=education_entries,
+    )
+
+    text = _pdf_text(path)
+
+    assert "EDUCATION" in text
+    assert "BSc in Computer Science" in text
+    assert "CERTIFICATES" not in text
 
 
 def test_resume_export_pdf_cancel_invalid_selection(monkeypatch, capsys):
