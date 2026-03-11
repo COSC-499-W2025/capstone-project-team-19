@@ -5,9 +5,13 @@ Output format:
 - Name
 - Contact
 - Profile
+- Education
 - Skills
+- Experience
 - Projects
-- Education & certificates (only shown if entries exist)
+- Certificates
+
+Sections are only shown when they have content.
 
 Saves to ./out/ (created if missing).
 """
@@ -17,7 +21,6 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 import json
-from pydoc import doc
 import re
 from typing import Any, Dict, List, Optional
 
@@ -158,6 +161,31 @@ def _render_education_entries(doc: Document, entries: List[Dict[str, Any]]) -> N
         doc.add_paragraph("")
 
 
+def _render_experience_entries(doc: Document, entries: List[Dict[str, Any]]) -> None:
+    for entry in entries:
+        role = entry.get("role") or "Untitled role"
+        p = doc.add_paragraph()
+        run = p.add_run(role)
+        run.bold = True
+
+        details = []
+        if entry.get("company"):
+            details.append(str(entry["company"]).strip())
+        if entry.get("date_text"):
+            details.append(str(entry["date_text"]).strip())
+
+        if details:
+            meta = doc.add_paragraph(" | ".join(details))
+            if meta.runs:
+                meta.runs[0].italic = True
+
+        description = _clean_str(entry.get("description"))
+        if description:
+            doc.add_paragraph(description)
+
+        doc.add_paragraph("")
+
+
 def export_resume_record_to_docx(
     *,
     username: str,
@@ -167,6 +195,7 @@ def export_resume_record_to_docx(
     highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,
     user_profile: Optional[Dict[str, Any]] = None,
     education_entries: Optional[List[Dict[str, Any]]] = None,
+    experience_entries: Optional[List[Dict[str, Any]]] = None,
 ) -> Path:
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
@@ -182,6 +211,7 @@ def export_resume_record_to_docx(
     profile = user_profile or {}
     contact_parts = get_contact_parts(profile)
     education_entries = education_entries or []
+    experience_entries = experience_entries or []
 
     display_name = get_resume_name(profile, username)
     doc.add_heading(display_name.upper(), level=0)
@@ -238,6 +268,13 @@ def export_resume_record_to_docx(
         add_section_heading(doc, "Profile")
         doc.add_paragraph(profile_text)
 
+    education_only = [e for e in education_entries if e.get("entry_type") == "education"]
+    certificate_only = [e for e in education_entries if e.get("entry_type") == "certificate"]
+
+    if education_only:
+        add_section_heading(doc, "Education")
+        _render_education_entries(doc, education_only)
+
     add_section_heading(doc, "Skills")
 
     def add_skill_line(label: str, items: List[str]) -> None:
@@ -272,6 +309,10 @@ def export_resume_record_to_docx(
 
     add_skill_line("Technical skills", tech_skills)
     add_skill_line("Writing skills", writing_skills)
+
+    if experience_entries:
+        add_section_heading(doc, "Experience")
+        _render_experience_entries(doc, experience_entries)
 
     projects_sorted = sorted(
         projects,
@@ -314,13 +355,6 @@ def export_resume_record_to_docx(
             add_bullet(doc, str(b))
 
         doc.add_paragraph("")
-
-    education_only = [e for e in education_entries if e.get("entry_type") == "education"]
-    certificate_only = [e for e in education_entries if e.get("entry_type") == "certificate"]
-
-    if education_only:
-        add_section_heading(doc, "Education")
-        _render_education_entries(doc, education_only)
 
     if certificate_only:
         add_section_heading(doc, "Certificates")

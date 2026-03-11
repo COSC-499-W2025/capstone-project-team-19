@@ -6,10 +6,14 @@ Layout:
 - Name (largest)
 - line between name and contact
 - Contact line
-- PROFILE (only shown if populated)
-- SKILLS
-- PROJECTS
-- EDUCATION & CERTIFICATES (only shown if entries exist)
+- Profile (only shown if populated)
+- Education
+- Skills
+- Experience
+- Projects
+- Certificates
+
+Sections are only shown when they have content.
 """
 
 from __future__ import annotations
@@ -120,6 +124,60 @@ def _pdf_contact_html(profile: Dict[str, Any]) -> str | None:
     return " | ".join(chunks)
 
 
+def _render_education_block(
+    story: List[Any],
+    entries: List[Dict[str, Any]],
+    project_title_style: ParagraphStyle,
+    meta_italic: ParagraphStyle,
+    body: ParagraphStyle,
+) -> None:
+    for entry in entries:
+        title = entry.get("title") or "Untitled"
+        story.append(Paragraph(escape(str(title)), project_title_style))
+
+        details = []
+        if entry.get("organization"):
+            details.append(str(entry["organization"]).strip())
+        if entry.get("date_text"):
+            details.append(str(entry["date_text"]).strip())
+
+        if details:
+            story.append(Paragraph(escape(" | ".join(details)), meta_italic))
+
+        description = _clean_str(entry.get("description"))
+        if description:
+            story.append(Paragraph(escape(description), body))
+
+        story.append(Spacer(1, 10))
+
+
+def _render_experience_block(
+    story: List[Any],
+    entries: List[Dict[str, Any]],
+    project_title_style: ParagraphStyle,
+    meta_italic: ParagraphStyle,
+    body: ParagraphStyle,
+) -> None:
+    for entry in entries:
+        role = entry.get("role") or "Untitled role"
+        story.append(Paragraph(escape(str(role)), project_title_style))
+
+        details = []
+        if entry.get("company"):
+            details.append(str(entry["company"]).strip())
+        if entry.get("date_text"):
+            details.append(str(entry["date_text"]).strip())
+
+        if details:
+            story.append(Paragraph(escape(" | ".join(details)), meta_italic))
+
+        description = _clean_str(entry.get("description"))
+        if description:
+            story.append(Paragraph(escape(description), body))
+
+        story.append(Spacer(1, 10))
+
+
 def export_resume_record_to_pdf(
     *,
     username: str,
@@ -129,6 +187,7 @@ def export_resume_record_to_pdf(
     highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,
     user_profile: Optional[Dict[str, Any]] = None,
     education_entries: Optional[List[Dict[str, Any]]] = None,
+    experience_entries: Optional[List[Dict[str, Any]]] = None,
 ) -> Path:
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
@@ -148,6 +207,11 @@ def export_resume_record_to_pdf(
         except Exception:
             snapshot = None
 
+    profile = user_profile or {}
+    education_entries = education_entries or []
+    experience_entries = experience_entries or []
+    display_name = get_resume_name(profile, username)
+
     doc = SimpleDocTemplate(
         str(filepath),
         pagesize=LETTER,
@@ -155,8 +219,8 @@ def export_resume_record_to_pdf(
         rightMargin=0.85 * inch,
         topMargin=0.85 * inch,
         bottomMargin=0.85 * inch,
-        title=f"Resume - {username}",
-        author=username,
+        title=f"Resume - {display_name}",
+        author=display_name,
     )
 
     styles = getSampleStyleSheet()
@@ -226,10 +290,6 @@ def export_resume_record_to_pdf(
 
     story: List[Any] = []
 
-    profile = user_profile or {}
-    education_entries = education_entries or []
-
-    display_name = get_resume_name(profile, username)
     story.append(Paragraph(display_name.upper(), NameStyle))
     story.append(rule())
 
@@ -258,6 +318,14 @@ def export_resume_record_to_pdf(
         story.append(section_gap())
         story.append(Paragraph("PROFILE", SectionStyle))
         story.append(Paragraph(escape(profile_text), Body))
+
+    education_only = [e for e in education_entries if e.get("entry_type") == "education"]
+    certificate_only = [e for e in education_entries if e.get("entry_type") == "certificate"]
+
+    if education_only:
+        story.append(section_gap())
+        story.append(Paragraph("EDUCATION", SectionStyle))
+        _render_education_block(story, education_only, ProjectTitleStyle, MetaItalic, Body)
 
     story.append(section_gap())
     story.append(Paragraph("SKILLS", SectionStyle))
@@ -294,6 +362,11 @@ def export_resume_record_to_pdf(
 
     add_skill_line("Technical skills", tech_skills)
     add_skill_line("Writing skills", writing_skills)
+
+    if experience_entries:
+        story.append(section_gap())
+        story.append(Paragraph("EXPERIENCE", SectionStyle))
+        _render_experience_block(story, experience_entries, ProjectTitleStyle, MetaItalic, Body)
 
     story.append(section_gap())
     story.append(Paragraph("PROJECTS", SectionStyle))
@@ -345,38 +418,10 @@ def export_resume_record_to_pdf(
 
         story.append(Spacer(1, 10))
 
-    def _render_education_block(entries: List[Dict[str, Any]]) -> None:
-        for entry in entries:
-            title = entry.get("title") or "Untitled"
-            story.append(Paragraph(escape(str(title)), ProjectTitleStyle))
-
-            details = []
-            if entry.get("organization"):
-                details.append(str(entry["organization"]).strip())
-            if entry.get("date_text"):
-                details.append(str(entry["date_text"]).strip())
-
-            if details:
-                story.append(Paragraph(escape(" | ".join(details)), MetaItalic))
-
-            description = _clean_str(entry.get("description"))
-            if description:
-                story.append(Paragraph(escape(description), Body))
-
-            story.append(Spacer(1, 10))
-
-    education_only = [e for e in education_entries if e.get("entry_type") == "education"]
-    certificate_only = [e for e in education_entries if e.get("entry_type") == "certificate"]
-
-    if education_only:
-        story.append(section_gap())
-        story.append(Paragraph("EDUCATION", SectionStyle))
-        _render_education_block(education_only)
-
     if certificate_only:
         story.append(section_gap())
         story.append(Paragraph("CERTIFICATES", SectionStyle))
-        _render_education_block(certificate_only)
+        _render_education_block(story, certificate_only, ProjectTitleStyle, MetaItalic, Body)
 
     doc.build(story)
     return filepath

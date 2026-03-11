@@ -14,6 +14,11 @@ from src.db.user_education import (
     add_user_education_entry,
     delete_user_education_entry,
 )
+from src.db.user_experience import (
+    list_user_experience_entries,
+    add_user_experience_entry,
+    delete_user_experience_entry,
+)
 
 
 def _display_value(value: str | None) -> str:
@@ -21,11 +26,6 @@ def _display_value(value: str | None) -> str:
 
 
 def _prompt_field(label: str, current: str | None) -> str | None:
-    """
-    Enter -> keep existing value
-    '-'   -> clear/delete value
-    text  -> update value
-    """
     suffix = f" [{current}]" if current else ""
     raw = input(f"{label}{suffix}: ").strip()
 
@@ -38,8 +38,9 @@ def _prompt_field(label: str, current: str | None) -> str | None:
 
 def _edit_basic_profile(conn, user_id: int, username: str) -> None:
     current = get_user_profile(conn, user_id)
+    display_name = current.get("full_name") or username
 
-    print(f"\nProfile settings for {username}:")
+    print(f"\nProfile settings for {display_name}:")
     print(f"Full name: {_display_value(current.get('full_name'))}")
     print(f"Email: {_display_value(current.get('email'))}")
     print(f"Phone: {_display_value(current.get('phone'))}")
@@ -166,19 +167,96 @@ def _delete_education_entry(conn, user_id: int) -> None:
         print("Unable to delete the selected entry.")
 
 
+def _list_experience_entries(conn, user_id: int) -> list[dict]:
+    entries = list_user_experience_entries(conn, user_id)
+
+    if not entries:
+        print("\nNo experience entries saved yet.")
+        return []
+
+    print("\nExperience:")
+    for idx, entry in enumerate(entries, start=1):
+        role = entry["role"]
+        company = entry.get("company") or ""
+        date_text = entry.get("date_text") or ""
+        details = " | ".join(part for part in [company, date_text] if part)
+        if details:
+            print(f"{idx}. {role} — {details}")
+        else:
+            print(f"{idx}. {role}")
+
+        if entry.get("description"):
+            print(f"   {entry['description']}")
+
+    return entries
+
+
+def _add_experience_entry(conn, user_id: int) -> None:
+    role = input("Role (required): ").strip()
+    if not role:
+        print("Role is required.")
+        return
+
+    company = input("Company (optional): ").strip() or None
+    date_text = input("Date text (optional, e.g. 'May 2024 - Aug 2024'): ").strip() or None
+    description = input("Job description (optional): ").strip() or None
+
+    entry_id = add_user_experience_entry(
+        conn,
+        user_id,
+        role=role,
+        company=company,
+        date_text=date_text,
+        description=description,
+    )
+
+    print(f"\nSaved experience entry #{entry_id}.")
+
+
+def _delete_experience_entry(conn, user_id: int) -> None:
+    entries = _list_experience_entries(conn, user_id)
+    if not entries:
+        return
+
+    choice = input("Select an experience entry to delete (number) or press Enter to cancel: ").strip()
+    if not choice:
+        print("Cancelled.")
+        return
+    if not choice.isdigit():
+        print("Invalid selection.")
+        return
+
+    idx = int(choice)
+    if idx < 1 or idx > len(entries):
+        print("Invalid selection.")
+        return
+
+    entry = entries[idx - 1]
+    confirm = input(f"Delete '{entry['role']}'? (y/n): ").strip().lower()
+    if confirm != "y":
+        print("Cancelled.")
+        return
+
+    deleted = delete_user_experience_entry(conn, user_id, entry["entry_id"])
+    if deleted:
+        print("Entry deleted.")
+    else:
+        print("Unable to delete the selected entry.")
+
+
 def edit_user_profile(conn, user_id: int, username: str) -> None:
-    """
-    Standalone profile settings menu.
-    """
     while True:
         print(f"\nProfile options for {username}:")
         print("1. Edit basic profile")
         print("2. View education / certificate entries")
         print("3. Add education / certificate entry")
         print("4. Delete education / certificate entry")
-        print("5. Back to main menu")
+        print("5. View experience entries")
+        print("6. Add experience entry")
+        print("7. Delete experience entry")
+        print("8. Back to main menu")
 
-        choice = input("Select an option (1-5): ").strip()
+        choice = input("Select an option (1-8): ").strip()
 
         if choice == "1":
             _edit_basic_profile(conn, user_id, username)
@@ -189,6 +267,12 @@ def edit_user_profile(conn, user_id: int, username: str) -> None:
         elif choice == "4":
             _delete_education_entry(conn, user_id)
         elif choice == "5":
+            _list_experience_entries(conn, user_id)
+        elif choice == "6":
+            _add_experience_entry(conn, user_id)
+        elif choice == "7":
+            _delete_experience_entry(conn, user_id)
+        elif choice == "8":
             return
         else:
             print("Invalid choice.")
