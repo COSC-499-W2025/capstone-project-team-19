@@ -265,6 +265,7 @@ from src.db.user_profile import (
     get_contact_parts,
     get_visible_profile_text,
     get_user_profile,
+    get_resume_name
 )
 __all__ = [
     "connect",
@@ -401,5 +402,6 @@ __all__ = [
     "get_contact_parts",
     "get_visible_profile_text",
     "get_user_profile",
+    "get_resume_name",
 ]
 

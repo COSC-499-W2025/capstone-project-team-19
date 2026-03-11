@@ -29,6 +29,7 @@ def get_user_profile(conn: sqlite3.Connection, user_id: int) -> Dict[str, Any]:
         SELECT
             u.user_id,
             u.email,
+            p.full_name,
             p.phone,
             p.linkedin,
             p.github,
@@ -46,6 +47,7 @@ def get_user_profile(conn: sqlite3.Connection, user_id: int) -> Dict[str, Any]:
         return {
             "user_id": user_id,
             "email": None,
+            "full_name": None,
             "phone": None,
             "linkedin": None,
             "github": None,
@@ -56,11 +58,12 @@ def get_user_profile(conn: sqlite3.Connection, user_id: int) -> Dict[str, Any]:
     return {
         "user_id": row[0],
         "email": row[1],
-        "phone": row[2],
-        "linkedin": row[3],
-        "github": row[4],
-        "location": row[5],
-        "profile_text": row[6],
+        "full_name": row[2],
+        "phone": row[3],
+        "linkedin": row[4],
+        "github": row[5],
+        "location": row[6],
+        "profile_text": row[7],
     }
 
 
@@ -69,6 +72,7 @@ def upsert_user_profile(
     user_id: int,
     *,
     email: Optional[str],
+    full_name: Optional[str],
     phone: Optional[str],
     linkedin: Optional[str],
     github: Optional[str],
@@ -80,6 +84,7 @@ def upsert_user_profile(
     Blank strings are normalized to NULL.
     """
     clean_email = _clean_optional_text(email)
+    clean_full_name = _clean_optional_text(full_name)
     clean_phone = _clean_optional_text(phone)
     clean_linkedin = _clean_optional_text(linkedin)
     clean_github = _clean_optional_text(github)
@@ -98,9 +103,10 @@ def upsert_user_profile(
     conn.execute(
         """
         INSERT INTO user_profiles
-        (user_id, phone, linkedin, github, location, profile_text, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        (user_id, full_name, phone, linkedin, github, location, profile_text, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(user_id) DO UPDATE SET
+            full_name = excluded.full_name,
             phone = excluded.phone,
             linkedin = excluded.linkedin,
             github = excluded.github,
@@ -108,7 +114,15 @@ def upsert_user_profile(
             profile_text = excluded.profile_text,
             updated_at = datetime('now')
         """,
-        (user_id, clean_phone, clean_linkedin, clean_github, clean_location, clean_profile_text),
+        (
+            user_id,
+            clean_full_name,
+            clean_phone,
+            clean_linkedin,
+            clean_github,
+            clean_location,
+            clean_profile_text,
+        ),
     )
 
     conn.commit()
@@ -129,3 +143,11 @@ def get_contact_parts(profile: Dict[str, Any]) -> Dict[str, Optional[str]]:
         "github": _clean_optional_text(profile.get("github")),
         "location": _clean_optional_text(profile.get("location")),
     }
+
+
+def get_resume_name(profile: Dict[str, Any], username: str) -> str:
+    """
+    Return the display name for resume export.
+    Falls back to username if full_name is not set.
+    """
+    return _clean_optional_text(profile.get("full_name")) or username

@@ -19,6 +19,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 import json
+from pydoc import doc
 import re
 from typing import Any, Dict, List, Optional
 
@@ -40,6 +41,7 @@ from src.export.resume_helpers import (
 from src.db import (
     get_contact_parts,
     get_visible_profile_text,
+    get_resume_name,
 )
 
 def _clean_str(value: Any) -> str | None:
@@ -182,7 +184,8 @@ def export_resume_record_to_docx(
     profile = user_profile or {}
     contact_parts = get_contact_parts(profile)
 
-    doc.add_heading(username.upper(), level=0)
+    display_name = get_resume_name(profile, username)
+    doc.add_heading(display_name.upper(), level=0)
 
     contact_bits = []
     if contact_parts["phone"]:

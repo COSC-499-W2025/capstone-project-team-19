@@ -38,6 +38,7 @@ def edit_user_profile(conn, user_id: int, username: str) -> None:
     current = get_user_profile(conn, user_id)
 
     print(f"\nProfile settings for {username}:")
+    print(f"Full name: {_display_value(current.get('full_name'))}")
     print(f"Email: {_display_value(current.get('email'))}")
     print(f"Phone: {_display_value(current.get('phone'))}")
     print(f"LinkedIn: {_display_value(current.get('linkedin'))}")
@@ -48,6 +49,7 @@ def edit_user_profile(conn, user_id: int, username: str) -> None:
     print("\nPress Enter to keep the current value.")
     print("Type '-' to clear/delete a value.\n")
 
+    full_name = _prompt_field("Full name", current.get("full_name"))
     email = _prompt_field("Email", current.get("email"))
     phone = _prompt_field("Phone", current.get("phone"))
     linkedin = _prompt_field("LinkedIn URL", current.get("linkedin"))
@@ -59,6 +61,7 @@ def edit_user_profile(conn, user_id: int, username: str) -> None:
         conn,
         user_id,
         email=email,
+        full_name=full_name,
         phone=phone,
         linkedin=linkedin,
         github=github,

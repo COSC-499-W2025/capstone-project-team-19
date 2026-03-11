@@ -747,6 +747,7 @@ CREATE INDEX IF NOT EXISTS idx_skill_preferences_user_context
 
 CREATE TABLE IF NOT EXISTS user_profiles (
     user_id       INTEGER PRIMARY KEY,
+    full_name     TEXT,
     phone         TEXT,
     linkedin      TEXT,
     github        TEXT,
