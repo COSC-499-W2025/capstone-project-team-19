@@ -45,6 +45,7 @@ from src.export.resume_helpers import (
 from src.db import (
     get_contact_parts,
     get_visible_profile_text,
+    get_resume_name,
 )
 
 
@@ -228,7 +229,8 @@ def export_resume_record_to_pdf(
     profile = user_profile or {}
     education_entries = education_entries or []
 
-    story.append(Paragraph(username.upper(), NameStyle))
+    display_name = get_resume_name(profile, username)
+    story.append(Paragraph(display_name.upper(), NameStyle))
     story.append(rule())
 
     contact_html = _pdf_contact_html(profile)

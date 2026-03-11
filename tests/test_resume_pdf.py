@@ -112,6 +112,7 @@ def test_resume_pdf_contains_sections_and_orders_projects(monkeypatch, tmp_path)
     record = {"resume_json": json.dumps(snapshot), "rendered_text": "fallback"}
 
     user_profile = {
+        "full_name": None,
         "email": "john@example.com",
         "phone": "1234567890",
         "linkedin": "https://linkedin.com/in/john",
@@ -216,6 +217,7 @@ def test_resume_pdf_omits_contact_profile_and_education_sections_when_empty(monk
     record = {"resume_json": json.dumps(snapshot), "rendered_text": "fallback"}
 
     empty_profile = {
+        "full_name": None,
         "email": None,
         "phone": None,
         "linkedin": None,
@@ -407,3 +409,44 @@ def test_resume_pdf_export_key_role_override_priority(monkeypatch, tmp_path):
     text = _pdf_text(path)
     assert "Lead Developer" in text
     assert "[Role]" not in text
+    
+@pytest.mark.pdf_text
+def test_resume_pdf_export_uses_full_name_when_present(monkeypatch, tmp_path):
+    """Test that PDF export uses full_name instead of username when present."""
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {},
+        "projects": [],
+    }
+
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
+    out_dir = tmp_path / "out"
+
+    user_profile = {
+        "full_name": "John Tan",
+        "email": None,
+        "phone": None,
+        "linkedin": None,
+        "github": None,
+        "location": None,
+        "profile_text": None,
+    }
+
+    path = exp.export_resume_record_to_pdf(
+        username="john123",
+        record=record,
+        out_dir=str(out_dir),
+        user_profile=user_profile,
+    )
+
+    text = _pdf_text(path)
+    assert "JOHN TAN" in text

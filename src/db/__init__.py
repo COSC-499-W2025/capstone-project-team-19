@@ -265,6 +265,7 @@ from src.db.user_profile import (
     get_contact_parts,
     get_visible_profile_text,
     get_user_profile,
+    get_resume_name
 )
 
 from src.db.user_education import (
@@ -412,5 +413,6 @@ __all__ = [
     "list_user_education_entries",
     "add_user_education_entry",
     "delete_user_education_entry",
+    "get_resume_name",
 ]
 
