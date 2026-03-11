@@ -274,6 +274,11 @@ from src.db.user_education import (
     delete_user_education_entry,
 )
 
+from src.db.user_experience import (
+    list_user_experience_entries,
+    add_user_experience_entry,
+    delete_user_experience_entry,
+)
 
 __all__ = [
     "connect",
@@ -414,5 +419,8 @@ __all__ = [
     "add_user_education_entry",
     "delete_user_education_entry",
     "get_resume_name",
+    "list_user_experience_entries",
+    "add_user_experience_entry",
+    "delete_user_experience_entry",
 ]
 
