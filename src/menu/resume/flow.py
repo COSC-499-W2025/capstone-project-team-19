@@ -15,8 +15,11 @@ from src.db import (
     get_resume_snapshot,
     update_resume_snapshot,
     delete_resume_snapshot,
-    get_user_profile
+    get_user_profile,
+    list_user_education_entries,
+    list_user_experience_entries,
 )
+
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from .helpers import (
     load_project_summaries,
@@ -309,12 +312,17 @@ def _handle_export_resume_docx(conn, user_id: int, username: str) -> bool:
     )
     
     user_profile = get_user_profile(conn, user_id)
+    education_entries = list_user_education_entries(conn, user_id)
+    experience_entries = list_user_experience_entries(conn, user_id)
+
     out_file = export_resume_record_to_docx(
         username=username,
         record=record,
         out_dir="./out",
         highlighted_skills=highlighted_skills,
         user_profile=user_profile,
+        education_entries=education_entries,
+        experience_entries=experience_entries,
     )
     print(f"\nSaving resume to {out_file} ...")
     print("✓ Export complete.\n")
@@ -439,12 +447,17 @@ def _handle_export_resume_pdf(conn, user_id: int, username: str) -> bool:
     )
     
     user_profile = get_user_profile(conn, user_id)
+    education_entries = list_user_education_entries(conn, user_id)
+    experience_entries = list_user_experience_entries(conn, user_id)
+
     out_file = export_resume_record_to_pdf(
         username=username,
         record=record,
         out_dir="./out",
         highlighted_skills=highlighted_skills,
         user_profile=user_profile,
+        education_entries=education_entries,
+        experience_entries=experience_entries,
     )
     print(f"\nSaving resume to {out_file} ...")
     print("✓ Export complete.\n")
