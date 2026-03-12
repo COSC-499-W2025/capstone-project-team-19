@@ -5,6 +5,7 @@ import pytest
 from pypdf import PdfReader
 
 import src.export.resume_pdf as exp
+import src.menu.resume.flow as flow
 
 
 def _pdf_text(path):
@@ -27,47 +28,91 @@ def _pdf_link_targets(path):
     return targets
 
 
-class _FakeDatetime:
-    @staticmethod
-    def now():
-        class _DT:
-            def strftime(self, fmt: str) -> str:
-                return "2026-01-10_15-36-58"
-        return _DT()
+def test_resume_pdf_export_creates_valid_pdf(monkeypatch, tmp_path):
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    if fmt == "%Y-%m-%d_%H-%M-%S":
+                        return "2026-01-10_15-36-58"
+                    return "2026-01-10_15-36-58"
+            return _DT()
 
-
-@pytest.mark.pdf_text
-def test_resume_pdf_sections_happy_path(monkeypatch, tmp_path):
-    """
-    Covers PR 2 happy path:
-    - full_name still used
-    - hyperlinks still work
-    - section order is:
-      Profile -> Education -> Skills -> Experience -> Projects -> Certificates
-    - education / experience / certificate content render
-    """
     monkeypatch.setattr(exp, "datetime", _FakeDatetime)
 
     snapshot = {
         "aggregated_skills": {
             "languages": ["Python"],
-            "frameworks": ["FastAPI"],
+            "frameworks": [],
+            "technical_skills": [],
+            "writing_skills": [],
+        },
+        "projects": [
+            {
+                "project_name": "projA",
+                "start_date": "2025-08-01",
+                "end_date": "2025-11-01",
+                "role": "[Role]",
+                "contribution_bullets": ["Bullet A"],
+            }
+        ],
+    }
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": "fallback"}
+
+    out_dir = tmp_path / "out"
+    path = exp.export_resume_record_to_pdf(username="john", record=record, out_dir=str(out_dir))
+
+    assert path.exists()
+    assert path.name == "resume_john_2026-01-10_15-36-58.pdf"
+
+    raw = Path(path).read_bytes()
+    assert raw[:4] == b"%PDF"
+    assert len(raw) > 1000
+
+
+@pytest.mark.pdf_text
+def test_resume_pdf_contains_sections_and_orders_projects(monkeypatch, tmp_path):
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    if fmt == "%Y-%m-%d_%H-%M-%S":
+                        return "2026-01-10_15-36-58"
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {
+            "languages": ["Python"],
+            "frameworks": [],
             "technical_skills": ["Algorithms"],
             "writing_skills": ["Clear communication"],
         },
         "projects": [
             {
-                "project_name": "Capstone Project",
-                "start_date": "2025-01-01",
-                "end_date": "2025-06-01",
-                "contribution_bullets": ["Built API endpoints"],
+                "project_name": "older",
+                "start_date": "2024-01-01",
+                "end_date": "2024-02-01",
+                "role": "[Role]",
+                "contribution_bullets": ["Old bullet"],
+            },
+            {
+                "project_name": "newer",
+                "start_date": "2025-08-01",
+                "end_date": "2025-11-01",
+                "role": "[Role]",
+                "contribution_bullets": ["New bullet"],
             },
         ],
     }
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": "fallback"}
 
-    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
     user_profile = {
-        "full_name": "John Tan",
+        "full_name": None,
         "email": "john@example.com",
         "phone": "1234567890",
         "linkedin": "https://linkedin.com/in/john",
@@ -75,6 +120,7 @@ def test_resume_pdf_sections_happy_path(monkeypatch, tmp_path):
         "location": "Kelowna, BC",
         "profile_text": "Software and data student building practical tools.",
     }
+
     education_entries = [
         {
             "entry_id": 1,
@@ -93,6 +139,7 @@ def test_resume_pdf_sections_happy_path(monkeypatch, tmp_path):
             "description": "Foundational cloud certification.",
         },
     ]
+
     experience_entries = [
         {
             "entry_id": 10,
@@ -103,10 +150,11 @@ def test_resume_pdf_sections_happy_path(monkeypatch, tmp_path):
         }
     ]
 
+    out_dir = tmp_path / "out"
     path = exp.export_resume_record_to_pdf(
-        username="john123",
+        username="john",
         record=record,
-        out_dir=str(tmp_path / "out"),
+        out_dir=str(out_dir),
         user_profile=user_profile,
         education_entries=education_entries,
         experience_entries=experience_entries,
@@ -115,16 +163,13 @@ def test_resume_pdf_sections_happy_path(monkeypatch, tmp_path):
     text = _pdf_text(path)
     link_targets = _pdf_link_targets(path)
 
-    assert "JOHN TAN" in text
-    assert "john@example.com" in text
-    assert "LinkedIn" in text
-    assert "GitHub" in text
     assert "PROFILE" in text
     assert "EDUCATION" in text
     assert "SKILLS" in text
     assert "EXPERIENCE" in text
     assert "PROJECTS" in text
     assert "CERTIFICATES" in text
+    assert "EDUCATION & CERTIFICATES" not in text
 
     idx_profile = text.find("PROFILE")
     idx_education = text.find("EDUCATION")
@@ -132,28 +177,279 @@ def test_resume_pdf_sections_happy_path(monkeypatch, tmp_path):
     idx_experience = text.find("EXPERIENCE")
     idx_projects = text.find("PROJECTS")
     idx_certificates = text.find("CERTIFICATES")
+    assert -1 not in (idx_profile, idx_education, idx_skills, idx_experience, idx_projects, idx_certificates)
     assert idx_profile < idx_education < idx_skills < idx_experience < idx_projects < idx_certificates
 
+    # profile/contact info
+    assert "1234567890" in text
+    assert "john@example.com" in text
+    assert "LinkedIn" in text
+    assert "GitHub" in text
+    assert "Kelowna, BC" in text
+    assert "Software and data student building practical tools." in text
+
+    # education / experience / certificate content
+    assert "BSc in Computer Science" in text
+    assert "UBCO" in text
+    assert "AWS Cloud Practitioner" in text
+    assert "Amazon Web Services" in text
+    assert "Data Science Intern" in text
+    assert "PETRONAS" in text
+    assert "Built analytics workflows and dashboards." in text
+
+    # skills
+    assert "Algorithms" in text
+    assert "Clear communication" in text
+
+    # URLs should exist as real PDF links, not as visible text
     assert "https://linkedin.com/in/john" in link_targets
     assert "https://github.com/john" in link_targets
     assert "https://linkedin.com/in/john" not in text
     assert "https://github.com/john" not in text
 
-    assert "BSc in Computer Science" in text
-    assert "UBCO" in text
-    assert "Data Science Intern" in text
-    assert "PETRONAS" in text
-    assert "Capstone Project" in text
-    assert "AWS Cloud Practitioner" in text
+    # ordering by recency: newer should appear before older
+    assert text.find("newer") < text.find("older")
 
 
 @pytest.mark.pdf_text
-def test_resume_pdf_omits_empty_sections(monkeypatch, tmp_path):
+def test_resume_pdf_omits_contact_profile_education_experience_and_certificate_sections_when_empty(monkeypatch, tmp_path):
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    if fmt == "%Y-%m-%d_%H-%M-%S":
+                        return "2026-01-10_15-36-58"
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {
+            "languages": ["Python"],
+            "frameworks": [],
+            "technical_skills": [],
+            "writing_skills": [],
+        },
+        "projects": [
+            {
+                "project_name": "projA",
+                "start_date": "2025-08-01",
+                "end_date": "2025-11-01",
+                "contribution_bullets": ["Bullet A"],
+            }
+        ],
+    }
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": "fallback"}
+
+    empty_profile = {
+        "full_name": None,
+        "email": None,
+        "phone": None,
+        "linkedin": None,
+        "github": None,
+        "location": None,
+        "profile_text": None,
+    }
+
+    out_dir = tmp_path / "out"
+    path = exp.export_resume_record_to_pdf(
+        username="john",
+        record=record,
+        out_dir=str(out_dir),
+        user_profile=empty_profile,
+        education_entries=[],
+        experience_entries=[],
+    )
+
+    text = _pdf_text(path)
+    link_targets = _pdf_link_targets(path)
+
+    assert "SKILLS" in text
+    assert "PROJECTS" in text
+
+    assert "PROFILE" not in text
+    assert "EDUCATION" not in text
+    assert "EXPERIENCE" not in text
+    assert "CERTIFICATES" not in text
+    assert "john@example.com" not in text
+    assert "1234567890" not in text
+    assert "LinkedIn" not in text
+    assert "GitHub" not in text
+    assert "Kelowna, BC" not in text
+
+    assert all("linkedin.com" not in target for target in link_targets)
+    assert all("github.com" not in target for target in link_targets)
+
+
+@pytest.mark.pdf_text
+def test_resume_pdf_shows_only_education_section_when_only_education_entries_exist(monkeypatch, tmp_path):
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {},
+        "projects": [],
+    }
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
+
+    education_entries = [
+        {
+            "entry_id": 1,
+            "entry_type": "education",
+            "title": "BSc in Computer Science",
+            "organization": "UBCO",
+            "date_text": "2022 - 2026",
+            "description": "Major in data science.",
+        },
+    ]
+
+    out_dir = tmp_path / "out"
+    path = exp.export_resume_record_to_pdf(
+        username="john",
+        record=record,
+        out_dir=str(out_dir),
+        education_entries=education_entries,
+        experience_entries=[],
+    )
+
+    text = _pdf_text(path)
+
+    assert "EDUCATION" in text
+    assert "BSc in Computer Science" in text
+    assert "CERTIFICATES" not in text
+
+
+def test_resume_export_pdf_cancel_invalid_selection(monkeypatch, capsys):
     """
-    Covers omission behavior:
-    - falls back to username
-    - hides profile / education / experience / certificates when empty
+    Covers:
+    - Cancel on Enter
+    - Invalid index selection
+    - Ensures PDF export is not called
     """
+    resumes = [
+        {"id": 1, "name": "Resume A", "created_at": "2026-01-01"},
+        {"id": 2, "name": "Resume B", "created_at": "2026-01-02"},
+    ]
+
+    monkeypatch.setattr(flow, "list_resumes", lambda conn, user_id: resumes)
+    monkeypatch.setattr(
+        flow,
+        "get_resume_snapshot",
+        lambda conn, user_id, rid: {"resume_json": "{}", "rendered_text": ""},
+    )
+
+    def fail_export(**kwargs):
+        raise AssertionError("PDF export should not be called")
+
+    monkeypatch.setattr(flow, "export_resume_record_to_pdf", fail_export)
+
+    monkeypatch.setattr("builtins.input", lambda _: "")
+    ok = flow._handle_export_resume_pdf(conn=None, user_id=1, username="john")
+    out = capsys.readouterr().out
+
+    assert ok is False
+    assert "Cancelled" in out
+
+    monkeypatch.setattr("builtins.input", lambda _: "999")
+    ok = flow._handle_export_resume_pdf(conn=None, user_id=1, username="john")
+    out = capsys.readouterr().out
+
+    assert ok is False
+    assert "Invalid selection" in out
+
+
+@pytest.mark.pdf_text
+def test_resume_pdf_export_uses_key_role(monkeypatch, tmp_path):
+    """Test that PDF export uses resolved key_role instead of [Role] placeholder."""
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {},
+        "projects": [
+            {
+                "project_name": "test_project",
+                "key_role": "Backend Developer",
+                "start_date": "2025-01-01",
+                "end_date": "2025-06-01",
+                "contribution_bullets": ["Built API endpoints"],
+            },
+        ],
+    }
+
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
+    out_dir = tmp_path / "out"
+    path = exp.export_resume_record_to_pdf(username="jane", record=record, out_dir=str(out_dir))
+
+    text = _pdf_text(path)
+    assert "Backend Developer" in text
+    assert "[Role]" not in text
+
+
+@pytest.mark.pdf_text
+def test_resume_pdf_export_key_role_override_priority(monkeypatch, tmp_path):
+    """Test that resume_key_role_override takes priority over base key_role in PDF."""
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
+    monkeypatch.setattr(exp, "datetime", _FakeDatetime)
+
+    snapshot = {
+        "aggregated_skills": {},
+        "projects": [
+            {
+                "project_name": "test_project",
+                "key_role": "Developer",
+                "manual_key_role": "Senior Developer",
+                "resume_key_role_override": "Lead Developer",
+                "start_date": "2025-01-01",
+                "end_date": "2025-06-01",
+                "contribution_bullets": ["Led team"],
+            },
+        ],
+    }
+
+    record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
+    out_dir = tmp_path / "out"
+    path = exp.export_resume_record_to_pdf(username="jane", record=record, out_dir=str(out_dir))
+
+    text = _pdf_text(path)
+    assert "Lead Developer" in text
+    assert "[Role]" not in text
+
+
+@pytest.mark.pdf_text
+def test_resume_pdf_export_uses_full_name_when_present(monkeypatch, tmp_path):
+    """Test that PDF export uses full_name instead of username when present."""
+    class _FakeDatetime:
+        @staticmethod
+        def now():
+            class _DT:
+                def strftime(self, fmt: str) -> str:
+                    return "2026-01-10_15-36-58"
+            return _DT()
+
     monkeypatch.setattr(exp, "datetime", _FakeDatetime)
 
     snapshot = {
@@ -162,8 +458,10 @@ def test_resume_pdf_omits_empty_sections(monkeypatch, tmp_path):
     }
 
     record = {"resume_json": json.dumps(snapshot), "rendered_text": ""}
-    empty_profile = {
-        "full_name": None,
+    out_dir = tmp_path / "out"
+
+    user_profile = {
+        "full_name": "John Tan",
         "email": None,
         "phone": None,
         "linkedin": None,
@@ -175,16 +473,9 @@ def test_resume_pdf_omits_empty_sections(monkeypatch, tmp_path):
     path = exp.export_resume_record_to_pdf(
         username="john123",
         record=record,
-        out_dir=str(tmp_path / "out"),
-        user_profile=empty_profile,
-        education_entries=[],
-        experience_entries=[],
+        out_dir=str(out_dir),
+        user_profile=user_profile,
     )
 
     text = _pdf_text(path)
-
-    assert "JOHN123" in text
-    assert "PROFILE" not in text
-    assert "EDUCATION" not in text
-    assert "EXPERIENCE" not in text
-    assert "CERTIFICATES" not in text
+    assert "JOHN TAN" in text
