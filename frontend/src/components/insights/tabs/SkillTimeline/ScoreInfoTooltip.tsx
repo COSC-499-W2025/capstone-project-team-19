@@ -42,7 +42,7 @@ export default function ScoreInfoTooltip({ inline }: { inline?: boolean }) {
                                 you see one combined score per skill.
                             </li>
                             <li>
-                                <strong>See the breakdown:</strong> On the Current Totals tab, hover
+                                <strong>See the breakdown:</strong> On the Skills Overview tab, hover
                                 over a skill's bar to see which projects contributed to that skill.
                             </li>
                         </ul>

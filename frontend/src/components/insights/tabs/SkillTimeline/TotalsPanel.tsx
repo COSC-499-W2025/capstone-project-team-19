@@ -42,7 +42,7 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
 
     return (
         <div className="w-full py-3 px-4 bg-white">
-            <div className="flex justify-between items-center gap-4 mb-4 flex-wrap">
+            <div className="flex justify-between items-center gap-4 mt-2 mb-4 flex-wrap">
                 <div className="flex-1 min-w-[200px] max-w-md">
                     <input
                         type="text"

@@ -3,7 +3,7 @@ export type InsightsView = "ranked-projects" | "skill-timeline-timeline" | "skil
 const NAV_ITEMS: { id: InsightsView; label: string; indent?: boolean }[] = [
     { id: "ranked-projects", label: "Ranked Projects" },
     { id: "skill-timeline-timeline", label: "Timeline", indent: true },
-    { id: "skill-timeline-totals", label: "Current Totals", indent: true },
+    { id: "skill-timeline-totals", label: "Skills Overview", indent: true },
     { id: "skill-timeline-undated", label: "Undated Skills", indent: true },
     { id: "chronological-skills", label: "Chronological Skills" },
     { id: "activity-heatmap", label: "Activity Heatmap" },

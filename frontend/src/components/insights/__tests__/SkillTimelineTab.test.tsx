@@ -93,7 +93,7 @@ describe("SkillTimelineTab", () => {
 		expect(screen.getByText(/My App/i)).toBeInTheDocument();
 	});
 
-	it("shows Current Totals when activeSection is totals", async () => {
+	it("shows Skills Overview when activeSection is totals", async () => {
 		render(<SkillTimelineTab activeSection="totals" />);
 		await waitFor(() => {
 			expect(screen.getByText(/Testing and Ci/i)).toBeInTheDocument();
