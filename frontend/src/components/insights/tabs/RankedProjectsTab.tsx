@@ -4,7 +4,7 @@ import type { RankedProject } from "../../../api/insights";
 import { useInsightsHeaderActions } from "../InsightsHeaderActionsContext";
 
 const actionBtn =
-	"px-4 py-2 rounded-lg border-2 border-slate-600 bg-white font-medium cursor-pointer transition-all duration-150 hover:bg-slate-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed";
+	"px-4 py-0 rounded-lg border-2 border-slate-600 bg-white font-medium cursor-pointer transition-all duration-150 hover:bg-slate-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed";
 const moveBtn =
 	"w-6 h-6 flex items-center justify-center rounded border border-slate-300 bg-white text-slate-600 font-bold text-xs cursor-pointer transition-all hover:bg-slate-100 hover:border-slate-400 hover:text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-slate-300 shrink-0";
 
@@ -99,8 +99,8 @@ export default function RankedProjectsTab() {
 		}
 		setHeaderActions?.(
 			<div className="flex flex-1 justify-end gap-2">
-				<button onClick={handleReset} disabled={saving} className={actionBtn}>Reset to Auto</button>
-				<button onClick={handleSaveOrder} disabled={!isDirty || saving} className={actionBtn}>{saving ? "Saving..." : "Save Order"}</button>
+				<button onClick={handleReset} disabled={saving} className={actionBtn}>Reset Ranking</button>
+				<button onClick={handleSaveOrder} disabled={!isDirty || saving} className={actionBtn}>{saving ? "Saving..." : "Save Ranking"}</button>
 			</div>
 		);
 		return () => setHeaderActions?.(null);

@@ -1,41 +1,57 @@
 import { useState, useMemo } from "react";
 import type { SkillTimelineDTO, TimelineEventDTO } from "../../../../api/insights";
 import { formatSkillName } from "./utils/formatHelpers";
-import SkillBarsTable, { type SkillBarEntry, type SkillBarRowMeta } from "./SkillBarsTable";
+import SkillBarsTable, { type SkillBarEntry, type SkillProjectInfo } from "./SkillBarsTable";
 
 type TotalsView = "all" | "code" | "text";
 
 function aggregateUndatedBySkill(events: TimelineEventDTO[]): Map<string, SkillBarEntry & { skill_type?: "text" | "code" }> {
     const bySkill = new Map<string, SkillBarEntry & { skill_type?: "text" | "code" }>();
+
     for (const e of events) {
         const existing = bySkill.get(e.skill_name);
+        const project: SkillProjectInfo = {
+            name: e.project_name,
+            date: null,
+        };
+
         if (existing) {
             existing.cumulative_score += e.score;
-            existing.projects.push(e.project_name);
-        } else {
+            existing.projects.push(project);
+        } 
+        else {
             bySkill.set(e.skill_name, {
                 cumulative_score: e.score,
-                projects: [e.project_name],
+                projects: [project],
                 skill_type: e.skill_type,
             });
         }
     }
+
     return bySkill;
 }
 
 /** Earliest date string (from timeline.dated order) when skill first appears in a dated group */
-function buildFirstDatedBySkill(timeline: SkillTimelineDTO): Map<string, string> {
-    const map = new Map<string, string>();
+function buildDatedProjectsBySkill(timeline: SkillTimelineDTO): Map<string, Map<string, string>> {
+    const result = new Map<string, Map<string, string>>();
+
     for (const group of timeline.dated) {
         const date = group.date;
+
         for (const ev of group.events) {
-            if (!map.has(ev.skill_name)) map.set(ev.skill_name, date);
-        }
-        for (const skillName of Object.keys(group.cumulative_skills || {})) {
-            if (!map.has(skillName)) map.set(skillName, date);
+            if (!result.has(ev.skill_name)) {
+                result.set(ev.skill_name, new Map<string, string>());
+            }
+
+            const projectsForSkill = result.get(ev.skill_name)!;
+
+            if (!projectsForSkill.has(ev.project_name)) {
+                projectsForSkill.set(ev.project_name, date);
+            }
         }
     }
-    return map;
+
+    return result;
 }
 
 export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }) {
@@ -44,22 +60,25 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
 
     const entries = Object.entries(timeline.current_totals);
     const undatedBySkill = useMemo(() => aggregateUndatedBySkill(timeline.undated), [timeline.undated]);
-    const firstDatedBySkill = useMemo(() => buildFirstDatedBySkill(timeline), [timeline.dated]);
+    const datedProjectsBySkill = useMemo(() => buildDatedProjectsBySkill(timeline), [timeline.dated]);
 
     const mergedEntries = useMemo(() => {
         const q = search.trim().toLowerCase();
-        const result: [string, SkillBarEntry, SkillBarRowMeta][] = [];
+        const result: [string, SkillBarEntry][] = [];
         const currentKeys = new Set(entries.map(([k]) => k));
 
         for (const [skillName, data] of entries) {
             const matchesType = totalsView === "all" || data.skill_type === totalsView;
             const matchesSearch = q === "" || formatSkillName(skillName).toLowerCase().includes(q);
             if (!matchesType || !matchesSearch) continue;
-            const firstAt = firstDatedBySkill.get(skillName);
-            const meta: SkillBarRowMeta = firstAt
-                ? { source: "dated", firstDatedAt: firstAt }
-                : { source: "undated" };
-            result.push([skillName, { cumulative_score: data.cumulative_score, projects: data.projects }, meta]);
+            result.push([skillName, {
+                    cumulative_score: data.cumulative_score,
+                    projects: (data.projects || []).map((projectName) => ({
+                        name: projectName,
+                        date: datedProjectsBySkill.get(skillName)?.get(projectName) ?? null,
+                    })),
+                },
+            ]);
         }
 
         for (const [skillName, data] of undatedBySkill) {
@@ -67,11 +86,15 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
             const matchesType = totalsView === "all" || data.skill_type === totalsView;
             const matchesSearch = q === "" || formatSkillName(skillName).toLowerCase().includes(q);
             if (!matchesType || !matchesSearch) continue;
-            result.push([skillName, { cumulative_score: data.cumulative_score, projects: data.projects }, { source: "undated" }]);
+            result.push([skillName, {
+                    cumulative_score: data.cumulative_score,
+                    projects: data.projects,
+                },
+            ]);
         }
 
         return result;
-    }, [entries, undatedBySkill, firstDatedBySkill, totalsView, search]);
+    }, [entries, undatedBySkill, datedProjectsBySkill, totalsView, search]);
 
     const sorted = useMemo(() => [...mergedEntries].sort((a, b) => b[1].cumulative_score - a[1].cumulative_score), [mergedEntries]);
     const maxScore = Math.max(...mergedEntries.map(([, d]) => d.cumulative_score), 1);
