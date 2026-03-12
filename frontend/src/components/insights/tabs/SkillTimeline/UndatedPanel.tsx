@@ -22,6 +22,7 @@ export default function UndatedPanel({ events }: { events: TimelineEventDTO[] })
                         setSortField={setSortField}
                         sortDir={sortDir}
                         setSortDir={setSortDir}
+                        fields={["skill_name", "project_name", "level"]}
                     />
 
                     <ul className="list-none p-0 m-0 border-t border-slate-200">

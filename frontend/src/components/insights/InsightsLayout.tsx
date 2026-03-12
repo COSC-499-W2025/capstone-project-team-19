@@ -1,11 +1,22 @@
 import { useState } from "react";
-import InsightsSidebar, { type InsightsView } from "./InsightsSidebar";
+import InsightsSidebar, { type InsightsView, getPageTitle } from "./InsightsSidebar";
+import { InsightsHeaderActionsProvider, useInsightsHeaderActions } from "./InsightsHeaderActionsContext";
 import RankedProjectsTab from "./tabs/RankedProjectsTab";
 import SkillTimelineTab from "./tabs/SkillTimeline/SkillTimelineTab";
 import ChronologicalSkillsTab from "./tabs/ChronologicalSkillsTab";
 import ActivityHeatmapTab from "./tabs/ActivityHeatmapTab";
 
 export type { InsightsView };
+
+function TitleRow({ activeView }: { activeView: InsightsView }) {
+    const ctx = useInsightsHeaderActions();
+    return (
+        <div className="flex justify-between items-center border-b border-slate-200 pt-10 pb-2 px-6">
+            <h3 className="text-lg font-semibold m-0">{getPageTitle(activeView)}</h3>
+            {ctx?.actions}
+        </div>
+    );
+}
 
 export default function InsightsLayout() {
     const [activeView, setActiveView] = useState<InsightsView>("ranked-projects");
@@ -16,19 +27,27 @@ export default function InsightsLayout() {
         : "timeline";
 
     return (
-        <div className="flex min-h-0 flex-1 pl-4">
-            <InsightsSidebar activeView={activeView} onChange={setActiveView} />
+        <InsightsHeaderActionsProvider>
+            <div className="grid grid-cols-[12rem_1fr] grid-rows-[auto_1fr] min-h-0 flex-1 pl-4">
+                {/* Row 1: Headers aligned horizontally */}
+                <div className="flex flex-col border-r border-slate-200 pt-10 pb-2 border-b border-slate-200">
+                    <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500 m-0 px-4">Insights</h2>
+                </div>
+                <TitleRow activeView={activeView} />
 
-            <div className="flex-1 min-w-0 flex flex-col px-6 pb-6 pt-10">
-                <main className="flex-1 min-h-0">
-                    {activeView === "ranked-projects" && <RankedProjectsTab />}
-                    {isSkillTimeline && (
-                        <SkillTimelineTab activeSection={skillTimelineSection} />
-                    )}
-                    {activeView === "chronological-skills" && <ChronologicalSkillsTab />}
-                    {activeView === "activity-heatmap" && <ActivityHeatmapTab />}
-                </main>
+                {/* Row 2: Sidebar nav + content */}
+                <InsightsSidebar activeView={activeView} onChange={setActiveView} hideHeader />
+                <div className="flex flex-col min-w-0 px-6 pb-6 overflow-auto">
+                    <main className="flex-1 min-h-0">
+                        {activeView === "ranked-projects" && <RankedProjectsTab />}
+                        {isSkillTimeline && (
+                            <SkillTimelineTab activeSection={skillTimelineSection} />
+                        )}
+                        {activeView === "chronological-skills" && <ChronologicalSkillsTab />}
+                        {activeView === "activity-heatmap" && <ActivityHeatmapTab />}
+                    </main>
+                </div>
             </div>
-        </div>
+        </InsightsHeaderActionsProvider>
     );
 }

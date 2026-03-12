@@ -2,9 +2,24 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import RankedProjectsTab from "../tabs/RankedProjectsTab";
+import { InsightsHeaderActionsProvider, useInsightsHeaderActions } from "../InsightsHeaderActionsContext";
 import * as insights from "../../../api/insights";
 
 vi.mock("../../../api/insights");
+
+function HeaderActionsSlot() {
+	const ctx = useInsightsHeaderActions();
+	return <div data-testid="header-actions">{ctx?.actions}</div>;
+}
+
+function TabWrapper() {
+	return (
+		<InsightsHeaderActionsProvider>
+			<HeaderActionsSlot />
+			<RankedProjectsTab />
+		</InsightsHeaderActionsProvider>
+	);
+}
 
 const mockRankings = [
 	{
@@ -33,12 +48,12 @@ describe("RankedProjectsTab", () => {
 	});
 
 	it("shows loading state initially", () => {
-		render(<RankedProjectsTab />);
+		render(<TabWrapper />);
 		expect(screen.getByText(/loading ranked projects/i)).toBeInTheDocument();
 	});
 
 	it("shows rankings after load", async () => {
-		render(<RankedProjectsTab />);
+		render(<TabWrapper />);
 		await waitFor(() => {
 			expect(screen.getByText("Project A")).toBeInTheDocument();
 		});
@@ -49,7 +64,7 @@ describe("RankedProjectsTab", () => {
 
 	it("shows error when fetch fails", async () => {
 		vi.mocked(insights.getRanking).mockRejectedValue(new Error("Network error"));
-		render(<RankedProjectsTab />);
+		render(<TabWrapper />);
 		await waitFor(() => {
 			expect(screen.getByText("Network error")).toBeInTheDocument();
 		});
@@ -61,14 +76,14 @@ describe("RankedProjectsTab", () => {
 			data: { rankings: [] },
 			error: null,
 		});
-		render(<RankedProjectsTab />);
+		render(<TabWrapper />);
 		await waitFor(() => {
 			expect(screen.getByText(/no projects uploaded/i)).toBeInTheDocument();
 		});
 	});
 
 	it("Save Order is disabled when order unchanged", async () => {
-		render(<RankedProjectsTab />);
+		render(<TabWrapper />);
 		await waitFor(() => {
 			expect(screen.getByText("Project A")).toBeInTheDocument();
 		});
@@ -77,7 +92,7 @@ describe("RankedProjectsTab", () => {
 
 	it("Save Order is enabled after reordering", async () => {
 		const user = userEvent.setup();
-		const { container } = render(<RankedProjectsTab />);
+		const { container } = render(<TabWrapper />);
 		await waitFor(() => {
 			expect(screen.getByText("Project A")).toBeInTheDocument();
 		});
@@ -90,7 +105,7 @@ describe("RankedProjectsTab", () => {
 
 	it("move up/down reorders the list", async () => {
 		const user = userEvent.setup();
-		const { container } = render(<RankedProjectsTab />);
+		const { container } = render(<TabWrapper />);
 		await waitFor(() => {
 			expect(screen.getByText("Project A")).toBeInTheDocument();
 		});
@@ -113,7 +128,7 @@ describe("RankedProjectsTab", () => {
 			error: null,
 		});
 		const user = userEvent.setup();
-		render(<RankedProjectsTab />);
+		render(<TabWrapper />);
 		await waitFor(() => {
 			expect(screen.getByText("Project A")).toBeInTheDocument();
 		});

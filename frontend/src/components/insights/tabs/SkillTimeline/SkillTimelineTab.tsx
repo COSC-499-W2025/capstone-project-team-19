@@ -24,9 +24,11 @@ export default function SkillTimelineTab({ activeSection }: { activeSection: Ski
                 if (res.success && res.data) {
                     if (!cancelled) setTimeline(res.data);
                 }
-            } catch (e: unknown) {
+            }
+            catch (e: unknown) {
                 if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load skill timeline");
-            } finally {
+            }
+            finally {
                 if (!cancelled) setLoading(false);
             }
         }
@@ -38,24 +40,28 @@ export default function SkillTimelineTab({ activeSection }: { activeSection: Ski
     if (error) return <div className="py-4 text-center text-red-600">{error}</div>;
     if (!timeline) return <div className="py-4 text-center text-slate-600">No skill data available.</div>;
 
-    return (
-        <div className="flex flex-col w-full pt-2">
-            <header className="relative flex items-center justify-center bg-sky-100 py-3 px-4 text-xl text-slate-800">
-                <p className="m-0 text-center">
-                    <span>{timeline.summary.total_skills} Skills</span>
-                    <span className="mx-4 opacity-90">·</span>
-                    <span>{timeline.summary.total_projects} Projects</span>
-                    {timeline.summary.date_range?.earliest && timeline.summary.date_range?.latest && (
-                        <>
-                            <span className="mx-4 opacity-90">·</span>
-                            <span>{toYMD(timeline.summary.date_range.earliest)} – {toYMD(timeline.summary.date_range.latest)}</span>
-                        </>
-                    )}
-                </p>
-                <ScoreInfoTooltip />
-            </header>
+    const sectionTitles: Record<SkillTimelineSection, string> = {
+        timeline: "Timeline",
+        totals: "Current Totals",
+        undated: "Undated Skills",
+    };
+    const dateRange =
+        timeline.summary.date_range?.earliest && timeline.summary.date_range?.latest
+            ? ` · ${toYMD(timeline.summary.date_range.earliest)} – ${toYMD(timeline.summary.date_range.latest)}`
+            : "";
 
-            <main className="flex-1 min-w-0 px-6 mt-6">
+    return (
+        <div className="flex flex-col w-full">
+            <div className="relative flex justify-between items-center mb-4">
+                <div>
+                    <p className="text-sm text-slate-600 m-0">
+                        {timeline.summary.total_skills} skills · {timeline.summary.total_projects} projects{dateRange}
+                    </p>
+                </div>
+                <ScoreInfoTooltip />
+            </div>
+
+            <main className="flex-1 min-w-0 px-6">
                 {activeSection === "timeline" && <DatedTimelinePanel timeline={timeline} />}
                 {activeSection === "totals" && <TotalsPanel timeline={timeline} />}
                 {activeSection === "undated" && <UndatedPanel events={timeline.undated} />}
