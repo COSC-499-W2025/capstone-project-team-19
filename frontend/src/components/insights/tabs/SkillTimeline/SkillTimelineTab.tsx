@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getSkillTimeline } from "../../../../api/insights";
 import type { SkillTimelineDTO } from "../../../../api/insights";
+import { useInsightsHeaderActions } from "../../InsightsHeaderActionsContext";
 import DatedTimelinePanel from "./DatedTimelinePanel";
 import TotalsPanel from "./TotalsPanel";
 import UndatedPanel from "./UndatedPanel";
@@ -36,31 +37,31 @@ export default function SkillTimelineTab({ activeSection }: { activeSection: Ski
         return () => { cancelled = true; };
     }, []);
 
+    const setHeaderActions = useInsightsHeaderActions()?.setActions;
+
+    useEffect(() => {
+        if (!timeline) return;
+        const dateRange =
+            timeline.summary.date_range?.earliest && timeline.summary.date_range?.latest
+                ? ` · ${toYMD(timeline.summary.date_range.earliest)} – ${toYMD(timeline.summary.date_range.latest)}`
+                : "";
+        setHeaderActions?.(
+            <div className="flex flex-1 items-center min-w-0 gap-4 justify-between">
+                <span className="text-sm text-slate-600 shrink-0">
+                    {timeline.summary.total_skills} skills · {timeline.summary.total_projects} projects{dateRange}
+                </span>
+                <ScoreInfoTooltip inline />
+            </div>
+        );
+        return () => setHeaderActions?.(null);
+    }, [setHeaderActions, timeline]);
+
     if (loading) return <div className="py-4 text-center text-slate-600">Loading skill timeline...</div>;
     if (error) return <div className="py-4 text-center text-red-600">{error}</div>;
     if (!timeline) return <div className="py-4 text-center text-slate-600">No skill data available.</div>;
 
-    const sectionTitles: Record<SkillTimelineSection, string> = {
-        timeline: "Timeline",
-        totals: "Current Totals",
-        undated: "Undated Skills",
-    };
-    const dateRange =
-        timeline.summary.date_range?.earliest && timeline.summary.date_range?.latest
-            ? ` · ${toYMD(timeline.summary.date_range.earliest)} – ${toYMD(timeline.summary.date_range.latest)}`
-            : "";
-
     return (
         <div className="flex flex-col w-full">
-            <div className="relative flex justify-between items-center mb-4">
-                <div>
-                    <p className="text-sm text-slate-600 m-0">
-                        {timeline.summary.total_skills} skills · {timeline.summary.total_projects} projects{dateRange}
-                    </p>
-                </div>
-                <ScoreInfoTooltip />
-            </div>
-
             <main className="flex-1 min-w-0 px-6">
                 {activeSection === "timeline" && <DatedTimelinePanel timeline={timeline} />}
                 {activeSection === "totals" && <TotalsPanel timeline={timeline} />}

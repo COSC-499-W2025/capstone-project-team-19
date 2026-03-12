@@ -34,7 +34,7 @@ export function toYMD(iso?: string | null) {
     return formatted.replace(/^(\w{3})/, "$1.");
 }
 
-/** Short format for timeline spine: "Oct 19" */
+/** Short format for timeline spine: "Oct 19, 2025" */
 export function toShortDate(iso?: string | null) {
     if (!iso) return "";
     const normalized = iso
@@ -42,5 +42,5 @@ export function toShortDate(iso?: string | null) {
         .replace(/ ([+-])/, "$1")
         .replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
     const d = new Date(normalized);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }

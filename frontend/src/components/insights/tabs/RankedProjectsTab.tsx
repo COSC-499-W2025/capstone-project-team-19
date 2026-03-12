@@ -98,7 +98,7 @@ export default function RankedProjectsTab() {
 			return () => setHeaderActions?.(null);
 		}
 		setHeaderActions?.(
-			<div className="flex gap-2">
+			<div className="flex flex-1 justify-end gap-2">
 				<button onClick={handleReset} disabled={saving} className={actionBtn}>Reset to Auto</button>
 				<button onClick={handleSaveOrder} disabled={!isDirty || saving} className={actionBtn}>{saving ? "Saving..." : "Save Order"}</button>
 			</div>
