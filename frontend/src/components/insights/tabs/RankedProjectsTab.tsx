@@ -101,65 +101,98 @@ export default function RankedProjectsTab() {
 
     if (loading) return <div className="py-4 text-center text-[#444]">Loading ranked projects...</div>;
     if (error) return <div className="py-4 text-center text-red-600">{error}</div>;
-    if (rankings.length === 0) return <div className="py-4 text-center text-[#444]">No projects uploaded.</div>
+    if (rankings.length === 0) return <div className="py-4 text-center text-[#444]">No projects uploaded.</div>;
+
+    const topThreeBar = (idx: number) => {
+        if (idx === 0) return "bg-slate-700";
+        if (idx === 1) return "bg-slate-600";
+        if (idx === 2) return "bg-slate-500";
+        return "bg-slate-400";
+    };
+
+    const TopBadge = ({ idx }: { idx: number }) => {
+        if (idx > 2) return <span className="w-7 h-7 shrink-0" aria-hidden />;
+        const styles = [
+            "bg-slate-700 text-white font-black",
+            "bg-slate-600 text-white font-black",
+            "bg-slate-500 text-white font-black",
+        ];
+        return (
+            <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-sm shrink-0 ${styles[idx]}`}>
+                {idx + 1}
+            </span>
+        );
+    };
 
     return (
-        <section className="flex flex-col gap-2.5">
-            <div className="flex justify-between items-center mb-4">
-                <div className="text-lg font-bold">Ranked Projects</div>
-
-                <div className="flex gap-2.5">
+        <section className="flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold">Ranked Projects</h3>
+                <div className="flex gap-2">
                     <button
                         onClick={handleReset}
                         disabled={saving}
-                        className="px-3.5 py-2 rounded-md border-2 border-black bg-white font-medium cursor-pointer transition-all duration-150 hover:bg-black hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 rounded-lg border-2 border-black bg-white font-medium cursor-pointer transition-all duration-150 hover:bg-black hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Reset to Auto
                     </button>
                     <button
                         onClick={handleSaveOrder}
                         disabled={!isDirty || saving}
-                        className="px-3.5 py-2 rounded-md border-2 border-black bg-white font-medium cursor-pointer transition-all duration-150 hover:bg-black hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 rounded-lg border-2 border-black bg-white font-medium cursor-pointer transition-all duration-150 hover:bg-black hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {saving ? "Saving..." : "Save Order"}
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-[2fr_1fr_1fr_auto] font-semibold text-[15px] tracking-wide text-[#444] mx-1.5">
-                <div>PROJECT</div>
-                <div>SCORE</div>
-                <div>RANK</div>
-                <div>ORDER</div>
+            <div className="flex flex-col gap-3">
+                {rankings.map((p, idx) => {
+                    const pct = Math.min(p.score * 100, 100);
+                    return (
+                        <div
+                            key={p.project_summary_id}
+                            className={`grid grid-cols-[2rem_12rem_1fr_4rem_4.5rem] gap-x-4 items-center group rounded-lg px-2 py-1.5 -mx-2 transition-colors ${
+                                idx < 3 ? "bg-blue-50/70" : "hover:bg-slate-50"
+                            }`}
+                        >
+                            <div className="flex justify-center">
+                                <TopBadge idx={idx} />
+                            </div>
+                            <span className="text-sm font-medium truncate">
+                                {p.project_name}
+                            </span>
+                            <div className="min-w-0 h-8 rounded-full bg-slate-200 overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-300 ${topThreeBar(idx)}`}
+                                    style={{ width: `${Math.max(pct, 4)}%` }}
+                                />
+                            </div>
+                            <span className="text-sm font-semibold tabular-nums text-right">
+                                {p.score.toFixed(2)}
+                            </span>
+                            <div className="flex gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity justify-end">
+                                <button
+                                    onClick={() => move(idx, -1)}
+                                    disabled={idx === 0}
+                                    className="w-8 h-8 flex items-center justify-center rounded border border-zinc-300 bg-white text-zinc-700 cursor-pointer transition-colors hover:bg-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                    aria-label="Move up"
+                                >
+                                    ↑
+                                </button>
+                                <button
+                                    onClick={() => move(idx, 1)}
+                                    disabled={idx === rankings.length - 1}
+                                    className="w-8 h-8 flex items-center justify-center rounded border border-zinc-300 bg-white text-zinc-700 cursor-pointer transition-colors hover:bg-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                    aria-label="Move down"
+                                >
+                                    ↓
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
-
-            {rankings.map((p, idx) => (
-                <div
-                    key={p.project_summary_id}
-                    className="grid grid-cols-[2fr_1fr_1fr_auto] bg-[#d4caca] rounded-md p-3 items-center border border-[#9f9494]"
-                >
-                    <div>{p.project_name}</div>
-                    <div>{p.score.toFixed(2)}</div>
-                    <div>{p.manual_rank != null ? "MANUAL" : "AUTO"}</div>
-
-                    <div className="flex gap-1.5">
-                        <button
-                            onClick={() => move(idx, -1)}
-                            disabled={idx === 0}
-                            className="border-none bg-white text-base cursor-pointer p-1.5 rounded transition-colors duration-150 hover:bg-[#e6e6e6] disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                            ↑
-                        </button>
-                        <button
-                            onClick={() => move(idx, 1)}
-                            disabled={idx === rankings.length - 1}
-                            className="border-none bg-white text-base cursor-pointer p-1.5 rounded transition-colors duration-150 hover:bg-[#e6e6e6] disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                            ↓
-                        </button>
-                    </div>
-                </div>
-            ))}
         </section>
-    )
+    );
 }
