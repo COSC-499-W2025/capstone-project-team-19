@@ -35,26 +35,21 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
         return sortDir === "asc" ? cmp : -cmp;
     });
 
-    const toggleBtn = (v: TotalsView) =>
-        totalsView === v
-            ? "bg-[#333] text-white"
-            : "bg-white text-[#333] hover:bg-[#f5f5f5]";
+    const totalsViewOptions: { value: TotalsView; label: string }[] = [
+        { value: "all", label: "All" },
+        { value: "code", label: "Code" },
+        { value: "text", label: "Text" },
+    ];
+    const toggleBtn = (v: TotalsView) => totalsView === v ? "bg-slate-800 text-white" : "bg-white text-slate-800 hover:bg-slate-100";
 
     return (
         <div className="w-full py-3 px-4">
             <div className="flex justify-between items-start gap-4 mb-4 flex-wrap">
-                <TimelineSortControls
-                    sortField={sortField}
-                    setSortField={setSortField}
-                    sortDir={sortDir}
-                    setSortDir={setSortDir}
-                    fields={["skill_name", "score"]}
-                />
-
-                <div className="inline-flex items-center border border-[#ccc] rounded-lg overflow-hidden bg-white">
-                    <button type="button" className={`border-none py-1.5 px-3 text-sm cursor-pointer ${toggleBtn("all")}`} onClick={() => setTotalsView("all")}>All</button>
-                    <button type="button" className={`border-none py-1.5 px-3 text-sm cursor-pointer ${toggleBtn("code")}`} onClick={() => setTotalsView("code")}>Code</button>
-                    <button type="button" className={`border-none py-1.5 px-3 text-sm cursor-pointer ${toggleBtn("text")}`} onClick={() => setTotalsView("text")}>Text</button>
+                <TimelineSortControls sortField={sortField} setSortField={setSortField} sortDir={sortDir} setSortDir={setSortDir} fields={["skill_name", "score"]} />
+                <div className="inline-flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white">
+                    {totalsViewOptions.map(({ value, label }) => (
+                        <button key={value} type="button" className={`border-none py-1.5 px-3 text-sm cursor-pointer ${toggleBtn(value)}`} onClick={() => setTotalsView(value)}>{label}</button>
+                    ))}
                 </div>
             </div>
             
@@ -69,8 +64,8 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
 
                     <div className="min-w-0 w-full">
                         <div className="group relative">
-                            <div className="w-full h-3.5 bg-[#e0e0e0] rounded overflow-hidden">
-                                <div className="h-full min-w-0 bg-[#5a5a5a] rounded transition-[width] duration-200" style={{ width: `${pct}%` }} />
+                            <div className="w-full h-3.5 bg-slate-200 rounded overflow-hidden">
+                                <div className="h-full min-w-0 bg-slate-600 rounded transition-[width] duration-200" style={{ width: `${pct}%` }} />
                             </div>
 
                             {data.projects?.length ? (

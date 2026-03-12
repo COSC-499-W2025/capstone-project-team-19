@@ -33,13 +33,15 @@ describe("InsightsLayout", () => {
 		vi.mocked(insights.getSkillTimeline).mockResolvedValue(mockTimeline);
 	});
 
-	it("renders Insights header and subnav", async () => {
+	it("renders Insights header and sidebar", async () => {
 		render(<InsightsLayout />);
 		await waitFor(() => {
 			expect(screen.getByRole("heading", { name: /insights/i })).toBeInTheDocument();
 		});
 		expect(screen.getByRole("button", { name: /ranked projects/i })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /skill timeline/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /^timeline$/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /current totals/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /undated skills/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /chronological skills/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /activity heatmap/i })).toBeInTheDocument();
 	});
@@ -57,8 +59,8 @@ describe("InsightsLayout", () => {
 		await waitFor(() => {
 			expect(screen.getByText("Project A")).toBeInTheDocument();
 		});
-		await user.click(screen.getByRole("button", { name: /skill timeline/i }));
-		expect(screen.getByRole("button", { name: /skill timeline/i })).toHaveClass("active");
+		await user.click(screen.getByRole("button", { name: /^timeline$/i }));
+		expect(screen.getByRole("button", { name: /^timeline$/i })).toHaveClass("active");
 		expect(screen.getByRole("button", { name: /ranked projects/i })).not.toHaveClass("active");
 	});
 

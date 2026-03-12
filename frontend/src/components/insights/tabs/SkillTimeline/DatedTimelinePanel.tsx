@@ -25,12 +25,12 @@ export default function DatedTimelinePanel({ timeline }: { timeline: SkillTimeli
                             const sortedEvents = sortTimelineEvents(group.events, sortField, sortDir);
                             return (
                                 <section key={group.date} className="flex flex-col gap-0">
-                                    <h3 className="text-base font-bold text-[#333] m-0 mb-2 pb-1 border-b-2 border-[#e5e5e5]">{toYMD(group.date)}</h3>
-                                    <ul className="list-none p-0 m-0 border-t border-[#e5e5e5]">
+                                    <h3 className="text-base font-bold text-slate-800 m-0 mb-2 pb-1 border-b-2 border-slate-200">{toYMD(group.date)}</h3>
+                                    <ul className="list-none p-0 m-0 border-t border-slate-200">
                                         {sortedEvents.map((e, i) => (
-                                            <li key={`${group.date}-${i}`} className="py-2.5 border-b border-[#e5e5e5] text-sm leading-snug">
-                                                <strong className="font-bold text-[#1a1a1a]">{formatSkillName(e.skill_name)} </strong>
-                                                <span className="font-normal text-[#555]">
+                                            <li key={`${group.date}-${i}`} className="py-2.5 border-b border-slate-200 text-sm leading-snug">
+                                                <strong className="font-bold text-slate-900">{formatSkillName(e.skill_name)} </strong>
+                                                <span className="font-normal text-slate-600">
                                                     ({e.level}) – {e.project_name} ({e.score.toFixed(2)})
                                                 </span>
                                             </li>

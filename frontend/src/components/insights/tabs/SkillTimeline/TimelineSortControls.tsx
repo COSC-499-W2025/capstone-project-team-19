@@ -7,13 +7,7 @@ const SORT_OPTIONS: { value: TimelineSortField; label: string }[] = [
     { value: "score", label: "Score" },
 ];
 
-export default function TimelineSortControls({
-    sortField,
-    setSortField,
-    sortDir,
-    setSortDir,
-    fields,
-}: {
+export default function TimelineSortControls({ sortField, setSortField, sortDir, setSortDir, fields, }: {
     sortField: TimelineSortField;
     setSortField: (f: TimelineSortField) => void;
     sortDir: SortDirection;
@@ -25,42 +19,18 @@ export default function TimelineSortControls({
         ? SORT_OPTIONS.filter((o) => (fields as readonly string[]).includes(o.value))
         : SORT_OPTIONS;
 
+    const isScore = sortField === "score";
+    const dirLabel = isScore ? (sortDir === "asc" ? "Low→High" : "High→Low") : (sortDir === "asc" ? "A→Z" : "Z→A");
+    const title = `${dirLabel} (click for ${sortDir === "asc" ? (isScore ? "High→Low" : "Z→A") : isScore ? "Low→High" : "A→Z"})`;
+
     return (
         <div className="flex items-center gap-2.5 mb-4">
-            <label className="text-sm text-[#555]">Sort by</label>
-            <select
-                value={sortField}
-                onChange={(e) => setSortField(e.target.value as TimelineSortField)}
-                className="py-1.5 px-2.5 text-sm border border-[#ccc] rounded-md bg-white"
-            >
-                {options.map((o) => (
-                    <option key={o.value} value={o.value}>
-                        {o.label}
-                    </option>
-                ))}
+            <label className="text-sm text-slate-600">Sort by</label>
+            <select value={sortField} onChange={(e) => setSortField(e.target.value as TimelineSortField)} className="py-1.5 px-2.5 text-sm border border-slate-300 rounded-md bg-white">
+                {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-
-            <button
-                type="button"
-                className="py-1.5 px-3 text-sm border border-[#ccc] rounded-md bg-white cursor-pointer hover:bg-[#f5f5f5]"
-                onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-                title={
-                    sortField === "score"
-                        ? sortDir === "asc"
-                            ? "Low→High (click for High→Low)"
-                            : "High→Low (click for Low→High)"
-                        : sortDir === "asc"
-                            ? "A→Z (click for Z→A)"
-                            : "Z→A (click for A→Z)"
-                }
-            >
-                {sortField === "score"
-                    ? sortDir === "asc"
-                        ? "Low→High"
-                        : "High→Low"
-                    : sortDir === "asc"
-                        ? "A→Z"
-                        : "Z→A"}
+            <button type="button" className="py-1.5 px-3 text-sm border border-slate-300 rounded-md bg-white cursor-pointer hover:bg-slate-100" onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))} title={title}>
+                {dirLabel}
             </button>
         </div>
     );

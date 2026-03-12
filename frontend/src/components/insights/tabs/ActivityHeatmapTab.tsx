@@ -1,6 +1,6 @@
 export default function ActivityHeatmapTab() {
     return (
-        <div className="py-4 text-[#444]">
+        <div className="py-4 text-slate-600">
             Activity Heatmap
         </div>
     );
