@@ -62,7 +62,6 @@ from src.export.shared_helpers import (
 )
 from src.export.portfolio_helpers import reformat_duration_line, _skills_one_line,  _frameworks_clean, _languages_clean
 from src.insights.portfolio.formatters import _clean_bullets
-from tests.test_db_skills import conn
 
 # -------------------------
 # Local helpers (PDF-only)
