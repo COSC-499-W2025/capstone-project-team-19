@@ -10,7 +10,7 @@ import PortfolioView from "../components/outputs/PortfolioView";
 type View =
   | { kind: "landing" }
   | { kind: "resumes" }
-  | { kind: "resume-detail"; id: number }
+  | { kind: "resume-detail"; id: number; editing?: boolean }
   | { kind: "portfolio" };
 
 export default function OutputsPage() {
@@ -33,6 +33,7 @@ export default function OutputsPage() {
           <ResumeList
             onBack={() => setView({ kind: "landing" })}
             onView={(id) => setView({ kind: "resume-detail", id })}
+            onEdit={(id) => setView({ kind: "resume-detail", id, editing: true })}
             onCreateNew={() => setShowCreate(true)}
           />
         );
@@ -40,6 +41,7 @@ export default function OutputsPage() {
         return (
           <ResumeDetail
             resumeId={view.id}
+            initialEditing={view.editing}
             onBack={() => setView({ kind: "resumes" })}
           />
         );
