@@ -25,7 +25,7 @@ export default function InsightsLayout() {
 
     const isSkillTimeline = activeView.startsWith("skill-timeline-");
     const skillTimelineSection = isSkillTimeline
-        ? (activeView.replace("skill-timeline-", "") as "timeline" | "totals" | "undated")
+        ? (activeView.replace("skill-timeline-", "") as "timeline" | "totals")
         : "timeline";
 
     return (

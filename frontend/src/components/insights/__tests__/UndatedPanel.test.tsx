@@ -35,16 +35,16 @@ describe("UndatedPanel", () => {
 		expect(screen.getByText(/Algo Project/)).toBeInTheDocument();
 	});
 
-	it("shows sort controls when there are events", () => {
+	it("shows search input when there are events", () => {
 		render(<UndatedPanel events={mockEvents} />);
-		expect(screen.getByText(/sort by/i)).toBeInTheDocument();
+		expect(screen.getByPlaceholderText(/search skills/i)).toBeInTheDocument();
 	});
 
-	it("toggles sort direction when direction button clicked", async () => {
+	it("filters skills by search", async () => {
 		const user = userEvent.setup();
 		render(<UndatedPanel events={mockEvents} />);
-		const dirButton = screen.getByRole("button", { name: /A→Z/i });
-		await user.click(dirButton);
-		expect(screen.getByRole("button", { name: /Z→A/i })).toBeInTheDocument();
+		await user.type(screen.getByPlaceholderText(/search skills/i), "clarity");
+		expect(screen.getByText(/clarity/i)).toBeInTheDocument();
+		expect(screen.queryByText(/data.structures/i)).not.toBeInTheDocument();
 	});
 });

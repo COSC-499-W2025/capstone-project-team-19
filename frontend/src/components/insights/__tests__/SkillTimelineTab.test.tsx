@@ -102,12 +102,4 @@ describe("SkillTimelineTab", () => {
 		expect(screen.getAllByText(/Clarity/i).length).toBeGreaterThan(0);
 	});
 
-	it("shows Undated Skills when activeSection is undated", async () => {
-		render(<SkillTimelineTab activeSection="undated" />);
-		await waitFor(() => {
-			expect(screen.getByText(/clarity/i)).toBeInTheDocument();
-		});
-		expect(screen.getByText(/clarity/i)).toBeInTheDocument();
-		expect(screen.getByText(/Essay/i)).toBeInTheDocument();
-	});
 });

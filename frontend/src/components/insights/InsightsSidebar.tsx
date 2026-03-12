@@ -1,10 +1,9 @@
-export type InsightsView = "ranked-projects" | "skill-timeline-timeline" | "skill-timeline-totals" | "skill-timeline-undated" | "chronological-skills" | "activity-heatmap";
+export type InsightsView = "ranked-projects" | "skill-timeline-timeline" | "skill-timeline-totals" | "chronological-skills" | "activity-heatmap";
 
 const NAV_ITEMS: { id: InsightsView; label: string; indent?: boolean }[] = [
     { id: "ranked-projects", label: "Ranked Projects" },
     { id: "skill-timeline-timeline", label: "Timeline", indent: true },
     { id: "skill-timeline-totals", label: "Skills Overview", indent: true },
-    { id: "skill-timeline-undated", label: "Undated Skills", indent: true },
     { id: "chronological-skills", label: "Chronological Skills" },
     { id: "activity-heatmap", label: "Activity Heatmap" },
 ];
@@ -27,7 +26,7 @@ export default function InsightsSidebar({ activeView, onChange, hideHeader }: { 
     const navContent = (
         <nav className={`flex flex-col flex-1 min-h-0 pt-2 pb-6 ${hideHeader ? "border-r border-slate-200 pl-4 pr-2" : ""}`}>
             <button className={linkStyle("ranked-projects")} onClick={() => onChange("ranked-projects")}>{NAV_ITEMS.find((n) => n.id === "ranked-projects")!.label}</button>
-            <div className="pt-4 mt-2 border-t border-slate-200 text-[11px] font-medium text-slate-500 uppercase tracking-widest px-3 pb-1.5 select-none">Skill Timeline</div>
+            <div className="pt-4 mt-2 border-t border-slate-200 text-[11px] font-medium text-slate-500 uppercase tracking-widest px-3 pb-1.5 select-none">Skills</div>
             {NAV_ITEMS.filter((n) => n.indent).map((n) => (
                 <button key={n.id} className={linkStyle(n.id)} onClick={() => onChange(n.id)}>{n.label}</button>
             ))}

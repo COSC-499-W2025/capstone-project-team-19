@@ -4,7 +4,6 @@ import type { SkillTimelineDTO } from "../../../../api/insights";
 import { useInsightsHeaderActions } from "../../InsightsHeaderActionsContext";
 import DatedTimelinePanel from "./DatedTimelinePanel";
 import TotalsPanel from "./TotalsPanel";
-import UndatedPanel from "./UndatedPanel";
 import { toYMD } from "./utils/formatHelpers";
 import ScoreInfoTooltip from "./ScoreInfoTooltip";
 
@@ -65,7 +64,6 @@ export default function SkillTimelineTab({ activeSection }: { activeSection: Ski
             <main className="flex-1 min-w-0 px-6">
                 {activeSection === "timeline" && <DatedTimelinePanel timeline={timeline} />}
                 {activeSection === "totals" && <TotalsPanel timeline={timeline} />}
-                {activeSection === "undated" && <UndatedPanel events={timeline.undated} />}
             </main>
         </div>
     );

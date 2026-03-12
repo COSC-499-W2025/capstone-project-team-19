@@ -6,7 +6,7 @@ import { useInsightsHeaderActions } from "../InsightsHeaderActionsContext";
 const actionBtn =
 	"px-4 py-2 rounded-lg border-2 border-slate-600 bg-white font-medium cursor-pointer transition-all duration-150 hover:bg-slate-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed";
 const moveBtn =
-	"w-7 h-7 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 font-bold text-xs cursor-pointer transition-all hover:bg-slate-100 hover:border-slate-400 hover:text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-slate-300";
+	"w-6 h-6 flex items-center justify-center rounded border border-slate-300 bg-white text-slate-600 font-bold text-xs cursor-pointer transition-all hover:bg-slate-100 hover:border-slate-400 hover:text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-slate-300 shrink-0";
 
 const BAR_COLORS = ["bg-slate-700", "bg-slate-600", "bg-slate-500", "bg-slate-300"];
 const BADGE_STYLES = ["bg-slate-700 text-white font-black", "bg-slate-600 text-white font-black", "bg-slate-500 text-white font-black"];
@@ -124,20 +124,20 @@ export default function RankedProjectsTab() {
 
 	return (
 		<section className="flex flex-col gap-5 pt-4">
-			<div className="flex flex-col gap-1.5">
+			<div className="flex flex-col gap-4">
 				{rankings.map((p, idx) => {
 					const pct = Math.min(p.score * 100, 100);
-					const rowClass = `ranked-row grid grid-cols-[2rem_12rem_1fr_4rem] gap-x-4 items-center group rounded px-2 py-1 -mx-2 transition-colors ${idx < 3 ? "bg-sky-50" : "hover:bg-slate-50"}`;
+					const rowClass = `ranked-row grid grid-cols-[2rem_12rem_1fr_4rem] gap-x-4 items-center group rounded px-2 py-0.5 -mx-2 transition-colors ${idx < 3 ? "bg-sky-50" : "hover:bg-slate-50"}`;
 					return (
 						<div key={p.project_summary_id} className={rowClass}>
 							<div className="flex justify-center"><TopBadge idx={idx} /></div>
 							<span className="text-sm font-medium truncate">{p.project_name}</span>
-							<div className="min-w-0 flex flex-col gap-0.5">
-								<div className="flex gap-0.5 justify-end">
+							<div className="min-w-0 flex items-center gap-2">
+								<div className="flex gap-0.5 shrink-0">
 									<button onClick={() => move(idx, -1)} disabled={idx === 0} className={moveBtn} aria-label="Move up">↑</button>
 									<button onClick={() => move(idx, 1)} disabled={idx === rankings.length - 1} className={moveBtn} aria-label="Move down">↓</button>
 								</div>
-								<div className="h-5 rounded-full bg-slate-100 overflow-hidden">
+								<div className="flex-1 h-3 rounded-full bg-slate-100 overflow-hidden min-w-0">
 									<div className={`h-full rounded-full transition-all duration-300 ${BAR_COLORS[Math.min(idx, 3)]}`} style={{ width: `${Math.max(pct, 4)}%` }} />
 								</div>
 							</div>

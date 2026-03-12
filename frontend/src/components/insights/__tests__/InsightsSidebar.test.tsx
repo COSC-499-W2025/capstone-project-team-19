@@ -9,8 +9,7 @@ describe("InsightsSidebar", () => {
 		render(<InsightsSidebar activeView="ranked-projects" onChange={onChange} />);
 		expect(screen.getByRole("button", { name: /ranked projects/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /^timeline$/i })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /current totals/i })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /undated skills/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /skills overview/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /chronological skills/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /activity heatmap/i })).toBeInTheDocument();
 	});
