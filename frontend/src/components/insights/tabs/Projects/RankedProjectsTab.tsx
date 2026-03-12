@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { getRanking, replaceRankingOrder, resetRanking } from "../../../api/insights";
-import type { RankedProject } from "../../../api/insights";
-import { useInsightsHeaderActions } from "../InsightsHeaderActionsContext";
+import { getRanking, replaceRankingOrder, resetRanking } from "../../../../api/insights";
+import type { RankedProject } from "../../../../api/insights";
+import { useInsightsHeaderActions } from "../../InsightsHeaderActionsContext";
 
 const actionBtn =
 	"px-4 py-0 rounded-lg border-2 border-slate-600 bg-white font-medium cursor-pointer transition-all duration-150 hover:bg-slate-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed";

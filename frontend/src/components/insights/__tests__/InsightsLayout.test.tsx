@@ -27,6 +27,14 @@ const mockTimeline = {
 	error: null,
 };
 
+/** Sidebar marks active item with border-l-sky-600 (no "active" class). */
+function expectNavActive(button: HTMLElement) {
+	expect(button.className).toContain("border-l-sky-600");
+}
+function expectNavInactive(button: HTMLElement) {
+	expect(button.className).toContain("border-l-transparent");
+}
+
 describe("InsightsLayout", () => {
 	beforeEach(() => {
 		vi.mocked(insights.getRanking).mockResolvedValue(mockRankings);
@@ -48,8 +56,9 @@ describe("InsightsLayout", () => {
 	it("shows Ranked Projects tab by default", async () => {
 		render(<InsightsLayout />);
 		await waitFor(() => {
-			expect(screen.getByRole("button", { name: /ranked projects/i })).toHaveClass("active");
+			expect(screen.getByText("Project A")).toBeInTheDocument();
 		});
+		expectNavActive(screen.getByRole("button", { name: /ranked projects/i }));
 	});
 
 	it("switches to Skill Timeline when clicked", async () => {
@@ -59,8 +68,8 @@ describe("InsightsLayout", () => {
 			expect(screen.getByText("Project A")).toBeInTheDocument();
 		});
 		await user.click(screen.getByRole("button", { name: /^timeline$/i }));
-		expect(screen.getByRole("button", { name: /^timeline$/i })).toHaveClass("active");
-		expect(screen.getByRole("button", { name: /ranked projects/i })).not.toHaveClass("active");
+		expectNavActive(screen.getByRole("button", { name: /^timeline$/i }));
+		expectNavInactive(screen.getByRole("button", { name: /ranked projects/i }));
 	});
 
 	it("switches to Chronological Skills when clicked", async () => {
@@ -70,7 +79,7 @@ describe("InsightsLayout", () => {
 			expect(screen.getByText("Project A")).toBeInTheDocument();
 		});
 		await user.click(screen.getByRole("button", { name: /chronological skills/i }));
-		expect(screen.getByRole("button", { name: /chronological skills/i })).toHaveClass("active");
+		expectNavActive(screen.getByRole("button", { name: /chronological skills/i }));
 		expect(screen.getAllByText(/chronological skills/i).length).toBeGreaterThan(0);
 	});
 
@@ -81,7 +90,7 @@ describe("InsightsLayout", () => {
 			expect(screen.getByText("Project A")).toBeInTheDocument();
 		});
 		await user.click(screen.getByRole("button", { name: /activity heatmap/i }));
-		expect(screen.getByRole("button", { name: /activity heatmap/i })).toHaveClass("active");
+		expectNavActive(screen.getByRole("button", { name: /activity heatmap/i }));
 		expect(screen.getAllByText(/activity heatmap/i).length).toBeGreaterThan(0);
 	});
 });

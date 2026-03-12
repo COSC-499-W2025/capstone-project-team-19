@@ -14,10 +14,12 @@ describe("InsightsSidebar", () => {
 		expect(screen.getByRole("button", { name: /activity heatmap/i })).toBeInTheDocument();
 	});
 
-	it("marks active view with active class", () => {
+	it("marks active view with sky border (not literal active class)", () => {
 		render(<InsightsSidebar activeView="skill-timeline-timeline" onChange={() => {}} />);
-		expect(screen.getByRole("button", { name: /^timeline$/i })).toHaveClass("active");
-		expect(screen.getByRole("button", { name: /ranked projects/i })).not.toHaveClass("active");
+		const timelineBtn = screen.getByRole("button", { name: /^timeline$/i });
+		const rankedBtn = screen.getByRole("button", { name: /ranked projects/i });
+		expect(timelineBtn.className).toContain("border-l-sky-600");
+		expect(rankedBtn.className).toContain("border-l-transparent");
 	});
 
 	it("calls onChange when nav item clicked", async () => {

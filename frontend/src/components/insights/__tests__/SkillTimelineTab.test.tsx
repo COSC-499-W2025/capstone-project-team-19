@@ -75,6 +75,10 @@ describe("SkillTimelineTab", () => {
 			expect(screen.getByText(/Testing and Ci/i)).toBeInTheDocument();
 		});
 		expect(screen.getByText(/My App/i)).toBeInTheDocument();
+		// SkillsTimeline dated table headers (proves dated branch, not empty state)
+		expect(screen.getByText(/^Skill$/)).toBeInTheDocument();
+		expect(screen.getByText(/^Level$/)).toBeInTheDocument();
+		expect(screen.getByText(/^Project$/)).toBeInTheDocument();
 	});
 
 	it("shows error when fetch fails", async () => {

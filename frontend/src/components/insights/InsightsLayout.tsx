@@ -1,10 +1,10 @@
 import { useState } from "react";
 import InsightsSidebar, { type InsightsView, getPageTitle } from "./InsightsSidebar";
 import { InsightsHeaderActionsProvider, useInsightsHeaderActions } from "./InsightsHeaderActionsContext";
-import RankedProjectsTab from "./tabs/RankedProjectsTab";
+import RankedProjectsTab from "./tabs/Projects/RankedProjectsTab";
 import SkillTimelineTab from "./tabs/Skills/SkillTimelineTab";
-import ChronologicalSkillsTab from "./tabs/ChronologicalSkillsTab";
-import ActivityHeatmapTab from "./tabs/ActivityHeatmapTab";
+import SkillsLog from "./tabs/Skills/SkillsLog";
+import ActivityHeatmapTab from "./tabs/Projects/ActivityHeatmapTab";
 
 export type { InsightsView };
 
@@ -45,7 +45,7 @@ export default function InsightsLayout() {
                         {isSkillTimeline && (
                             <SkillTimelineTab activeSection={skillTimelineSection} />
                         )}
-                        {activeView === "chronological-skills" && <ChronologicalSkillsTab />}
+                        {activeView === "chronological-skills" && <SkillsLog />}
                         {activeView === "activity-heatmap" && <ActivityHeatmapTab />}
                     </main>
                 </div>
