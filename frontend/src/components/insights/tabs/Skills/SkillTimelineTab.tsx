@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { getSkillTimeline } from "../../../../api/insights";
 import type { SkillTimelineDTO } from "../../../../api/insights";
 import { useInsightsHeaderActions } from "../../InsightsHeaderActionsContext";
-import DatedTimelinePanel from "./DatedTimelinePanel";
-import TotalsPanel from "./TotalsPanel";
+import SkillsTimeline from "./SkillsTimeline";
+import SkillsOverview from "./SkillsOverview";
 import { toYMD } from "./utils/formatHelpers";
 import ScoreInfoTooltip from "./ScoreInfoTooltip";
 
-type SkillTimelineSection = "timeline" | "totals" | "undated";
+type SkillTimelineSection = "timeline" | "totals";
 
 export default function SkillTimelineTab({ activeSection }: { activeSection: SkillTimelineSection }) {
     const [timeline, setTimeline] = useState<SkillTimelineDTO | null>(null);
@@ -62,8 +62,8 @@ export default function SkillTimelineTab({ activeSection }: { activeSection: Ski
     return (
         <div className="flex flex-col w-full">
             <main className="flex-1 min-w-0 px-6">
-                {activeSection === "timeline" && <DatedTimelinePanel timeline={timeline} />}
-                {activeSection === "totals" && <TotalsPanel timeline={timeline} />}
+                {activeSection === "timeline" && <SkillsTimeline timeline={timeline} />}
+                {activeSection === "totals" && <SkillsOverview timeline={timeline} />}
             </main>
         </div>
     );

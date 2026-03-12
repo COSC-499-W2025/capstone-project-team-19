@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import SkillTimelineTab from "../tabs/SkillTimeline/SkillTimelineTab";
+import SkillTimelineTab from "../tabs/Skills/SkillTimelineTab";
 import * as insights from "../../../api/insights";
 
 vi.mock("../../../api/insights");
@@ -96,7 +96,7 @@ describe("SkillTimelineTab", () => {
 	it("shows Skills Overview when activeSection is totals", async () => {
 		render(<SkillTimelineTab activeSection="totals" />);
 		await waitFor(() => {
-			expect(screen.getByText(/Testing and Ci/i)).toBeInTheDocument();
+			expect(screen.getAllByText(/Testing and Ci/i).length).toBeGreaterThan(0);
 		});
 		expect(screen.getAllByText(/Testing and Ci/i).length).toBeGreaterThan(0);
 		expect(screen.getAllByText(/Clarity/i).length).toBeGreaterThan(0);

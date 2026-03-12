@@ -1,7 +1,7 @@
 import type { SkillTimelineDTO } from "../../../../api/insights";
 import { formatSkillName, toShortDate } from "./utils/formatHelpers";
 
-export default function DatedTimelinePanel({ timeline }: { timeline: SkillTimelineDTO }) {
+export default function SkillsTimeline({ timeline }: { timeline: SkillTimelineDTO }) {
     if (timeline.dated.length === 0) {
         return (
             <div className="w-full py-7 bg-white">

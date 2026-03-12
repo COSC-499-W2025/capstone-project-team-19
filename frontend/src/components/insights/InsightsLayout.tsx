@@ -2,7 +2,7 @@ import { useState } from "react";
 import InsightsSidebar, { type InsightsView, getPageTitle } from "./InsightsSidebar";
 import { InsightsHeaderActionsProvider, useInsightsHeaderActions } from "./InsightsHeaderActionsContext";
 import RankedProjectsTab from "./tabs/RankedProjectsTab";
-import SkillTimelineTab from "./tabs/SkillTimeline/SkillTimelineTab";
+import SkillTimelineTab from "./tabs/Skills/SkillTimelineTab";
 import ChronologicalSkillsTab from "./tabs/ChronologicalSkillsTab";
 import ActivityHeatmapTab from "./tabs/ActivityHeatmapTab";
 

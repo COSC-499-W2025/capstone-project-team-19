@@ -54,7 +54,7 @@ function buildDatedProjectsBySkill(timeline: SkillTimelineDTO): Map<string, Map<
     return result;
 }
 
-export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }) {
+export default function SkillsOverview({ timeline }: { timeline: SkillTimelineDTO }) {
     const [search, setSearch] = useState("");
     const [totalsView, setTotalsView] = useState<TotalsView>("all");
 
