@@ -382,12 +382,14 @@ def test_resume_export_nonhappy_cancel_invalid_selection(monkeypatch, capsys):
     )
     monkeypatch.setattr(flow, "export_resume_record_to_docx", lambda **k: Path("./out/fake.docx"))
 
+    # cancel (Enter)
     monkeypatch.setattr("builtins.input", lambda _: "")
     ok = flow._handle_export_resume_docx(conn=None, user_id=1, username="john")
     out = capsys.readouterr().out
     assert ok is False
     assert "Cancelled" in out
 
+    # invalid index (999)
     monkeypatch.setattr("builtins.input", lambda _: "999")
     ok = flow._handle_export_resume_docx(conn=None, user_id=1, username="john")
     out = capsys.readouterr().out
@@ -430,12 +432,14 @@ def test_resume_export_fallback_to_rendered_text(monkeypatch, tmp_path):
 
     out_dir = tmp_path / "out"
 
+    # R6: bad JSON + good rendered_text
     record = {"resume_json": "{not json", "rendered_text": "LINE1\nLINE2\n"}
     path = exp.export_resume_record_to_docx(username="john", record=record, out_dir=str(out_dir))
     txt = _doc_text(path)
     assert "Resume Snapshot" in txt
     assert "LINE1" in txt and "LINE2" in txt
 
+    # R7: bad JSON + missing rendered_text
     record2 = {"resume_json": "{not json", "rendered_text": ""}
     path2 = exp.export_resume_record_to_docx(username="john", record=record2, out_dir=str(out_dir))
     txt2 = _doc_text(path2)
@@ -540,6 +544,7 @@ def test_resume_export_fallback_to_role_placeholder(monkeypatch, tmp_path):
     txt = _doc_text(path)
     assert "[Role]" in txt
 
+    
 
 def test_resume_export_uses_full_name_when_present(monkeypatch, tmp_path):
     """Test that DOCX export uses full_name instead of username when present."""

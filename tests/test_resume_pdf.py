@@ -352,6 +352,7 @@ def test_resume_export_pdf_cancel_invalid_selection(monkeypatch, capsys):
 
     monkeypatch.setattr(flow, "export_resume_record_to_pdf", fail_export)
 
+    # cancel
     monkeypatch.setattr("builtins.input", lambda _: "")
     ok = flow._handle_export_resume_pdf(conn=None, user_id=1, username="john")
     out = capsys.readouterr().out
@@ -359,6 +360,7 @@ def test_resume_export_pdf_cancel_invalid_selection(monkeypatch, capsys):
     assert ok is False
     assert "Cancelled" in out
 
+    # invalid index
     monkeypatch.setattr("builtins.input", lambda _: "999")
     ok = flow._handle_export_resume_pdf(conn=None, user_id=1, username="john")
     out = capsys.readouterr().out
@@ -439,6 +441,7 @@ def test_resume_pdf_export_key_role_override_priority(monkeypatch, tmp_path):
     assert "[Role]" not in text
 
 
+    
 @pytest.mark.pdf_text
 def test_resume_pdf_export_uses_full_name_when_present(monkeypatch, tmp_path):
     """Test that PDF export uses full_name instead of username when present."""
