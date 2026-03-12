@@ -8,8 +8,6 @@ import UndatedPanel from "./UndatedPanel";
 import { toYMD } from "./utils/formatHelpers";
 import ScoreInfoTooltip from "./ScoreInfoTooltip";
 
-import "./SkillTimeline.css";
-
 type SkillTimelineSection = "timeline" | "totals" | "undated";
 
 export default function SkillTimelineTab() {
@@ -38,20 +36,20 @@ export default function SkillTimelineTab() {
         return () => { cancelled = true; };
     }, []);
 
-    if (loading) return <div className="skill-timeline-state">Loading skill timeline...</div>;
-    if (error) return <div className="skill-timeline-state skill-timeline-error">{error}</div>;
-    if (!timeline) return <div className="skill-timeline-state">No skill data available.</div>;
+    if (loading) return <div className="py-4 text-center text-[#444]">Loading skill timeline...</div>;
+    if (error) return <div className="py-4 text-center text-red-600">{error}</div>;
+    if (!timeline) return <div className="py-4 text-center text-[#444]">No skill data available.</div>;
 
     return (
-        <div className="skill-timeline-container">
-            <header className="skill-timeline-header">
-                <p className="skill-timeline-header-text">
+        <div className="flex flex-col w-full">
+            <header className="relative flex items-center justify-center bg-[#b9adad] py-3 px-4 text-xl">
+                <p className="m-0 text-center">
                     <span>{timeline.summary.total_skills} Skills</span>
-                    <span className="skill-timeline-header-sep">·</span>
+                    <span className="mx-4 opacity-90">·</span>
                     <span>{timeline.summary.total_projects} Projects</span>
                     {timeline.summary.date_range?.earliest && timeline.summary.date_range?.latest && (
                     <>
-                        <span className="skill-timeline-header-sep">·</span>
+                        <span className="mx-4 opacity-90">·</span>
                         <span>{toYMD(timeline.summary.date_range.earliest)} – {toYMD(timeline.summary.date_range.latest)}</span>
                     </>
                     )}
@@ -59,10 +57,10 @@ export default function SkillTimelineTab() {
                 <ScoreInfoTooltip />
             </header>
 
-            <div className="skill-timeline-body">
+            <div className="flex w-full min-h-[300px] mt-3">
                 <SkillTimelineNav activeSection={activeSection} setActiveSection={setActiveSection} />
 
-                <main className="skill-timeline-content">
+                <main className="flex-1 min-w-0 px-6">
                     {activeSection === "timeline" && <DatedTimelinePanel timeline={timeline} />}
                     {activeSection === "totals" && <TotalsPanel timeline={timeline} />}
                     {activeSection === "undated" && <UndatedPanel events={timeline.undated} />}

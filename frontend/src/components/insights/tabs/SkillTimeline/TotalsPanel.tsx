@@ -20,7 +20,7 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
     }, [entries, totalsView]);
 
     if (entries.length === 0) return (
-        <div className="skill-timeline-panel">
+        <div className="w-full py-3 bg-white">
             <p>No totals.</p>
         </div>
     );
@@ -35,9 +35,14 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
         return sortDir === "asc" ? cmp : -cmp;
     });
 
+    const toggleBtn = (v: TotalsView) =>
+        totalsView === v
+            ? "bg-[#333] text-white"
+            : "bg-white text-[#333] hover:bg-[#f5f5f5]";
+
     return (
-        <div className="skill-totals">
-            <div className="skill-totals-toolbar">
+        <div className="w-full py-3 px-4">
+            <div className="flex justify-between items-start gap-4 mb-4 flex-wrap">
                 <TimelineSortControls
                     sortField={sortField}
                     setSortField={setSortField}
@@ -46,35 +51,35 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
                     fields={["skill_name", "score"]}
                 />
 
-                <div className="skill-totals-toggle">
-                    <button type="button" className={totalsView === "all" ? "active" : ""} onClick={() => setTotalsView("all")}>All</button>
-                    <button type="button" className={totalsView === "code" ? "active" : ""} onClick={() => setTotalsView("code")}>Code</button>
-                    <button type="button" className={totalsView === "text" ? "active" : ""} onClick={() => setTotalsView("text")}>Text</button>
+                <div className="inline-flex items-center border border-[#ccc] rounded-lg overflow-hidden bg-white">
+                    <button type="button" className={`border-none py-1.5 px-3 text-sm cursor-pointer ${toggleBtn("all")}`} onClick={() => setTotalsView("all")}>All</button>
+                    <button type="button" className={`border-none py-1.5 px-3 text-sm cursor-pointer ${toggleBtn("code")}`} onClick={() => setTotalsView("code")}>Code</button>
+                    <button type="button" className={`border-none py-1.5 px-3 text-sm cursor-pointer ${toggleBtn("text")}`} onClick={() => setTotalsView("text")}>Text</button>
                 </div>
             </div>
             
             {filteredEntries.length === 0 ? (
-                <p className="skill-totals-empty">No {totalsView} skills available.</p>
+                <p className="m-0">No {totalsView} skills available.</p>
             ) : sorted.map(([skillName, data]) => {
                 const pct = (data.cumulative_score / maxScore) * 100;
 
                 return (
-                <div key={skillName} className="skill-totals-row">
-                    <div className="skill-totals-skill">{formatSkillName(skillName)}</div>
+                <div key={skillName} className="grid grid-cols-[220px_1fr_64px] items-center gap-px h-8 my-px">
+                    <div className="text-sm font-semibold opacity-90">{formatSkillName(skillName)}</div>
 
-                    <div className="skill-totals-bar">
-                        <div className="skill-bar-hover">
-                            <div className="skill-totals-track">
-                                <div className="skill-totals-fill" style={{ width: `${pct}%` }} />
+                    <div className="min-w-0 w-full">
+                        <div className="group relative">
+                            <div className="w-full h-3.5 bg-[#e0e0e0] rounded overflow-hidden">
+                                <div className="h-full min-w-0 bg-[#5a5a5a] rounded transition-[width] duration-200" style={{ width: `${pct}%` }} />
                             </div>
 
                             {data.projects?.length ? (
-                            <div className="skill-tooltip">
-                                <div className="skill-tooltip-title">{formatSkillName(skillName)}</div>
-                                <ul className="skill-tooltip-list">
+                            <div className="hidden group-hover:block absolute left-0 top-[-10px] -translate-y-full w-80 overflow-visible bg-black text-white rounded-lg p-2.5 px-3 shadow-[0_14px_30px_rgba(0,0,0,0.3)] z-50 [&::after]:content-[''] [&::after]:absolute [&::after]:left-[18px] [&::after]:bottom-[-10px] [&::after]:w-0 [&::after]:h-0 [&::after]:border-l-[10px] [&::after]:border-l-transparent [&::after]:border-r-[10px] [&::after]:border-r-transparent [&::after]:border-t-[10px] [&::after]:border-t-black">
+                                <div className="font-bold mb-2">{formatSkillName(skillName)}</div>
+                                <ul className="list-none p-0 m-0 grid gap-1.5">
                                 {data.projects.map((projectName, i) => (
-                                    <li key={`${projectName}-${i}`} className="skill-tooltip-item">
-                                        <span className="skill-tooltip-project">{projectName}</span>
+                                    <li key={`${projectName}-${i}`} className="flex justify-between gap-2.5 tabular-nums">
+                                        <span className="overflow-hidden text-ellipsis whitespace-nowrap max-w-[230px]">{projectName}</span>
                                     </li>
                                 ))}
                                 </ul>
@@ -83,11 +88,11 @@ export default function TotalsPanel({ timeline }: { timeline: SkillTimelineDTO }
                         </div>
                     </div>
 
-                    <div className="skill-totals-score">
-                                        {typeof data.cumulative_score === "number"
-                                            ? data.cumulative_score.toFixed(2)
-                                            : "—"}
-                                    </div>
+                    <div className="tabular-nums text-right text-sm">
+                        {typeof data.cumulative_score === "number"
+                            ? data.cumulative_score.toFixed(2)
+                            : "—"}
+                    </div>
                 </div>
                 );
             })}

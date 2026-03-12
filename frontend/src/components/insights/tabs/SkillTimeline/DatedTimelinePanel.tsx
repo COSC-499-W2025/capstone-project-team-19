@@ -10,7 +10,7 @@ export default function DatedTimelinePanel({ timeline }: { timeline: SkillTimeli
     const [sortDir, setSortDir] = useState<SortDirection>("asc");
 
     return (
-        <div className="skill-timeline-panel">
+        <div className="w-full py-3 bg-white">
             {timeline.dated.length > 0 ? (
                 <>
                     <TimelineSortControls
@@ -20,17 +20,17 @@ export default function DatedTimelinePanel({ timeline }: { timeline: SkillTimeli
                         setSortDir={setSortDir}
                     />
 
-                    <div className="skill-dated-timeline">
+                    <div className="flex flex-col gap-5">
                         {timeline.dated.map((group) => {
                             const sortedEvents = sortTimelineEvents(group.events, sortField, sortDir);
                             return (
-                                <section key={group.date} className="skill-timeline-date-group">
-                                    <h3 className="skill-dated-heading">{toYMD(group.date)}</h3>
-                                    <ul className="skill-dated-list">
+                                <section key={group.date} className="flex flex-col gap-0">
+                                    <h3 className="text-base font-bold text-[#333] m-0 mb-2 pb-1 border-b-2 border-[#e5e5e5]">{toYMD(group.date)}</h3>
+                                    <ul className="list-none p-0 m-0 border-t border-[#e5e5e5]">
                                         {sortedEvents.map((e, i) => (
-                                            <li key={`${group.date}-${i}`} className="skill-dated-item">
-                                                <strong className="skill-undated-skill">{formatSkillName(e.skill_name)} </strong>
-                                                <span className="skill-undated-meta">
+                                            <li key={`${group.date}-${i}`} className="py-2.5 border-b border-[#e5e5e5] text-sm leading-snug">
+                                                <strong className="font-bold text-[#1a1a1a]">{formatSkillName(e.skill_name)} </strong>
+                                                <span className="font-normal text-[#555]">
                                                     ({e.level}) – {e.project_name} ({e.score.toFixed(2)})
                                                 </span>
                                             </li>

@@ -26,9 +26,13 @@ export default function TimelineSortControls({
         : SORT_OPTIONS;
 
     return (
-        <div className="skill-timeline-sort">
-            <label>Sort by</label>
-            <select value={sortField} onChange={(e) => setSortField(e.target.value as TimelineSortField)}>
+        <div className="flex items-center gap-2.5 mb-4">
+            <label className="text-sm text-[#555]">Sort by</label>
+            <select
+                value={sortField}
+                onChange={(e) => setSortField(e.target.value as TimelineSortField)}
+                className="py-1.5 px-2.5 text-sm border border-[#ccc] rounded-md bg-white"
+            >
                 {options.map((o) => (
                     <option key={o.value} value={o.value}>
                         {o.label}
@@ -38,7 +42,7 @@ export default function TimelineSortControls({
 
             <button
                 type="button"
-                className="skill-timeline-sort-dir"
+                className="py-1.5 px-3 text-sm border border-[#ccc] rounded-md bg-white cursor-pointer hover:bg-[#f5f5f5]"
                 onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
                 title={
                     sortField === "score"

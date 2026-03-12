@@ -99,22 +99,34 @@ export default function RankedProjectsTab() {
         });
     }
 
-    if (loading) return <div className="ranked-state">Loading ranked projects...</div>;
-    if (error) return <div className="ranked-state ranked-error">{error}</div>;
-    if (rankings.length === 0) return <div className="ranked-state">No projects uploaded.</div>
+    if (loading) return <div className="py-4 text-center text-[#444]">Loading ranked projects...</div>;
+    if (error) return <div className="py-4 text-center text-red-600">{error}</div>;
+    if (rankings.length === 0) return <div className="py-4 text-center text-[#444]">No projects uploaded.</div>
 
     return (
-        <section className="ranked-table">
-            <div className="ranked-toolbar">
-                <div className="ranked-title">Ranked Projects</div>
+        <section className="flex flex-col gap-2.5">
+            <div className="flex justify-between items-center mb-4">
+                <div className="text-lg font-bold">Ranked Projects</div>
 
-                <div className="ranked-toolbar-actions">
-                    <button onClick={handleReset} disabled={saving}>Reset to Auto</button>
-                    <button onClick={handleSaveOrder} disabled={!isDirty || saving}>{saving ? "Saving..." : "Save Order"}</button>
+                <div className="flex gap-2.5">
+                    <button
+                        onClick={handleReset}
+                        disabled={saving}
+                        className="px-3.5 py-2 rounded-md border-2 border-black bg-white font-medium cursor-pointer transition-all duration-150 hover:bg-black hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Reset to Auto
+                    </button>
+                    <button
+                        onClick={handleSaveOrder}
+                        disabled={!isDirty || saving}
+                        className="px-3.5 py-2 rounded-md border-2 border-black bg-white font-medium cursor-pointer transition-all duration-150 hover:bg-black hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {saving ? "Saving..." : "Save Order"}
+                    </button>
                 </div>
             </div>
 
-            <div className="ranked-header">
+            <div className="grid grid-cols-[2fr_1fr_1fr_auto] font-semibold text-[15px] tracking-wide text-[#444] mx-1.5">
                 <div>PROJECT</div>
                 <div>SCORE</div>
                 <div>RANK</div>
@@ -122,17 +134,32 @@ export default function RankedProjectsTab() {
             </div>
 
             {rankings.map((p, idx) => (
-                <div key={p.project_summary_id} className="ranked-row">
+                <div
+                    key={p.project_summary_id}
+                    className="grid grid-cols-[2fr_1fr_1fr_auto] bg-[#d4caca] rounded-md p-3 items-center border border-[#9f9494]"
+                >
                     <div>{p.project_name}</div>
                     <div>{p.score.toFixed(2)}</div>
                     <div>{p.manual_rank != null ? "MANUAL" : "AUTO"}</div>
 
-                    <div className="ranked-row-actions">
-                        <button onClick={() => move(idx, -1)} disabled={idx === 0}>↑</button>
-                        <button onClick={() => move(idx, 1)} disabled={idx === rankings.length - 1}>↓</button>
+                    <div className="flex gap-1.5">
+                        <button
+                            onClick={() => move(idx, -1)}
+                            disabled={idx === 0}
+                            className="border-none bg-white text-base cursor-pointer p-1.5 rounded transition-colors duration-150 hover:bg-[#e6e6e6] disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            ↑
+                        </button>
+                        <button
+                            onClick={() => move(idx, 1)}
+                            disabled={idx === rankings.length - 1}
+                            className="border-none bg-white text-base cursor-pointer p-1.5 rounded transition-colors duration-150 hover:bg-[#e6e6e6] disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            ↓
+                        </button>
                     </div>
                 </div>
             ))}
-            </section>
+        </section>
     )
 }
