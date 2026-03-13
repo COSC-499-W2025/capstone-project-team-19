@@ -37,7 +37,13 @@ from reportlab.platypus.flowables import HRFlowable
 from reportlab.lib import utils
 
 from src.insights.rank_projects.rank_project_importance import collect_project_data
-from src.db import get_project_summary_row, get_project_thumbnail_path, get_project_key
+from src.db import (
+    get_project_summary_row,
+    get_project_thumbnail_path,
+    get_project_key,
+    get_user_profile,
+)
+
 from src.insights.portfolio import (
     format_duration,
     format_activity_line,
@@ -115,6 +121,8 @@ def export_portfolio_to_pdf(
     filepath = out_path / filename
 
     project_scores: List[Tuple[str, float]] = collect_project_data(conn, user_id)
+    user_profile = get_user_profile(conn, user_id)
+    display_name = (user_profile.get("full_name") or username).strip()
 
     doc = SimpleDocTemplate(
         str(filepath),
@@ -123,8 +131,8 @@ def export_portfolio_to_pdf(
         rightMargin=0.85 * inch,
         topMargin=0.85 * inch,
         bottomMargin=0.85 * inch,
-        title=f"Portfolio - {username}",
-        author=username,
+        title=f"Portfolio - {display_name}",
+        author=display_name,
     )
 
     styles = getSampleStyleSheet()
@@ -201,7 +209,7 @@ def export_portfolio_to_pdf(
     story: List[Any] = []
 
     # Header
-    story.append(Paragraph(f"Portfolio - {username}", TitleStyle))
+    story.append(Paragraph(f"Portfolio - {display_name}", TitleStyle))
     story.append(_rule())
     story.append(Paragraph(f"Generated on {stamp_display}", MetaStyle))
 

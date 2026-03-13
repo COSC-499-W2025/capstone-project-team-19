@@ -25,7 +25,8 @@ from src.menu import (
     view_ranked_projects,
     manage_project_thumbnails,
     edit_project_dates_menu,
-    view_activity_heatmap
+    view_activity_heatmap,
+    edit_user_profile
 )
 from src.consent.consent import CONSENT_TEXT, get_user_consent, record_consent
 from src.consent.external_consent import get_external_consent, record_external_consent
@@ -93,6 +94,8 @@ def prompt_and_store():
         elif menu_choice == 12:
             project_list(conn, user_id, username)
         elif menu_choice == 13:
+            edit_user_profile(conn, user_id, username)
+        elif menu_choice == 14:
             print("\nThank you for using the system. Goodbye!")
             return None
         elif menu_choice == 1:

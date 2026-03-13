@@ -2,7 +2,7 @@
 """
 Export a saved resume snapshot (stored JSON) directly to a PDF using ReportLab (Platypus).
 
-Layout (requested):
+Layout:
 - Name (largest)
 - line between name and contact
 - Contact line
@@ -25,6 +25,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from xml.sax.saxutils import escape
+
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_LEFT
@@ -45,6 +47,11 @@ from src.export.resume_helpers import (
     filter_skills_by_highlighted,
 )
 
+from src.db import (
+    get_contact_parts,
+    get_visible_profile_text,
+    get_resume_name,
+)
 
 def _safe_slug(s: str) -> str:
     s = (s or "").strip().lower()
@@ -97,6 +104,27 @@ def _resume_key_role(p: Dict[str, Any]) -> str | None:
     return _clean_str(p.get("key_role"))
 
 
+def _pdf_contact_html(profile: Dict[str, Any]) -> str | None:
+    parts = get_contact_parts(profile)
+    chunks: List[str] = []
+
+    if parts["phone"]:
+        chunks.append(escape(parts["phone"]))
+    if parts["email"]:
+        chunks.append(escape(parts["email"]))
+    if parts["linkedin"]:
+        chunks.append(f'<link href="{escape(parts["linkedin"])}">LinkedIn</link>')
+    if parts["github"]:
+        chunks.append(f'<link href="{escape(parts["github"])}">GitHub</link>')
+    if parts["location"]:
+        chunks.append(escape(parts["location"]))
+
+    if not chunks:
+        return None
+
+    return " | ".join(chunks)
+
+
 def export_resume_record_to_pdf(
     *,
     username: str,
@@ -104,6 +132,7 @@ def export_resume_record_to_pdf(
     out_dir: str = "./out",
     highlighted_skills: Optional[List[str]] = None,
     highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,
+    user_profile: Optional[Dict[str, Any]] = None,
 ) -> Path:
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
@@ -214,9 +243,15 @@ def export_resume_record_to_pdf(
     # ---------------------------
     # Header
     # ---------------------------
-    story.append(Paragraph(username.upper(), NameStyle))
-    story.append(rule())  # line between name and contact
-    story.append(Paragraph("Phone | Email | LinkedIn | Location", ContactStyle))
+    profile = user_profile or {}
+
+    display_name = get_resume_name(profile, username)
+    story.append(Paragraph(display_name.upper(), NameStyle))
+    story.append(rule())
+
+    contact_html = _pdf_contact_html(profile)
+    if contact_html:
+        story.append(Paragraph(contact_html, ContactStyle))
 
     # If JSON is broken, dump rendered_text as paragraphs
     if snapshot is None:
@@ -238,9 +273,11 @@ def export_resume_record_to_pdf(
     # ---------------------------
     # PROFILE
     # ---------------------------
-    story.append(section_gap())
-    story.append(Paragraph("PROFILE", SectionStyle))
-    story.append(Paragraph("To be updated later.", PlaceholderItalic))
+    profile_text = get_visible_profile_text(profile)
+    if profile_text:
+        story.append(section_gap())
+        story.append(Paragraph("PROFILE", SectionStyle))
+        story.append(Paragraph(escape(profile_text), Body))
 
     # ---------------------------
     # SKILLS

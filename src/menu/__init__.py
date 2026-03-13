@@ -17,6 +17,7 @@ from .project_dates import edit_project_dates_menu
 from .delete import delete_old_insights
 from .thumbnails import manage_project_thumbnails
 from .heatmap import view_activity_heatmap
+from .profile import edit_user_profile
 
 __all__ = [
     "show_start_menu",
@@ -32,4 +33,5 @@ __all__ = [
     "edit_project_dates_menu",
     "delete_old_insights",
     "manage_project_thumbnails",
+    "edit_user_profile",
 ]

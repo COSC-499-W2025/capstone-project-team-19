@@ -743,3 +743,16 @@ CREATE TABLE IF NOT EXISTS user_skill_preferences (
 
 CREATE INDEX IF NOT EXISTS idx_skill_preferences_user_context
     ON user_skill_preferences(user_id, context, context_id, project_key);
+
+
+CREATE TABLE IF NOT EXISTS user_profiles (
+    user_id       INTEGER PRIMARY KEY,
+    full_name     TEXT,
+    phone         TEXT,
+    linkedin      TEXT,
+    github        TEXT,
+    location      TEXT,
+    profile_text  TEXT,
+    updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);

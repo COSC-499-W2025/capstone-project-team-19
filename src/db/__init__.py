@@ -260,6 +260,13 @@ from .project_thumbnails import (
 from src.db.project_feedback import (
     upsert_project_feedback,
 )
+
+from src.db.user_profile import (
+    get_contact_parts,
+    get_visible_profile_text,
+    get_user_profile,
+    get_resume_name
+)
 __all__ = [
     "connect",
     "init_schema",
@@ -392,4 +399,9 @@ __all__ = [
     "clear_skill_preferences",
     "get_all_user_skills",
     "has_skill_preferences",
+    "get_contact_parts",
+    "get_visible_profile_text",
+    "get_user_profile",
+    "get_resume_name",
 ]
+

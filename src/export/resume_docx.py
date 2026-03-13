@@ -23,6 +23,8 @@ import re
 from typing import Any, Dict, List, Optional
 
 from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 from src.export.resume_helpers import (
     format_date_range,
@@ -33,6 +35,12 @@ from src.export.resume_helpers import (
     _project_sort_key,
     clean_languages_above_threshold,
     filter_skills_by_highlighted,
+)
+
+from src.db import (
+    get_contact_parts,
+    get_visible_profile_text,
+    get_resume_name,
 )
 
 def _clean_str(value: Any) -> str | None:
@@ -108,6 +116,41 @@ def _safe_slug(s: str) -> str:
 def _add_bullet(doc: Document, text: str) -> None:
     p = doc.add_paragraph(text, style="List Bullet")
     p.paragraph_format.space_after = 0
+    
+
+def _add_hyperlink(paragraph, url: str, text: str) -> None:
+    """
+    Add a clickable hyperlink to a python-docx paragraph.
+    """
+    part = paragraph.part
+    r_id = part.relate_to(
+        url,
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+        is_external=True,
+    )
+
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), r_id)
+
+    new_run = OxmlElement("w:r")
+    r_pr = OxmlElement("w:rPr")
+
+    color = OxmlElement("w:color")
+    color.set(qn("w:val"), "0563C1")
+    r_pr.append(color)
+
+    underline = OxmlElement("w:u")
+    underline.set(qn("w:val"), "single")
+    r_pr.append(underline)
+
+    new_run.append(r_pr)
+
+    text_elem = OxmlElement("w:t")
+    text_elem.text = text
+    new_run.append(text_elem)
+
+    hyperlink.append(new_run)
+    paragraph._p.append(hyperlink)
 
 
 def export_resume_record_to_docx(
@@ -117,6 +160,7 @@ def export_resume_record_to_docx(
     out_dir: str = "./out",
     highlighted_skills: Optional[List[str]] = None,
     highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,
+    user_profile: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """
     record is the dict returned by get_resume_snapshot(...).
@@ -136,8 +180,35 @@ def export_resume_record_to_docx(
     # doc.add_heading(f"Resume — {username}", level=0)
     # doc.add_paragraph(f"Generated on {stamp_display}")
 
-    doc.add_heading(username.upper(), level=0)
-    doc.add_paragraph("Phone | Email | LinkedIn | Location")
+    profile = user_profile or {}
+    contact_parts = get_contact_parts(profile)
+
+    display_name = get_resume_name(profile, username)
+    doc.add_heading(display_name.upper(), level=0)
+
+    contact_bits = []
+    if contact_parts["phone"]:
+        contact_bits.append(("text", contact_parts["phone"]))
+    if contact_parts["email"]:
+        contact_bits.append(("text", contact_parts["email"]))
+    if contact_parts["linkedin"]:
+        contact_bits.append(("link", "LinkedIn", contact_parts["linkedin"]))
+    if contact_parts["github"]:
+        contact_bits.append(("link", "GitHub", contact_parts["github"]))
+    if contact_parts["location"]:
+        contact_bits.append(("text", contact_parts["location"]))
+
+    if contact_bits:
+        p = doc.add_paragraph()
+        for i, item in enumerate(contact_bits):
+            if i > 0:
+                p.add_run(" | ")
+
+            if item[0] == "text":
+                p.add_run(item[1])
+            else:
+                _, label, url = item
+                _add_hyperlink(p, url, label)
 
     resume_json = record.get("resume_json")
     rendered_text = record.get("rendered_text")
@@ -168,8 +239,10 @@ def export_resume_record_to_docx(
     # ---------------------------
 
     # PROFILE (placeholder)
-    add_section_heading(doc, "Profile")
-    add_placeholder(doc, "To be updated later.")
+    profile_text = get_visible_profile_text(profile)
+    if profile_text:
+        add_section_heading(doc, "Profile")
+        doc.add_paragraph(profile_text)
 
     # SKILLS (same logic as before)
     add_section_heading(doc, "Skills")
