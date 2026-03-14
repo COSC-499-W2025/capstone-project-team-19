@@ -27,13 +27,12 @@ export default function InsightsSidebar({ activeView, onChange, hideHeader }: { 
     const navContent = (
         <nav className={`flex flex-col flex-1 min-h-0 pt-2 pb-6 ${hideHeader ? "border-r border-slate-200 pl-4 pr-2" : ""}`}>
             <button className={linkStyle("ranked-projects")} onClick={() => onChange("ranked-projects")}>{NAV_ITEMS.find((n) => n.id === "ranked-projects")!.label}</button>
+            <button className={linkStyle("activity-heatmap")} onClick={() => onChange("activity-heatmap")}>{NAV_ITEMS.find((n) => n.id === "activity-heatmap")!.label}</button>
+            <button className={linkStyle("project-heatmap")} onClick={() => onChange("project-heatmap")}>{NAV_ITEMS.find((n) => n.id === "project-heatmap")!.label}</button>
             <div className="pt-4 mt-2 border-t border-slate-200 text-[11px] font-medium text-slate-500 uppercase tracking-widest px-3 pb-1.5 select-none">Skills</div>
             {NAV_ITEMS.filter((n) => n.indent).map((n) => (
                 <button key={n.id} className={linkStyle(n.id)} onClick={() => onChange(n.id)}>{n.label}</button>
             ))}
-            <div className="border-t border-slate-200 mt-2 pt-2" />
-            <button className={linkStyle("activity-heatmap")} onClick={() => onChange("activity-heatmap")}>{NAV_ITEMS.find((n) => n.id === "activity-heatmap")!.label}</button>
-            <button className={linkStyle("project-heatmap")} onClick={() => onChange("project-heatmap")}>{NAV_ITEMS.find((n) => n.id === "project-heatmap")!.label}</button>
         </nav>
     );
 
