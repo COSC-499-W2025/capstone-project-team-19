@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getRanking, replaceRankingOrder, resetRanking } from "../../../../api/insights";
 import type { RankedProject } from "../../../../api/insights";
 import { useInsightsHeaderActions } from "../../InsightsHeaderActionsContext";
@@ -55,6 +55,8 @@ export default function RankedProjectsTab() {
 	}, []);
 
 	const currentIds = useMemo(() => rankings.map((p) => p.project_summary_id), [rankings]);
+	const currentIdsRef = useRef(currentIds);
+	currentIdsRef.current = currentIds;
 
 	const isDirty = useMemo(
 		() => originalIds.length !== currentIds.length || originalIds.some((id, i) => id !== currentIds[i]),
@@ -70,7 +72,8 @@ export default function RankedProjectsTab() {
 		try {
 			setSaving(true);
 			setError("");
-			const res = await replaceRankingOrder(currentIds);
+			const idsToSave = currentIdsRef.current;
+			const res = await replaceRankingOrder(idsToSave);
 			applyRankingResult(res.data.rankings);
 		} catch (e: unknown) {
 			setError(e instanceof Error ? e.message : "Failed to save ranking");
