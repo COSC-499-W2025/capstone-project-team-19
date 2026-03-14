@@ -47,3 +47,11 @@ class SkillTimelineDTO(BaseModel):
     undated: List[TimelineEventDTO]
     current_totals: Dict[str, CurrentTotalDTO]
     summary: TimelineSummaryDTO
+
+
+class ProjectSkillMatrixDTO(BaseModel):
+    """Matrix of skills (rows) x projects (columns); matrix[i][j] = score for skill i in project j."""
+    title: str
+    row_labels: List[str]  # skills
+    col_labels: List[str]  # projects
+    matrix: List[List[float]]

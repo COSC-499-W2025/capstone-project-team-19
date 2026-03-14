@@ -84,3 +84,18 @@ export type SkillTimelineApiResponse = {
 export function getSkillTimeline() {
     return api.get<SkillTimelineApiResponse>("/skills/timeline");
 }
+
+// Project Skill Heatmap (skills x projects)
+
+export type ProjectSkillMatrixDTO = {
+    title: string;
+    row_labels: string[];
+    col_labels: string[];
+    matrix: number[][];
+};
+
+export function getProjectSkillMatrix(): Promise<ProjectSkillMatrixDTO> {
+    return api
+        .get<{ success: boolean; data: ProjectSkillMatrixDTO }>("/skills/project-matrix")
+        .then((r) => r.data);
+}

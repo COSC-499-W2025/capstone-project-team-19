@@ -1,4 +1,4 @@
-export type InsightsView = "ranked-projects" | "skill-timeline-timeline" | "skill-timeline-totals" | "chronological-skills" | "activity-heatmap";
+export type InsightsView = "ranked-projects" | "skill-timeline-timeline" | "skill-timeline-totals" | "chronological-skills" | "activity-heatmap" | "project-heatmap";
 
 const NAV_ITEMS: { id: InsightsView; label: string; indent?: boolean }[] = [
     { id: "ranked-projects", label: "Ranked Projects" },
@@ -6,6 +6,7 @@ const NAV_ITEMS: { id: InsightsView; label: string; indent?: boolean }[] = [
     { id: "skill-timeline-totals", label: "Skills Overview", indent: true },
     { id: "chronological-skills", label: "Skills Log", indent: true },
     { id: "activity-heatmap", label: "Activity Heatmap" },
+    { id: "project-heatmap", label: "Project Heatmap" },
 ];
 
 export function getPageTitle(view: InsightsView): string {
@@ -32,6 +33,7 @@ export default function InsightsSidebar({ activeView, onChange, hideHeader }: { 
             ))}
             <div className="border-t border-slate-200 mt-2 pt-2" />
             <button className={linkStyle("activity-heatmap")} onClick={() => onChange("activity-heatmap")}>{NAV_ITEMS.find((n) => n.id === "activity-heatmap")!.label}</button>
+            <button className={linkStyle("project-heatmap")} onClick={() => onChange("project-heatmap")}>{NAV_ITEMS.find((n) => n.id === "project-heatmap")!.label}</button>
         </nav>
     );
 

@@ -3,8 +3,8 @@ from sqlite3 import Connection
 
 from src.api.dependencies import get_db, get_current_user_id
 from src.api.schemas.common import ApiResponse
-from src.api.schemas.skills import SkillEventDTO, SkillsListDTO, SkillTimelineDTO
-from src.services.skills_service import get_user_skills, get_skill_timeline_data
+from src.api.schemas.skills import SkillEventDTO, SkillsListDTO, SkillTimelineDTO, ProjectSkillMatrixDTO
+from src.services.skills_service import get_user_skills, get_skill_timeline_data, get_project_skill_matrix_data
 
 router = APIRouter(prefix="/skills", tags=["skills"])
 
@@ -25,4 +25,14 @@ def get_skills_timeline(
     data = get_skill_timeline_data(conn, user_id)
     dto = SkillTimelineDTO(**data)
 
+    return ApiResponse(success=True, data=dto, error=None)
+
+
+@router.get("/project-matrix", response_model=ApiResponse[ProjectSkillMatrixDTO])
+def get_project_skill_matrix(
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    data = get_project_skill_matrix_data(conn, user_id)
+    dto = ProjectSkillMatrixDTO(**data)
     return ApiResponse(success=True, data=dto, error=None)

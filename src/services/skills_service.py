@@ -1,6 +1,8 @@
 from itertools import groupby
 from typing import List, Dict, Any, Optional
-from src.db.skills import get_skill_events
+
+from src.db.skills import get_skill_events, get_project_skill_pairs
+from src.db.project_summaries import get_project_summaries_list
 from src.insights.chronological_skills import get_skill_timeline
 
 def get_user_skills(conn, user_id: int) -> List[Dict[str, Any]]:
@@ -125,4 +127,46 @@ def get_skill_timeline_data(conn, user_id: int) -> Dict[str, Any]:
         "undated": undated_events,
         "current_totals": current_totals_dto,
         "summary": summary,
+    }
+
+
+def get_project_skill_matrix_data(conn, user_id: int) -> Dict[str, Any]:
+    """Build a matrix of skills (rows) x projects (columns) for the cross-project heatmap."""
+    summaries = get_project_summaries_list(conn, user_id)
+    if not summaries:
+        return {
+            "title": "Skills Across Projects",
+            "row_labels": [],
+            "col_labels": [],
+            "matrix": [],
+        }
+
+    # Project order from summaries (created_at desc, display_name)
+    col_labels = [s["project_name"] for s in summaries]
+    project_idx = {name: i for i, name in enumerate(col_labels)}
+
+    pairs = get_project_skill_pairs(conn, user_id)
+    skill_to_col_scores: Dict[str, Dict[int, float]] = {}
+    for project_name, skill_name, score in pairs:
+        if project_name not in project_idx:
+            continue
+        j = project_idx[project_name]
+        if skill_name not in skill_to_col_scores:
+            skill_to_col_scores[skill_name] = {}
+        # Use max score if skill appears multiple times for same project (shouldn't happen)
+        skill_to_col_scores[skill_name][j] = max(
+            skill_to_col_scores[skill_name].get(j, 0), float(score)
+        )
+
+    row_labels = sorted(skill_to_col_scores.keys())
+    matrix = []
+    for skill in row_labels:
+        row = [skill_to_col_scores[skill].get(j, 0.0) for j in range(len(col_labels))]
+        matrix.append(row)
+
+    return {
+        "title": "Skills Across Projects",
+        "row_labels": row_labels,
+        "col_labels": col_labels,
+        "matrix": matrix,
     }
