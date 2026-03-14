@@ -55,3 +55,13 @@ class ProjectSkillMatrixDTO(BaseModel):
     row_labels: List[str]  # skills
     col_labels: List[str]  # projects
     matrix: List[List[float]]
+
+
+class ActivityByDateMatrixDTO(BaseModel):
+    """GitHub-style matrix: rows = days of week, cols = weeks, matrix[i][j] = activity count."""
+    title: str
+    row_labels: List[str]
+    col_labels: List[str]
+    matrix: List[List[int]]
+    available_years: List[int] = []
+    projects_by_date: Dict[str, List[str]] = {}  # date -> list of project names for tooltip

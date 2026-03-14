@@ -130,6 +130,85 @@ def get_skill_timeline_data(conn, user_id: int) -> Dict[str, Any]:
     }
 
 
+def get_activity_by_date_grid(conn, user_id: int, year: Optional[int] = None) -> Dict[str, Any]:
+    """
+    Build a GitHub-style contribution grid: rows = days of week (Sun-Sat),
+    cols = weeks, chronological order (oldest left, most recent right).
+
+    When year is None: spans from earliest activity through current week.
+    When year is set: shows only that calendar year (Jan 1 - Dec 31).
+    Returns available_years (years that contain data) for the year selector.
+    """
+    from src.db.activity_by_date import get_activity_counts_by_date
+    from datetime import date, datetime, timedelta
+
+    counts, projects_by_date = get_activity_counts_by_date(conn, user_id)
+    if not counts:
+        return {
+            "title": "Activity by Date",
+            "row_labels": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+            "col_labels": [],
+            "matrix": [],
+            "available_years": [],
+            "projects_by_date": {},
+        }
+
+    # Derive available years from dates that have data
+    all_dates = list(counts.keys())
+    available_years = sorted(set(int(d[:4]) for d in all_dates if len(d) >= 4))
+
+    row_labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+    if year is not None:
+        # Filter to single calendar year
+        start_sunday = date(year, 1, 1)
+        days_back = (start_sunday.weekday() + 1) % 7
+        start_sunday = start_sunday - timedelta(days=days_back)
+
+        end_sunday = date(year, 12, 31)
+        days_forward = (6 - end_sunday.weekday()) % 7
+        if days_forward:
+            end_sunday = end_sunday + timedelta(days=days_forward)
+
+        num_weeks = max(1, (end_sunday - start_sunday).days // 7 + 1)
+    else:
+        # All data: earliest activity through current week
+        end = date.today()
+        days_since_sun = (end.weekday() + 1) % 7
+        end_sunday = end - timedelta(days=days_since_sun)
+
+        min_date_str = min(all_dates)
+        start = datetime.strptime(min_date_str[:10], "%Y-%m-%d").date()
+        days_back = (start.weekday() + 1) % 7
+        start_sunday = start - timedelta(days=days_back)
+
+        total_weeks = max(1, (end_sunday - start_sunday).days // 7 + 1)
+        max_weeks = 522
+        num_weeks = min(total_weeks, max_weeks)
+        if total_weeks > max_weeks:
+            start_sunday = end_sunday - timedelta(weeks=max_weeks - 1)
+
+    col_labels = []
+    matrix = [[0] * num_weeks for _ in range(7)]
+
+    for w in range(num_weeks):
+        week_start = start_sunday + timedelta(weeks=w)
+        col_labels.append(week_start.strftime("%Y-%m-%d")[:10])
+        for d in range(7):
+            day_date = week_start + timedelta(days=d)
+            key = day_date.strftime("%Y-%m-%d")
+            matrix[d][w] = counts.get(key, 0)
+
+    return {
+        "title": "Activity by Date",
+        "row_labels": row_labels,
+        "col_labels": col_labels,
+        "matrix": matrix,
+        "available_years": available_years,
+        "projects_by_date": projects_by_date,
+    }
+
+
 def get_project_skill_matrix_data(conn, user_id: int) -> Dict[str, Any]:
     """Build a matrix of skills (rows) x projects (columns) for the cross-project heatmap."""
     summaries = get_project_summaries_list(conn, user_id)
