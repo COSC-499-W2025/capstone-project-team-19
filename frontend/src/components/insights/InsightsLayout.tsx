@@ -5,6 +5,7 @@ import RankedProjectsTab from "./tabs/Projects/RankedProjectsTab";
 import SkillTimelineTab from "./tabs/Skills/SkillTimelineTab";
 import SkillsLog from "./tabs/Skills/SkillsLog";
 import ActivityHeatmapTab from "./tabs/Projects/ActivityHeatmapTab";
+import ProjectSkillHeatmapTab from "./tabs/Projects/ProjectSkillHeatmapTab";
 
 export type { InsightsView };
 
@@ -54,6 +55,7 @@ export default function InsightsLayout() {
                         )}
                         {activeView === "chronological-skills" && <SkillsLog />}
                         {activeView === "activity-heatmap" && <ActivityHeatmapTab />}
+                        {activeView === "project-heatmap" && <ProjectSkillHeatmapTab />}
                     </main>
                 </div>
             </div>
