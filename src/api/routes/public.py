@@ -6,10 +6,12 @@ from src.api.dependencies import get_db
 from src.api.schemas.common import ApiResponse
 from src.api.schemas.projects import ProjectListDTO, ProjectListItemDTO, ProjectDetailDTO
 from src.api.schemas.project_ranking import ProjectRankingDTO, ProjectRankingItemDTO
+from src.api.schemas.resumes import ResumeListDTO, ResumeListItemDTO, ResumeDetailDTO
 from src.api.schemas.skills import SkillEventDTO, SkillsListDTO, SkillTimelineDTO
 from src.db.users import get_user_by_username
 from src.services.projects_service import list_projects, get_project_by_id
 from src.services.project_ranking_service import get_project_ranking
+from src.services.resumes_service import list_user_resumes, get_resume_by_id
 from src.services.skills_service import get_user_skills, get_skill_timeline_data
 from src.services.thumbnails_service import get_thumbnail
 
@@ -67,6 +69,23 @@ def public_get_ranking(username: str, conn: Connection = Depends(get_db)):
         ]
     )
     return ApiResponse(success=True, data=dto, error=None)
+
+
+@router.get("/{username}/resumes", response_model=ApiResponse[ResumeListDTO])
+def public_list_resumes(username: str, conn: Connection = Depends(get_db)):
+    user_id = _resolve_user_id(conn, username)
+    rows = list_user_resumes(conn, user_id)
+    dto = ResumeListDTO(resumes=[ResumeListItemDTO(**row) for row in rows])
+    return ApiResponse(success=True, data=dto, error=None)
+
+
+@router.get("/{username}/resumes/{resume_id:int}", response_model=ApiResponse[ResumeDetailDTO])
+def public_get_resume(username: str, resume_id: int, conn: Connection = Depends(get_db)):
+    user_id = _resolve_user_id(conn, username)
+    resume = get_resume_by_id(conn, user_id, resume_id)
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    return ApiResponse(success=True, data=ResumeDetailDTO(**resume), error=None)
 
 
 @router.get("/{username}/skills", response_model=ApiResponse[SkillsListDTO])
