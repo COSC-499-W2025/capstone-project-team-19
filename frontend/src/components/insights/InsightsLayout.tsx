@@ -12,7 +12,14 @@ function TitleRow({ activeView }: { activeView: InsightsView }) {
     const ctx = useInsightsHeaderActions();
     return (
         <div className="flex items-center w-full gap-4 border-b border-slate-200 pt-10 pb-2 px-6">
-            <h3 className="text-lg font-semibold m-0 shrink-0">{getPageTitle(activeView)}</h3>
+            <div className="flex items-baseline gap-3 shrink-0 min-w-0">
+                <h3 className="text-lg font-semibold m-0">{getPageTitle(activeView)}</h3>
+                {activeView === "ranked-projects" && (
+                    <span className="ml-3 text-sm text-slate-600">
+                        Your top 3 ranked projects are displayed on your portfolio. Move projects higher if you want them featured.
+                    </span>
+                )}
+            </div>
             <div className="flex-1 flex items-center min-w-0 gap-3">
                 {ctx?.actions}
             </div>

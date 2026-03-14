@@ -123,11 +123,11 @@ export default function RankedProjectsTab() {
 	if (rankings.length === 0) return <div className="py-4 text-center text-slate-600">No projects uploaded.</div>;
 
 	return (
-		<section className="flex flex-col gap-5 pt-4">
-			<div className="flex flex-col gap-4">
+		<section className="flex flex-col gap-3 pt-4">
+			<div className="flex flex-col gap-3 w-fit">
 				{rankings.map((p, idx) => {
 					const pct = Math.min(p.score * 100, 100);
-					const rowClass = `ranked-row grid grid-cols-[2rem_12rem_1fr_4rem] gap-x-4 items-center group rounded px-2 py-0.5 -mx-2 transition-colors ${idx < 3 ? "bg-sky-50" : "hover:bg-slate-50"}`;
+					const rowClass = `ranked-row grid grid-cols-[2.5rem_14rem_minmax(15rem,42rem)_5rem] gap-x-4 items-center group rounded px-3 py-2 -mx-3 transition-colors ${idx < 3 ? "bg-sky-50" : "hover:bg-slate-50"}`;
 					return (
 						<div key={p.project_summary_id} className={rowClass}>
 							<div className="flex justify-center"><TopBadge idx={idx} /></div>
@@ -137,7 +137,7 @@ export default function RankedProjectsTab() {
 									<button onClick={() => move(idx, -1)} disabled={idx === 0} className={moveBtn} aria-label="Move up">↑</button>
 									<button onClick={() => move(idx, 1)} disabled={idx === rankings.length - 1} className={moveBtn} aria-label="Move down">↓</button>
 								</div>
-								<div className="flex-1 h-3 rounded-full bg-slate-100 overflow-hidden min-w-0">
+								<div className="flex-1 h-4 rounded-full bg-stone-200 overflow-hidden min-w-0">
 									<div className={`h-full rounded-full transition-all duration-300 ${BAR_COLORS[Math.min(idx, 3)]}`} style={{ width: `${Math.max(pct, 4)}%` }} />
 								</div>
 							</div>
