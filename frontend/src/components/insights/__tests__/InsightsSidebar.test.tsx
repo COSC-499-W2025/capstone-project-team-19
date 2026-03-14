@@ -10,7 +10,7 @@ describe("InsightsSidebar", () => {
 		expect(screen.getByRole("button", { name: /ranked projects/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /^timeline$/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /skills overview/i })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /chronological skills/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /skills logs/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /activity heatmap/i })).toBeInTheDocument();
 	});
 

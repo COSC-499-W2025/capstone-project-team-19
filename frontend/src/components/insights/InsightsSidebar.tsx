@@ -4,7 +4,7 @@ const NAV_ITEMS: { id: InsightsView; label: string; indent?: boolean }[] = [
     { id: "ranked-projects", label: "Ranked Projects" },
     { id: "skill-timeline-timeline", label: "Timeline", indent: true },
     { id: "skill-timeline-totals", label: "Skills Overview", indent: true },
-    { id: "chronological-skills", label: "Chronological Skills" },
+    { id: "chronological-skills", label: "Skills Log", indent: true },
     { id: "activity-heatmap", label: "Activity Heatmap" },
 ];
 
@@ -30,8 +30,6 @@ export default function InsightsSidebar({ activeView, onChange, hideHeader }: { 
             {NAV_ITEMS.filter((n) => n.indent).map((n) => (
                 <button key={n.id} className={linkStyle(n.id)} onClick={() => onChange(n.id)}>{n.label}</button>
             ))}
-            <div className="border-t border-slate-200 mt-2 pt-2" />
-            <button className={linkStyle("chronological-skills")} onClick={() => onChange("chronological-skills")}>{NAV_ITEMS.find((n) => n.id === "chronological-skills")!.label}</button>
             <div className="border-t border-slate-200 mt-2 pt-2" />
             <button className={linkStyle("activity-heatmap")} onClick={() => onChange("activity-heatmap")}>{NAV_ITEMS.find((n) => n.id === "activity-heatmap")!.label}</button>
         </nav>
