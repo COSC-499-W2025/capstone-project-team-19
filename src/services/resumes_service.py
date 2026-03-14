@@ -10,6 +10,9 @@ from src.menu.resume.helpers import (
     render_snapshot,
     apply_resume_only_updates,
     resolve_resume_contribution_bullets,
+    resolve_resume_display_name,
+    resolve_resume_summary_text,
+    resolve_resume_key_role,
     recompute_aggregated_skills,
 )
 from src.menu.resume.date_helpers import enrich_snapshot_with_dates
@@ -72,6 +75,13 @@ def get_resume_by_id(conn, user_id: int, resume_id: int) -> Optional[Dict[str, A
         for project in snapshot.get("projects", []):
             if "skills" in project:
                 project["skills"] = [s for s in project["skills"] if s in highlighted]
+
+    # Resolve overrides so the API returns the effective values
+    for project in snapshot.get("projects", []):
+        project["project_name"] = resolve_resume_display_name(project)
+        project["summary_text"] = resolve_resume_summary_text(project)
+        project["contribution_bullets"] = resolve_resume_contribution_bullets(project)
+        project["key_role"] = resolve_resume_key_role(project)
 
     # Combine DB fields with parsed JSON
     return {
