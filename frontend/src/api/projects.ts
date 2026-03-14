@@ -108,6 +108,26 @@ export function getProjectFeedback(projectId: number): Promise<FeedbackItem[]> {
     .catch(() => []);
 }
 
+export type ActivityHeatmapData = {
+  project_id: number;
+  project_name: string;
+  mode: "diff" | "snapshot";
+  normalize: boolean;
+  include_unclassified_text: boolean;
+  matrix: number[][];
+  row_labels: string[];
+  col_labels: string[];
+  title: string;
+};
+
+export function getActivityHeatmapData(projectId: number): Promise<ActivityHeatmapData> {
+  return api
+    .get<{ success: boolean; data: ActivityHeatmapData }>(
+      `/projects/${projectId}/activity-heatmap/data`
+    )
+    .then((r) => r.data);
+}
+
 /** Fetches the thumbnail as a blob URL, or returns null if none exists. */
 export async function fetchThumbnailUrl(projectId: number): Promise<string | null> {
   try {
