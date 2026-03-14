@@ -15,6 +15,7 @@ from src.api.routes import (
     export_router,
     thumbnails_router,
     activity_heatmap_router,
+    public_router,
 )
 from src.api.auth.routes import router as auth_router
 
@@ -61,3 +62,4 @@ app.include_router(portfolio_router)
 app.include_router(export_router)
 app.include_router(thumbnails_router)
 app.include_router(activity_heatmap_router)
+app.include_router(public_router)
