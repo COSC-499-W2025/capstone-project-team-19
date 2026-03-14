@@ -1,6 +1,22 @@
+import json
 from unittest.mock import patch
 
 from tests.api.conftest import seed_project
+from src.db.resumes import insert_resume_snapshot
+
+
+def seed_resume(seed_conn, user_id: int, name: str, projects: list | None = None) -> int:
+    """Insert a minimal resume snapshot and return its id."""
+    payload = {
+        "projects": projects or [],
+        "aggregated_skills": {
+            "languages": [],
+            "frameworks": [],
+            "technical_skills": [],
+            "writing_skills": [],
+        },
+    }
+    return insert_resume_snapshot(seed_conn, user_id, name, json.dumps(payload))
 
 def seed_user(seed_conn, user_id: int, username: str) -> int:
     seed_conn.execute(
@@ -272,6 +288,127 @@ class TestPublicGetSkillsTimeline:
         res = client.get("/public/nobody/skills/timeline")
         assert res.status_code == 404
         assert res.json()["detail"] == "User not found"
+
+
+# ── GET /public/{username}/resumes ────────────────────────────────────────────
+
+class TestPublicListResumes:
+    def test_no_auth_required(self, client, seed_conn):
+        """Public endpoint must not return 401 when no token is sent."""
+        seed_user(seed_conn, 10, "johndoe")
+        res = client.get("/public/johndoe/resumes")
+        assert res.status_code != 401
+        assert res.status_code == 200
+
+    def test_success_shape(self, client, seed_conn):
+        seed_user(seed_conn, 10, "johndoe")
+        body = client.get("/public/johndoe/resumes").json()
+        assert body["success"] is True
+        assert "resumes" in body["data"]
+        assert body["error"] is None
+
+    def test_empty_list_when_no_resumes(self, client, seed_conn):
+        seed_user(seed_conn, 10, "johndoe")
+        res = client.get("/public/johndoe/resumes")
+        assert res.status_code == 200
+        assert res.json()["data"]["resumes"] == []
+
+    def test_returns_only_target_users_resumes(self, client, seed_conn):
+        """Resumes from another user must not appear in the response."""
+        seed_user(seed_conn, 10, "johndoe")
+        seed_user(seed_conn, 11, "janedoe")
+        seed_resume(seed_conn, 10, "My Resume")
+        seed_resume(seed_conn, 11, "Other Resume")
+
+        res = client.get("/public/johndoe/resumes")
+        assert res.status_code == 200
+        names = [r["name"] for r in res.json()["data"]["resumes"]]
+        assert "My Resume" in names
+        assert "Other Resume" not in names
+
+    def test_resume_list_item_fields(self, client, seed_conn):
+        seed_user(seed_conn, 10, "johndoe")
+        seed_resume(seed_conn, 10, "My Resume")
+
+        item = client.get("/public/johndoe/resumes").json()["data"]["resumes"][0]
+        assert "id" in item
+        assert "name" in item
+        assert item["name"] == "My Resume"
+
+    def test_unknown_username_returns_404(self, client):
+        res = client.get("/public/nobody/resumes")
+        assert res.status_code == 404
+        assert res.json()["detail"] == "User not found"
+
+
+# ── GET /public/{username}/resumes/{resume_id} ────────────────────────────────
+
+class TestPublicGetResume:
+    def test_no_auth_required(self, client, seed_conn):
+        seed_user(seed_conn, 10, "johndoe")
+        rid = seed_resume(seed_conn, 10, "My Resume")
+        res = client.get(f"/public/johndoe/resumes/{rid}")
+        assert res.status_code != 401
+        assert res.status_code == 200
+
+    def test_success_shape(self, client, seed_conn):
+        seed_user(seed_conn, 10, "johndoe")
+        rid = seed_resume(seed_conn, 10, "My Resume")
+        body = client.get(f"/public/johndoe/resumes/{rid}").json()
+        assert body["success"] is True
+        assert body["error"] is None
+        assert "data" in body
+
+    def test_returns_resume_detail(self, client, seed_conn):
+        seed_user(seed_conn, 10, "johndoe")
+        projects = [
+            {
+                "project_name": "Alpha",
+                "project_type": "code",
+                "project_mode": "individual",
+                "languages": ["Python"],
+                "frameworks": [],
+                "summary_text": "A test project",
+                "skills": [],
+                "contribution_bullets": [],
+                "activities": [],
+                "key_role": None,
+                "text_type": None,
+                "contribution_percent": None,
+                "start_date": None,
+                "end_date": None,
+            }
+        ]
+        rid = seed_resume(seed_conn, 10, "My Resume", projects=projects)
+        data = client.get(f"/public/johndoe/resumes/{rid}").json()["data"]
+
+        assert data["id"] == rid
+        assert data["name"] == "My Resume"
+        assert len(data["projects"]) == 1
+        assert data["projects"][0]["project_name"] == "Alpha"
+        assert "aggregated_skills" in data
+
+    def test_unknown_username_returns_404(self, client, seed_conn):
+        seed_user(seed_conn, 10, "johndoe")
+        rid = seed_resume(seed_conn, 10, "My Resume")
+        res = client.get(f"/public/nobody/resumes/{rid}")
+        assert res.status_code == 404
+        assert res.json()["detail"] == "User not found"
+
+    def test_nonexistent_resume_id_returns_404(self, client, seed_conn):
+        seed_user(seed_conn, 10, "johndoe")
+        res = client.get("/public/johndoe/resumes/99999")
+        assert res.status_code == 404
+        assert res.json()["detail"] == "Resume not found"
+
+    def test_another_users_resume_returns_404(self, client, seed_conn):
+        """Requesting johndoe's URL with janedoe's resume_id must 404."""
+        seed_user(seed_conn, 10, "johndoe")
+        seed_user(seed_conn, 11, "janedoe")
+        other_rid = seed_resume(seed_conn, 11, "Private Resume")
+
+        res = client.get(f"/public/johndoe/resumes/{other_rid}")
+        assert res.status_code == 404
 
 
 # ── Cross-cutting: no write endpoints on public router ────────────────────────
