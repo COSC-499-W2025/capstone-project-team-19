@@ -1,17 +1,8 @@
 import { useEffect, useState } from "react";
 import { listProjects } from "../../../../api/projects";
-import { getActivityHeatmapData, type ActivityHeatmapData, type Project} from "../../../../api/projects";
-
-const HEATMAP_COLORS = ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"];
-
-function getColorForValue(value: number, maxVal: number): string {
-    if (maxVal <= 0 || value <= 0) return HEATMAP_COLORS[0];
-    const pct = value / maxVal;
-    if (pct <= 0.25) return HEATMAP_COLORS[1];
-    if (pct <= 0.5) return HEATMAP_COLORS[2];
-    if (pct <= 0.75) return HEATMAP_COLORS[3];
-    return HEATMAP_COLORS[4];
-}
+import { getActivityHeatmapData, type ActivityHeatmapData, type Project } from "../../../../api/projects";
+import { getColorForValue } from "./heatmapUtils";
+import HeatmapLegend from "./HeatmapLegend";
 
 export default function ActivityHeatmapTab() {
     const [projects, setProjects] = useState<Project[]>([]);
@@ -30,7 +21,6 @@ export default function ActivityHeatmapTab() {
                 const list = await listProjects();
                 if (!cancelled) {
                     setProjects(list);
-                    if (list.length > 0 && !selectedId) setSelectedId(list[0].project_summary_id);
                 }
             } catch (e: unknown) {
                 if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load projects");
@@ -85,7 +75,7 @@ export default function ActivityHeatmapTab() {
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 min-w-[200px]"
                     aria-label="Select project"
                 >
-                    <option value="">Select a project</option>
+                    <option value="" disabled>Select a project</option>
                     {projects.map((p) => (
                         <option key={p.project_summary_id} value={p.project_summary_id}>
                             {p.project_name}
@@ -99,9 +89,7 @@ export default function ActivityHeatmapTab() {
             ) : heatmap && heatmap.matrix.length > 0 ? (
                 <section className="rounded-lg border border-slate-200 bg-white p-6 flex flex-col items-start w-fit self-start">
                     <h4 className="text-sm font-semibold text-slate-700 mb-4 m-0">
-                        {heatmap.col_labels.length === 1
-                            ? `${heatmap.project_name} — Activity breakdown`
-                            : `${heatmap.project_name} — How your work changed across versions`}
+                        {heatmap.project_name}
                     </h4>
                     <div className="flex justify-center items-center">
                         <div
@@ -140,24 +128,15 @@ export default function ActivityHeatmapTab() {
                             ))}
                         </div>
                     </div>
-                    <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-500">
-                        <span>Less</span>
-                        {HEATMAP_COLORS.map((c, i) => (
-                            <span
-                                key={i}
-                                className="w-3 h-3 rounded-sm inline-block"
-                                style={{ backgroundColor: c }}
-                                aria-hidden
-                            />
-                        ))}
-                        <span>More</span>
-                    </div>
+                    <HeatmapLegend />
                 </section>
             ) : heatmap && heatmap.matrix.length === 0 ? (
                 <div className="py-8 text-center text-slate-500">No heatmap data for this project.</div>
             ) : selectedId ? (
                 <div className="py-8 text-center text-slate-500">Select a project to view its activity heatmap.</div>
-            ) : null}
+            ) : (
+                <div className="py-8 text-center text-slate-500">Choose a project to view the activity heatmap!</div>
+            )}
         </div>
     );
 }

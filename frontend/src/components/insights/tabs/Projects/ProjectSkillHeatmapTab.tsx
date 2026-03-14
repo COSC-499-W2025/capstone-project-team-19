@@ -1,17 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { getActivityByDate } from "../../../../api/insights";
-
-const HEATMAP_COLORS = ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"];
-
-function getColorForValue(value: number, maxVal: number): string {
-    if (maxVal <= 0 || value <= 0) return HEATMAP_COLORS[0];
-    const pct = value / maxVal;
-    if (pct <= 0.25) return HEATMAP_COLORS[1];
-    if (pct <= 0.5) return HEATMAP_COLORS[2];
-    if (pct <= 0.75) return HEATMAP_COLORS[3];
-    return HEATMAP_COLORS[4];
-}
+import { getColorForValue } from "./heatmapUtils";
+import HeatmapLegend from "./HeatmapLegend";
 
 function formatWeekLabel(dateStr: string): string {
     const d = new Date(dateStr + "T00:00:00");
@@ -174,18 +165,7 @@ export default function ProjectSkillHeatmapTab() {
                             </div>
                         ))}
                     </div>
-                    <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-500">
-                        <span>Less</span>
-                        {HEATMAP_COLORS.map((c, i) => (
-                            <span
-                                key={i}
-                                className="w-3 h-3 rounded-sm inline-block"
-                                style={{ backgroundColor: c }}
-                                aria-hidden
-                            />
-                        ))}
-                        <span>More</span>
-                    </div>
+                    <HeatmapLegend />
                 </section>
             ) : (
                 <div className="py-8 text-center text-slate-500">
