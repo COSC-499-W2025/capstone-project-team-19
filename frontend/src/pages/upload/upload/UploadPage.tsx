@@ -21,6 +21,7 @@ export default function UploadPage() {
     { label: "1. Consent", status: "inactive" as const, to: "/upload/consent" },
     { label: "2. Upload", status: "active" as const },
     { label: "3. Setup", status: "disabled" as const, disabled: true },
+    { label: "4. Analyze", status: "disabled" as const, disabled: true },
   ];
 
   function onSidebarNext() {

@@ -181,9 +181,10 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
       runner: () => Promise<ApiResponse<T>>,
       fallback: string,
       refreshAfter = false,
+      trackMutation = true,
     ): Promise<T | null> => {
       setActionError(null);
-      setIsMutating(true);
+      if (trackMutation) setIsMutating(true);
 
       try {
         const res = await runner();
@@ -196,7 +197,7 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
         setActionError(getErrorMessage(error, fallback));
         return null;
       } finally {
-        setIsMutating(false);
+        if (trackMutation) setIsMutating(false);
       }
     },
     [refreshUpload],
@@ -303,6 +304,17 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
         return runDataRequest(
           () => postUploadRun(id, { scope, force_rerun: false, mode: "check" }),
           "Failed to check analysis readiness.",
+          false,
+          false,
+        );
+      },
+      runAnalysis: async (scope: RunScope = "all", forceRerun = false) => {
+        const id = ensureUploadId();
+        if (id === null) return null;
+        return runDataRequest(
+          () => postUploadRun(id, { scope, force_rerun: forceRerun, mode: "run" }),
+          "Failed to start analysis.",
+          true,
         );
       },
       githubStart: async (projectName: string, connectNow: boolean) => {

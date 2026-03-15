@@ -85,6 +85,10 @@ export type SetupFlowResult = {
       contributionSummary: string,
     ) => Promise<UploadRecord | null>;
     checkRunReadiness: (scope?: "all" | "individual" | "collaborative") => Promise<RunPreflightRecord | null>;
+    runAnalysis: (
+      scope?: "all" | "individual" | "collaborative",
+      forceRerun?: boolean,
+    ) => Promise<RunPreflightRecord | null>;
     githubStart: (projectName: string, connectNow: boolean) => Promise<GitHubStartRecord | null>;
     githubRepos: (projectName: string) => Promise<GitHubReposRecord | null>;
     githubLink: (projectName: string, repoFullName: string) => Promise<GitHubLinkRecord | null>;

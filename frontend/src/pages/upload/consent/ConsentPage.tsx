@@ -77,6 +77,7 @@ export default function ConsentPage() {
     { label: "1. Consent", status: "active" as const },
     { label: "2. Upload", status: "inactive" as const, onClick: onNext, disabled: controlsDisabled },
     { label: "3. Setup", status: "disabled" as const, disabled: true },
+    { label: "4. Analyze", status: "disabled" as const, disabled: true },
   ];
 
   return (
