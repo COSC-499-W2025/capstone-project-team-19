@@ -34,7 +34,7 @@ export default function SetupProjectGroup({
 }: Props) {
   return (
     <section>
-      <h3 className="m-0 mb-5 text-[1.7rem] leading-[1.1] font-bold tracking-tight text-zinc-900">{title}</h3>
+      <h3 className="m-0 mb-5 text-[18px] leading-[1.1] font-bold tracking-tight text-zinc-900">{title}</h3>
       <div className="space-y-5">
         {projects.length === 0 && (
           <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-5 py-4 text-base text-zinc-600">
