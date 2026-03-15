@@ -30,7 +30,10 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   const [driveChoice, setDriveChoice] = useState<"" | "yes" | "no">(
     project.driveState === "connected" ? "yes" : project.driveState === "skipped" ? "no" : "",
   );
-  const [driveMessage, setDriveMessage] = useState<string | null>(null);
+  const [driveSearch, setDriveSearch] = useState("");
+  const [selectedLocalFile, setSelectedLocalFile] = useState("");
+  const [selectedDriveFileName, setSelectedDriveFileName] = useState("");
+  const [driveMapByLocalFile, setDriveMapByLocalFile] = useState<Record<string, string>>({});
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -80,6 +83,28 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     if (!filesPayload) return [];
     return filesPayload.csv_files;
   }, [filesPayload]);
+  const driveLocalFiles = useMemo(() => filesPayload?.all_files ?? [], [filesPayload]);
+  const filteredDriveResults = useMemo(
+    () =>
+      driveSearch.trim()
+        ? driveLocalFiles.filter((item) => item.file_name.toLowerCase().includes(driveSearch.trim().toLowerCase()))
+        : driveLocalFiles,
+    [driveLocalFiles, driveSearch],
+  );
+  const mappedDriveCount = useMemo(
+    () => Object.keys(driveMapByLocalFile).filter((name) => Boolean(driveMapByLocalFile[name])).length,
+    [driveMapByLocalFile],
+  );
+  const showCollaborativeDriveUi = project.projectType === "text" && project.classification === "collaborative";
+
+  useEffect(() => {
+    if (driveLocalFiles.length === 0) {
+      setSelectedLocalFile("");
+      return;
+    }
+    if (selectedLocalFile) return;
+    setSelectedLocalFile(driveLocalFiles[0].file_name);
+  }, [driveLocalFiles, selectedLocalFile]);
 
   async function onSaveMainFile() {
     if (project.projectKey === null || !mainFile) return;
@@ -122,17 +147,18 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     setSaveMessage("Supporting CSV files saved.");
   }
 
-  async function onSaveDriveChoice() {
-    setDriveMessage(null);
-    if (driveChoice === "no") {
-      const data = await actions.driveStart(project.projectName, false);
-      if (!data) return;
-      setDriveMessage("Google Drive skipped for now.");
-      return;
-    }
-    if (driveChoice === "yes") {
-      setDriveMessage("Google Drive connection UI is coming soon.");
-    }
+  function onSelectDriveResult(name: string) {
+    setSelectedDriveFileName(name);
+  }
+
+  function onMapSelectedFile() {
+    if (!selectedLocalFile || !selectedDriveFileName) return;
+    setDriveMapByLocalFile((prev) => ({ ...prev, [selectedLocalFile]: selectedDriveFileName }));
+  }
+
+  function onResetDriveMapping() {
+    setSelectedDriveFileName("");
+    setDriveMapByLocalFile({});
   }
 
   return (
@@ -276,46 +302,141 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
         )}
       </div>
 
-      <div className="space-y-3">
-        <div className="text-sm font-semibold text-zinc-900">Google Drive (placeholder)</div>
-        <p className="text-sm text-zinc-700">
-          Current state: <span className="font-medium">{project.driveState}</span>
-          {project.driveLinkedFilesCount > 0 ? ` | Linked files: ${project.driveLinkedFilesCount}` : ""}
-        </p>
-        <div className="flex items-center gap-6 text-sm text-zinc-800">
-          <label className="flex items-center gap-1.5">
-            <input
-              type="radio"
-              name={`drive-choice-${project.projectName}`}
-              value="yes"
-              checked={driveChoice === "yes"}
-              onChange={() => setDriveChoice("yes")}
-              disabled={isMutating}
-            />
-            <span>Yes</span>
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="radio"
-              name={`drive-choice-${project.projectName}`}
-              value="no"
-              checked={driveChoice === "no"}
-              onChange={() => setDriveChoice("no")}
-              disabled={isMutating}
-            />
-            <span>No</span>
-          </label>
+      {showCollaborativeDriveUi && (
+        <div className="space-y-3 rounded-lg border border-zinc-300 bg-zinc-50 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-zinc-900">
+              Connect Google Drive for collaborative text mapping?
+            </p>
+            <div className="flex items-center gap-5 text-sm text-zinc-800">
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="radio"
+                  name={`drive-choice-${project.projectName}`}
+                  value="yes"
+                  checked={driveChoice === "yes"}
+                  onChange={() => setDriveChoice("yes")}
+                  disabled={isMutating}
+                />
+                <span>Yes</span>
+              </label>
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="radio"
+                  name={`drive-choice-${project.projectName}`}
+                  value="no"
+                  checked={driveChoice === "no"}
+                  onChange={() => setDriveChoice("no")}
+                  disabled={isMutating}
+                />
+                <span>No</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-lg border border-zinc-300 bg-white p-3">
+              <div className="mb-2 text-sm font-semibold text-zinc-900">Files ({project.projectName})</div>
+              <div className="space-y-2">
+                {driveLocalFiles.length === 0 && <p className="text-sm text-zinc-600">No project files found.</p>}
+                {driveLocalFiles.map((item, index) => {
+                  const selected = selectedLocalFile === item.file_name;
+                  const mappedName = driveMapByLocalFile[item.file_name];
+                  return (
+                    <button
+                      key={`${item.relpath}-${index}`}
+                      type="button"
+                      onClick={() => setSelectedLocalFile(item.file_name)}
+                      className={`w-full rounded border px-3 py-2 text-left text-sm ${selected ? "border-zinc-500 bg-zinc-100" : "border-zinc-200 bg-zinc-50"}`}
+                    >
+                      <div className="font-medium text-zinc-900">{index + 1}. {item.file_name}</div>
+                      <div className="mt-1 text-xs text-zinc-600">
+                        Mapping: {mappedName ? mappedName : "Not selected"}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-zinc-300 bg-white p-3">
+              <div className="mb-2 text-sm font-semibold text-zinc-900">
+                Find Drive For: {selectedLocalFile || "Select a file"}
+              </div>
+              <div className="mb-3 flex gap-2">
+                <input
+                  value={driveSearch}
+                  onChange={(event) => setDriveSearch(event.target.value)}
+                  placeholder="Search Drive files by name..."
+                  className="h-10 flex-1 rounded border border-zinc-300 px-3 text-sm text-zinc-700"
+                  disabled={isMutating || driveChoice !== "yes"}
+                />
+                <button
+                  type="button"
+                  className="rounded border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-900"
+                  disabled
+                >
+                  Search
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {filteredDriveResults.length === 0 && (
+                  <p className="text-sm text-zinc-600">
+                    {driveChoice === "yes" ? "No matching files." : "Select Yes to start mapping."}
+                  </p>
+                )}
+                {filteredDriveResults.map((item) => {
+                  const selected = selectedDriveFileName === item.file_name;
+                  return (
+                    <button
+                      key={item.relpath}
+                      type="button"
+                      onClick={() => onSelectDriveResult(item.file_name)}
+                      disabled={driveChoice !== "yes"}
+                      className={`w-full rounded border px-3 py-2 text-left text-sm disabled:opacity-60 ${selected ? "border-emerald-400 bg-emerald-50" : "border-zinc-200 bg-zinc-50"}`}
+                    >
+                      <div className="font-medium text-zinc-900">{item.file_name}</div>
+                      <div className="text-xs text-zinc-600">{item.extension || "file"}</div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-3 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onMapSelectedFile}
+                  disabled={driveChoice !== "yes" || !selectedLocalFile || !selectedDriveFileName}
+                  className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+                >
+                  Select
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded border border-zinc-300 bg-white px-3 py-2 text-sm">
+            <span className="text-zinc-700">Mapped: {mappedDriveCount} of {driveLocalFiles.length} files</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onResetDriveMapping}
+                className="rounded border border-zinc-300 bg-white px-3 py-1.5 font-medium text-zinc-900"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                disabled
+                className="rounded border border-zinc-300 bg-zinc-900 px-3 py-1.5 font-medium text-white disabled:opacity-50"
+              >
+                Finalize
+              </button>
+            </div>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onSaveDriveChoice}
-          disabled={isMutating || driveChoice === ""}
-          className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-        >
-          Save Drive preference
-        </button>
-        {driveMessage && <p className="text-sm text-zinc-700">{driveMessage}</p>}
-      </div>
+      )}
 
       {saveMessage && <p className="text-sm text-zinc-700">{saveMessage}</p>}
     </div>
