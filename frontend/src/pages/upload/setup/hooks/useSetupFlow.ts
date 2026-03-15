@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getConsentStatus, type ConsentStatusValue } from "../../../../api/consent";
 import {
   getUploadProjectDriveFiles,
   getUploadProjectFiles,
@@ -42,6 +43,7 @@ function ensureApiSuccess<T>(response: ApiResponse<T>, fallback: string): T {
 
 export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
   const [upload, setUpload] = useState<UploadRecord | null>(null);
+  const [externalConsentStatus, setExternalConsentStatus] = useState<ConsentStatusValue | null>(null);
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
@@ -52,6 +54,7 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
 
   const hasValidUploadId = useMemo(() => isValidUploadIdParam(uploadIdParam), [uploadIdParam]);
   const uploadId = hasValidUploadId ? Number.parseInt(uploadIdParam, 10) : null;
+  const manualOnlySummaries = externalConsentStatus !== "accepted";
 
   const projectCards = useMemo(() => deriveProjectCards(upload), [upload]);
   const individualProjects = useMemo(
@@ -112,6 +115,26 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
       active = false;
     };
   }, [loadUpload, uploadId]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadConsentStatus() {
+      try {
+        const res = await getConsentStatus();
+        if (!active) return;
+        setExternalConsentStatus(res.data?.external_consent ?? null);
+      } catch {
+        if (!active) return;
+        setExternalConsentStatus(null);
+      }
+    }
+
+    loadConsentStatus();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (projectCards.length === 0) {
@@ -342,6 +365,9 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
     upload,
     hasValidUploadId,
     uploadId,
+    uploadStatus: upload?.status ?? null,
+    externalConsentStatus,
+    manualOnlySummaries,
     loading,
     isRefreshing,
     isMutating,

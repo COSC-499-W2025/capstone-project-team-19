@@ -59,6 +59,8 @@ export default function UploadSetupPage() {
               onToggleProject={flow.onToggleProject}
               actions={flow.actions}
               isMutating={flow.isMutating}
+              uploadStatus={flow.uploadStatus}
+              manualOnlySummaries={flow.manualOnlySummaries}
             />
 
             <SetupProjectGroup
@@ -69,6 +71,8 @@ export default function UploadSetupPage() {
               onToggleProject={flow.onToggleProject}
               actions={flow.actions}
               isMutating={flow.isMutating}
+              uploadStatus={flow.uploadStatus}
+              manualOnlySummaries={flow.manualOnlySummaries}
             />
           </div>
         )}

@@ -1,5 +1,6 @@
 import type { SetupFlowResult, SetupProjectCard as SetupProjectCardModel } from "../types";
 import SetupProjectCard from "./SetupProjectCard";
+import type { UploadStatus } from "../../../../api/uploads";
 
 type Props = {
   title: string;
@@ -9,6 +10,8 @@ type Props = {
   onToggleProject: (projectName: string) => void;
   actions: SetupFlowResult["actions"];
   isMutating: boolean;
+  uploadStatus: UploadStatus | null;
+  manualOnlySummaries: boolean;
 };
 
 export default function SetupProjectGroup({
@@ -19,6 +22,8 @@ export default function SetupProjectGroup({
   onToggleProject,
   actions,
   isMutating,
+  uploadStatus,
+  manualOnlySummaries,
 }: Props) {
   return (
     <section className="space-y-3">
@@ -37,6 +42,8 @@ export default function SetupProjectGroup({
             onToggle={onToggleProject}
             actions={actions}
             isMutating={isMutating}
+            uploadStatus={uploadStatus}
+            manualOnlySummaries={manualOnlySummaries}
           />
         ))}
       </div>

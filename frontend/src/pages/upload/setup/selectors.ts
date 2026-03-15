@@ -61,6 +61,7 @@ export function deriveProjectCards(upload: UploadRecord | null): SetupProjectCar
   const projectTypesManual = asStringMap(state.project_types_manual);
   const fileRoles = asRecord(state.file_roles);
   const contributions = asRecord(state.contributions);
+  const manualProjectSummaries = asRecord(state.manual_project_summaries);
   const runInputsProjects = asRecord(asRecord(state.run_inputs).projects);
 
   const projectNames = new Set<string>([
@@ -129,6 +130,23 @@ export function deriveProjectCards(upload: UploadRecord | null): SetupProjectCar
       const mainSectionIds = asNumberArray(projectContrib.main_section_ids);
       const supportingTextRelpaths = asStringArray(projectContrib.supporting_text_relpaths);
       const supportingCsvRelpaths = asStringArray(projectContrib.supporting_csv_relpaths);
+      const manualProjectSummaryFromState =
+        projectKey !== null && typeof manualProjectSummaries[String(projectKey)] === "string"
+          ? String(manualProjectSummaries[String(projectKey)]).trim()
+          : "";
+      const manualProjectSummaryFromContrib =
+        typeof projectContrib.manual_project_summary === "string"
+          ? projectContrib.manual_project_summary.trim()
+          : "";
+      const manualProjectSummary = manualProjectSummaryFromState || manualProjectSummaryFromContrib;
+      const manualContributionSummary =
+        typeof projectContrib.manual_contribution_summary === "string"
+          ? projectContrib.manual_contribution_summary.trim()
+          : "";
+      const keyRole =
+        typeof projectContrib.key_role === "string"
+          ? projectContrib.key_role.trim()
+          : "";
 
       const status = resolveSetupStatus({
         classification,
@@ -156,6 +174,9 @@ export function deriveProjectCards(upload: UploadRecord | null): SetupProjectCar
         supportingCsvRelpaths,
         driveState,
         driveLinkedFilesCount,
+        manualProjectSummary,
+        manualContributionSummary,
+        keyRole,
         statusLabel: status.label,
         statusTone: status.tone,
       };

@@ -1,10 +1,12 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import type { UploadStatus } from "../../../../api/uploads";
 import { toProjectTypeLabel } from "../selectors";
 import type { SetupFlowResult, SetupProjectCard as SetupProjectCardModel } from "../types";
 import CodeSetupSection from "./sections/CodeSetupSection";
 import ContributionSummarySection from "./sections/ContributionSummarySection";
+import KeyRoleSection from "./sections/KeyRoleSection";
 import ManualSummarySection from "./sections/ManualSummarySection";
 import ProjectSetupInputsSection from "./sections/ProjectSetupInputsSection";
 import TextSetupSection from "./sections/TextSetupSection";
@@ -15,9 +17,19 @@ type Props = {
   onToggle: (projectName: string) => void;
   actions: SetupFlowResult["actions"];
   isMutating: boolean;
+  uploadStatus: UploadStatus | null;
+  manualOnlySummaries: boolean;
 };
 
-export default function SetupProjectCard({ project, expanded, onToggle, actions, isMutating }: Props) {
+export default function SetupProjectCard({
+  project,
+  expanded,
+  onToggle,
+  actions,
+  isMutating,
+  uploadStatus,
+  manualOnlySummaries,
+}: Props) {
   const badgeToneClass = {
     ready: "border-emerald-200 bg-emerald-50 text-emerald-700",
     warning: "border-rose-200 bg-rose-50 text-rose-700",
@@ -56,8 +68,21 @@ export default function SetupProjectCard({ project, expanded, onToggle, actions,
 
       {expanded && (
         <CardContent className="space-y-3 border-t border-zinc-200 bg-zinc-50 px-4 py-4">
-          <ManualSummarySection />
-          <ContributionSummarySection />
+          <ManualSummarySection
+            project={project}
+            actions={actions}
+            isMutating={isMutating}
+            uploadStatus={uploadStatus}
+            manualOnlySummaries={manualOnlySummaries}
+          />
+          <ContributionSummarySection
+            project={project}
+            actions={actions}
+            isMutating={isMutating}
+            uploadStatus={uploadStatus}
+            manualOnlySummaries={manualOnlySummaries}
+          />
+          <KeyRoleSection project={project} actions={actions} isMutating={isMutating} />
           {project.projectType === "code" ? (
             <CodeSetupSection project={project} actions={actions} isMutating={isMutating} />
           ) : project.projectType === "text" ? (

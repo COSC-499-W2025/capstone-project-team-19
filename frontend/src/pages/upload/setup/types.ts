@@ -10,10 +10,12 @@ import type {
   MainFileSectionsRecord,
   ProjectClassification,
   ProjectType,
+  UploadStatus,
   RunPreflightRecord,
   UploadProjectFilesRecord,
   UploadRecord,
 } from "../../../api/uploads";
+import type { ConsentStatusValue } from "../../../api/consent";
 
 export type SetupBadgeTone = "ready" | "warning" | "neutral";
 
@@ -36,6 +38,9 @@ export type SetupProjectCard = {
   supportingCsvRelpaths: string[];
   driveState: string;
   driveLinkedFilesCount: number;
+  manualProjectSummary: string;
+  manualContributionSummary: string;
+  keyRole: string;
   statusLabel: string;
   statusTone: SetupBadgeTone;
 };
@@ -44,6 +49,9 @@ export type SetupFlowResult = {
   upload: UploadRecord | null;
   hasValidUploadId: boolean;
   uploadId: number | null;
+  uploadStatus: UploadStatus | null;
+  externalConsentStatus: ConsentStatusValue | null;
+  manualOnlySummaries: boolean;
   loading: boolean;
   isRefreshing: boolean;
   isMutating: boolean;
