@@ -2,7 +2,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { toProjectTypeLabel } from "../selectors";
-import type { SetupFlowResult, SetupProjectCard as SetupProjectCardModel } from "../types";
+import type { SetupFlowResult, SetupProjectCard as SetupProjectCardModel, SummaryMode } from "../types";
 import CodeSetupSection from "./sections/CodeSetupSection";
 import ContributionSummarySection from "./sections/ContributionSummarySection";
 import KeyRoleSection from "./sections/KeyRoleSection";
@@ -12,6 +12,12 @@ import TextSetupSection from "./sections/TextSetupSection";
 
 type Props = {
   project: SetupProjectCardModel;
+  optionalWarningLabel: string | null;
+  summaryMissing: boolean;
+  projectSummaryMode: SummaryMode;
+  contributionSummaryMode: SummaryMode;
+  onProjectSummaryModeChange: (projectName: string, mode: SummaryMode) => void;
+  onContributionSummaryModeChange: (projectName: string, mode: SummaryMode) => void;
   expanded: boolean;
   onToggle: (projectName: string) => void;
   actions: SetupFlowResult["actions"];
@@ -21,23 +27,32 @@ type Props = {
 
 export default function SetupProjectCard({
   project,
+  optionalWarningLabel,
+  summaryMissing,
+  projectSummaryMode,
+  contributionSummaryMode,
+  onProjectSummaryModeChange,
+  onContributionSummaryModeChange,
   expanded,
   onToggle,
   actions,
   isMutating,
   manualOnlySummaries,
 }: Props) {
+  const statusTone = summaryMissing ? "warning" : project.statusTone;
+  const statusLabel = summaryMissing ? "Missing summary" : project.statusLabel;
+
   const badgeToneClass = {
     ready: "border-emerald-200 bg-emerald-50 text-emerald-700",
     warning: "border-rose-200 bg-rose-50 text-rose-700",
     neutral: "border-zinc-200 bg-zinc-100 text-zinc-600",
-  }[project.statusTone];
+  }[statusTone];
 
   const badgeDotClass = {
     ready: "bg-emerald-500",
     warning: "bg-rose-500",
     neutral: "bg-zinc-500",
-  }[project.statusTone];
+  }[statusTone];
 
   const optionalBadgeClass = "border-amber-200 bg-amber-50 text-amber-700";
   const optionalBadgeDotClass = "bg-amber-500";
@@ -61,9 +76,9 @@ export default function SetupProjectCard({
               )}
             >
               <span className={cn("size-1.5 rounded-full", badgeDotClass)} />
-              {project.statusLabel}
+              {statusLabel}
             </span>
-            {project.optionalStatusLabel && (
+            {optionalWarningLabel && (
               <span
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium whitespace-nowrap",
@@ -71,7 +86,7 @@ export default function SetupProjectCard({
                 )}
               >
                 <span className={cn("size-1.5 rounded-full", optionalBadgeDotClass)} />
-                {project.optionalStatusLabel}
+                {optionalWarningLabel}
               </span>
             )}
           </div>
@@ -86,12 +101,16 @@ export default function SetupProjectCard({
             actions={actions}
             isMutating={isMutating}
             manualOnlySummaries={manualOnlySummaries}
+            mode={projectSummaryMode}
+            onModeChange={(mode) => onProjectSummaryModeChange(project.projectName, mode)}
           />
           <ContributionSummarySection
             project={project}
             actions={actions}
             isMutating={isMutating}
             manualOnlySummaries={manualOnlySummaries}
+            mode={contributionSummaryMode}
+            onModeChange={(mode) => onContributionSummaryModeChange(project.projectName, mode)}
           />
           <KeyRoleSection project={project} actions={actions} isMutating={isMutating} />
           {project.projectType === "code" ? (

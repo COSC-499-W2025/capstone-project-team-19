@@ -18,6 +18,7 @@ import type {
 import type { ConsentStatusValue } from "../../../api/consent";
 
 export type SetupBadgeTone = "ready" | "warning" | "neutral";
+export type SummaryMode = "llm" | "manual" | null;
 
 export type SetupProjectCard = {
   projectName: string;
@@ -43,7 +44,6 @@ export type SetupProjectCard = {
   keyRole: string;
   statusLabel: string;
   statusTone: SetupBadgeTone;
-  optionalStatusLabel: string | null;
 };
 
 export type SetupFlowResult = {

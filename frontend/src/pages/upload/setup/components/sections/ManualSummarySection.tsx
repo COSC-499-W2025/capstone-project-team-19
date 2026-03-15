@@ -1,31 +1,29 @@
 import { useEffect, useState } from "react";
-import type { SetupFlowResult, SetupProjectCard } from "../../types";
+import type { SetupFlowResult, SetupProjectCard, SummaryMode } from "../../types";
 
 type Props = {
   project: SetupProjectCard;
   actions: SetupFlowResult["actions"];
   isMutating: boolean;
   manualOnlySummaries: boolean;
+  mode: SummaryMode;
+  onModeChange: (mode: SummaryMode) => void;
 };
-
-type SummaryMode = "llm" | "manual";
 
 export default function ManualSummarySection({
   project,
   actions,
   isMutating,
   manualOnlySummaries,
+  mode,
+  onModeChange,
 }: Props) {
-  const initialMode: SummaryMode =
-    manualOnlySummaries || project.manualProjectSummary.trim().length > 0 ? "manual" : "llm";
-  const [mode, setMode] = useState<SummaryMode>(initialMode);
   const [summaryText, setSummaryText] = useState(project.manualProjectSummary);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setSummaryText(project.manualProjectSummary);
-    setMode(manualOnlySummaries || project.manualProjectSummary.trim().length > 0 ? "manual" : "llm");
-  }, [manualOnlySummaries, project.manualProjectSummary]);
+  }, [project.manualProjectSummary]);
 
   async function onSave() {
     setSaveMessage(null);
@@ -45,7 +43,7 @@ export default function ManualSummarySection({
             type="radio"
             name={`project-summary-mode-${project.projectName}`}
             checked={mode === "llm"}
-            onChange={() => setMode("llm")}
+            onChange={() => onModeChange("llm")}
             disabled={isMutating || manualOnlySummaries}
           />
           <span>Use LLM summary</span>
@@ -55,7 +53,7 @@ export default function ManualSummarySection({
             type="radio"
             name={`project-summary-mode-${project.projectName}`}
             checked={mode === "manual"}
-            onChange={() => setMode("manual")}
+            onChange={() => onModeChange("manual")}
             disabled={isMutating}
           />
           <span>Input manual summary</span>
@@ -87,7 +85,9 @@ export default function ManualSummarySection({
           </div>
         </>
       ) : (
-        <p className="text-sm text-zinc-600">Summary will be generated with LLM during analysis.</p>
+        mode === "llm" && (
+          <p className="text-sm text-zinc-600">Summary will be generated with LLM during analysis.</p>
+        )
       )}
       {saveMessage && <p className="mt-1 text-sm text-zinc-700">{saveMessage}</p>}
     </div>

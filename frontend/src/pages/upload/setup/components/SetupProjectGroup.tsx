@@ -1,9 +1,14 @@
-import type { SetupFlowResult, SetupProjectCard as SetupProjectCardModel } from "../types";
+import type { SetupFlowResult, SetupProjectCard as SetupProjectCardModel, SummaryMode } from "../types";
 import SetupProjectCard from "./SetupProjectCard";
 
 type Props = {
   title: string;
   projects: SetupProjectCardModel[];
+  optionalWarningsByProject: Record<string, string | null>;
+  summaryMissingByProject: Record<string, boolean>;
+  summaryModesByProject: Record<string, { project: SummaryMode; contribution: SummaryMode }>;
+  onProjectSummaryModeChange: (projectName: string, mode: SummaryMode) => void;
+  onContributionSummaryModeChange: (projectName: string, mode: SummaryMode) => void;
   emptyLabel: string;
   expandedProjectNames: string[];
   onToggleProject: (projectName: string) => void;
@@ -15,6 +20,11 @@ type Props = {
 export default function SetupProjectGroup({
   title,
   projects,
+  optionalWarningsByProject,
+  summaryMissingByProject,
+  summaryModesByProject,
+  onProjectSummaryModeChange,
+  onContributionSummaryModeChange,
   emptyLabel,
   expandedProjectNames,
   onToggleProject,
@@ -35,6 +45,12 @@ export default function SetupProjectGroup({
           <SetupProjectCard
             key={project.projectName}
             project={project}
+            optionalWarningLabel={optionalWarningsByProject[project.projectName] ?? null}
+            summaryMissing={summaryMissingByProject[project.projectName] ?? false}
+            projectSummaryMode={summaryModesByProject[project.projectName]?.project ?? null}
+            contributionSummaryMode={summaryModesByProject[project.projectName]?.contribution ?? null}
+            onProjectSummaryModeChange={onProjectSummaryModeChange}
+            onContributionSummaryModeChange={onContributionSummaryModeChange}
             expanded={expandedProjectNames.includes(project.projectName)}
             onToggle={onToggleProject}
             actions={actions}

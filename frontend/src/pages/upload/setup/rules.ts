@@ -4,7 +4,6 @@ import type { SetupBadgeTone } from "./types";
 export type SetupStatusResult = {
   label: string;
   tone: SetupBadgeTone;
-  optionalLabel?: string | null;
 };
 
 export function isValidUploadIdParam(uploadIdParam: string): boolean {
@@ -17,14 +16,10 @@ export function resolveSetupStatus(args: {
   repoLinked: boolean;
   mainFile: string;
 }): SetupStatusResult {
-  const { classification, projectType, repoLinked, mainFile } = args;
+  const { classification, projectType, mainFile } = args;
 
   if (projectType === "code") {
-    return {
-      label: "ready for analysis",
-      tone: "ready",
-      optionalLabel: repoLinked ? null : "missing github connection",
-    };
+    return { label: "ready for analysis", tone: "ready" };
   }
 
   if (projectType === "text") {
