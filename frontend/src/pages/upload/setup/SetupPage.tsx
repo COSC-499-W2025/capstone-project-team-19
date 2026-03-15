@@ -4,6 +4,7 @@ import type { RunPreflightRecord, RunWarning } from "../../../api/uploads";
 import { getUsername } from "../../../auth/user";
 import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
+import SetupAnalyzeConfirmDialog from "./components/SetupAnalyzeConfirmDialog";
 import SetupProjectGroup from "./components/SetupProjectGroup";
 import { useSetupFlow } from "./hooks/useSetupFlow";
 import type { SummaryMode } from "./types";
@@ -47,6 +48,7 @@ export default function UploadSetupPage() {
   const [searchParams] = useSearchParams();
   const [readiness, setReadiness] = useState<RunPreflightRecord | null>(null);
   const [checkingReadiness, setCheckingReadiness] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [summaryModesByProject, setSummaryModesByProject] = useState<Record<string, ProjectSummaryModes>>({});
 
   const uploadIdParam = searchParams.get("uploadId") ?? "";
@@ -159,6 +161,11 @@ export default function UploadSetupPage() {
     if (hasMissingSummarySelections) return;
     const latestReadiness = await refreshRunReadiness();
     if (!latestReadiness || !latestReadiness.ready) return;
+    setConfirmOpen(true);
+  }
+
+  function onConfirmContinueToAnalyze() {
+    setConfirmOpen(false);
     nav(`/upload/analyze?uploadId=${uploadIdParam}`);
   }
 
@@ -218,6 +225,13 @@ export default function UploadSetupPage() {
       if (modes.contribution === "manual" && project.manualContributionSummary.trim().length === 0) {
         out.push({
           code: "missing_manual_contribution_summary",
+          project: project.projectName,
+          source: "local",
+        });
+      }
+      if (project.projectType === "text" && project.mainFileRelpath && project.mainSectionIds.length === 0) {
+        out.push({
+          code: "missing_contribution_sections",
           project: project.projectName,
           source: "local",
         });
@@ -347,6 +361,11 @@ export default function UploadSetupPage() {
           )}
         </div>
       </UploadWizardShell>
+      <SetupAnalyzeConfirmDialog
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={onConfirmContinueToAnalyze}
+      />
     </>
   );
 }
