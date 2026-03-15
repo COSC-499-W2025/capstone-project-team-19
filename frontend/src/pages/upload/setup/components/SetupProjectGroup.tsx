@@ -1,4 +1,4 @@
-import type { SetupProjectCard as SetupProjectCardModel } from "../types";
+import type { SetupFlowResult, SetupProjectCard as SetupProjectCardModel } from "../types";
 import SetupProjectCard from "./SetupProjectCard";
 
 type Props = {
@@ -7,6 +7,8 @@ type Props = {
   emptyLabel: string;
   expandedProjectName: string | null;
   onToggleProject: (projectName: string) => void;
+  actions: SetupFlowResult["actions"];
+  isMutating: boolean;
 };
 
 export default function SetupProjectGroup({
@@ -15,6 +17,8 @@ export default function SetupProjectGroup({
   emptyLabel,
   expandedProjectName,
   onToggleProject,
+  actions,
+  isMutating,
 }: Props) {
   return (
     <section className="space-y-3">
@@ -31,6 +35,8 @@ export default function SetupProjectGroup({
             project={project}
             expanded={expandedProjectName === project.projectName}
             onToggle={onToggleProject}
+            actions={actions}
+            isMutating={isMutating}
           />
         ))}
       </div>

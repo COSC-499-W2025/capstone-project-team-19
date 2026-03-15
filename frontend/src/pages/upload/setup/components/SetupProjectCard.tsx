@@ -2,7 +2,8 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { toProjectTypeLabel } from "../selectors";
-import type { SetupProjectCard as SetupProjectCardModel } from "../types";
+import type { SetupFlowResult, SetupProjectCard as SetupProjectCardModel } from "../types";
+import CodeSetupSection from "./sections/CodeSetupSection";
 import ContributionSummarySection from "./sections/ContributionSummarySection";
 import ManualSummarySection from "./sections/ManualSummarySection";
 import ProjectSetupInputsSection from "./sections/ProjectSetupInputsSection";
@@ -11,9 +12,11 @@ type Props = {
   project: SetupProjectCardModel;
   expanded: boolean;
   onToggle: (projectName: string) => void;
+  actions: SetupFlowResult["actions"];
+  isMutating: boolean;
 };
 
-export default function SetupProjectCard({ project, expanded, onToggle }: Props) {
+export default function SetupProjectCard({ project, expanded, onToggle, actions, isMutating }: Props) {
   const badgeToneClass = {
     ready: "border-emerald-200 bg-emerald-50 text-emerald-700",
     warning: "border-rose-200 bg-rose-50 text-rose-700",
@@ -54,7 +57,11 @@ export default function SetupProjectCard({ project, expanded, onToggle }: Props)
         <CardContent className="space-y-3 border-t border-zinc-200 bg-zinc-50 px-4 py-4">
           <ManualSummarySection />
           <ContributionSummarySection />
-          <ProjectSetupInputsSection collaborative={project.classification === "collaborative"} />
+          {project.projectType === "code" ? (
+            <CodeSetupSection project={project} actions={actions} isMutating={isMutating} />
+          ) : (
+            <ProjectSetupInputsSection collaborative={project.classification === "collaborative"} />
+          )}
           {project.projectKey && <p className="text-xs text-zinc-600">Project key: {project.projectKey}</p>}
         </CardContent>
       )}

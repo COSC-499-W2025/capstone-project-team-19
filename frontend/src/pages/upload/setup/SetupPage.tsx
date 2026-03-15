@@ -44,6 +44,7 @@ export default function UploadSetupPage() {
 
         {flow.loading && <p className="mb-3 text-sm">Loading project setup context...</p>}
         {flow.loadError && <p className="error mb-3 text-sm">{flow.loadError}</p>}
+        {flow.actionError && <p className="error mb-3 text-sm">{flow.actionError}</p>}
         {!flow.loading && !flow.loadError && flow.projectCards.length === 0 && (
           <p className="mb-3 text-sm">No projects found for this upload.</p>
         )}
@@ -56,6 +57,8 @@ export default function UploadSetupPage() {
               emptyLabel="No individual projects."
               expandedProjectName={flow.expandedProjectName}
               onToggleProject={flow.onToggleProject}
+              actions={flow.actions}
+              isMutating={flow.isMutating}
             />
 
             <SetupProjectGroup
@@ -64,6 +67,8 @@ export default function UploadSetupPage() {
               emptyLabel="No collaborative projects."
               expandedProjectName={flow.expandedProjectName}
               onToggleProject={flow.onToggleProject}
+              actions={flow.actions}
+              isMutating={flow.isMutating}
             />
           </div>
         )}

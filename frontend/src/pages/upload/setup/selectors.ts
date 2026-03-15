@@ -16,6 +16,13 @@ function asStringMap(value: unknown): Record<string, string> {
   return out;
 }
 
+function asNumberArray(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "number" ? item : Number.NaN))
+    .filter((item) => Number.isInteger(item) && item > 0);
+}
+
 function readProjectKey(value: unknown): number | null {
   if (typeof value === "number" && Number.isInteger(value) && value > 0) return value;
   if (typeof value === "string" && /^\d+$/.test(value)) return Number.parseInt(value, 10);
@@ -67,9 +74,26 @@ export function deriveProjectCards(upload: UploadRecord | null): SetupProjectCar
       );
 
       const projectRunInput = asRecord(runInputsProjects[projectName]);
+      const capabilities = asRecord(projectRunInput.capabilities);
+      const git = asRecord(capabilities.git);
       const integrations = asRecord(projectRunInput.integrations);
       const github = asRecord(integrations.github);
+      const repoDetectedRaw = git.repo_detected;
+      const gitRepoDetected = typeof repoDetectedRaw === "boolean" ? repoDetectedRaw : null;
+      const gitCommitCountHint = typeof git.commit_count_hint === "number" ? git.commit_count_hint : 0;
+      const gitAuthorCountHint = typeof git.author_count_hint === "number" ? git.author_count_hint : 0;
+      const gitMultiAuthorHint = Boolean(git.multi_author_hint);
+      const gitSelectedIdentityIndices = asNumberArray(git.selected_identity_indices);
+
       const repoLinked = Boolean(github.repo_linked);
+      const githubState =
+        typeof github.state === "string" && github.state.trim()
+          ? github.state.trim().toLowerCase()
+          : "unset";
+      const githubRepoFullName =
+        typeof github.repo_full_name === "string" && github.repo_full_name.trim()
+          ? github.repo_full_name.trim()
+          : null;
 
       const roleForProject = asRecord(fileRoles[projectName]);
       const mainFile = typeof roleForProject.main_file === "string" ? roleForProject.main_file.trim() : "";
@@ -86,6 +110,14 @@ export function deriveProjectCards(upload: UploadRecord | null): SetupProjectCar
         projectKey: readProjectKey(dedupProjectKeys[projectName]),
         classification,
         projectType,
+        gitRepoDetected,
+        gitCommitCountHint,
+        gitAuthorCountHint,
+        gitMultiAuthorHint,
+        gitSelectedIdentityIndices,
+        githubState,
+        githubRepoLinked: repoLinked,
+        githubRepoFullName,
         statusLabel: status.label,
         statusTone: status.tone,
       };

@@ -22,6 +22,14 @@ export type SetupProjectCard = {
   projectKey: number | null;
   classification: ProjectClassification | "";
   projectType: ProjectType | "";
+  gitRepoDetected: boolean | null;
+  gitCommitCountHint: number;
+  gitAuthorCountHint: number;
+  gitMultiAuthorHint: boolean;
+  gitSelectedIdentityIndices: number[];
+  githubState: string;
+  githubRepoLinked: boolean;
+  githubRepoFullName: string | null;
   statusLabel: string;
   statusTone: SetupBadgeTone;
 };
