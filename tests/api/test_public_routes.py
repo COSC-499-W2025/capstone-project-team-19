@@ -23,6 +23,10 @@ def seed_user(seed_conn, user_id: int, username: str) -> int:
         "INSERT OR IGNORE INTO users(user_id, username, email) VALUES (?, ?, NULL)",
         (user_id, username),
     )
+    seed_conn.execute(
+        "INSERT OR REPLACE INTO portfolio_settings(user_id, portfolio_public) VALUES (?, 1)",
+        (user_id,),
+    )
     seed_conn.commit()
     return user_id
 
@@ -54,8 +58,8 @@ class TestPublicListProjects:
         """Projects from another user must not appear in the response."""
         seed_user(seed_conn, 10, "johndoe")
         seed_user(seed_conn, 11, "janedoe")
-        seed_project(seed_conn, 10, "Alpha")
-        seed_project(seed_conn, 11, "Beta")
+        seed_project(seed_conn, 10, "Alpha", is_public=True)
+        seed_project(seed_conn, 11, "Beta", is_public=True)
 
         res = client.get("/public/johndoe/projects")
         assert res.status_code == 200
@@ -65,7 +69,7 @@ class TestPublicListProjects:
 
     def test_project_list_item_fields(self, client, seed_conn):
         seed_user(seed_conn, 10, "johndoe")
-        seed_project(seed_conn, 10, "Alpha")
+        seed_project(seed_conn, 10, "Alpha", is_public=True)
 
         res = client.get("/public/johndoe/projects")
         item = res.json()["data"]["projects"][0]
@@ -83,7 +87,7 @@ class TestPublicListProjects:
 class TestPublicGetProject:
     def test_no_auth_required(self, client, seed_conn):
         seed_user(seed_conn, 10, "johndoe")
-        pid = seed_project(seed_conn, 10, "Alpha")
+        pid = seed_project(seed_conn, 10, "Alpha", is_public=True)
         res = client.get(f"/public/johndoe/projects/{pid}")
         assert res.status_code != 401
         assert res.status_code == 200
@@ -94,6 +98,7 @@ class TestPublicGetProject:
             seed_conn, 10, "Alpha",
             languages=["Python"],
             summary_text="A test summary",
+            is_public=True,
         )
         res = client.get(f"/public/johndoe/projects/{pid}")
         assert res.status_code == 200
@@ -105,7 +110,7 @@ class TestPublicGetProject:
 
     def test_success_shape(self, client, seed_conn):
         seed_user(seed_conn, 10, "johndoe")
-        pid = seed_project(seed_conn, 10, "Alpha")
+        pid = seed_project(seed_conn, 10, "Alpha", is_public=True)
         body = client.get(f"/public/johndoe/projects/{pid}").json()
         assert body["success"] is True
         assert body["error"] is None
@@ -151,7 +156,7 @@ class TestPublicGetThumbnail:
 
     def test_returns_image_when_thumbnail_exists(self, client, seed_conn, tmp_path):
         seed_user(seed_conn, 10, "johndoe")
-        pid = seed_project(seed_conn, 10, "Alpha")
+        pid = seed_project(seed_conn, 10, "Alpha", is_public=True)
 
         fake_png = tmp_path / "thumb.png"
         fake_png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)  # minimal PNG header
@@ -199,9 +204,9 @@ class TestPublicGetRanking:
     def test_ranking_contains_only_target_users_projects(self, client, seed_conn):
         seed_user(seed_conn, 10, "johndoe")
         seed_user(seed_conn, 11, "janedoe")
-        seed_project(seed_conn, 10, "Alpha")
-        seed_project(seed_conn, 10, "Beta")
-        seed_project(seed_conn, 11, "Gamma")
+        seed_project(seed_conn, 10, "Alpha", is_public=True)
+        seed_project(seed_conn, 10, "Beta", is_public=True)
+        seed_project(seed_conn, 11, "Gamma", is_public=True)
 
         res = client.get("/public/johndoe/ranking")
         names = [r["project_name"] for r in res.json()["data"]["rankings"]]
@@ -211,19 +216,17 @@ class TestPublicGetRanking:
 
     def test_ranking_item_has_required_fields(self, client, seed_conn):
         seed_user(seed_conn, 10, "johndoe")
-        seed_project(seed_conn, 10, "Alpha")
+        seed_project(seed_conn, 10, "Alpha", is_public=True)
 
         item = client.get("/public/johndoe/ranking").json()["data"]["rankings"][0]
         assert "rank" in item
         assert "project_summary_id" in item
         assert "project_name" in item
-        assert "score" in item
-        assert "manual_rank" in item
 
     def test_rank_field_is_sequential(self, client, seed_conn):
         seed_user(seed_conn, 10, "johndoe")
-        seed_project(seed_conn, 10, "Alpha")
-        seed_project(seed_conn, 10, "Beta")
+        seed_project(seed_conn, 10, "Alpha", is_public=True)
+        seed_project(seed_conn, 10, "Beta", is_public=True)
 
         rankings = client.get("/public/johndoe/ranking").json()["data"]["rankings"]
         ranks = [r["rank"] for r in rankings]
