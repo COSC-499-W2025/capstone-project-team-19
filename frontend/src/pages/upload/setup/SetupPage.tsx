@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { getUsername } from "../../../auth/user";
 import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
-import "./SetupPage.css";
 import SetupProjectGroup from "./components/SetupProjectGroup";
 import { useSetupFlow } from "./hooks/useSetupFlow";
 
@@ -35,22 +34,22 @@ export default function UploadSetupPage() {
 
   return (
     <UploadWizardShell username={username} steps={steps} actionLabel="Next" actionDisabled showAction>
-      <div className="setupStagePanel">
-        <header className="setupStageHeader">
+      <div className="max-w-[1040px] rounded-xl bg-[var(--upload-bg)] p-6 max-[980px]:p-4">
+        <header className="mb-4">
           <h2 className="wizardPlaceholderTitle">Setup</h2>
           <p className="wizardPlaceholderText">
             Review project setup details before analysis. Upload #{uploadIdParam}
           </p>
         </header>
 
-        {flow.loading && <p className="setupStageStateLine">Loading project setup context...</p>}
-        {flow.loadError && <p className="error setupStageStateLine">{flow.loadError}</p>}
+        {flow.loading && <p className="mb-3 text-sm">Loading project setup context...</p>}
+        {flow.loadError && <p className="error mb-3 text-sm">{flow.loadError}</p>}
         {!flow.loading && !flow.loadError && flow.projectCards.length === 0 && (
-          <p className="setupStageStateLine">No projects found for this upload.</p>
+          <p className="mb-3 text-sm">No projects found for this upload.</p>
         )}
 
         {!flow.loading && !flow.loadError && flow.projectCards.length > 0 && (
-          <div className="setupSections">
+          <div className="space-y-6">
             <SetupProjectGroup
               title="Individual Projects"
               projects={flow.individualProjects}
