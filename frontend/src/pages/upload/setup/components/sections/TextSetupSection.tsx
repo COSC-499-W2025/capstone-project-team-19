@@ -8,6 +8,8 @@ type Props = {
   isMutating: boolean;
 };
 
+const DRIVE_PAGE_SIZE = 5;
+
 function toggleString(values: string[], value: string): string[] {
   if (values.includes(value)) return values.filter((item) => item !== value);
   return [...values, value];
@@ -37,6 +39,8 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   const [selectedDriveFileId, setSelectedDriveFileId] = useState("");
   const [driveMapByLocalFile, setDriveMapByLocalFile] = useState<Record<string, DriveFile>>({});
   const [driveMessage, setDriveMessage] = useState<string | null>(null);
+  const [localPage, setLocalPage] = useState(1);
+  const [drivePage, setDrivePage] = useState(1);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,6 +103,26 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     [driveMapByLocalFile],
   );
   const showCollaborativeDriveUi = project.projectType === "text" && project.classification === "collaborative";
+  const localPageCount = useMemo(
+    () => Math.max(1, Math.ceil(driveLocalFiles.length / DRIVE_PAGE_SIZE)),
+    [driveLocalFiles.length],
+  );
+  const safeLocalPage = Math.min(localPage, localPageCount);
+  const localPageStart = (safeLocalPage - 1) * DRIVE_PAGE_SIZE;
+  const localPageFiles = useMemo(
+    () => driveLocalFiles.slice(localPageStart, localPageStart + DRIVE_PAGE_SIZE),
+    [driveLocalFiles, localPageStart],
+  );
+  const drivePageCount = useMemo(
+    () => Math.max(1, Math.ceil(filteredDriveResults.length / DRIVE_PAGE_SIZE)),
+    [filteredDriveResults.length],
+  );
+  const safeDrivePage = Math.min(drivePage, drivePageCount);
+  const drivePageStart = (safeDrivePage - 1) * DRIVE_PAGE_SIZE;
+  const drivePageFiles = useMemo(
+    () => filteredDriveResults.slice(drivePageStart, drivePageStart + DRIVE_PAGE_SIZE),
+    [filteredDriveResults, drivePageStart],
+  );
 
   useEffect(() => {
     if (driveLocalFiles.length === 0) {
@@ -204,6 +228,20 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     await onRefreshDriveFiles();
   }
 
+  async function onDriveChoiceChange(choice: "yes" | "no") {
+    setDriveChoice(choice);
+    if (choice === "yes") {
+      setDriveMessage(null);
+      return;
+    }
+    setDriveFiles([]);
+    setDriveMapByLocalFile({});
+    setSelectedDriveFileId("");
+    const data = await actions.driveStart(project.projectName, false);
+    if (!data) return;
+    setDriveMessage("Google Drive skipped for now.");
+  }
+
   async function onRefreshDriveFiles() {
     setDriveMessage(null);
     setDriveLoading(true);
@@ -211,6 +249,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     setDriveLoading(false);
     if (!data) return;
     setDriveFiles(data.files);
+    setDrivePage(1);
     setDriveMessage(data.files.length > 0 ? "Drive files loaded." : "No supported Drive files found.");
   }
 
@@ -372,7 +411,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
       </div>
 
       {showCollaborativeDriveUi && (
-        <div className="space-y-3 rounded-lg border border-zinc-300 bg-zinc-50 p-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-semibold text-zinc-900">
               Connect Google Drive for collaborative text mapping?
@@ -384,7 +423,9 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                   name={`drive-choice-${project.projectName}`}
                   value="yes"
                   checked={driveChoice === "yes"}
-                  onChange={() => setDriveChoice("yes")}
+                  onChange={() => {
+                    void onDriveChoiceChange("yes");
+                  }}
                   disabled={isMutating}
                 />
                 <span>Yes</span>
@@ -395,58 +436,87 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                   name={`drive-choice-${project.projectName}`}
                   value="no"
                   checked={driveChoice === "no"}
-                  onChange={() => setDriveChoice("no")}
+                  onChange={() => {
+                    void onDriveChoiceChange("no");
+                  }}
                   disabled={isMutating}
                 />
                 <span>No</span>
               </label>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onApplyDriveChoice}
-              disabled={isMutating || driveChoice === ""}
-              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-            >
-              {driveChoice === "no" ? "Skip Drive" : "Connect Drive"}
-            </button>
-            <button
-              type="button"
-              onClick={onRefreshDriveFiles}
-              disabled={isMutating || driveChoice !== "yes"}
-              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-            >
-              Refresh Drive Files
-            </button>
-          </div>
+          {driveChoice !== "no" && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onApplyDriveChoice}
+                disabled={isMutating || driveChoice === ""}
+                className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+              >
+                Connect Drive
+              </button>
+              <button
+                type="button"
+                onClick={onRefreshDriveFiles}
+                disabled={isMutating || driveChoice !== "yes"}
+                className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+              >
+                Refresh Drive Files
+              </button>
+            </div>
+          )}
           <p className="text-sm text-zinc-700">
             Current state: <span className="font-medium">{project.driveState}</span>
             {project.driveLinkedFilesCount > 0 ? ` | Linked files: ${project.driveLinkedFilesCount}` : ""}
           </p>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          {driveChoice === "yes" && (
+            <div className="space-y-3">
+              <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-lg border border-zinc-300 bg-white p-3">
               <div className="mb-2 text-sm font-semibold text-zinc-900">Files ({project.projectName})</div>
               <div className="space-y-2">
                 {driveLocalFiles.length === 0 && <p className="text-sm text-zinc-600">No project files found.</p>}
-                {driveLocalFiles.map((item, index) => {
+                {localPageFiles.map((item, index) => {
                   const selected = selectedLocalFile === item.file_name;
                   const mappedName = driveMapByLocalFile[item.file_name];
                   return (
                     <button
-                      key={`${item.relpath}-${index}`}
+                      key={item.relpath}
                       type="button"
                       onClick={() => setSelectedLocalFile(item.file_name)}
                       className={`w-full rounded border px-3 py-2 text-left text-sm ${selected ? "border-zinc-500 bg-zinc-100" : "border-zinc-200 bg-zinc-50"}`}
                     >
-                      <div className="font-medium text-zinc-900">{index + 1}. {item.file_name}</div>
+                      <div className="font-medium text-zinc-900">{localPageStart + index + 1}. {item.file_name}</div>
                       <div className="mt-1 text-xs text-zinc-600">
                         Mapping: {mappedName ? mappedName.name : "Not selected"}
                       </div>
                     </button>
                   );
                 })}
+                {driveLocalFiles.length > DRIVE_PAGE_SIZE && (
+                  <div className="flex items-center justify-between pt-1 text-xs text-zinc-600">
+                    <span>Page {safeLocalPage} of {localPageCount}</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setLocalPage((page) => Math.max(1, page - 1))}
+                        disabled={safeLocalPage <= 1}
+                        className="rounded border border-zinc-300 px-2 py-1 disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLocalPage((page) => Math.min(localPageCount, page + 1))}
+                        disabled={safeLocalPage >= localPageCount}
+                        className="rounded border border-zinc-300 px-2 py-1 disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -459,13 +529,13 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                   value={driveSearch}
                   onChange={(event) => setDriveSearch(event.target.value)}
                   placeholder="Search Drive files by name..."
-                  className="h-10 flex-1 rounded border border-zinc-300 px-3 text-sm text-zinc-700"
+                  className="flex-1 rounded !border !border-zinc-300 !bg-zinc-50 !px-4 !py-3 text-sm text-zinc-700 placeholder:text-zinc-400 disabled:!border-zinc-300 disabled:!bg-zinc-50 disabled:!text-zinc-700 disabled:opacity-100"
                   disabled={isMutating || driveChoice !== "yes"}
                 />
                 <button
                   type="button"
                   className="rounded border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-900"
-                  onClick={onRefreshDriveFiles}
+                  onClick={() => setDrivePage(1)}
                   disabled={isMutating || driveChoice !== "yes" || driveLoading}
                 >
                   {driveLoading ? "Loading..." : "Search"}
@@ -479,7 +549,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                     {driveChoice === "yes" ? "No matching Drive files." : "Select Yes to start mapping."}
                   </p>
                 )}
-                {filteredDriveResults.map((item) => {
+                {drivePageFiles.map((item) => {
                   const selected = selectedDriveFileId === item.id;
                   return (
                     <button
@@ -494,6 +564,29 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                     </button>
                   );
                 })}
+                {filteredDriveResults.length > DRIVE_PAGE_SIZE && (
+                  <div className="flex items-center justify-between pt-1 text-xs text-zinc-600">
+                    <span>Page {safeDrivePage} of {drivePageCount}</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDrivePage((page) => Math.max(1, page - 1))}
+                        disabled={safeDrivePage <= 1}
+                        className="rounded border border-zinc-300 px-2 py-1 disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDrivePage((page) => Math.min(drivePageCount, page + 1))}
+                        disabled={safeDrivePage >= drivePageCount}
+                        className="rounded border border-zinc-300 px-2 py-1 disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="mt-3 flex items-center justify-end gap-2">
@@ -507,29 +600,33 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 </button>
               </div>
             </div>
-          </div>
+              </div>
 
-          <div className="flex items-center justify-between rounded border border-zinc-300 bg-white px-3 py-2 text-sm">
-            <span className="text-zinc-700">Mapped: {mappedDriveCount} of {driveLocalFiles.length} files</span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onResetDriveMapping}
-                className="rounded border border-zinc-300 bg-white px-3 py-1.5 font-medium text-zinc-900"
-              >
-                Reset
-              </button>
-              <button
-                type="button"
-                onClick={onFinalizeDriveLinks}
-                disabled={isMutating || mappedDriveCount <= 0}
-                className="rounded border border-zinc-300 bg-zinc-900 px-3 py-1.5 font-medium text-white disabled:opacity-50"
-              >
-                Finalize
-              </button>
+              <div className="flex items-center justify-between rounded border border-zinc-300 bg-white px-3 py-2 text-sm">
+                <span className="text-zinc-700">Mapped: {mappedDriveCount} of {driveLocalFiles.length} files</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={onResetDriveMapping}
+                    className="rounded border border-zinc-300 bg-white px-3 py-1.5 font-medium text-zinc-900"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onFinalizeDriveLinks}
+                    disabled={isMutating || mappedDriveCount <= 0}
+                    className="rounded border border-zinc-300 bg-zinc-900 px-3 py-1.5 font-medium text-white disabled:opacity-50"
+                  >
+                    Finalize
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-          {driveMessage && <p className="text-sm text-zinc-700">{driveMessage}</p>}
+          )}
+          {(driveMessage || driveChoice === "no") && (
+            <p className="text-sm text-zinc-700">{driveMessage || "Google Drive skipped for now."}</p>
+          )}
         </div>
       )}
 
