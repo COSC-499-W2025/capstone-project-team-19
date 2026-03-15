@@ -215,7 +215,7 @@ export default function UploadSetupPage() {
   if (!flow.hasValidUploadId) return null;
 
   const nonBlockingWarnings = readiness?.warnings ?? [];
-  const localManualSummaryWarnings = useMemo(() => {
+  const localOptionalWarnings = useMemo(() => {
     const out: RunWarning[] = [];
     for (const project of flow.projectCards) {
       const modes = resolvedSummaryModesByProject[project.projectName];
@@ -236,12 +236,55 @@ export default function UploadSetupPage() {
           source: "local",
         });
       }
+      if (!project.keyRole.trim()) {
+        out.push({
+          code: "missing_key_role",
+          project: project.projectName,
+          source: "local",
+        });
+      }
+      if (
+        project.projectType === "code" &&
+        project.classification === "collaborative" &&
+        project.gitRepoDetected === true &&
+        project.gitSelectedIdentityIndices.length === 0
+      ) {
+        out.push({
+          code: "missing_git_identities",
+          project: project.projectName,
+          source: "local",
+        });
+      }
+      if (project.projectType === "code" && !project.githubRepoLinked) {
+        out.push({
+          code: project.githubState === "skipped" ? "github_skipped" : "github_not_configured",
+          project: project.projectName,
+          source: "local",
+        });
+      }
+      if (project.projectType === "text") {
+        if (project.driveState === "connected") {
+          if (project.driveLinkedFilesCount === 0) {
+            out.push({
+              code: "missing_drive_links",
+              project: project.projectName,
+              source: "local",
+            });
+          }
+        } else {
+          out.push({
+            code: project.driveState === "skipped" ? "drive_skipped" : "drive_not_configured",
+            project: project.projectName,
+            source: "local",
+          });
+        }
+      }
     }
     return out;
   }, [flow.projectCards, resolvedSummaryModesByProject]);
 
   const effectiveNonBlockingWarnings = useMemo(() => {
-    const merged = [...nonBlockingWarnings, ...localManualSummaryWarnings];
+    const merged = [...nonBlockingWarnings, ...localOptionalWarnings];
     const seen = new Set<string>();
     const out: RunWarning[] = [];
     for (const item of merged) {
@@ -253,7 +296,7 @@ export default function UploadSetupPage() {
       out.push(item);
     }
     return out;
-  }, [localManualSummaryWarnings, nonBlockingWarnings]);
+  }, [localOptionalWarnings, nonBlockingWarnings]);
 
   const filteredNonBlockingWarnings = useMemo(() => {
     return effectiveNonBlockingWarnings.filter((item) => {
