@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import "./Projects.css";
 import TopBar from "../components/TopBar";
 import ProjectCard from "../components/project-card";
 import { listProjects, type Project } from "../api/projects";
+import { updateProjectVisibility } from "../api/portfolioSettings";
 import { getUsername } from "../auth/user";
 
 export default function ProjectsPage() {
@@ -10,6 +11,7 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toggling, setToggling] = useState<number | null>(null);
 
   useEffect(() => {
     listProjects()
@@ -17,6 +19,30 @@ export default function ProjectsPage() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleToggleVisibility = useCallback(
+    async (e: React.MouseEvent, project: Project) => {
+      e.stopPropagation();
+      if (toggling === project.project_summary_id) return;
+      setToggling(project.project_summary_id);
+      const newValue = !project.is_public;
+      try {
+        await updateProjectVisibility(project.project_summary_id, newValue);
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.project_summary_id === project.project_summary_id
+              ? { ...p, is_public: newValue }
+              : p,
+          ),
+        );
+      } catch {
+        // state stays unchanged on error
+      } finally {
+        setToggling(null);
+      }
+    },
+    [toggling],
+  );
 
   return (
     <>
@@ -33,11 +59,21 @@ export default function ProjectsPage() {
 
         <div className="projectGrid">
           {projects.map((p) => (
-            <ProjectCard
-              key={p.project_summary_id}
-              projectId={p.project_summary_id}
-              name={p.project_name}
-            />
+            <div key={p.project_summary_id} className="projectCardWrapper">
+              <ProjectCard projectId={p.project_summary_id} name={p.project_name} />
+              <button
+                className={`projectVisibilityToggle${p.is_public ? " public" : ""}`}
+                onClick={(e) => handleToggleVisibility(e, p)}
+                disabled={toggling === p.project_summary_id}
+                title={
+                  p.is_public
+                    ? "Visible on public portfolio — click to hide"
+                    : "Hidden from public portfolio — click to show"
+                }
+              >
+                {toggling === p.project_summary_id ? "…" : p.is_public ? "Public" : "Private"}
+              </button>
+            </div>
           ))}
         </div>
       </div>
