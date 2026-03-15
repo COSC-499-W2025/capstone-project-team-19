@@ -1,9 +1,16 @@
+import { useEffect, useState } from "react";
 import TopBar from "../components/TopBar";
 import { getUsername } from "../auth/user";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { FileText, FolderOpen, KeyRound, LogOut, Pencil, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { FileText, FolderOpen, Globe, KeyRound, LogOut, Pencil, ShieldCheck, Trash2, Upload } from "lucide-react";
+import {
+  getPortfolioSettings,
+  updatePortfolioSettings,
+  type PortfolioSettings,
+} from "../api/portfolioSettings";
+import { listResumes, type ResumeListItem } from "../api/outputs";
 
 const STAT_CARDS = [
   { label: "Uploads", icon: Upload, accent: "bg-sky-100 text-sky-700" },
@@ -15,6 +22,53 @@ export default function ProfilePage() {
   const username = getUsername();
   const displayName = username;
   const initials = displayName.slice(0, 1).toUpperCase();
+
+  const [settings, setSettings] = useState<PortfolioSettings>({
+    portfolio_public: false,
+    active_resume_id: null,
+  });
+  const [resumes, setResumes] = useState<ResumeListItem[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    Promise.all([getPortfolioSettings(), listResumes()])
+      .then(([s, resumeRes]) => {
+        setSettings(s);
+        setResumes(resumeRes.data?.resumes ?? []);
+      })
+      .catch(() => {})
+      .finally(() => setSettingsLoading(false));
+  }, []);
+
+  async function togglePublic() {
+    setSaving(true);
+    try {
+      const updated = await updatePortfolioSettings({
+        portfolio_public: !settings.portfolio_public,
+      });
+      setSettings(updated);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleResumeChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const value = e.target.value;
+    setSaving(true);
+    try {
+      const updated = await updatePortfolioSettings(
+        value === ""
+          ? { clear_active_resume: true }
+          : { active_resume_id: Number(value) },
+      );
+      setSettings(updated);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const publicUrl = `${window.location.origin}/public/${username}/projects`;
 
   return (
     <>
@@ -78,7 +132,7 @@ export default function ProfilePage() {
               <div>
                 <h2 className="text-xl font-semibold tracking-tight text-slate-900">Profile overview</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Your account activity,personal information and security controls.
+                  Your account activity, personal information and security controls.
                 </p>
               </div>
 
@@ -100,6 +154,78 @@ export default function ProfilePage() {
                   </Card>
                 ))}
               </div>
+
+              {/* Public Portfolio Settings */}
+              <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm">
+                <CardHeader className="border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <Globe className="size-4 text-slate-500" />
+                    <CardTitle className="text-base text-slate-900">Public Portfolio</CardTitle>
+                  </div>
+                  <CardDescription className="text-slate-500">
+                    Control what visitors see at your public portfolio URL.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5 pt-6">
+                  {settingsLoading ? (
+                    <p className="text-sm text-slate-500">Loading…</p>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">Portfolio visibility</p>
+                          <p className="text-xs text-slate-500">
+                            Make your portfolio accessible to anyone with your link.
+                          </p>
+                        </div>
+                        <Button
+                          variant={settings.portfolio_public ? "default" : "outline"}
+                          size="sm"
+                          onClick={togglePublic}
+                          disabled={saving}
+                          className="shrink-0"
+                        >
+                          {settings.portfolio_public ? "Public" : "Private"}
+                        </Button>
+                      </div>
+
+                      {settings.portfolio_public && (
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 font-mono break-all select-all">
+                          {publicUrl}
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5">
+                        <p className="text-sm font-medium text-slate-800">Active resume</p>
+                        <p className="text-xs text-slate-500">
+                          The resume shown on your public portfolio.
+                        </p>
+                        <select
+                          value={settings.active_resume_id ?? ""}
+                          onChange={handleResumeChange}
+                          disabled={saving}
+                          className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 disabled:opacity-60"
+                        >
+                          <option value="">— None —</option>
+                          {resumes.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <p className="text-xs text-slate-500">
+                        To control which projects appear publicly, use the{" "}
+                        <a href="/projects" className="text-indigo-600 hover:underline">
+                          Projects
+                        </a>{" "}
+                        page — each card has a Public / Private toggle.
+                      </p>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
 
               <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm">
                 <CardHeader className="border-b border-slate-100">

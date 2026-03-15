@@ -1,19 +1,121 @@
 import { api } from "./client";
-import type { Project, ProjectDetail } from "./projects";
-import type { ProjectRankingDTO } from "./insights";
-import type { SkillTimelineApiResponse } from "./insights";
-import type { ResumeListItem, ResumeDetail } from "./outputs";
 
-export function publicListProjects(username: string): Promise<Project[]> {
-  return api
-    .get<{ success: boolean; data: { projects: Project[] } }>(`/public/${username}/projects`)
-    .then((r) => r.data.projects);
+interface ApiResponse<T> {
+  success: boolean;
+  data: T | null;
+  error: { message: string; code: number } | null;
 }
 
-export function publicGetProject(username: string, projectId: number): Promise<ProjectDetail> {
+/* ── Public DTOs (stripped of internal fields) ── */
+
+export interface PublicProject {
+  project_summary_id: number;
+  project_name: string;
+  project_type: string | null;
+  project_mode: string | null;
+  created_at: string | null;
+}
+
+export interface PublicProjectDetail {
+  project_summary_id: number;
+  project_name: string;
+  project_type: string | null;
+  project_mode: string | null;
+  created_at: string | null;
+  summary_text: string | null;
+  languages: string[];
+  frameworks: string[];
+  skills: string[];
+}
+
+export interface PublicRankingItem {
+  rank: number;
+  project_summary_id: number;
+  project_name: string;
+}
+
+export interface PublicResumeListItem {
+  id: number;
+  name: string;
+  created_at: string | null;
+}
+
+export interface PublicResumeProject {
+  project_name: string;
+  project_type: string | null;
+  project_mode: string | null;
+  languages: string[];
+  frameworks: string[];
+  summary_text: string | null;
+  skills: string[];
+  key_role: string | null;
+  contribution_bullets: string[];
+  start_date: string | null;
+  end_date: string | null;
+}
+
+export interface PublicResumeDetail {
+  id: number;
+  name: string;
+  created_at: string | null;
+  projects: PublicResumeProject[];
+  aggregated_skills: {
+    languages: string[];
+    frameworks: string[];
+    technical_skills: string[];
+    writing_skills: string[];
+  };
+  rendered_text: string | null;
+}
+
+export interface PublicSkill {
+  skill_name: string;
+  level: string;
+  project_name: string;
+}
+
+/* ── API functions ── */
+
+export function publicListProjects(username: string): Promise<PublicProject[]> {
   return api
-    .get<{ success: boolean; data: ProjectDetail }>(`/public/${username}/projects/${projectId}`)
-    .then((r) => r.data);
+    .get<ApiResponse<{ projects: PublicProject[] }>>(`/public/${username}/projects`)
+    .then((r) => r.data?.projects ?? []);
+}
+
+export function publicGetProject(
+  username: string,
+  projectId: number,
+): Promise<PublicProjectDetail | null> {
+  return api
+    .get<ApiResponse<PublicProjectDetail>>(`/public/${username}/projects/${projectId}`)
+    .then((r) => r.data ?? null);
+}
+
+export function publicGetRanking(username: string): Promise<PublicRankingItem[]> {
+  return api
+    .get<ApiResponse<{ rankings: PublicRankingItem[] }>>(`/public/${username}/ranking`)
+    .then((r) => r.data?.rankings ?? []);
+}
+
+export function publicListResumes(username: string): Promise<PublicResumeListItem[]> {
+  return api
+    .get<ApiResponse<{ resumes: PublicResumeListItem[] }>>(`/public/${username}/resumes`)
+    .then((r) => r.data?.resumes ?? []);
+}
+
+export function publicGetResume(
+  username: string,
+  resumeId: number,
+): Promise<PublicResumeDetail | null> {
+  return api
+    .get<ApiResponse<PublicResumeDetail>>(`/public/${username}/resumes/${resumeId}`)
+    .then((r) => r.data ?? null);
+}
+
+export function publicGetSkills(username: string): Promise<PublicSkill[]> {
+  return api
+    .get<ApiResponse<{ skills: PublicSkill[] }>>(`/public/${username}/skills`)
+    .then((r) => r.data?.skills ?? []);
 }
 
 export async function publicFetchThumbnailUrl(
@@ -26,22 +128,4 @@ export async function publicFetchThumbnailUrl(
   } catch {
     return null;
   }
-}
-
-/** Returns the same shape as getRanking() so it can be used interchangeably. */
-export function publicGetRanking(username: string): Promise<ProjectRankingDTO> {
-  return api.get<ProjectRankingDTO>(`/public/${username}/ranking`);
-}
-
-/** Returns the same shape as getSkillTimeline() so it can be used interchangeably. */
-export function publicGetSkillsTimeline(username: string): Promise<SkillTimelineApiResponse> {
-  return api.get<SkillTimelineApiResponse>(`/public/${username}/skills/timeline`);
-}
-
-export function publicListResumes(username: string): Promise<{ data: { resumes: ResumeListItem[] } }> {
-  return api.get(`/public/${username}/resumes`);
-}
-
-export function publicGetResume(username: string, resumeId: number): Promise<{ data: ResumeDetail }> {
-  return api.get(`/public/${username}/resumes/${resumeId}`);
 }

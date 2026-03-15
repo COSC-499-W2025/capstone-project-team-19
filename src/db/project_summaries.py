@@ -101,7 +101,8 @@ def get_project_summaries_list(conn, user_id):
             p.display_name,
             ps.project_type,
             ps.project_mode,
-            ps.created_at
+            ps.created_at,
+            ps.is_public
         FROM project_summaries ps
         JOIN projects p
             ON p.project_key = ps.project_key
@@ -116,7 +117,8 @@ def get_project_summaries_list(conn, user_id):
             "project_name": row[2],
             "project_type": row[3],
             "project_mode": row[4],
-            "created_at": row[5]
+            "created_at": row[5],
+            "is_public": bool(row[6]) if row[6] is not None else False,
         }
         for row in rows
     ]

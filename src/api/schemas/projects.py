@@ -8,6 +8,7 @@ class ProjectListItemDTO(BaseModel):
     project_type: Optional[str] = None
     project_mode: Optional[str] = None
     created_at: Optional[str] = None
+    is_public: bool = False
 
 class ProjectListDTO(BaseModel):
     projects: List[ProjectListItemDTO]
