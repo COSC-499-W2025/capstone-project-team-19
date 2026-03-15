@@ -4,7 +4,7 @@ import AppDialogShell from "./AppDialogShell";
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  title: string;
+  title?: string;
   description: string;
   confirmLabel?: string;
   onConfirm: () => void;
@@ -13,9 +13,9 @@ type Props = {
 export default function ConfirmDialog({
   open,
   onOpenChange,
-  title,
+  title = "",
   description,
-  confirmLabel = "Confirm",
+  confirmLabel = "Ok",
   onConfirm,
 }: Props) {
   return (
@@ -23,15 +23,14 @@ export default function ConfirmDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={title}
-      description={description}
-      width="sm"
+      width="md"
+      bodyClassName="px-0 py-0"
       footer={
         <>
           <AppButton variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </AppButton>
           <AppButton
-            variant="destructive"
             onClick={() => {
               onConfirm();
               onOpenChange(false);
@@ -42,8 +41,8 @@ export default function ConfirmDialog({
         </>
       }
     >
-      <div className="rounded-xl border border-destructive/15 bg-destructive/5 px-4 py-3 text-sm text-foreground">
-        This action cannot be undone.
+      <div className="border-y border-[#ececec] px-[12px] py-[14px] text-center text-[10px] leading-[1.4] text-[#3f3f3f]">
+        {description}
       </div>
     </AppDialogShell>
   );

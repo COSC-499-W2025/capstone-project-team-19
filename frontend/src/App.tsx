@@ -13,6 +13,7 @@ import ProjectDetailPage from "./pages/ProjectDetail";
 import InsightsPage from "./pages/InsightsPage";
 import OutputsPage from "./pages/Outputs";
 import ProfilePage from "./pages/Profile";
+import UIPlaygroundPage from "./pages/UIPlayground";
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const token = tokenStore.get();
@@ -113,6 +114,15 @@ export default function App() {
           element={
             <RequireAuth>
               <ProfilePage />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/ui-preview"
+          element={
+            <RequireAuth>
+              <UIPlaygroundPage />
             </RequireAuth>
           }
         />

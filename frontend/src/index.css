@@ -8,7 +8,7 @@
 :root {
   --upload-bg: #ffffff;
 
-  --background: #f6f7fb;
+  --background: #f6f6f6;
   --foreground: #1f2937;
 
   --card: #ffffff;
@@ -62,6 +62,10 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --ui-button-radius: 2px;
+  --ui-field-radius: 2px;
+  --ui-surface-radius: 5px;
 }
 
 .dark {
@@ -1097,4 +1101,30 @@ button {
 
 .exportMenuItem:hover {
   background: var(--muted);
+}
+
+.logoText {
+  font-family: "Open Sans", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ui-button-radius {
+  border-radius: var(--ui-button-radius);
+}
+
+.ui-field-radius {
+  border-radius: var(--ui-field-radius);
+}
+
+.ui-surface-radius {
+  border-radius: var(--ui-surface-radius);
+}
+
+.ui-card-shadow {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.ui-menu-shadow {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
 }

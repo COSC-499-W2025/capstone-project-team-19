@@ -7,7 +7,7 @@ export default function SectionCard({ className, ...props }: Props) {
   return (
     <section
       className={cn(
-        "rounded-xl border border-border bg-card p-6 shadow-[0_2px_10px_rgba(0,17,102,0.06)]",
+        "ui-surface-radius border border-[#e5e5e5] bg-white px-[14px] py-[14px]",
         className
       )}
       {...props}

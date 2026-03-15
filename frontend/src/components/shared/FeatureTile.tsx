@@ -4,34 +4,28 @@ import { cn } from "../../lib/utils";
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   title: string;
-  description?: string;
   icon: LucideIcon;
 };
 
 export default function FeatureTile({
   title,
-  description,
   icon: Icon,
   className,
   ...props
 }: Props) {
   return (
     <button
-      className={cn(
-        "flex min-h-[220px] w-full max-w-[280px] flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card px-6 py-8 text-center shadow-[0_2px_10px_rgba(0,17,102,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,17,102,0.12)]",
-        className
-      )}
+      className={cn("w-[180px] bg-transparent text-left", className)}
       {...props}
     >
-      <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-muted">
-        <Icon className="h-10 w-10 text-primary" />
-      </div>
+      <div className="ui-surface-radius overflow-hidden border border-[#e5e5e5] bg-white">
+        <div className="flex h-[95px] items-center justify-center bg-[#efefef]">
+          <Icon className="h-[24px] w-[24px] text-[#8e8e8e]" strokeWidth={1.6} />
+        </div>
 
-      <div className="space-y-1">
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-        {description ? (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        ) : null}
+        <div className="flex h-[32px] items-center border-t border-[#ececec] px-[10px] text-[11px] text-[#3a3a3a]">
+          {title}
+        </div>
       </div>
     </button>
   );

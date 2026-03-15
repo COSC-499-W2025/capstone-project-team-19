@@ -1,6 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
+import { CircleUserRound } from "../lib/ui-icons";
 import { cn } from "../lib/utils";
-import { CircleUserRound } from "../lib/ui-icons.ts";
 
 type Props = {
   showNav?: boolean;
@@ -14,29 +14,29 @@ const navItems = [
   { to: "/outputs", label: "Outputs" },
 ];
 
-export default function TopBar({ showNav = false, username }: Props) {
+export default function TopBar({ showNav = false }: Props) {
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-primary text-primary-foreground">
-      <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between px-6">
+    <header className="sticky top-0 z-50 h-16 w-full bg-[#001166] text-white">
+      <div className="mx-auto flex h-16 w-full max-w-[1140px] items-center justify-between">
         <Link
           to="/"
-          className="logoText text-[30px] leading-none text-primary-foreground no-underline"
+          className="font-['Open_Sans'] text-4xl font-bold leading-none no-underline"
           aria-label="Go to home"
         >
-          resuME
+          resuMe
         </Link>
 
         {showNav && (
-          <div className="flex items-center gap-6">
-            <nav className="flex items-center gap-5 text-sm">
+          <div className="flex items-center gap-[24px]">
+            <nav className="flex items-center gap-[32px]">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
                     cn(
-                      "text-primary-foreground/80 no-underline transition hover:text-primary-foreground",
-                      isActive && "text-primary-foreground underline underline-offset-4"
+                      "font-['Roboto'] text-base font-normal leading-5 no-underline",
+                      isActive && "underline underline-offset-[6px]"
                     )
                   }
                 >
@@ -47,11 +47,13 @@ export default function TopBar({ showNav = false, username }: Props) {
 
             <Link
               to="/profile"
-              className="flex items-center gap-2 text-primary-foreground no-underline"
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ECECEC] no-underline"
               aria-label="Open profile"
             >
-              <CircleUserRound className="h-5 w-5" />
-              <span className="text-sm font-medium">{username ?? "username"}</span>
+              <CircleUserRound
+                className="h-[18px] w-[18px] text-[#6C6C6C]"
+                strokeWidth={1.8}
+              />
             </Link>
           </div>
         )}

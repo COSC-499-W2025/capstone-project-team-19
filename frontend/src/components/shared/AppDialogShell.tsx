@@ -1,43 +1,41 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X } from "../../lib/ui-icons.ts";
+import { X } from "../../lib/ui-icons";
 import { cn } from "../../lib/utils";
-import AppButton from "./AppButton";
 
-type DialogWidth = "sm" | "md" | "lg" | "xl";
+type DialogWidth = "sm" | "md" | "lg";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
   width?: DialogWidth;
   closeOnOverlayClick?: boolean;
+  bodyClassName?: string;
 };
 
 const widthMap: Record<DialogWidth, string> = {
-  sm: "max-w-md",
-  md: "max-w-xl",
-  lg: "max-w-2xl",
-  xl: "max-w-4xl",
+  sm: "max-w-[340px]",
+  md: "max-w-[420px]",
+  lg: "max-w-[520px]",
 };
 
 export default function AppDialogShell({
   open,
   onOpenChange,
   title,
-  description,
   children,
   footer,
-  width = "lg",
+  width = "md",
   closeOnOverlayClick = true,
+  bodyClassName,
 }: Props) {
   useEffect(() => {
     if (!open) return;
 
-    const previousOverflow = document.body.style.overflow;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -47,7 +45,7 @@ export default function AppDialogShell({
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onOpenChange]);
@@ -56,40 +54,39 @@ export default function AppDialogShell({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/35 p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/35 p-4"
       onClick={() => {
         if (closeOnOverlayClick) onOpenChange(false);
       }}
     >
       <div
         className={cn(
-          "w-full rounded-2xl border border-border bg-card p-6 shadow-[0_20px_40px_rgba(0,17,102,0.12)]",
+          "ui-surface-radius ui-card-shadow w-full border border-[#dcdcdc] bg-white",
           widthMap[width]
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-foreground">{title}</h2>
-            {description ? (
-              <p className="text-sm text-muted-foreground">{description}</p>
-            ) : null}
-          </div>
+        <div className="flex items-center justify-between border-b border-[#ececec] px-[10px] py-[8px]">
+          <h2 className="text-[12px] font-normal text-foreground">{title}</h2>
 
-          <AppButton
-            variant="ghost"
-            size="icon"
-            aria-label="Close dialog"
+          <button
+            type="button"
+            className="inline-flex h-[18px] w-[18px] items-center justify-center bg-transparent text-[#9b9b9b]"
             onClick={() => onOpenChange(false)}
+            aria-label="Close dialog"
           >
-            <X className="h-5 w-5" />
-          </AppButton>
+            <X className="h-[12px] w-[12px]" strokeWidth={1.5} />
+          </button>
         </div>
 
-        <div className="flex flex-col gap-4">{children}</div>
+        <div className={cn("flex flex-col gap-[10px] px-[18px] py-[14px]", bodyClassName)}>
+          {children}
+        </div>
 
         {footer ? (
-          <div className="mt-6 flex items-center justify-end gap-3">{footer}</div>
+          <div className="flex items-center justify-end gap-[8px] border-t border-[#ececec] px-[12px] py-[8px]">
+            {footer}
+          </div>
         ) : null}
       </div>
     </div>,

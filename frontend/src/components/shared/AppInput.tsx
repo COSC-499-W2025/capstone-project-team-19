@@ -7,10 +7,9 @@ export default function AppInput({ className, ...props }: Props) {
   return (
     <input
       className={cn(
-        "flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none transition",
-        "placeholder:text-muted-foreground",
-        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        "ui-field-radius h-[22px] w-full border border-[#cfd5df] bg-white px-[6px] text-[10px] text-foreground outline-none",
+        "placeholder:text-[#9aa3b2]",
+        "focus:border-primary",
         className
       )}
       {...props}

@@ -13,6 +13,7 @@ type Props = {
   breadcrumbs?: BreadcrumbItem[];
   actions?: ReactNode;
   className?: string;
+  titleClassName?: string;
 };
 
 export default function PageHeader({
@@ -21,18 +22,19 @@ export default function PageHeader({
   breadcrumbs,
   actions,
   className,
+  titleClassName,
 }: Props) {
   return (
-    <div className={cn("flex flex-col gap-4", className)}>
+    <div className={cn("flex flex-col gap-[10px]", className)}>
       {breadcrumbs?.length ? <Breadcrumbs items={breadcrumbs} /> : null}
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-[32px] font-bold leading-tight text-foreground">
+      <div className="flex items-start justify-between gap-[12px]">
+        <div className="space-y-[2px]">
+          <h1 className={cn("text-[16px] font-normal text-foreground", titleClassName)}>
             {title}
           </h1>
           {subtitle ? (
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
+            <p className="text-[10px] text-[#7f7f7f]">{subtitle}</p>
           ) : null}
         </div>
 

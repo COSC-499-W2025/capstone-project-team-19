@@ -7,10 +7,9 @@ export default function AppTextarea({ className, ...props }: Props) {
   return (
     <textarea
       className={cn(
-        "flex min-h-[112px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition",
-        "placeholder:text-muted-foreground",
-        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        "ui-field-radius min-h-[86px] w-full resize-y border border-[#cfd5df] bg-white px-[6px] py-[6px] text-[10px] text-foreground outline-none",
+        "placeholder:text-[#9aa3b2]",
+        "focus:border-primary",
         className
       )}
       {...props}
