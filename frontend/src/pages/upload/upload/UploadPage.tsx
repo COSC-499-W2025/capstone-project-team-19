@@ -25,7 +25,8 @@ export default function UploadPage() {
 
   function onSidebarNext() {
     if (flow.sidebarNextDisabled) return;
-    nav("/upload/setup");
+    if (!flow.uploadId) return;
+    nav(`/upload/setup?uploadId=${flow.uploadId}`);
   }
 
   function renderStageBody() {
