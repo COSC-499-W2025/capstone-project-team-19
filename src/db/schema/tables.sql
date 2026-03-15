@@ -756,3 +756,14 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+
+-- PORTFOLIO VISIBILITY SETTINGS
+
+CREATE TABLE IF NOT EXISTS portfolio_settings (
+    user_id          INTEGER PRIMARY KEY,
+    portfolio_public INTEGER NOT NULL DEFAULT 0,
+    active_resume_id INTEGER,
+    updated_at       TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (active_resume_id) REFERENCES resume_snapshots(id) ON DELETE SET NULL
+);
