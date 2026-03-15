@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import TotalsPanel from "../tabs/SkillTimeline/TotalsPanel";
+import SkillsOverview from "../tabs/Skills/SkillsOverview";
 import type { SkillTimelineDTO } from "../../../api/insights";
 
 const mockTimelineWithBoth: SkillTimelineDTO = {
@@ -48,7 +48,7 @@ const mockTimelineMultiProject: SkillTimelineDTO = {
 	summary: { total_skills: 1, total_projects: 3, date_range: {}, skill_names: [] },
 };
 
-describe("TotalsPanel", () => {
+describe("SkillsOverview", () => {
 	it("shows empty state when no totals", () => {
 		const empty: SkillTimelineDTO = {
 			dated: [],
@@ -56,58 +56,60 @@ describe("TotalsPanel", () => {
 			current_totals: {},
 			summary: { total_skills: 0, total_projects: 0, date_range: {}, skill_names: [] },
 		};
-		render(<TotalsPanel timeline={empty} />);
+		render(<SkillsOverview timeline={empty} />);
 		expect(screen.getByText(/no totals/i)).toBeInTheDocument();
 	});
 
 	it("shows all skills by default with All toggle active", () => {
-		render(<TotalsPanel timeline={mockTimelineWithBoth} />);
-		expect(screen.getByRole("button", { name: /all/i })).toHaveClass("active");
+		render(<SkillsOverview timeline={mockTimelineWithBoth} />);
+		expect(screen.getByRole("button", { name: /all/i })).toHaveClass("bg-slate-800");
 		expect(screen.getAllByText(/testing and ci/i).length).toBeGreaterThan(0);
 		expect(screen.getAllByText(/clarity/i).length).toBeGreaterThan(0);
 	});
 
 	it("filters to code skills when Code clicked", async () => {
 		const user = userEvent.setup();
-		render(<TotalsPanel timeline={mockTimelineWithBoth} />);
+		render(<SkillsOverview timeline={mockTimelineWithBoth} />);
 		await user.click(screen.getByRole("button", { name: /^code$/i }));
-		expect(screen.getByRole("button", { name: /^code$/i })).toHaveClass("active");
+		expect(screen.getByRole("button", { name: /^code$/i })).toHaveClass("bg-slate-800");
 		expect(screen.getAllByText(/testing and ci/i).length).toBeGreaterThan(0);
 		expect(screen.queryByText(/^Clarity$/)).not.toBeInTheDocument();
 	});
 
 	it("filters to text skills when Text clicked", async () => {
 		const user = userEvent.setup();
-		render(<TotalsPanel timeline={mockTimelineWithBoth} />);
+		render(<SkillsOverview timeline={mockTimelineWithBoth} />);
 		await user.click(screen.getByRole("button", { name: /^text$/i }));
-		expect(screen.getByRole("button", { name: /^text$/i })).toHaveClass("active");
+		expect(screen.getByRole("button", { name: /^text$/i })).toHaveClass("bg-slate-800");
 		expect(screen.getAllByText(/clarity/i).length).toBeGreaterThan(0);
 		expect(screen.queryAllByText(/testing and ci/i).length).toBe(0);
 	});
 
 	it("shows empty message but keeps toolbar when filtering to type with no skills", async () => {
 		const user = userEvent.setup();
-		render(<TotalsPanel timeline={mockTimelineCodeOnly} />);
+		render(<SkillsOverview timeline={mockTimelineCodeOnly} />);
 		await user.click(screen.getByRole("button", { name: /^text$/i }));
-		expect(screen.getByText(/no text skills available/i)).toBeInTheDocument();
+		expect(screen.getByText(/no matching skills found/i)).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /all/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /^code$/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /^text$/i })).toBeInTheDocument();
 	});
 
-	it("shows sort controls", () => {
-		render(<TotalsPanel timeline={mockTimelineWithBoth} />);
-		expect(screen.getByText(/sort by/i)).toBeInTheDocument();
+	it("shows skill table with column headers", () => {
+		render(<SkillsOverview timeline={mockTimelineWithBoth} />);
+		expect(screen.getByPlaceholderText(/search skills/i)).toBeInTheDocument();
+		expect(screen.getByText(/^Skill$/)).toBeInTheDocument();
+		expect(screen.getByText(/^Score$/)).toBeInTheDocument();
 	});
 
 	it("shows contributing projects in tooltip for each skill", () => {
-		render(<TotalsPanel timeline={mockTimelineWithBoth} />);
+		render(<SkillsOverview timeline={mockTimelineWithBoth} />);
 		expect(screen.getByText("My App")).toBeInTheDocument();
 		expect(screen.getByText("Essay")).toBeInTheDocument();
 	});
 
 	it("shows all projects when skill has multiple contributors", () => {
-		render(<TotalsPanel timeline={mockTimelineMultiProject} />);
+		render(<SkillsOverview timeline={mockTimelineMultiProject} />);
 		expect(screen.getByText("Backend API")).toBeInTheDocument();
 		expect(screen.getByText("Frontend Client")).toBeInTheDocument();
 		expect(screen.getByText("Mobile App")).toBeInTheDocument();
