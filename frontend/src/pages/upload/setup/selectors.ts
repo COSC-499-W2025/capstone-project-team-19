@@ -179,6 +179,7 @@ export function deriveProjectCards(upload: UploadRecord | null): SetupProjectCar
         keyRole,
         statusLabel: status.label,
         statusTone: status.tone,
+        optionalStatusLabel: status.optionalLabel ?? null,
       };
     });
 }

@@ -170,13 +170,7 @@ export default function UploadSetupPage() {
         actionDisabled={analyzeButtonDisabled}
         showAction
       >
-        <div className="max-w-[1040px] rounded-xl bg-[var(--upload-bg)] p-6 max-[980px]:p-4">
-          <header className="mb-4">
-            <h2 className="wizardPlaceholderTitle">Setup</h2>
-            <p className="wizardPlaceholderText">
-              Review project setup details before analysis. Upload #{uploadIdParam}
-            </p>
-          </header>
+        <div className="max-w-[1040px] px-2 pt-5 pb-8 max-[980px]:px-0">
 
           {flow.loading && <p className="mb-3 text-sm">Loading project setup context...</p>}
           {!flow.loading && !flow.loadError && !hasAnalysisStarted && checkingReadiness && (
@@ -212,16 +206,15 @@ export default function UploadSetupPage() {
           )}
 
           {!flow.loading && !flow.loadError && flow.projectCards.length > 0 && (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <SetupProjectGroup
                 title="Individual Projects"
                 projects={flow.individualProjects}
                 emptyLabel="No individual projects."
-                expandedProjectName={flow.expandedProjectName}
+                expandedProjectNames={flow.expandedProjectNames}
                 onToggleProject={flow.onToggleProject}
                 actions={flow.actions}
                 isMutating={flow.isMutating}
-                uploadStatus={flow.uploadStatus}
                 manualOnlySummaries={flow.manualOnlySummaries}
               />
 
@@ -229,11 +222,10 @@ export default function UploadSetupPage() {
                 title="Collaborative Projects"
                 projects={flow.collaborativeProjects}
                 emptyLabel="No collaborative projects."
-                expandedProjectName={flow.expandedProjectName}
+                expandedProjectNames={flow.expandedProjectNames}
                 onToggleProject={flow.onToggleProject}
                 actions={flow.actions}
                 isMutating={flow.isMutating}
-                uploadStatus={flow.uploadStatus}
                 manualOnlySummaries={flow.manualOnlySummaries}
               />
             </div>

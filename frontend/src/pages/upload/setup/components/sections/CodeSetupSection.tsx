@@ -27,6 +27,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
   const [extraEmails, setExtraEmails] = useState("");
   const [identitiesLoading, setIdentitiesLoading] = useState(false);
   const [identityMessage, setIdentityMessage] = useState<string | null>(null);
+  const [localGitDetected, setLocalGitDetected] = useState<boolean | null>(null);
 
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [selectedRepo, setSelectedRepo] = useState(project.githubRepoFullName ?? "");
@@ -34,8 +35,15 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
   const [authUrl, setAuthUrl] = useState<string | null>(null);
   const [githubMessage, setGithubMessage] = useState<string | null>(null);
 
-  const canPickIdentities = project.classification === "collaborative";
-  const shouldSuggestIdentitySelection = canPickIdentities && project.gitRepoDetected === true && project.gitMultiAuthorHint;
+  const canPickIdentities =
+    project.classification === "collaborative" &&
+    localGitDetected === true &&
+    identities.length > 0;
+
+  const gitCommitCount = useMemo(
+    () => identities.reduce((sum, option) => sum + (option.commit_count || 0), 0),
+    [identities],
+  );
 
   useEffect(() => {
     setSelectedIndices(project.gitSelectedIdentityIndices);
@@ -46,41 +54,46 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
   }, [project.githubRepoFullName]);
 
   useEffect(() => {
-    if (!shouldSuggestIdentitySelection || project.projectKey === null) {
+    if (project.projectKey === null) {
+      setLocalGitDetected(null);
       setIdentities([]);
       return;
     }
 
     let active = true;
 
-    async function loadIdentities() {
+    async function detectContributors() {
       setIdentitiesLoading(true);
       setIdentityMessage(null);
-      const data = await actions.getGitIdentities(project.projectKey as number);
+
+      const gitData = await actions.getGitIdentities(project.projectKey as number);
       if (!active) return;
 
-      if (!data) {
-        setIdentities([]);
+      if (gitData) {
+        setLocalGitDetected(true);
+        setIdentities(gitData.options);
+        setSelectedIndices(gitData.selected_indices);
         setIdentitiesLoading(false);
         return;
       }
 
-      setIdentities(data.options);
-      setSelectedIndices(data.selected_indices);
+      setLocalGitDetected(false);
+      setIdentities([]);
+      setSelectedIndices([]);
       setIdentitiesLoading(false);
     }
 
-    loadIdentities();
+    detectContributors();
     return () => {
       active = false;
     };
-  }, [actions, project.projectKey, shouldSuggestIdentitySelection]);
+  }, [actions, project.projectKey]);
 
   const identitySummary = useMemo(() => {
-    if (project.gitRepoDetected === false) return "No local .git repository detected for this project.";
-    if (project.gitRepoDetected === true) return ".git file is detected in this project.";
-    return "Git detection data not available yet.";
-  }, [project.gitRepoDetected]);
+    if (identitiesLoading) return "Detecting local .git repository...";
+    if (localGitDetected === true) return ".git file is detected in this project.";
+    return "No local .git repository detected for this project.";
+  }, [identitiesLoading, localGitDetected]);
 
   function onToggleIdentity(index: number) {
     setSelectedIndices((prev) =>
@@ -89,7 +102,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
   }
 
   async function onSaveIdentities() {
-    if (project.projectKey === null) return;
+    if (!canPickIdentities || project.projectKey === null) return;
     const data = await actions.saveGitIdentities(
       project.projectKey,
       selectedIndices,
@@ -142,53 +155,37 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-zinc-200 bg-white px-3 py-2">
-      <h4 className="text-sm leading-tight font-semibold text-zinc-900">Code Setup</h4>
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <h4 className="text-lg leading-tight font-semibold text-zinc-900">Git Detection</h4>
+        <p className="text-sm leading-relaxed text-zinc-700">{identitySummary}</p>
+      </div>
 
-      <p className="text-xs leading-relaxed text-zinc-700">{identitySummary}</p>
-
-      {project.gitRepoDetected === true && (
-        <p className="text-xs leading-relaxed text-zinc-600">
-          Commits: {project.gitCommitCountHint} | Authors: {project.gitAuthorCountHint}
+      {project.classification === "collaborative" && localGitDetected && (
+        <p className="text-sm leading-relaxed text-zinc-600">
+          Commits: {gitCommitCount} | Authors: {identities.length}
         </p>
       )}
 
-      {project.classification === "individual" && (
-        <p className="rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs text-zinc-700">
-          Identity selection is not shown for individual code projects (CLI-aligned behavior).
-        </p>
-      )}
-
-      {project.classification === "collaborative" && !shouldSuggestIdentitySelection && (
-        <p className="rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs text-zinc-700">
-          Identity selection is only needed when a local multi-author git history is detected.
-        </p>
-      )}
-
-      {shouldSuggestIdentitySelection && (
-        <div className="space-y-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-2">
-          <div className="text-xs font-semibold text-zinc-900">Select your git identity (collaborative only)</div>
-          {identitiesLoading && <p className="text-xs text-zinc-600">Loading identities...</p>}
-          {!identitiesLoading && identities.length === 0 && (
-            <p className="text-xs text-zinc-600">No identities detected yet.</p>
-          )}
-          {!identitiesLoading &&
-            identities.map((option) => (
-              <label key={option.index} className="flex items-center gap-2 text-xs text-zinc-800">
-                <input
-                  type="checkbox"
-                  checked={selectedIndices.includes(option.index)}
-                  onChange={() => onToggleIdentity(option.index)}
-                  disabled={isMutating}
-                />
-                <span>
-                  {formatIdentityLabel(option)} - {option.commit_count} commits
-                </span>
-              </label>
-            ))}
+      {canPickIdentities && (
+        <div className="space-y-3">
+          <div className="text-sm font-semibold text-zinc-900">Select your identity (collaborative code)</div>
+          {identities.map((option) => (
+            <label key={option.index} className="flex items-center gap-2 text-sm text-zinc-800">
+              <input
+                type="checkbox"
+                checked={selectedIndices.includes(option.index)}
+                onChange={() => onToggleIdentity(option.index)}
+                disabled={isMutating}
+              />
+              <span>
+                {formatIdentityLabel(option)} - {option.commit_count} commits
+              </span>
+            </label>
+          ))}
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-zinc-700" htmlFor={`extra-emails-${project.projectName}`}>
+            <label className="text-sm font-medium text-zinc-700" htmlFor={`extra-emails-${project.projectName}`}>
               Extra commit emails (comma-separated)
             </label>
             <input
@@ -197,7 +194,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
               value={extraEmails}
               onChange={(event) => setExtraEmails(event.target.value)}
               placeholder="you@school.ca, work@company.com"
-              className="h-8 w-full rounded border border-zinc-300 bg-white px-2 text-xs"
+              className="h-10 w-full rounded border border-zinc-300 bg-white px-3 text-sm"
               disabled={isMutating}
             />
           </div>
@@ -206,27 +203,32 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             type="button"
             onClick={onSaveIdentities}
             disabled={isMutating || project.projectKey === null}
-            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-900 disabled:opacity-50"
+            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
           >
             Save identity selection
           </button>
-          {identityMessage && <p className="text-xs text-zinc-700">{identityMessage}</p>}
+          {identityMessage && <p className="text-sm text-zinc-700">{identityMessage}</p>}
         </div>
       )}
 
-      <div className="space-y-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-2">
-        <div className="text-xs font-semibold text-zinc-900">GitHub Integration</div>
-        <p className="text-xs text-zinc-700">
+      <div className="space-y-3">
+        <h4 className="text-lg leading-tight font-semibold text-zinc-900">GitHub Integration</h4>
+        <p className="text-sm text-zinc-700">
           State: <span className="font-medium">{project.githubState}</span>
           {project.githubRepoLinked && project.githubRepoFullName ? ` | Linked repo: ${project.githubRepoFullName}` : ""}
         </p>
+        {!localGitDetected && project.classification === "collaborative" && (
+          <p className="text-sm text-zinc-700">
+            With no local .git history, collaborative identity is inferred from the connected GitHub account during analysis.
+          </p>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => onGithubStart(true)}
             disabled={isMutating}
-            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-900 disabled:opacity-50"
+            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
           >
             Connect GitHub
           </button>
@@ -234,7 +236,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             type="button"
             onClick={() => onGithubStart(false)}
             disabled={isMutating}
-            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-900 disabled:opacity-50"
+            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
           >
             Skip for now
           </button>
@@ -242,14 +244,14 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             type="button"
             onClick={onLoadRepos}
             disabled={isMutating || reposLoading}
-            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-900 disabled:opacity-50"
+            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
           >
             {reposLoading ? "Loading..." : "Load repositories"}
           </button>
         </div>
 
         {authUrl && (
-          <a href={authUrl} target="_blank" rel="noreferrer" className="text-xs font-medium text-blue-700 underline">
+          <a href={authUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-700 underline">
             Open GitHub authorization
           </a>
         )}
@@ -259,7 +261,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             <select
               value={selectedRepo}
               onChange={(event) => setSelectedRepo(event.target.value)}
-              className="h-8 w-full rounded border border-zinc-300 bg-white px-2 text-xs"
+              className="h-10 w-full rounded border border-zinc-300 bg-white px-3 text-sm"
               disabled={isMutating}
             >
               {repos.map((repo) => (
@@ -272,14 +274,14 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
               type="button"
               onClick={onLinkRepo}
               disabled={isMutating || !selectedRepo}
-              className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-900 disabled:opacity-50"
+              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
             >
               Link selected repository
             </button>
           </div>
         )}
 
-        {githubMessage && <p className="text-xs text-zinc-700">{githubMessage}</p>}
+        {githubMessage && <p className="text-sm text-zinc-700">{githubMessage}</p>}
       </div>
     </div>
   );

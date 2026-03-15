@@ -43,6 +43,7 @@ export type SetupProjectCard = {
   keyRole: string;
   statusLabel: string;
   statusTone: SetupBadgeTone;
+  optionalStatusLabel: string | null;
 };
 
 export type SetupFlowResult = {
@@ -61,7 +62,7 @@ export type SetupFlowResult = {
   projectCards: SetupProjectCard[];
   individualProjects: SetupProjectCard[];
   collaborativeProjects: SetupProjectCard[];
-  expandedProjectName: string | null;
+  expandedProjectNames: string[];
   onToggleProject: (projectName: string) => void;
   clearActionError: () => void;
   refreshUpload: () => Promise<boolean>;

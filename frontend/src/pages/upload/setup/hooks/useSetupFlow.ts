@@ -50,7 +50,7 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [uploadNotFound, setUploadNotFound] = useState(false);
-  const [expandedProjectName, setExpandedProjectName] = useState<string | null>(null);
+  const [expandedProjectNames, setExpandedProjectNames] = useState<string[]>([]);
 
   const hasValidUploadId = useMemo(() => isValidUploadIdParam(uploadIdParam), [uploadIdParam]);
   const uploadId = hasValidUploadId ? Number.parseInt(uploadIdParam, 10) : null;
@@ -138,12 +138,12 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
 
   useEffect(() => {
     if (projectCards.length === 0) {
-      setExpandedProjectName(null);
+      setExpandedProjectNames([]);
       return;
     }
-    if (expandedProjectName && projectCards.some((project) => project.projectName === expandedProjectName)) return;
-    setExpandedProjectName(projectCards[0].projectName);
-  }, [expandedProjectName, projectCards]);
+    const validNames = new Set(projectCards.map((project) => project.projectName));
+    setExpandedProjectNames((prev) => prev.filter((name) => validNames.has(name)));
+  }, [projectCards]);
 
   const clearActionError = useCallback(() => {
     setActionError(null);
@@ -182,8 +182,9 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
       fallback: string,
       refreshAfter = false,
       trackMutation = true,
+      reportError = true,
     ): Promise<T | null> => {
-      setActionError(null);
+      if (reportError) setActionError(null);
       if (trackMutation) setIsMutating(true);
 
       try {
@@ -194,7 +195,7 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
         }
         return data;
       } catch (error: unknown) {
-        setActionError(getErrorMessage(error, fallback));
+        if (reportError) setActionError(getErrorMessage(error, fallback));
         return null;
       } finally {
         if (trackMutation) setIsMutating(false);
@@ -204,7 +205,9 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
   );
 
   function onToggleProject(projectName: string) {
-    setExpandedProjectName((prev) => (prev === projectName ? null : projectName));
+    setExpandedProjectNames((prev) =>
+      prev.includes(projectName) ? prev.filter((name) => name !== projectName) : [...prev, projectName],
+    );
   }
 
   const actions = useMemo(
@@ -271,6 +274,9 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
         return runDataRequest(
           () => getUploadProjectGitIdentities(id, projectKey),
           "Failed to load git identities.",
+          false,
+          false,
+          false,
         );
       },
       saveGitIdentities: async (projectKey: number, selectedIndices: number[], extraEmails: string[] = []) => {
@@ -389,7 +395,7 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
     projectCards,
     individualProjects,
     collaborativeProjects,
-    expandedProjectName,
+    expandedProjectNames,
     onToggleProject,
     clearActionError,
     refreshUpload,

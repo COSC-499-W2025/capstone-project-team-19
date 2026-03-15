@@ -1,74 +1,95 @@
 import { useEffect, useState } from "react";
-import type { UploadStatus } from "../../../../../api/uploads";
 import type { SetupFlowResult, SetupProjectCard } from "../../types";
 
 type Props = {
   project: SetupProjectCard;
   actions: SetupFlowResult["actions"];
   isMutating: boolean;
-  uploadStatus: UploadStatus | null;
   manualOnlySummaries: boolean;
 };
 
-function canSaveSummaryInStatus(uploadStatus: UploadStatus | null): boolean {
-  return uploadStatus === "needs_summaries" || uploadStatus === "analyzing" || uploadStatus === "done";
-}
+type SummaryMode = "llm" | "manual";
 
 export default function ContributionSummarySection({
   project,
   actions,
   isMutating,
-  uploadStatus,
   manualOnlySummaries,
 }: Props) {
+  const initialMode: SummaryMode =
+    manualOnlySummaries || project.manualContributionSummary.trim().length > 0 ? "manual" : "llm";
+  const [mode, setMode] = useState<SummaryMode>(initialMode);
   const [summaryText, setSummaryText] = useState(project.manualContributionSummary);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setSummaryText(project.manualContributionSummary);
-  }, [project.manualContributionSummary]);
-
-  const canSave = canSaveSummaryInStatus(uploadStatus);
+    setMode(manualOnlySummaries || project.manualContributionSummary.trim().length > 0 ? "manual" : "llm");
+  }, [manualOnlySummaries, project.manualContributionSummary]);
 
   async function onSave() {
     setSaveMessage(null);
     if (project.projectKey === null) return;
+    if (mode !== "manual") return;
     const data = await actions.saveManualContributionSummary(project.projectKey, summaryText);
     if (!data) return;
     setSaveMessage("Manual contribution summary saved.");
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2">
-      <h4 className="mb-1 text-sm leading-tight font-semibold text-zinc-900">Contribution Summary</h4>
+    <div className="space-y-2">
+      <h4 className="text-lg leading-tight font-semibold text-zinc-900">Contribution Summary</h4>
+      <div className="space-y-1 text-sm text-zinc-800">
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name={`contribution-summary-mode-${project.projectName}`}
+            checked={mode === "llm"}
+            onChange={() => setMode("llm")}
+            disabled={isMutating || manualOnlySummaries}
+          />
+          <span>Use LLM summary</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name={`contribution-summary-mode-${project.projectName}`}
+            checked={mode === "manual"}
+            onChange={() => setMode("manual")}
+            disabled={isMutating}
+          />
+          <span>Input manual summary</span>
+        </label>
+      </div>
       {manualOnlySummaries && (
-        <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+        <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           Manual contribution summary is used because LLM consent is not granted.
         </p>
       )}
-      <textarea
-        value={summaryText}
-        onChange={(event) => setSummaryText(event.target.value)}
-        placeholder="Input your contribution summary here"
-        className="min-h-[82px] w-full rounded border border-zinc-300 bg-white px-2 py-2 text-xs"
-        disabled={isMutating}
-      />
-      <div className="mt-2 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={isMutating || !canSave || project.projectKey === null}
-          className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-900 disabled:opacity-50"
-        >
-          Save contribution summary
-        </button>
-        {!canSave && (
-          <span className="text-xs text-zinc-600">
-            Available after setup reaches summaries stage.
-          </span>
-        )}
-      </div>
-      {saveMessage && <p className="mt-1 text-xs text-zinc-700">{saveMessage}</p>}
+      {mode === "manual" ? (
+        <>
+          <textarea
+            value={summaryText}
+            onChange={(event) => setSummaryText(event.target.value)}
+            placeholder="Input your contribution summary here"
+            className="min-h-[120px] w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm"
+            disabled={isMutating}
+          />
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={isMutating || project.projectKey === null}
+              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+            >
+              Save contribution summary
+            </button>
+          </div>
+        </>
+      ) : (
+        <p className="text-sm text-zinc-600">Summary will be generated with LLM during analysis.</p>
+      )}
+      {saveMessage && <p className="mt-1 text-sm text-zinc-700">{saveMessage}</p>}
     </div>
   );
 }

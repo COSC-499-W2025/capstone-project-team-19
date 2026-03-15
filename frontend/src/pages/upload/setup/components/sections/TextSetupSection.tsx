@@ -136,21 +136,20 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-zinc-200 bg-white px-3 py-2">
-      <h4 className="text-sm leading-tight font-semibold text-zinc-900">Text Setup</h4>
+    <div className="space-y-4">
 
-      <div className="space-y-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-2">
-        <div className="text-xs font-semibold text-zinc-900">Main file</div>
-        {filesLoading && <p className="text-xs text-zinc-600">Loading project files...</p>}
+      <div className="space-y-3">
+        <div className="text-sm font-semibold text-zinc-900">Main file</div>
+        {filesLoading && <p className="text-sm text-zinc-600">Loading project files...</p>}
         {!filesLoading && mainFileOptions.length === 0 && (
-          <p className="text-xs text-zinc-600">No text files found for this project.</p>
+          <p className="text-sm text-zinc-600">No text files found for this project.</p>
         )}
         {!filesLoading && mainFileOptions.length > 0 && (
           <>
             <select
               value={mainFile}
               onChange={(event) => setMainFile(event.target.value)}
-              className="h-8 w-full rounded border border-zinc-300 bg-white px-2 text-xs"
+              className="h-10 w-full rounded border border-zinc-300 bg-white px-3 text-sm"
               disabled={isMutating}
             >
               <option value="">Select main file</option>
@@ -164,7 +163,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               type="button"
               onClick={onSaveMainFile}
               disabled={isMutating || !mainFile || project.projectKey === null}
-              className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-900 disabled:opacity-50"
+              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
             >
               Save main file
             </button>
@@ -172,27 +171,27 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
         )}
       </div>
 
-      <div className="space-y-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-2">
+      <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-xs font-semibold text-zinc-900">Contributed sections</div>
+          <div className="text-sm font-semibold text-zinc-900">Contributed sections</div>
           <button
             type="button"
             onClick={onLoadSections}
             disabled={isMutating || sectionsLoading || project.projectKey === null}
-            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-900 disabled:opacity-50"
+            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
           >
             {sectionsLoading ? "Loading..." : "Load sections"}
           </button>
         </div>
 
         {sections.length === 0 && (
-          <p className="text-xs text-zinc-600">No sections loaded yet. Load sections after saving a main file.</p>
+          <p className="text-sm text-zinc-600">No sections loaded yet. Load sections after saving a main file.</p>
         )}
 
         {sections.length > 0 && (
           <div className="space-y-1">
             {sections.map((section) => (
-              <label key={section.id} className="flex items-start gap-2 text-xs text-zinc-800">
+              <label key={section.id} className="flex items-start gap-2 text-sm text-zinc-800">
                 <input
                   type="checkbox"
                   checked={selectedSectionIds.includes(section.id)}
@@ -209,7 +208,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               type="button"
               onClick={onSaveSections}
               disabled={isMutating || project.projectKey === null}
-              className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-900 disabled:opacity-50"
+              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
             >
               Save section selection
             </button>
@@ -217,15 +216,15 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
         )}
       </div>
 
-      <div className="space-y-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-2">
-        <div className="text-xs font-semibold text-zinc-900">Supporting text files</div>
+      <div className="space-y-3">
+        <div className="text-sm font-semibold text-zinc-900">Supporting text files</div>
         {supportingTextOptions.length === 0 && (
-          <p className="text-xs text-zinc-600">No supporting text candidates found.</p>
+          <p className="text-sm text-zinc-600">No supporting text candidates found.</p>
         )}
         {supportingTextOptions.length > 0 && (
           <div className="space-y-1">
             {supportingTextOptions.map((item) => (
-              <label key={item.relpath} className="flex items-center gap-2 text-xs text-zinc-800">
+              <label key={item.relpath} className="flex items-center gap-2 text-sm text-zinc-800">
                 <input
                   type="checkbox"
                   checked={selectedSupportingText.includes(item.relpath)}
@@ -239,7 +238,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               type="button"
               onClick={onSaveSupportingText}
               disabled={isMutating || project.projectKey === null}
-              className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-900 disabled:opacity-50"
+              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
             >
               Save supporting text files
             </button>
@@ -247,15 +246,15 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
         )}
       </div>
 
-      <div className="space-y-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-2">
-        <div className="text-xs font-semibold text-zinc-900">Supporting CSV files</div>
+      <div className="space-y-3">
+        <div className="text-sm font-semibold text-zinc-900">Supporting CSV files</div>
         {supportingCsvOptions.length === 0 && (
-          <p className="text-xs text-zinc-600">No supporting CSV files found.</p>
+          <p className="text-sm text-zinc-600">No supporting CSV files found.</p>
         )}
         {supportingCsvOptions.length > 0 && (
           <div className="space-y-1">
             {supportingCsvOptions.map((item) => (
-              <label key={item.relpath} className="flex items-center gap-2 text-xs text-zinc-800">
+              <label key={item.relpath} className="flex items-center gap-2 text-sm text-zinc-800">
                 <input
                   type="checkbox"
                   checked={selectedSupportingCsv.includes(item.relpath)}
@@ -269,7 +268,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               type="button"
               onClick={onSaveSupportingCsv}
               disabled={isMutating || project.projectKey === null}
-              className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-900 disabled:opacity-50"
+              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
             >
               Save supporting CSV files
             </button>
@@ -277,13 +276,13 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
         )}
       </div>
 
-      <div className="space-y-2 rounded border border-zinc-200 bg-zinc-50 px-2 py-2">
-        <div className="text-xs font-semibold text-zinc-900">Google Drive (placeholder)</div>
-        <p className="text-xs text-zinc-700">
+      <div className="space-y-3">
+        <div className="text-sm font-semibold text-zinc-900">Google Drive (placeholder)</div>
+        <p className="text-sm text-zinc-700">
           Current state: <span className="font-medium">{project.driveState}</span>
           {project.driveLinkedFilesCount > 0 ? ` | Linked files: ${project.driveLinkedFilesCount}` : ""}
         </p>
-        <div className="flex items-center gap-4 text-xs text-zinc-800">
+        <div className="flex items-center gap-6 text-sm text-zinc-800">
           <label className="flex items-center gap-1.5">
             <input
               type="radio"
@@ -311,14 +310,14 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
           type="button"
           onClick={onSaveDriveChoice}
           disabled={isMutating || driveChoice === ""}
-          className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-900 disabled:opacity-50"
+          className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
         >
           Save Drive preference
         </button>
-        {driveMessage && <p className="text-xs text-zinc-700">{driveMessage}</p>}
+        {driveMessage && <p className="text-sm text-zinc-700">{driveMessage}</p>}
       </div>
 
-      {saveMessage && <p className="text-xs text-zinc-700">{saveMessage}</p>}
+      {saveMessage && <p className="text-sm text-zinc-700">{saveMessage}</p>}
     </div>
   );
 }
