@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { postUploadRun, type RunPreflightRecord } from "../../../api/uploads";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { getUploadStatus, postUploadRun, type RunPreflightRecord, type UploadStatus } from "../../../api/uploads";
 import { getUsername } from "../../../auth/user";
 import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
@@ -38,12 +38,15 @@ function firstErrorCode(data: RunPreflightRecord): string {
 
 export default function UploadAnalyzePage() {
   const username = getUsername();
+  const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const uploadIdParam = searchParams.get("uploadId") ?? "";
   const uploadId = Number.parseInt(uploadIdParam, 10);
   const hasValidUploadId = Number.isInteger(uploadId) && uploadId > 0;
   const [cards, setCards] = useState<Record<ScopeName, ScopeCard>>(INITIAL_CARDS);
   const [pageMessage, setPageMessage] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus | null>(null);
+  const [pollingEnabled, setPollingEnabled] = useState(false);
   const startedRef = useRef(false);
 
   const steps = [
@@ -121,11 +124,13 @@ export default function UploadAnalyzePage() {
     let active = true;
     async function runSequence() {
       setPageMessage("Running analysis...");
+      setPollingEnabled(true);
       await runScope("individual");
       if (!active) return;
       await runScope("collaborative");
       if (!active) return;
       setPageMessage("Analysis sequence finished.");
+      setPollingEnabled(false);
     }
     runSequence();
 
@@ -138,6 +143,30 @@ export default function UploadAnalyzePage() {
     if (!pageMessage?.includes("finished")) return null;
     return "All analysis is complete. You can view, manage, and customize results in the Projects or Insights tabs. You can also export them as a resume or portfolio from the Outputs tab.";
   }, [pageMessage]);
+
+  useEffect(() => {
+    if (!hasValidUploadId || !pollingEnabled) return;
+    let active = true;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    async function pollOnce() {
+      const data = await getUploadStatus(uploadId);
+      if (!active || !data.success || !data.data) return;
+      const status = data.data.status;
+      setUploadStatus(status);
+      if (status === "done" || status === "failed") {
+        setPollingEnabled(false);
+      }
+    }
+
+    pollOnce();
+    intervalId = setInterval(pollOnce, 2000);
+
+    return () => {
+      active = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [hasValidUploadId, pollingEnabled, uploadId]);
 
   function statusLabel(status: ScopeStatus): string {
     if (status === "running") return "In progress";
@@ -154,7 +183,12 @@ export default function UploadAnalyzePage() {
           <h2 className="text-4xl leading-tight font-semibold text-zinc-900">Analyzing files....</h2>
         </header>
 
+        {!hasValidUploadId && (
+          <p className="text-sm text-rose-700">Missing uploadId. Return to Setup and start analysis again.</p>
+        )}
+
         {pageMessage && <p className="text-sm text-zinc-700">{pageMessage}</p>}
+        {uploadStatus && <p className="text-sm text-zinc-700">Upload status: {uploadStatus}</p>}
 
         <section className="space-y-6">
           {(["individual", "collaborative"] as ScopeName[]).map((scope) => {
@@ -175,9 +209,34 @@ export default function UploadAnalyzePage() {
         </section>
 
         {completionText && (
-          <p className="mx-auto max-w-[850px] pt-8 text-center text-3xl leading-snug text-zinc-900 max-[980px]:text-base">
-            {completionText}
-          </p>
+          <div className="space-y-4 pt-8">
+            <p className="mx-auto max-w-[850px] text-center text-3xl leading-snug text-zinc-900 max-[980px]:text-base">
+              {completionText}
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => nav("/projects")}
+                className="rounded border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-900"
+              >
+                Go to Projects
+              </button>
+              <button
+                type="button"
+                onClick={() => nav("/insights")}
+                className="rounded border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-900"
+              >
+                Go to Insights
+              </button>
+              <button
+                type="button"
+                onClick={() => nav("/outputs")}
+                className="rounded border border-zinc-300 bg-zinc-900 px-4 py-2 text-sm font-medium text-white"
+              >
+                Go to Outputs
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </UploadWizardShell>
