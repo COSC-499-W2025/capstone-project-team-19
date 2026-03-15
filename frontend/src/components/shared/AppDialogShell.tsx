@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X } from "../../lib/ui-icons";
+import { X } from "../../lib/ui-icons.ts";
 import { cn } from "../../lib/utils";
 import AppButton from "./AppButton";
 

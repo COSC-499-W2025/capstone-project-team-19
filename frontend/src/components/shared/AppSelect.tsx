@@ -1,5 +1,5 @@
 import type { SelectHTMLAttributes } from "react";
-import { ChevronDown } from "../../lib/ui-icons";
+import { ChevronDown } from "../../lib/ui-icons.ts";
 import { cn } from "../../lib/utils";
 
 type Props = SelectHTMLAttributes<HTMLSelectElement>;

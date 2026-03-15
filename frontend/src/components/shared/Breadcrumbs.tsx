@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ChevronRight } from "../../lib/ui-icons";
+import { ChevronRight } from "../../lib/ui-icons.ts";
 
 type BreadcrumbItem = {
   label: string;

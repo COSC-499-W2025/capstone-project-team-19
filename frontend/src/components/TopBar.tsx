@@ -1,6 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
 import { cn } from "../lib/utils";
-import { CircleUserRound } from "../lib/ui-icons";
+import { CircleUserRound } from "../lib/ui-icons.ts";
 
 type Props = {
   showNav?: boolean;
