@@ -420,11 +420,11 @@ button {
 }
 
 .wizardProgressTitle {
-  font-size: 34px;
+  font-size: 28px;
   line-height: 1.05;
   font-weight: 700;
   color: #111;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
 
 .wizardSteps {

@@ -17,9 +17,6 @@ export default function SetupAnalyzeConfirmDialog({ open, onCancel, onConfirm, i
         <p className="mt-2 text-sm leading-relaxed text-zinc-700">
           Please confirm your setup details are correct. Once analysis starts, setup selections should not be changed.
         </p>
-        <p className="mt-2 text-xs text-zinc-600">
-          You can still review progress in Step 4 (Analyze), but setup edits are not guaranteed to be applied.
-        </p>
         <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancel

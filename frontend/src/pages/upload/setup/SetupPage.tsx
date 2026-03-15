@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import type { RunErrorDetail, RunPreflightRecord, RunWarning } from "../../../api/uploads";
+import type { RunPreflightRecord, RunWarning } from "../../../api/uploads";
 import { getUsername } from "../../../auth/user";
 import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
@@ -8,61 +8,6 @@ import SetupAnalyzeConfirmDialog from "./components/SetupAnalyzeConfirmDialog";
 import SetupProjectGroup from "./components/SetupProjectGroup";
 import { useSetupFlow } from "./hooks/useSetupFlow";
 import type { SummaryMode } from "./types";
-
-function asProjectListLabel(value: unknown): string {
-  if (Array.isArray(value)) {
-    const names = value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
-    return names.length > 0 ? names.join(", ") : "selected projects";
-  }
-  if (typeof value === "string" && value.trim()) return value.trim();
-  return "selected projects";
-}
-
-function formatRunErrorDetail(item: RunErrorDetail): string {
-  const code = String(item.code || "");
-  if (code === "upload_not_ready") {
-    const status = typeof item.status === "string" && item.status.trim() ? item.status : "unknown";
-    return `Upload is not ready yet (status: ${status}).`;
-  }
-  if (code === "dedup_unresolved") {
-    return `Resolve duplicate decisions first for: ${asProjectListLabel(item.projects)}.`;
-  }
-  if (code === "missing_classifications") {
-    return `Missing project mode selection for: ${asProjectListLabel(item.projects)}.`;
-  }
-  if (code === "unresolved_project_types") {
-    return `Missing project type selection for: ${asProjectListLabel(item.projects)}.`;
-  }
-  if (code === "missing_main_file") {
-    const label = asProjectListLabel(item.projects ?? item.project);
-    return `Select the main text file for: ${label}.`;
-  }
-  if (code === "no_projects_for_scope") return "No projects are available for selected scope.";
-  if (code === "missing_internal_consent") return "User consent is missing. Please review Step 1.";
-  if (code === "already_analyzing") return "Analysis is already running for this upload.";
-  if (code === "scope_already_completed") return "This analysis scope was already completed.";
-  if (code === "upload_failed") return "This upload is in failed state.";
-  return code ? `Blocking issue: ${code}` : "Blocking issue detected.";
-}
-
-function formatRunWarning(item: RunWarning): string {
-  const code = String(item.code || "");
-  if (code === "missing_manual_summary") return "Manual project summary is missing.";
-  if (code === "missing_manual_contribution_summary") return "Manual contribution summary is missing.";
-  if (code === "missing_key_role") return "Key role is missing.";
-  if (code === "missing_github_link") return "GitHub repository is not linked.";
-  if (code === "missing_git_identities") return "Collaborative git identity is not selected.";
-  if (code === "missing_supporting_files") return "No supporting files selected yet.";
-  if (code === "missing_contribution_sections") return "No contribution sections selected yet.";
-  if (code === "llm_disabled") return "External LLM consent is not granted; manual-only mode is active.";
-  if (code === "drive_not_configured") return "Google Drive is not configured.";
-  if (code === "drive_skipped") return "Google Drive is skipped.";
-  if (code === "github_not_configured") return "GitHub is not configured.";
-  if (code === "github_skipped") return "GitHub connection is skipped.";
-  if (code === "missing_drive_links") return "Google Drive links are missing.";
-  if (code === "no_git_repo_detected") return "No .git repository detected.";
-  return code ? `Non-blocking warning: ${code}` : "Non-blocking warning detected.";
-}
 
 function toOptionalBadgeLabel(item: RunWarning): string | null {
   const code = String(item.code || "");
@@ -209,6 +154,19 @@ export default function UploadSetupPage() {
     });
   }, []);
 
+  const resolvedSummaryModesByProject = useMemo(() => {
+    const out: Record<string, ProjectSummaryModes> = {};
+    for (const project of flow.projectCards) {
+      const fallback = deriveInitialSummaryModes({
+        manualOnlySummaries: flow.manualOnlySummaries,
+        manualProjectSummary: project.manualProjectSummary,
+        manualContributionSummary: project.manualContributionSummary,
+      });
+      out[project.projectName] = summaryModesByProject[project.projectName] ?? fallback;
+    }
+    return out;
+  }, [flow.manualOnlySummaries, flow.projectCards, summaryModesByProject]);
+
   async function onAnalyzeAction() {
     if (hasAnalysisStarted) {
       nav(`/upload/analyze?uploadId=${uploadIdParam}`);
@@ -232,17 +190,12 @@ export default function UploadSetupPage() {
   const summaryMissingByProject = useMemo(() => {
     const out: Record<string, boolean> = {};
     for (const project of flow.projectCards) {
-      const fallback = deriveInitialSummaryModes({
-        manualOnlySummaries: flow.manualOnlySummaries,
-        manualProjectSummary: project.manualProjectSummary,
-        manualContributionSummary: project.manualContributionSummary,
-      });
-      const modes = summaryModesByProject[project.projectName] ?? fallback;
+      const modes = resolvedSummaryModesByProject[project.projectName];
       const missing = !flow.manualOnlySummaries && (modes.project === null || modes.contribution === null);
       out[project.projectName] = missing;
     }
     return out;
-  }, [flow.manualOnlySummaries, flow.projectCards, summaryModesByProject]);
+  }, [flow.manualOnlySummaries, flow.projectCards, resolvedSummaryModesByProject]);
 
   const hasMissingSummarySelections = useMemo(
     () => Object.values(summaryMissingByProject).some(Boolean),
@@ -280,17 +233,11 @@ export default function UploadSetupPage() {
 
   if (!flow.hasValidUploadId) return null;
 
-  const blockingErrors = readiness?.errors ?? [];
   const nonBlockingWarnings = readiness?.warnings ?? [];
   const localManualSummaryWarnings = useMemo(() => {
     const out: RunWarning[] = [];
     for (const project of flow.projectCards) {
-      const fallback = deriveInitialSummaryModes({
-        manualOnlySummaries: flow.manualOnlySummaries,
-        manualProjectSummary: project.manualProjectSummary,
-        manualContributionSummary: project.manualContributionSummary,
-      });
-      const modes = summaryModesByProject[project.projectName] ?? fallback;
+      const modes = resolvedSummaryModesByProject[project.projectName];
       if (modes.project === "manual" && project.manualProjectSummary.trim().length === 0) {
         out.push({ code: "missing_manual_summary", project: project.projectName, source: "local" });
       }
@@ -303,7 +250,7 @@ export default function UploadSetupPage() {
       }
     }
     return out;
-  }, [flow.manualOnlySummaries, flow.projectCards, summaryModesByProject]);
+  }, [flow.projectCards, resolvedSummaryModesByProject]);
 
   const effectiveNonBlockingWarnings = useMemo(() => {
     const merged = [...nonBlockingWarnings, ...localManualSummaryWarnings];
@@ -324,7 +271,7 @@ export default function UploadSetupPage() {
     return effectiveNonBlockingWarnings.filter((item) => {
       const code = String(item.code || "");
       const projectName = typeof item.project === "string" ? item.project.trim() : "";
-      const summaryModes = summaryModesByProject[projectName];
+      const summaryModes = resolvedSummaryModesByProject[projectName];
       if (code === "missing_manual_summary") {
         if (summaryModes?.project === "llm" || summaryModes?.project === null) return false;
       }
@@ -333,7 +280,7 @@ export default function UploadSetupPage() {
       }
       return true;
     });
-  }, [effectiveNonBlockingWarnings, summaryModesByProject]);
+  }, [effectiveNonBlockingWarnings, resolvedSummaryModesByProject]);
 
   const optionalWarningsByProject = useMemo(() => {
     const out: Record<string, string | null> = {};
@@ -344,22 +291,6 @@ export default function UploadSetupPage() {
       const label = toOptionalBadgeLabel(item);
       if (!label) continue;
       out[projectName] = label;
-    }
-    return out;
-  }, [filteredNonBlockingWarnings]);
-
-  const warningRows = useMemo(() => {
-    const out: RunWarning[] = [];
-    const seenProjects = new Set<string>();
-    for (const item of filteredNonBlockingWarnings) {
-      const projectName = typeof item.project === "string" ? item.project.trim() : "";
-      if (!projectName) {
-        out.push(item);
-        continue;
-      }
-      if (seenProjects.has(projectName)) continue;
-      seenProjects.add(projectName);
-      out.push(item);
     }
     return out;
   }, [filteredNonBlockingWarnings]);
@@ -382,34 +313,23 @@ export default function UploadSetupPage() {
           )}
           {flow.loadError && <p className="error mb-3 text-sm">{flow.loadError}</p>}
           {flow.actionError && <p className="error mb-3 text-sm">{flow.actionError}</p>}
-          {!flow.loading && !flow.loadError && !hasAnalysisStarted && hasMissingSummarySelections && (
-            <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
-              <p className="mb-1 text-sm font-semibold text-rose-800">
-                Analyze is disabled until summary mode is selected for each project.
-              </p>
-            </div>
-          )}
-          {!flow.loading && !flow.loadError && !hasAnalysisStarted && readiness && !readiness.ready && blockingErrors.length > 0 && (
-            <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
-              <p className="mb-1 text-sm font-semibold text-rose-800">Analyze is disabled until blocking setup items are resolved.</p>
-              <ul className="list-disc space-y-1 pl-5 text-xs text-rose-800">
-                {blockingErrors.map((item, index) => (
-                  <li key={`${item.code}-${index}`}>{formatRunErrorDetail(item)}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {!flow.loading && !flow.loadError && readiness && warningRows.length > 0 && (
-            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-              <p className="mb-1 text-sm font-semibold text-amber-900">Non-blocking setup warnings</p>
-              <ul className="list-disc space-y-1 pl-5 text-xs text-amber-900">
-                {warningRows.map((item, index) => (
-                  <li key={`${item.code}-${index}`}>
-                    {formatRunWarning(item)}
-                    {item.project ? ` (${item.project})` : ""}
-                  </li>
-                ))}
-              </ul>
+          {!flow.loading && !flow.loadError && (
+            <div className="mb-8 rounded-md border border-zinc-300 bg-white px-4 py-3">
+              <p className="text-sm font-semibold text-zinc-900">Status Guide</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 font-medium text-rose-700">
+                  <span className="size-1.5 rounded-full bg-rose-500" />
+                  Red: required info missing
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-medium text-amber-700">
+                  <span className="size-1.5 rounded-full bg-amber-500" />
+                  Yellow: optional but recommended
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 font-medium text-emerald-700">
+                  <span className="size-1.5 rounded-full bg-emerald-500" />
+                  Green: ready for analysis
+                </span>
+              </div>
             </div>
           )}
           {!flow.loading && !flow.loadError && flow.projectCards.length === 0 && (
@@ -417,13 +337,13 @@ export default function UploadSetupPage() {
           )}
 
           {!flow.loading && !flow.loadError && flow.projectCards.length > 0 && (
-            <div className="space-y-8">
+            <div className="space-y-10">
               <SetupProjectGroup
                 title="Individual Projects"
                 projects={flow.individualProjects}
                 optionalWarningsByProject={optionalWarningsByProject}
                 summaryMissingByProject={summaryMissingByProject}
-                summaryModesByProject={summaryModesByProject}
+                summaryModesByProject={resolvedSummaryModesByProject}
                 onProjectSummaryModeChange={onProjectSummaryModeChange}
                 onContributionSummaryModeChange={onContributionSummaryModeChange}
                 emptyLabel="No individual projects."
@@ -439,7 +359,7 @@ export default function UploadSetupPage() {
                 projects={flow.collaborativeProjects}
                 optionalWarningsByProject={optionalWarningsByProject}
                 summaryMissingByProject={summaryMissingByProject}
-                summaryModesByProject={summaryModesByProject}
+                summaryModesByProject={resolvedSummaryModesByProject}
                 onProjectSummaryModeChange={onProjectSummaryModeChange}
                 onContributionSummaryModeChange={onContributionSummaryModeChange}
                 emptyLabel="No collaborative projects."

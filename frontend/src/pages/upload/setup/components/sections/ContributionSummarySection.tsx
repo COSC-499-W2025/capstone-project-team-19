@@ -69,8 +69,8 @@ export default function ContributionSummarySection({
           <textarea
             value={summaryText}
             onChange={(event) => setSummaryText(event.target.value)}
-            placeholder="Input your contribution summary here"
-            className="min-h-[120px] w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm"
+            placeholder="e.g., I implemented the upload/setup flow, integrated API endpoints, and refined the setup UI states."
+            className="min-h-[140px] w-full rounded border border-zinc-300 bg-zinc-50 px-4 py-3 text-sm text-zinc-700 placeholder:text-zinc-400"
             disabled={isMutating}
           />
           <div className="mt-2 flex items-center gap-2">

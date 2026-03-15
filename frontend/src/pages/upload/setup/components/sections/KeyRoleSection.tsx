@@ -26,15 +26,12 @@ export default function KeyRoleSection({ project, actions, isMutating }: Props) 
   return (
     <div className="space-y-2">
       <h4 className="text-lg leading-tight font-semibold text-zinc-900">Key Role</h4>
-      <p className="text-sm leading-relaxed text-zinc-700">
-        Describe your main role in this project (for example: Backend Developer, Research Assistant).
-      </p>
       <input
         type="text"
         value={keyRole}
         onChange={(event) => setKeyRole(event.target.value)}
-        placeholder="Input key role here"
-        className="h-10 w-full rounded border border-zinc-300 bg-zinc-50 px-3 text-sm"
+        placeholder="e.g., Backend Developer, Research Assistant"
+        className="h-12 w-full rounded border border-zinc-300 !bg-zinc-50 !px-4 !py-3 text-sm text-zinc-700 placeholder:text-zinc-400 disabled:!bg-zinc-50"
         disabled={isMutating}
       />
       <div className="mt-2 flex items-center gap-2">

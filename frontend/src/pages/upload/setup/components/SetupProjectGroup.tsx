@@ -33,9 +33,9 @@ export default function SetupProjectGroup({
   manualOnlySummaries,
 }: Props) {
   return (
-    <section className="space-y-4">
-      <h3 className="m-0 text-[1.8rem] leading-none font-extrabold tracking-tight text-zinc-900">{title}</h3>
-      <div className="space-y-4">
+    <section>
+      <h3 className="m-0 mb-5 text-[1.7rem] leading-[1.1] font-bold tracking-tight text-zinc-900">{title}</h3>
+      <div className="space-y-5">
         {projects.length === 0 && (
           <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-5 py-4 text-base text-zinc-600">
             {emptyLabel}

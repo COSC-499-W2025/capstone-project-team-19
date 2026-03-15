@@ -194,7 +194,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
               value={extraEmails}
               onChange={(event) => setExtraEmails(event.target.value)}
               placeholder="you@school.ca, work@company.com"
-              className="h-10 w-full rounded border border-zinc-300 bg-white px-3 text-sm"
+              className="h-12 w-full rounded border border-zinc-300 !bg-zinc-50 !px-4 !py-3 text-sm text-zinc-700 placeholder:text-zinc-400 disabled:!bg-zinc-50"
               disabled={isMutating}
             />
           </div>
@@ -261,7 +261,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             <select
               value={selectedRepo}
               onChange={(event) => setSelectedRepo(event.target.value)}
-              className="h-10 w-full rounded border border-zinc-300 bg-white px-3 text-sm"
+              className="h-12 w-full rounded border border-zinc-300 bg-zinc-50 px-4 py-3 text-sm text-zinc-700"
               disabled={isMutating}
             >
               {repos.map((repo) => (

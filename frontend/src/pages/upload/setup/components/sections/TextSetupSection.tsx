@@ -149,7 +149,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
             <select
               value={mainFile}
               onChange={(event) => setMainFile(event.target.value)}
-              className="h-10 w-full rounded border border-zinc-300 bg-white px-3 text-sm"
+              className="h-12 w-full rounded border border-zinc-300 bg-zinc-50 px-4 py-3 text-sm text-zinc-700"
               disabled={isMutating}
             >
               <option value="">Select main file</option>
