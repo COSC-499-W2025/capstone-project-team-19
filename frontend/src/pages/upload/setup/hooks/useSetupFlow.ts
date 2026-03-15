@@ -314,15 +314,6 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
           false,
         );
       },
-      runAnalysis: async (scope: RunScope = "all", forceRerun = false) => {
-        const id = ensureUploadId();
-        if (id === null) return null;
-        return runDataRequest(
-          () => postUploadRun(id, { scope, force_rerun: forceRerun, mode: "run" }),
-          "Failed to start analysis.",
-          true,
-        );
-      },
       githubStart: async (projectName: string, connectNow: boolean) => {
         const id = ensureUploadId();
         if (id === null) return null;

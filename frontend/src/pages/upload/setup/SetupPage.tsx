@@ -4,7 +4,6 @@ import type { RunPreflightRecord, RunWarning } from "../../../api/uploads";
 import { getUsername } from "../../../auth/user";
 import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
-import SetupAnalyzeConfirmDialog from "./components/SetupAnalyzeConfirmDialog";
 import SetupProjectGroup from "./components/SetupProjectGroup";
 import { useSetupFlow } from "./hooks/useSetupFlow";
 import type { SummaryMode } from "./types";
@@ -32,12 +31,7 @@ type ProjectSummaryModes = {
   contribution: SummaryMode;
 };
 
-function deriveInitialSummaryModes(args: {
-  manualOnlySummaries: boolean;
-  manualProjectSummary: string;
-  manualContributionSummary: string;
-}): ProjectSummaryModes {
-  const { manualOnlySummaries } = args;
+function deriveInitialSummaryModes(manualOnlySummaries: boolean): ProjectSummaryModes {
   if (manualOnlySummaries) {
     return { project: "manual", contribution: "manual" };
   }
@@ -53,8 +47,6 @@ export default function UploadSetupPage() {
   const [searchParams] = useSearchParams();
   const [readiness, setReadiness] = useState<RunPreflightRecord | null>(null);
   const [checkingReadiness, setCheckingReadiness] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [startingAnalysis, setStartingAnalysis] = useState(false);
   const [summaryModesByProject, setSummaryModesByProject] = useState<Record<string, ProjectSummaryModes>>({});
 
   const uploadIdParam = searchParams.get("uploadId") ?? "";
@@ -100,11 +92,7 @@ export default function UploadSetupPage() {
       let changed = false;
 
       for (const project of flow.projectCards) {
-        const initialModes = deriveInitialSummaryModes({
-          manualOnlySummaries: flow.manualOnlySummaries,
-          manualProjectSummary: project.manualProjectSummary,
-          manualContributionSummary: project.manualContributionSummary,
-        });
+        const initialModes = deriveInitialSummaryModes(flow.manualOnlySummaries);
         const existing = previous[project.projectName];
         const modes = flow.manualOnlySummaries
           ? { project: "manual" as const, contribution: "manual" as const }
@@ -157,11 +145,7 @@ export default function UploadSetupPage() {
   const resolvedSummaryModesByProject = useMemo(() => {
     const out: Record<string, ProjectSummaryModes> = {};
     for (const project of flow.projectCards) {
-      const fallback = deriveInitialSummaryModes({
-        manualOnlySummaries: flow.manualOnlySummaries,
-        manualProjectSummary: project.manualProjectSummary,
-        manualContributionSummary: project.manualContributionSummary,
-      });
+      const fallback = deriveInitialSummaryModes(flow.manualOnlySummaries);
       out[project.projectName] = summaryModesByProject[project.projectName] ?? fallback;
     }
     return out;
@@ -175,15 +159,6 @@ export default function UploadSetupPage() {
     if (hasMissingSummarySelections) return;
     const latestReadiness = await refreshRunReadiness();
     if (!latestReadiness || !latestReadiness.ready) return;
-    setConfirmOpen(true);
-  }
-
-  async function onConfirmStartAnalysis() {
-    setStartingAnalysis(true);
-    const data = await flow.actions.runAnalysis("all", false);
-    setStartingAnalysis(false);
-    if (!data) return;
-    setConfirmOpen(false);
     nav(`/upload/analyze?uploadId=${uploadIdParam}`);
   }
 
@@ -205,7 +180,7 @@ export default function UploadSetupPage() {
   const analyzeButtonDisabled = useMemo(() => {
     if (!flow.hasValidUploadId) return true;
     if (flow.loading || flow.projectCards.length === 0) return true;
-    if (checkingReadiness || startingAnalysis || flow.isMutating) return true;
+    if (checkingReadiness || flow.isMutating) return true;
     if (hasAnalysisStarted) return false;
     if (hasMissingSummarySelections) return true;
     if (!readiness) return true;
@@ -219,7 +194,6 @@ export default function UploadSetupPage() {
     hasAnalysisStarted,
     hasMissingSummarySelections,
     readiness,
-    startingAnalysis,
   ]);
 
   const steps = [
@@ -373,13 +347,6 @@ export default function UploadSetupPage() {
           )}
         </div>
       </UploadWizardShell>
-
-      <SetupAnalyzeConfirmDialog
-        open={confirmOpen}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={onConfirmStartAnalysis}
-        isSubmitting={startingAnalysis}
-      />
     </>
   );
 }
