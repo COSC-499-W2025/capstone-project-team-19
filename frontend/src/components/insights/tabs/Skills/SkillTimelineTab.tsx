@@ -4,6 +4,7 @@ import type { SkillTimelineDTO } from "../../../../api/insights";
 import { useInsightsHeaderActions } from "../../InsightsHeaderActionsContext";
 import SkillsTimeline from "./SkillsTimeline";
 import SkillsOverview from "./SkillsOverview";
+import SkillProgressChart from "./SkillProgressChart";
 import { toYMD } from "./utils/formatHelpers";
 import ScoreInfoTooltip from "./ScoreInfoTooltip";
 
@@ -62,7 +63,12 @@ export default function SkillTimelineTab({ activeSection }: { activeSection: Ski
     return (
         <div className="flex flex-col w-full">
             <main className="flex-1 min-w-0 px-6">
-                {activeSection === "timeline" && <SkillsTimeline timeline={timeline} />}
+                {activeSection === "timeline" && (
+                    <>
+                        <SkillProgressChart timeline={timeline} />
+                        <SkillsTimeline timeline={timeline} />
+                    </>
+                )}
                 {activeSection === "totals" && <SkillsOverview timeline={timeline} />}
             </main>
         </div>

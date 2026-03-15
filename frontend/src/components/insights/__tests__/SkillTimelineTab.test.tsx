@@ -72,7 +72,7 @@ describe("SkillTimelineTab", () => {
 	it("shows timeline content after load", async () => {
 		render(<SkillTimelineTab activeSection="timeline" />);
 		await waitFor(() => {
-			expect(screen.getByText(/Testing and Ci/i)).toBeInTheDocument();
+			expect(screen.getAllByText(/Testing and Ci/i).length).toBeGreaterThan(0);
 		});
 		expect(screen.getByText(/My App/i)).toBeInTheDocument();
 		// SkillsTimeline dated table headers (proves dated branch, not empty state)
@@ -92,7 +92,7 @@ describe("SkillTimelineTab", () => {
 	it("shows Timeline section when activeSection is timeline", async () => {
 		render(<SkillTimelineTab activeSection="timeline" />);
 		await waitFor(() => {
-			expect(screen.getByText(/Testing and Ci/i)).toBeInTheDocument();
+			expect(screen.getAllByText(/Testing and Ci/i).length).toBeGreaterThan(0);
 		});
 		expect(screen.getByText(/My App/i)).toBeInTheDocument();
 	});
