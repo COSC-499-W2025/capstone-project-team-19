@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { MainFileSection, UploadProjectFilesRecord } from "../../../../../api/uploads";
+import type { DriveFile, MainFileSection, UploadProjectFilesRecord } from "../../../../../api/uploads";
 import type { SetupFlowResult, SetupProjectCard } from "../../types";
 
 type Props = {
@@ -32,8 +32,11 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   );
   const [driveSearch, setDriveSearch] = useState("");
   const [selectedLocalFile, setSelectedLocalFile] = useState("");
-  const [selectedDriveFileName, setSelectedDriveFileName] = useState("");
-  const [driveMapByLocalFile, setDriveMapByLocalFile] = useState<Record<string, string>>({});
+  const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
+  const [driveLoading, setDriveLoading] = useState(false);
+  const [selectedDriveFileId, setSelectedDriveFileId] = useState("");
+  const [driveMapByLocalFile, setDriveMapByLocalFile] = useState<Record<string, DriveFile>>({});
+  const [driveMessage, setDriveMessage] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -87,9 +90,9 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   const filteredDriveResults = useMemo(
     () =>
       driveSearch.trim()
-        ? driveLocalFiles.filter((item) => item.file_name.toLowerCase().includes(driveSearch.trim().toLowerCase()))
-        : driveLocalFiles,
-    [driveLocalFiles, driveSearch],
+        ? driveFiles.filter((item) => item.name.toLowerCase().includes(driveSearch.trim().toLowerCase()))
+        : driveFiles,
+    [driveFiles, driveSearch],
   );
   const mappedDriveCount = useMemo(
     () => Object.keys(driveMapByLocalFile).filter((name) => Boolean(driveMapByLocalFile[name])).length,
@@ -105,6 +108,22 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     if (selectedLocalFile) return;
     setSelectedLocalFile(driveLocalFiles[0].file_name);
   }, [driveLocalFiles, selectedLocalFile]);
+
+  useEffect(() => {
+    if (project.driveState !== "connected") return;
+    let active = true;
+    async function loadDriveFiles() {
+      setDriveLoading(true);
+      const data = await actions.driveFiles(project.projectName);
+      if (!active) return;
+      setDriveFiles(data?.files ?? []);
+      setDriveLoading(false);
+    }
+    loadDriveFiles();
+    return () => {
+      active = false;
+    };
+  }, [actions, project.driveState, project.projectName]);
 
   async function onSaveMainFile() {
     if (project.projectKey === null || !mainFile) return;
@@ -147,18 +166,68 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     setSaveMessage("Supporting CSV files saved.");
   }
 
-  function onSelectDriveResult(name: string) {
-    setSelectedDriveFileName(name);
+  function onSelectDriveResult(id: string) {
+    setSelectedDriveFileId(id);
   }
 
   function onMapSelectedFile() {
-    if (!selectedLocalFile || !selectedDriveFileName) return;
-    setDriveMapByLocalFile((prev) => ({ ...prev, [selectedLocalFile]: selectedDriveFileName }));
+    if (!selectedLocalFile || !selectedDriveFileId) return;
+    const selectedDrive = driveFiles.find((item) => item.id === selectedDriveFileId);
+    if (!selectedDrive) return;
+    setDriveMapByLocalFile((prev) => ({ ...prev, [selectedLocalFile]: selectedDrive }));
   }
 
   function onResetDriveMapping() {
-    setSelectedDriveFileName("");
+    setSelectedDriveFileId("");
     setDriveMapByLocalFile({});
+  }
+
+  async function onApplyDriveChoice() {
+    setDriveMessage(null);
+    if (driveChoice === "") return;
+    if (driveChoice === "no") {
+      const data = await actions.driveStart(project.projectName, false);
+      if (!data) return;
+      setDriveFiles([]);
+      setDriveMessage("Google Drive skipped for now.");
+      return;
+    }
+
+    const data = await actions.driveStart(project.projectName, true);
+    if (!data) return;
+    if (data.auth_url) {
+      window.open(data.auth_url, "_blank", "noopener,noreferrer");
+      setDriveMessage("Authorization opened. Complete it, then click Refresh Drive Files.");
+      return;
+    }
+    setDriveMessage("Google Drive is connected.");
+    await onRefreshDriveFiles();
+  }
+
+  async function onRefreshDriveFiles() {
+    setDriveMessage(null);
+    setDriveLoading(true);
+    const data = await actions.driveFiles(project.projectName);
+    setDriveLoading(false);
+    if (!data) return;
+    setDriveFiles(data.files);
+    setDriveMessage(data.files.length > 0 ? "Drive files loaded." : "No supported Drive files found.");
+  }
+
+  async function onFinalizeDriveLinks() {
+    const links = Object.entries(driveMapByLocalFile).map(([localFileName, driveFile]) => ({
+      local_file_name: localFileName,
+      drive_file_id: driveFile.id,
+      drive_file_name: driveFile.name,
+      mime_type: driveFile.mime_type,
+    }));
+    if (links.length === 0) {
+      setDriveMessage("Select at least one mapping before finalizing.");
+      return;
+    }
+    const data = await actions.driveLink(project.projectName, links);
+    if (!data) return;
+    setDriveMessage(`Saved ${links.length} Drive file link${links.length > 1 ? "s" : ""}.`);
   }
 
   return (
@@ -333,6 +402,28 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               </label>
             </div>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onApplyDriveChoice}
+              disabled={isMutating || driveChoice === ""}
+              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+            >
+              {driveChoice === "no" ? "Skip Drive" : "Connect Drive"}
+            </button>
+            <button
+              type="button"
+              onClick={onRefreshDriveFiles}
+              disabled={isMutating || driveChoice !== "yes"}
+              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+            >
+              Refresh Drive Files
+            </button>
+          </div>
+          <p className="text-sm text-zinc-700">
+            Current state: <span className="font-medium">{project.driveState}</span>
+            {project.driveLinkedFilesCount > 0 ? ` | Linked files: ${project.driveLinkedFilesCount}` : ""}
+          </p>
 
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-lg border border-zinc-300 bg-white p-3">
@@ -351,7 +442,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                     >
                       <div className="font-medium text-zinc-900">{index + 1}. {item.file_name}</div>
                       <div className="mt-1 text-xs text-zinc-600">
-                        Mapping: {mappedName ? mappedName : "Not selected"}
+                        Mapping: {mappedName ? mappedName.name : "Not selected"}
                       </div>
                     </button>
                   );
@@ -374,30 +465,32 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 <button
                   type="button"
                   className="rounded border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-900"
-                  disabled
+                  onClick={onRefreshDriveFiles}
+                  disabled={isMutating || driveChoice !== "yes" || driveLoading}
                 >
-                  Search
+                  {driveLoading ? "Loading..." : "Search"}
                 </button>
               </div>
 
               <div className="space-y-2">
+                {driveLoading && <p className="text-sm text-zinc-600">Loading Drive files...</p>}
                 {filteredDriveResults.length === 0 && (
                   <p className="text-sm text-zinc-600">
-                    {driveChoice === "yes" ? "No matching files." : "Select Yes to start mapping."}
+                    {driveChoice === "yes" ? "No matching Drive files." : "Select Yes to start mapping."}
                   </p>
                 )}
                 {filteredDriveResults.map((item) => {
-                  const selected = selectedDriveFileName === item.file_name;
+                  const selected = selectedDriveFileId === item.id;
                   return (
                     <button
-                      key={item.relpath}
+                      key={item.id}
                       type="button"
-                      onClick={() => onSelectDriveResult(item.file_name)}
+                      onClick={() => onSelectDriveResult(item.id)}
                       disabled={driveChoice !== "yes"}
                       className={`w-full rounded border px-3 py-2 text-left text-sm disabled:opacity-60 ${selected ? "border-emerald-400 bg-emerald-50" : "border-zinc-200 bg-zinc-50"}`}
                     >
-                      <div className="font-medium text-zinc-900">{item.file_name}</div>
-                      <div className="text-xs text-zinc-600">{item.extension || "file"}</div>
+                      <div className="font-medium text-zinc-900">{item.name}</div>
+                      <div className="text-xs text-zinc-600">{item.mime_type}</div>
                     </button>
                   );
                 })}
@@ -407,7 +500,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 <button
                   type="button"
                   onClick={onMapSelectedFile}
-                  disabled={driveChoice !== "yes" || !selectedLocalFile || !selectedDriveFileName}
+                  disabled={driveChoice !== "yes" || !selectedLocalFile || !selectedDriveFileId}
                   className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
                 >
                   Select
@@ -428,13 +521,15 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               </button>
               <button
                 type="button"
-                disabled
+                onClick={onFinalizeDriveLinks}
+                disabled={isMutating || mappedDriveCount <= 0}
                 className="rounded border border-zinc-300 bg-zinc-900 px-3 py-1.5 font-medium text-white disabled:opacity-50"
               >
                 Finalize
               </button>
             </div>
           </div>
+          {driveMessage && <p className="text-sm text-zinc-700">{driveMessage}</p>}
         </div>
       )}
 
