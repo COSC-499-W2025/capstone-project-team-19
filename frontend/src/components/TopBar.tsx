@@ -1,6 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
-import { CircleUserRound } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
+import { CircleUserRound } from "../lib/ui-icons";
 
 type Props = {
   showNav?: boolean;
@@ -18,7 +18,11 @@ export default function TopBar({ showNav = false, username }: Props) {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-primary text-primary-foreground">
       <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between px-6">
-        <Link to="/" className="logoText text-2xl text-primary-foreground no-underline" aria-label="Go to home">
+        <Link
+          to="/"
+          className="logoText text-[30px] leading-none text-primary-foreground no-underline"
+          aria-label="Go to home"
+        >
           resuME
         </Link>
 
@@ -47,7 +51,7 @@ export default function TopBar({ showNav = false, username }: Props) {
               aria-label="Open profile"
             >
               <CircleUserRound className="h-5 w-5" />
-              <span className="text-sm">{username ?? "username"}</span>
+              <span className="text-sm font-medium">{username ?? "username"}</span>
             </Link>
           </div>
         )}
