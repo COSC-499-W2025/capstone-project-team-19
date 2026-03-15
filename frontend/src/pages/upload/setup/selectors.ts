@@ -16,6 +16,11 @@ function asStringMap(value: unknown): Record<string, string> {
   return out;
 }
 
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
 function asNumberArray(value: unknown): number[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -55,6 +60,7 @@ export function deriveProjectCards(upload: UploadRecord | null): SetupProjectCar
   const projectTypesAuto = asStringMap(state.project_types_auto);
   const projectTypesManual = asStringMap(state.project_types_manual);
   const fileRoles = asRecord(state.file_roles);
+  const contributions = asRecord(state.contributions);
   const runInputsProjects = asRecord(asRecord(state.run_inputs).projects);
 
   const projectNames = new Set<string>([
@@ -68,6 +74,7 @@ export function deriveProjectCards(upload: UploadRecord | null): SetupProjectCar
     .filter((name) => name.trim().length > 0)
     .sort((a, b) => a.localeCompare(b))
     .map((projectName) => {
+      const projectKey = readProjectKey(dedupProjectKeys[projectName]);
       const classification = normalizeClassification(classifications[projectName] ?? "");
       const projectType = normalizeProjectType(
         projectTypesManual[projectName] ?? projectTypesAuto[projectName] ?? "",
@@ -78,6 +85,7 @@ export function deriveProjectCards(upload: UploadRecord | null): SetupProjectCar
       const git = asRecord(capabilities.git);
       const integrations = asRecord(projectRunInput.integrations);
       const github = asRecord(integrations.github);
+      const drive = asRecord(integrations.drive);
       const repoDetectedRaw = git.repo_detected;
       const gitRepoDetected = typeof repoDetectedRaw === "boolean" ? repoDetectedRaw : null;
       const gitCommitCountHint = typeof git.commit_count_hint === "number" ? git.commit_count_hint : 0;
@@ -95,8 +103,32 @@ export function deriveProjectCards(upload: UploadRecord | null): SetupProjectCar
           ? github.repo_full_name.trim()
           : null;
 
+      const driveState =
+        typeof drive.state === "string" && drive.state.trim()
+          ? drive.state.trim().toLowerCase()
+          : "unset";
+      const driveLinkedFilesCount =
+        typeof drive.linked_files_count === "number" ? drive.linked_files_count : 0;
+
       const roleForProject = asRecord(fileRoles[projectName]);
-      const mainFile = typeof roleForProject.main_file === "string" ? roleForProject.main_file.trim() : "";
+      const mainFileFromRoles = typeof roleForProject.main_file === "string" ? roleForProject.main_file.trim() : "";
+
+      const keyContrib =
+        projectKey !== null
+          ? asRecord(contributions[String(projectKey)])
+          : {};
+      const nameContrib = asRecord(contributions[projectName]);
+      const projectContrib = {
+        ...keyContrib,
+        ...nameContrib,
+      };
+
+      const mainFileFromContrib =
+        typeof projectContrib.main_file === "string" ? projectContrib.main_file.trim() : "";
+      const mainFile = mainFileFromRoles || mainFileFromContrib;
+      const mainSectionIds = asNumberArray(projectContrib.main_section_ids);
+      const supportingTextRelpaths = asStringArray(projectContrib.supporting_text_relpaths);
+      const supportingCsvRelpaths = asStringArray(projectContrib.supporting_csv_relpaths);
 
       const status = resolveSetupStatus({
         classification,
@@ -107,7 +139,7 @@ export function deriveProjectCards(upload: UploadRecord | null): SetupProjectCar
 
       return {
         projectName,
-        projectKey: readProjectKey(dedupProjectKeys[projectName]),
+        projectKey,
         classification,
         projectType,
         gitRepoDetected,
@@ -118,6 +150,12 @@ export function deriveProjectCards(upload: UploadRecord | null): SetupProjectCar
         githubState,
         githubRepoLinked: repoLinked,
         githubRepoFullName,
+        mainFileRelpath: mainFile || null,
+        mainSectionIds,
+        supportingTextRelpaths,
+        supportingCsvRelpaths,
+        driveState,
+        driveLinkedFilesCount,
         statusLabel: status.label,
         statusTone: status.tone,
       };

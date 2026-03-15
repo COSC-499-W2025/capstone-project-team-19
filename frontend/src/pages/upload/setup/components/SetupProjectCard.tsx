@@ -7,6 +7,7 @@ import CodeSetupSection from "./sections/CodeSetupSection";
 import ContributionSummarySection from "./sections/ContributionSummarySection";
 import ManualSummarySection from "./sections/ManualSummarySection";
 import ProjectSetupInputsSection from "./sections/ProjectSetupInputsSection";
+import TextSetupSection from "./sections/TextSetupSection";
 
 type Props = {
   project: SetupProjectCardModel;
@@ -59,6 +60,8 @@ export default function SetupProjectCard({ project, expanded, onToggle, actions,
           <ContributionSummarySection />
           {project.projectType === "code" ? (
             <CodeSetupSection project={project} actions={actions} isMutating={isMutating} />
+          ) : project.projectType === "text" ? (
+            <TextSetupSection project={project} actions={actions} isMutating={isMutating} />
           ) : (
             <ProjectSetupInputsSection collaborative={project.classification === "collaborative"} />
           )}

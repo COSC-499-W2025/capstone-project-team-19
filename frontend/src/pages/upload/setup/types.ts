@@ -30,6 +30,12 @@ export type SetupProjectCard = {
   githubState: string;
   githubRepoLinked: boolean;
   githubRepoFullName: string | null;
+  mainFileRelpath: string | null;
+  mainSectionIds: number[];
+  supportingTextRelpaths: string[];
+  supportingCsvRelpaths: string[];
+  driveState: string;
+  driveLinkedFilesCount: number;
   statusLabel: string;
   statusTone: SetupBadgeTone;
 };
