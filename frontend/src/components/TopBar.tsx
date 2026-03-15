@@ -1,49 +1,57 @@
 import { Link, NavLink } from "react-router-dom";
+import { CircleUserRound } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Props = {
   showNav?: boolean;
   username?: string;
 };
 
+const navItems = [
+  { to: "/upload", label: "Upload" },
+  { to: "/projects", label: "Projects" },
+  { to: "/insights", label: "Insights" },
+  { to: "/outputs", label: "Outputs" },
+];
+
 export default function TopBar({ showNav = false, username }: Props) {
   return (
-    <div className="topbar">
-      <div className="topbarInner">
-        <Link to="/" className="brandLink" aria-label="Go to home">
-          <div className="brand">resuME</div>
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-primary text-primary-foreground">
+      <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between px-6">
+        <Link to="/" className="logoText text-2xl text-primary-foreground no-underline" aria-label="Go to home">
+          resuME
         </Link>
 
         {showNav && (
-          <nav className="nav">
-            <NavLink className="navLink" to="/upload">
-              Upload
-            </NavLink>
-            <span className="navSep">|</span>
-            <NavLink className="navLink" to="/projects">
-              Projects
-            </NavLink>
-            <span className="navSep">|</span>
-            <NavLink className="navLink" to="/insights">
-              Insights
-            </NavLink>
-            <span className="navSep">|</span>
-            <NavLink className="navLink" to="/outputs">
-              Outputs
-            </NavLink>
-          </nav>
-        )}
+          <div className="flex items-center gap-6">
+            <nav className="flex items-center gap-5 text-sm">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    cn(
+                      "text-primary-foreground/80 no-underline transition hover:text-primary-foreground",
+                      isActive && "text-primary-foreground underline underline-offset-4"
+                    )
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
 
-        {showNav && (
-          <div className="userArea">
-            <Link to="/profile" className="navLink" aria-label="Open profile">
-              <div className="avatar" />
-            </Link>
-            <Link to="/profile" className="username" aria-label="Open profile">
-              {username ?? "username"}
+            <Link
+              to="/profile"
+              className="flex items-center gap-2 text-primary-foreground no-underline"
+              aria-label="Open profile"
+            >
+              <CircleUserRound className="h-5 w-5" />
+              <span className="text-sm">{username ?? "username"}</span>
             </Link>
           </div>
         )}
       </div>
-    </div>
+    </header>
   );
 }
