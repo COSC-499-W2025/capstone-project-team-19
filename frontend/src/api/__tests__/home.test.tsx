@@ -33,7 +33,7 @@ describe("Home and navigation", () => {
       <MemoryRouter initialEntries={["/"]}>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/upload/consent" element={<div data-testid="upload">upload</div>} />
+          <Route path="/upload/consent" element={<div data-testid="consent">consent</div>} />
         </Routes>
       </MemoryRouter>
     );
