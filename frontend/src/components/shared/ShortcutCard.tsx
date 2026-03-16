@@ -23,26 +23,31 @@ export default function ShortcutCard({
     <button
       type="button"
       className={cn(
-        "ui-surface-radius flex min-h-[144px] w-full cursor-pointer flex-col items-start border border-[#e5e5e5] bg-white px-[18px] py-[16px] text-left transition-colors hover:bg-[#fafafa]",
+        "ui-surface-radius flex h-[128px] w-full cursor-pointer items-start gap-[15px] border border-[#E5E5E5] bg-white px-[21px] py-[21px] text-left transition-colors hover:bg-[#fafafa]",
         className
       )}
       {...props}
     >
       <div
         className={cn(
-          "flex h-[26px] w-[26px] items-center justify-center rounded-[3px] bg-[#eef3ff]",
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-[3px] bg-[#EAF2FF]",
           iconBoxClassName
         )}
       >
-        <Icon className={cn("h-[14px] w-[14px] text-[#6b8ff5]", iconClassName)} strokeWidth={1.9} />
+        <Icon
+          className={cn("h-6 w-6 text-[#69A2F8]", iconClassName)}
+          strokeWidth={2.3}
+        />
       </div>
 
-      <div className="mt-[10px] text-[16px] font-medium leading-[1.2] text-[#3c3c3c]">
-        {title}
-      </div>
+      <div className="w-[240px] pt-[7px]">
+        <div className="text-[16px] font-medium leading-5 text-[#2F2F2F]">
+          {title}
+        </div>
 
-      <div className="mt-[6px] text-[12px] leading-[1.45] text-[#777]">
-        {description}
+        <div className="mt-[3px] text-[12px] font-normal leading-5 text-[#6C6C6C]">
+          {description}
+        </div>
       </div>
     </button>
   );
