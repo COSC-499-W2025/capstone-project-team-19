@@ -261,6 +261,7 @@ def seed_project(
     summary_text: str | None = None,
     languages: list[str] | None = None,
     frameworks: list[str] | None = None,
+    is_public: bool = False,
 ) -> int:
     """Create a minimal project summary and return its project_summary_id.
 
@@ -279,4 +280,11 @@ def seed_project(
     save_project_summary(conn, user_id, name, json.dumps(payload))
     row = get_project_summary_by_name(conn, user_id, name)
     assert row is not None
-    return row["project_summary_id"]
+    pid = row["project_summary_id"]
+    if is_public:
+        conn.execute(
+            "UPDATE project_summaries SET is_public = 1 WHERE project_summary_id = ?",
+            (pid,),
+        )
+        conn.commit()
+    return pid

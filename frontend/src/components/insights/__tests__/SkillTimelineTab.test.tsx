@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import SkillTimelineTab from "../tabs/SkillTimeline/SkillTimelineTab";
+import SkillTimelineTab from "../tabs/Skills/SkillTimelineTab";
 import * as insights from "../../../api/insights";
 
 vi.mock("../../../api/insights");
@@ -66,66 +65,45 @@ describe("SkillTimelineTab", () => {
 	});
 
 	it("shows loading state initially", () => {
-		render(<SkillTimelineTab />);
+		render(<SkillTimelineTab activeSection="timeline" />);
 		expect(screen.getByText(/loading skill timeline/i)).toBeInTheDocument();
 	});
 
-	it("shows timeline header after load", async () => {
-		render(<SkillTimelineTab />);
+	it("shows timeline content after load", async () => {
+		render(<SkillTimelineTab activeSection="timeline" />);
 		await waitFor(() => {
-			expect(screen.getByText(/2 Skills/)).toBeInTheDocument();
+			expect(screen.getAllByText(/Testing and Ci/i).length).toBeGreaterThan(0);
 		});
-		expect(screen.getByText(/2 Projects/)).toBeInTheDocument();
+		expect(screen.getByText(/My App/i)).toBeInTheDocument();
+		// SkillsTimeline dated table headers (proves dated branch, not empty state)
+		expect(screen.getByText(/^Skill$/)).toBeInTheDocument();
+		expect(screen.getByText(/^Level$/)).toBeInTheDocument();
+		expect(screen.getByText(/^Project$/)).toBeInTheDocument();
 	});
 
 	it("shows error when fetch fails", async () => {
 		vi.mocked(insights.getSkillTimeline).mockRejectedValue(new Error("API error"));
-		render(<SkillTimelineTab />);
+		render(<SkillTimelineTab activeSection="timeline" />);
 		await waitFor(() => {
 			expect(screen.getByText("API error")).toBeInTheDocument();
 		});
 	});
 
-	it("shows nav buttons for Timeline, Current Totals, Undated Skills", async () => {
-		render(<SkillTimelineTab />);
+	it("shows Timeline section when activeSection is timeline", async () => {
+		render(<SkillTimelineTab activeSection="timeline" />);
 		await waitFor(() => {
-			expect(screen.getByText(/2 Skills/)).toBeInTheDocument();
+			expect(screen.getAllByText(/Testing and Ci/i).length).toBeGreaterThan(0);
 		});
-		expect(screen.getByRole("button", { name: /timeline/i })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /current totals/i })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /undated skills/i })).toBeInTheDocument();
-	});
-
-	it("shows Timeline section by default", async () => {
-		render(<SkillTimelineTab />);
-		await waitFor(() => {
-			expect(screen.getByText(/2 Skills/)).toBeInTheDocument();
-		});
-		expect(screen.getByText(/Testing and Ci/i)).toBeInTheDocument();
 		expect(screen.getByText(/My App/i)).toBeInTheDocument();
 	});
 
-	it("switches to Current Totals when clicked", async () => {
-		const user = userEvent.setup();
-		render(<SkillTimelineTab />);
+	it("shows Skills Overview when activeSection is totals", async () => {
+		render(<SkillTimelineTab activeSection="totals" />);
 		await waitFor(() => {
-			expect(screen.getByText(/2 Skills/)).toBeInTheDocument();
+			expect(screen.getAllByText(/Testing and Ci/i).length).toBeGreaterThan(0);
 		});
-		await user.click(screen.getByRole("button", { name: /current totals/i }));
-		expect(screen.getByRole("button", { name: /current totals/i })).toHaveClass("active");
 		expect(screen.getAllByText(/Testing and Ci/i).length).toBeGreaterThan(0);
 		expect(screen.getAllByText(/Clarity/i).length).toBeGreaterThan(0);
 	});
 
-	it("switches to Undated Skills when clicked", async () => {
-		const user = userEvent.setup();
-		render(<SkillTimelineTab />);
-		await waitFor(() => {
-			expect(screen.getByText(/2 Skills/)).toBeInTheDocument();
-		});
-		await user.click(screen.getByRole("button", { name: /undated skills/i }));
-		expect(screen.getByRole("button", { name: /undated skills/i })).toHaveClass("active");
-		expect(screen.getByText(/clarity/i)).toBeInTheDocument();
-		expect(screen.getByText(/Essay/i)).toBeInTheDocument();
-	});
 });

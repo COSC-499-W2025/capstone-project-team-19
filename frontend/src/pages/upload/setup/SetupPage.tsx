@@ -90,6 +90,7 @@ export default function UploadSetupPage() {
 
   useEffect(() => {
     setSummaryModesByProject((previous) => {
+      if (flow.externalConsentStatus === null) return previous;
       const next: Record<string, ProjectSummaryModes> = {};
       let changed = false;
 
@@ -114,7 +115,7 @@ export default function UploadSetupPage() {
       }
       return next;
     });
-  }, [flow.manualOnlySummaries, flow.projectCards]);
+  }, [flow.externalConsentStatus, flow.manualOnlySummaries, flow.projectCards]);
 
   const onProjectSummaryModeChange = useCallback((projectName: string, mode: SummaryMode) => {
     setSummaryModesByProject((previous) => {

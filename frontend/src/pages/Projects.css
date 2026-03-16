@@ -33,3 +33,44 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.projectCardWrapper {
+  position: relative;
+}
+
+.projectVisibilityToggle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.projectVisibilityToggle:hover:not(:disabled) {
+  background: white;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.projectVisibilityToggle.public {
+  background: rgba(220, 252, 231, 0.95);
+  border-color: #16a34a;
+  color: #15803d;
+}
+
+.projectVisibilityToggle.public:hover:not(:disabled) {
+  background: #dcfce7;
+}
+
+.projectVisibilityToggle:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
