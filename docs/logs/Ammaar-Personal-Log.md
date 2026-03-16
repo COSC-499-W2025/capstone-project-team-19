@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 10 (Mar 9-15)](#t2-week-10-monday-march-9---sunday-march-15)
 - [Week 9 (Mar 2-8)](#t2-week-9-monday-march-2---sunday-march-8)
 - [Weeks 6 & 8 (Feb 9-Mar 1)](#t2-weeks-6--8-monday-february-9---sunday-march-1)
 - [Weeks 4-5 (Jan 26-Feb 8)](#t2-weeks-4-5-monday-january-26---sunday-february-8)
@@ -268,3 +269,17 @@ For my feature PR ([#545](https://github.com/COSC-499-W2025/capstone-project-tea
 For PR reviews, I reviewed Timmi's skill timeline PR ([#530](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/530)) which implements the Skill Timeline tab on the Insights page with three views: dated timeline, current totals, and undated skills. I found a date parsing bug where git dates (e.g., "2024-04-12 20:12:19 -0700") showed as "Invalid Date" because JavaScript's Date constructor needs ISO 8601 format, and suggested a regex fix in `toYMD` to normalize the format before parsing. I also reviewed Timmi's ranked projects PR ([#524](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/524)) which implements the Insights page sub-navigation and Ranked Projects tab with manual reordering via up/down arrows. I initially found an issue where the page sometimes required multiple refreshes to load, but it turned out to be Safari-specific so I approved.
 
 Next week's focus: Continue working on the output pages: implement edit resume and the portfolio page.
+
+## (T2 Week 10) Monday March 9 - Sunday March 15
+
+![Screenshot of work done this sprint from peer eval](./screenshots/Ammaar-Mar9-Mar15.png)
+
+Week recap: This week I worked on one feature PR and reviewed two PRs from teammates.
+
+For my feature PR ([#575](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/575)), I implemented resume editing functionality in the frontend. Users can now edit resume names, project display names, key roles, summaries, and contribution bullets directly from the resume detail page with inline editing and a scope choice ("This resume only" or "All resumes & portfolio"). I also fixed a backend bug where `get_resume_by_id()` was returning raw snapshot data instead of resolving the 3-level override priority (resume-specific, global, base). Salma requested changes on three items: matching the "View Resume" layout to the export structure, right-aligning the "Done Editing" and "Export" buttons, and fixing the "Replace all" option for contribution bullets. I addressed all three.
+
+For PR reviews, I reviewed Adara's profile CLI backend PR ([#573](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/573)) which adds a standalone user profile feature for saving personal information (full name, email, phone, LinkedIn, GitHub, location, profile paragraph) outside of the resume menu. On the test rewrites, I noted that several old tests covering section ordering, project date sorting, malformed JSON fallback, and flow edge cases were removed but not replaced by the new profile tests, and recommended bringing those back since they test different behavior.
+
+I also reviewed Timmi's insights skills log PR ([#578](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/578)) which implements heatmap views (Activity Heatmap and Project Heatmap) and a Skills Log for the Insights page. I tested both the heatmaps and the skills tabs and approved.
+
+Next week's focus: Improve the resume edit feature and refactor based on revised UI designs.
