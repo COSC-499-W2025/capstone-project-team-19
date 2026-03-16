@@ -20,6 +20,8 @@ class PublicProjectDetailDTO(BaseModel):
     project_type: Optional[str] = None
     project_mode: Optional[str] = None
     created_at: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
     summary_text: Optional[str] = None
     languages: List[str] = []
     frameworks: List[str] = []
