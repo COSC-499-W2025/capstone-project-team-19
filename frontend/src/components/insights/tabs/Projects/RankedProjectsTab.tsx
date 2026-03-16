@@ -144,7 +144,7 @@ export default function RankedProjectsTab() {
 									<div className={`h-full rounded-full transition-all duration-300 ${BAR_COLORS[Math.min(idx, 3)]}`} style={{ width: `${Math.max(pct, 4)}%` }} />
 								</div>
 							</div>
-							<span className="text-sm font-semibold tabular-nums text-right">{p.score.toFixed(2)}</span>
+							<span className="text-sm font-semibold tabular-nums text-right">{(p.score * 100).toFixed(1)}%</span>
 						</div>
 					);
 				})}

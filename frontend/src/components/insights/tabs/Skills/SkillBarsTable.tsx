@@ -71,7 +71,7 @@ export default function SkillBarsTable({ entries, maxScore }: Props) {
 
                             <div className="tabular-nums text-right text-sm">
                                 {typeof data.cumulative_score === "number"
-                                    ? data.cumulative_score.toFixed(2)
+                                    ? `${(data.cumulative_score * 100).toFixed(1)}%`
                                     : "—"}
                             </div>
                         </div>
