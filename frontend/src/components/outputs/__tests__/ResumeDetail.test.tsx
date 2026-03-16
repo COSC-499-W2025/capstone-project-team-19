@@ -126,7 +126,7 @@ describe("ResumeDetail", () => {
       render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
 
       await waitFor(() => {
-        expect(screen.getByText("Skills Summary")).toBeInTheDocument();
+        expect(screen.getByText("Skills")).toBeInTheDocument();
       });
       // Python appears in both project and skills summary
       expect(screen.getAllByText(/Python/).length).toBeGreaterThanOrEqual(1);

@@ -257,7 +257,7 @@ export default function ResumeDetail({
       </div>
     );
 
-  const grouped = groupProjects(resume.projects);
+  const sortedProjects = sortProjectsByDate(resume.projects);
   const agg = resume.aggregated_skills;
 
   return (
@@ -343,6 +343,48 @@ export default function ResumeDetail({
         </div>
       )}
 
+      {/* Skills Summary */}
+      {editing ? (
+        <Card className="mb-6 rounded-2xl border-slate-200/80 bg-white shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base text-slate-900">
+              Skills
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <SkillRow label="Languages" items={agg.languages} />
+            <SkillRow label="Frameworks" items={agg.frameworks} />
+            <SkillRow label="Technical" items={agg.technical_skills} />
+            <SkillRow label="Writing" items={agg.writing_skills} />
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="skillsSummaryBlock">
+          <h3>Skills</h3>
+          {agg.languages.length > 0 && (
+            <p>
+              <strong>Languages:</strong> {agg.languages.join(", ")}
+            </p>
+          )}
+          {agg.frameworks.length > 0 && (
+            <p>
+              <strong>Frameworks:</strong> {agg.frameworks.join(", ")}
+            </p>
+          )}
+          {agg.technical_skills.length > 0 && (
+            <p>
+              <strong>Technical skills:</strong>{" "}
+              {agg.technical_skills.join(", ")}
+            </p>
+          )}
+          {agg.writing_skills.length > 0 && (
+            <p>
+              <strong>Writing skills:</strong> {agg.writing_skills.join(", ")}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Projects */}
       {editing ? (
         /* ── Edit mode: shadcn cards with pencil icons ── */
@@ -410,60 +452,14 @@ export default function ResumeDetail({
           })}
         </div>
       ) : (
-        /* ── View mode: original grouped layout ── */
-        <>
-          {Object.entries(grouped).map(([groupKey, projects]) => (
-            <div key={groupKey} className="resumeGroup">
-              <h3 className="groupHeader">{formatGroupLabel(groupKey)}</h3>
-              {projects.map((p, i) => (
-                <div key={i} className="resumeProjectBlock">
-                  <ProjectBlockView project={p} />
-                </div>
-              ))}
+        /* ── View mode: flat list matching export structure ── */
+        <div className="resumeProjectsList">
+          <h3 className="groupHeader">Projects</h3>
+          {sortedProjects.map((p, i) => (
+            <div key={i} className="resumeProjectBlock">
+              <ProjectBlockView project={p} />
             </div>
           ))}
-        </>
-      )}
-
-      {/* Aggregated skills */}
-      {editing ? (
-        <Card className="mt-6 rounded-2xl border-slate-200/80 bg-white shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base text-slate-900">
-              Skills Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <SkillRow label="Languages" items={agg.languages} />
-            <SkillRow label="Frameworks" items={agg.frameworks} />
-            <SkillRow label="Technical" items={agg.technical_skills} />
-            <SkillRow label="Writing" items={agg.writing_skills} />
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="skillsSummaryBlock">
-          <h3>Skills Summary</h3>
-          {agg.languages.length > 0 && (
-            <p>
-              <strong>Languages:</strong> {agg.languages.join(", ")}
-            </p>
-          )}
-          {agg.frameworks.length > 0 && (
-            <p>
-              <strong>Frameworks:</strong> {agg.frameworks.join(", ")}
-            </p>
-          )}
-          {agg.technical_skills.length > 0 && (
-            <p>
-              <strong>Technical skills:</strong>{" "}
-              {agg.technical_skills.join(", ")}
-            </p>
-          )}
-          {agg.writing_skills.length > 0 && (
-            <p>
-              <strong>Writing skills:</strong> {agg.writing_skills.join(", ")}
-            </p>
-          )}
         </div>
       )}
     </div>
@@ -472,19 +468,30 @@ export default function ResumeDetail({
 
 /* ── Helper functions ── */
 
-function groupProjects(projects: ResumeProject[]) {
-  const groups: Record<string, ResumeProject[]> = {};
-  for (const p of projects) {
-    const type = p.project_type ?? "other";
-    const mode = p.project_mode ?? "";
-    const key = mode ? `${type} (${mode})` : type;
-    (groups[key] ??= []).push(p);
-  }
-  return groups;
+function sortProjectsByDate(projects: ResumeProject[]): ResumeProject[] {
+  return [...projects].sort((a, b) => {
+    const dateA = a.end_date || a.start_date || "";
+    const dateB = b.end_date || b.start_date || "";
+    // Most recent first; projects with no dates go last
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+    return dateB.localeCompare(dateA);
+  });
 }
 
-function formatGroupLabel(key: string) {
-  return key.charAt(0).toUpperCase() + key.slice(1) + " Projects";
+function formatDateRange(start: string | null, end: string | null): string {
+  const fmt = (iso: string) => {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  };
+  const s = start ? fmt(start) : "";
+  const e = end ? fmt(end) : "";
+  if (s && e) return `${s} \u2013 ${e}`;
+  if (s) return `${s} \u2013 Present`;
+  if (e) return e;
+  return "";
 }
 
 /* ── Sub-components ── */
@@ -498,52 +505,30 @@ function SkillRow({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-/** View-mode project block (original layout) */
+/** View-mode project block matching export structure: name, role | dates, bullets */
 function ProjectBlockView({ project: p }: { project: ResumeProject }) {
+  const dateLine = formatDateRange(p.start_date, p.end_date);
+  const role = p.key_role || "";
+  const subtitle = role && dateLine
+    ? `${role} | ${dateLine}`
+    : role || dateLine;
+
   return (
     <div className="projectBlockContent">
       <h4 className="projectBlockName">{p.project_name}</h4>
 
-      {p.key_role && <p className="projectField">Role: {p.key_role}</p>}
-
-      {p.languages.length > 0 && (
-        <p className="projectField">Languages: {p.languages.join(", ")}</p>
-      )}
-
-      {p.frameworks.length > 0 && (
-        <p className="projectField">Frameworks: {p.frameworks.join(", ")}</p>
-      )}
-
-      {p.text_type && <p className="projectField">Type: {p.text_type}</p>}
-
-      {p.contribution_percent != null && (
-        <p className="projectField">
-          Contribution: {Math.round(p.contribution_percent)}%
+      {subtitle && (
+        <p className="projectField" style={{ fontStyle: "italic" }}>
+          {subtitle}
         </p>
       )}
 
-      {p.summary_text && (
-        <p className="projectField">Summary: {p.summary_text}</p>
-      )}
-
       {p.contribution_bullets.length > 0 && (
-        <div className="projectField">
-          <p>Contributions:</p>
-          <ul className="bulletList">
-            {p.contribution_bullets.map((b, j) => (
-              <li key={j}>{b}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {p.skills.length > 0 && (
-        <div className="projectField">
-          <p>Skills:</p>
-          <ul className="bulletList">
-            <li>{p.skills.join(", ")}</li>
-          </ul>
-        </div>
+        <ul className="bulletList">
+          {p.contribution_bullets.map((b, j) => (
+            <li key={j}>{b}</li>
+          ))}
+        </ul>
       )}
     </div>
   );
