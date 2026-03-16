@@ -46,7 +46,7 @@ export default function ManualSummarySection({
             onChange={() => onModeChange("llm")}
             disabled={isMutating || manualOnlySummaries}
           />
-          <span>Use LLM summary</span>
+          <span>Use AI-generated summary</span>
         </label>
         <label className="flex items-center gap-2">
           <input
@@ -61,7 +61,7 @@ export default function ManualSummarySection({
       </div>
       {manualOnlySummaries && (
         <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          No external LLM consent granted. Manual summary is required.
+          No external AI consent granted. Manual summary is required.
         </p>
       )}
       {mode === "manual" ? (
@@ -86,7 +86,7 @@ export default function ManualSummarySection({
         </>
       ) : (
         mode === "llm" && (
-          <p className="text-sm text-zinc-600">Summary will be generated with LLM during analysis.</p>
+          <p className="text-sm text-zinc-600">Summary will be AI-generated during analysis.</p>
         )
       )}
       {saveMessage && <p className="mt-1 text-sm text-zinc-700">{saveMessage}</p>}
