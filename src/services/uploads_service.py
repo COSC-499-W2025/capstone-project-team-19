@@ -643,7 +643,7 @@ def set_project_main_file(conn: sqlite3.Connection, user_id: int, upload_id: int
     if not upload or upload["user_id"] != user_id:
         raise HTTPException(status_code=404, detail="Upload not found")
 
-    if upload["status"] != "needs_file_roles":
+    if upload["status"] not in {"needs_file_roles", "needs_summaries"}:
         raise HTTPException(status_code=409, detail=f"Upload not ready to set main file (status={upload['status']})")
 
     state = upload.get("state") or {}
@@ -686,7 +686,8 @@ def set_project_main_file(conn: sqlite3.Connection, user_id: int, upload_id: int
         }
     }
 
-    new_state = patch_upload_state(conn, upload_id, patch=patch, status="needs_file_roles")
+    next_status = "needs_summaries" if upload.get("status") == "needs_summaries" else "needs_file_roles"
+    new_state = patch_upload_state(conn, upload_id, patch=patch, status=next_status)
 
     return {
         "upload_id": upload_id,

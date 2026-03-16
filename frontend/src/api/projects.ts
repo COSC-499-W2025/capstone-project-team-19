@@ -7,6 +7,7 @@ export type Project = {
   project_type: string | null;
   project_mode: string | null;
   created_at: string | null;
+  is_public: boolean;
 };
 
 export type ProjectDetail = {
@@ -106,6 +107,26 @@ export function getProjectFeedback(projectId: number): Promise<FeedbackItem[]> {
     )
     .then((r) => r.data.feedback)
     .catch(() => []);
+}
+
+export type ActivityHeatmapData = {
+  project_id: number;
+  project_name: string;
+  mode: "diff" | "snapshot";
+  normalize: boolean;
+  include_unclassified_text: boolean;
+  matrix: number[][];
+  row_labels: string[];
+  col_labels: string[];
+  title: string;
+};
+
+export function getActivityHeatmapData(projectId: number): Promise<ActivityHeatmapData> {
+  return api
+    .get<{ success: boolean; data: ActivityHeatmapData }>(
+      `/projects/${projectId}/activity-heatmap/data`
+    )
+    .then((r) => r.data);
 }
 
 /** Fetches the thumbnail as a blob URL, or returns null if none exists. */

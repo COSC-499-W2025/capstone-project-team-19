@@ -29,7 +29,7 @@ describe("ProfilePage", () => {
   it("shows Profile overview section", () => {
     render(<ProfilePage />);
     expect(screen.getByText("Profile overview")).toBeInTheDocument();
-    expect(screen.getByText(/Your account activity,personal information and security controls./)).toBeInTheDocument();
+    expect(screen.getByText(/Your account activity, personal information and security controls./)).toBeInTheDocument();
   });
 
   it("shows stat cards for Uploads, Projects, Resumes", () => {

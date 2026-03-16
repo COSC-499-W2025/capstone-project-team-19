@@ -67,6 +67,27 @@ def get_project_skills(conn, user_id, project_name):
     
     return cursor.fetchall()
 
+
+def get_project_skill_pairs(conn, user_id):
+    """
+    Returns (project_name, skill_name, score) for all user projects that have
+    a project_summary. Used for building the cross-project skill heatmap.
+    """
+    rows = conn.execute(
+        """
+        SELECT p.display_name, ps.skill_name, ps.score
+        FROM project_skills ps
+        JOIN projects p ON p.project_key = ps.project_key AND p.user_id = ps.user_id
+        WHERE ps.user_id = ? AND ps.score > 0
+        AND EXISTS (
+            SELECT 1 FROM project_summaries ps2
+            WHERE ps2.user_id = ps.user_id AND ps2.project_key = ps.project_key
+        )
+        """,
+        (user_id,)
+    ).fetchall()
+    return rows
+
 def get_skill_events(conn, user_id):
     """
     Returns every skill a user has practices, including:

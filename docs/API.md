@@ -34,12 +34,14 @@ http://localhost:8000
 8. [Skills](#skills)
 9. [Resume](#resume)
 10. [Portfolio](#portfolio)
-11. [Activity Heatmap](#activity-heatmap)
-12. [Path Variables](#path-variables)
-13. [DTO References](#dto-references)
-14. [Best Practices](#best-practices)
-15. [Error Codes](#error-codes)
-16. [Example Error Response](#example-error-response)
+11. [Portfolio Settings](#portfolio-settings)
+12. [Public Portfolio](#public-portfolio)
+13. [Activity Heatmap](#activity-heatmap)
+14. [Path Variables](#path-variables)
+15. [DTO References](#dto-references)
+16. [Best Practices](#best-practices)
+17. [Error Codes](#error-codes)
+18. [Example Error Response](#example-error-response)
 
 ---
 
@@ -2169,6 +2171,309 @@ Manages portfolio showcase configuration. Portfolios are generated live from all
     - **Error Responses**:
         - `401 Unauthorized`: Missing or invalid Bearer token
         - `404 Not Found`: No projects found for this user
+
+---
+
+## **Portfolio Settings**
+
+**Base URL:** `/portfolio-settings`
+
+Manages authenticated user portfolio visibility settings. Controls whether the portfolio is public, which resume is shown, and per-project public/private toggles.
+
+All endpoints require authentication (`Authorization: Bearer <access_token>`).
+
+### **Endpoints**
+
+- **Get Portfolio Settings**
+    - **Endpoint**: `GET /`
+    - **Description**: Returns the authenticated user's current portfolio settings.
+    - **Auth**: Bearer token required
+    - **Request Body**: None
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+          "success": true,
+          "data": {
+            "portfolio_public": false,
+            "active_resume_id": null
+          },
+          "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **Update Portfolio Settings**
+    - **Endpoint**: `PUT /`
+    - **Description**: Updates portfolio visibility and/or active resume. All fields are optional — only provided fields are changed.
+    - **Auth**: Bearer token required
+    - **Request Body**:
+        ```json
+        {
+          "portfolio_public": true,
+          "active_resume_id": 5,
+          "clear_active_resume": false
+        }
+        ```
+        - `portfolio_public` (boolean, optional): Set to `true` to make the portfolio publicly accessible, `false` to make it private.
+        - `active_resume_id` (integer, optional): ID of the resume to pin as the active public resume.
+        - `clear_active_resume` (boolean, optional): Set to `true` to remove the active resume selection.
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+          "success": true,
+          "data": {
+            "portfolio_public": true,
+            "active_resume_id": 5
+          },
+          "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **Toggle Project Visibility**
+    - **Endpoint**: `PATCH /projects/{project_summary_id}/visibility`
+    - **Description**: Sets the `is_public` flag on a specific project. Public projects appear on the user's public portfolio page; private projects are hidden from all public views.
+    - **Auth**: Bearer token required
+    - **Path Variables**:
+        - `project_summary_id` (integer): ID of the project summary to update
+    - **Request Body**:
+        ```json
+        {
+          "is_public": true
+        }
+        ```
+        - `is_public` (boolean, required): `true` to make the project public, `false` to make it private.
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+          "success": true,
+          "data": {
+            "project_summary_id": 42,
+            "is_public": true
+          },
+          "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `401 Unauthorized`: Missing or invalid Bearer token
+        - `404 Not Found`: Project not found or belongs to another user
+
+---
+
+## **Public Portfolio**
+
+**Base URL:** `/public/{username}`
+
+Read-only, unauthenticated endpoints for viewing a user's public portfolio. All endpoints return `404` if the portfolio is private or the username does not exist — intentionally the same response to avoid confirming whether a username exists.
+
+**No authentication required.**
+
+### **Endpoints**
+
+- **List Public Projects**
+    - **Endpoint**: `GET /projects`
+    - **Description**: Returns all projects the user has marked as public (`is_public = true`). Strips internal fields such as metrics, contributions, and `project_key`.
+    - **Auth**: None
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+          "success": true,
+          "data": {
+            "projects": [
+              {
+                "project_summary_id": 42,
+                "project_name": "My App",
+                "project_type": "code",
+                "project_mode": "individual",
+                "created_at": "2024-03-01T10:00:00"
+              }
+            ]
+          },
+          "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `404 Not Found`: Portfolio is private or username does not exist
+
+- **Get Public Project Detail**
+    - **Endpoint**: `GET /projects/{project_id}`
+    - **Description**: Returns detail for a single public project. Returns `404` if the project is private or belongs to another user.
+    - **Auth**: None
+    - **Path Variables**:
+        - `project_id` (integer): `project_summary_id` of the project
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+          "success": true,
+          "data": {
+            "project_summary_id": 42,
+            "project_name": "My App",
+            "project_type": "code",
+            "project_mode": "individual",
+            "created_at": "2024-03-01T10:00:00",
+            "summary_text": "A web app built with FastAPI.",
+            "languages": ["Python"],
+            "frameworks": ["FastAPI"],
+            "skills": ["Backend Development"]
+          },
+          "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `404 Not Found`: Portfolio is private, project is private, or not found
+
+- **Get Public Project Thumbnail**
+    - **Endpoint**: `GET /projects/{project_id}/thumbnail`
+    - **Description**: Returns the thumbnail image for a public project as a PNG file. Returns `404` if the project is private or has no thumbnail.
+    - **Auth**: None
+    - **Response Status**: `200 OK`
+    - **Response**: Binary PNG image (`image/png`)
+    - **Error Responses**:
+        - `404 Not Found`: Portfolio/project is private, thumbnail does not exist, or username not found
+
+- **Get Public Project Ranking**
+    - **Endpoint**: `GET /ranking`
+    - **Description**: Returns a ranked list of the user's public projects. Score and internal ranking fields are stripped.
+    - **Auth**: None
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+          "success": true,
+          "data": {
+            "rankings": [
+              {
+                "rank": 1,
+                "project_summary_id": 42,
+                "project_name": "My App"
+              }
+            ]
+          },
+          "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `404 Not Found`: Portfolio is private or username does not exist
+
+- **List Public Resumes**
+    - **Endpoint**: `GET /resumes`
+    - **Description**: Returns all resume snapshots belonging to the user whose portfolio is public.
+    - **Auth**: None
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+          "success": true,
+          "data": {
+            "resumes": [
+              {
+                "id": 5,
+                "name": "Software Engineer Resume",
+                "created_at": "2024-03-01T10:00:00"
+              }
+            ]
+          },
+          "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `404 Not Found`: Portfolio is private or username does not exist
+
+- **Get Public Resume Detail**
+    - **Endpoint**: `GET /resumes/{resume_id}`
+    - **Description**: Returns the full detail of a specific resume. Sensitive internal fields (`contribution_percent`, `activities`) are stripped from project entries.
+    - **Auth**: None
+    - **Path Variables**:
+        - `resume_id` (integer): ID of the resume snapshot
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+          "success": true,
+          "data": {
+            "id": 5,
+            "name": "Software Engineer Resume",
+            "created_at": "2024-03-01T10:00:00",
+            "projects": [
+              {
+                "project_name": "My App",
+                "project_type": "code",
+                "project_mode": "individual",
+                "languages": ["Python"],
+                "frameworks": ["FastAPI"],
+                "summary_text": "A web app.",
+                "skills": ["Backend Development"],
+                "key_role": "Lead Developer",
+                "contribution_bullets": ["Built the REST API"],
+                "start_date": "2024-01-01",
+                "end_date": "2024-06-30"
+              }
+            ],
+            "aggregated_skills": {
+              "languages": ["Python"],
+              "frameworks": ["FastAPI"],
+              "technical_skills": ["Backend Development"],
+              "writing_skills": []
+            },
+            "rendered_text": "Resume — Software Engineer Resume\n..."
+          },
+          "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `404 Not Found`: Portfolio is private, resume not found, or username does not exist
+
+- **Get Public Skills**
+    - **Endpoint**: `GET /skills`
+    - **Description**: Returns skills extracted from the user's public projects only. Internal fields (score, dates) are stripped.
+    - **Auth**: None
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+          "success": true,
+          "data": {
+            "skills": [
+              {
+                "skill_name": "Backend Development",
+                "level": "advanced",
+                "project_name": "My App"
+              }
+            ]
+          },
+          "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `404 Not Found`: Portfolio is private or username does not exist
+
+- **Get Public Skills Timeline**
+    - **Endpoint**: `GET /skills/timeline`
+    - **Description**: Returns the skill timeline data for the user's portfolio. Same structure as the authenticated skills timeline.
+    - **Auth**: None
+    - **Response Status**: `200 OK`
+    - **Response Body**:
+        ```json
+        {
+          "success": true,
+          "data": {
+            "dated": [...],
+            "undated": [...],
+            "current_totals": {...},
+            "summary": {...}
+          },
+          "error": null
+        }
+        ```
+    - **Error Responses**:
+        - `404 Not Found`: Portfolio is private or username does not exist
 
 ---
 

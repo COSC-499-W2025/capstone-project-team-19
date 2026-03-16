@@ -163,7 +163,6 @@
 .pdNavRow {
   display: flex;
   justify-content: space-between;
-  max-width: 720px;
   margin-top: 8px;
   padding-bottom: 32px;
 }
