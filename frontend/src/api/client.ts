@@ -2,6 +2,18 @@ import { tokenStore } from "../auth/token";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+function handleUnauthorized() {
+  tokenStore.clear();
+
+  // Avoid redirect loop if already on auth pages
+  if (
+    window.location.pathname !== "/login" &&
+    window.location.pathname !== "/register"
+  ) {
+    window.location.replace("/login");
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = tokenStore.get();
 
@@ -12,6 +24,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
+
+  if (res.status === 401) {
+    handleUnauthorized();
+    throw new Error("Could not validate credentials");
+  }
 
   if (!res.ok) {
     const raw = await res.text();
@@ -41,23 +58,25 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new Error(msg);
   }
 
-  // some endpoints might return empty body
   const text = await res.text();
-  return (text ? (JSON.parse(text) as T) : ({} as T));
+  return text ? (JSON.parse(text) as T) : ({} as T);
 }
 
 export const api = {
   get: <T>(path: string) => request<T>(path),
+
   postJson: <T>(path: string, body: unknown) =>
     request<T>(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
+
   postForm: <T>(path: string, form: FormData) =>
     request<T>(path, {
       method: "POST",
-      body: form }),
+      body: form,
+    }),
 
   putJson: <T>(path: string, body: unknown) =>
     request<T>(path, {
@@ -72,14 +91,23 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
+
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+
   postMultipart: <T>(path: string, formData: FormData) =>
     request<T>(path, { method: "POST", body: formData }),
+
   getBlob: async (path: string): Promise<Blob> => {
     const token = tokenStore.get();
+
     const res = await fetch(`${BASE_URL}${path}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
+
+    if (res.status === 401) {
+      handleUnauthorized();
+      throw new Error("Could not validate credentials");
+    }
 
     if (!res.ok) {
       const raw = await res.text();
@@ -89,6 +117,5 @@ export const api = {
     return await res.blob();
   },
 
-  post: <T>(path: string) =>
-    request<T>(path, { method: "POST" }),
+  post: <T>(path: string) => request<T>(path, { method: "POST" }),
 };
