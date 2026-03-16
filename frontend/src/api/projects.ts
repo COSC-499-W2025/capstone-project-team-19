@@ -7,6 +7,7 @@ export type Project = {
   project_type: string | null;
   project_mode: string | null;
   created_at: string | null;
+  is_public: boolean;
 };
 
 export type ProjectDetail = {

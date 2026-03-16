@@ -351,6 +351,7 @@ CREATE TABLE IF NOT EXISTS project_summaries (
     created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     manual_start_date   TEXT,  -- Manual override for start date (ISO format YYYY-MM-DD)
     manual_end_date     TEXT,  -- Manual override for end date (ISO format YYYY-MM-DD)
+    is_public           INTEGER NOT NULL DEFAULT 0,
     UNIQUE(user_id, project_key),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (project_key) REFERENCES projects(project_key) ON DELETE CASCADE
@@ -757,6 +758,16 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
+-- PORTFOLIO VISIBILITY SETTINGS
+
+CREATE TABLE IF NOT EXISTS portfolio_settings (
+    user_id          INTEGER PRIMARY KEY,
+    portfolio_public INTEGER NOT NULL DEFAULT 0,
+    active_resume_id INTEGER,
+    updated_at       TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (active_resume_id) REFERENCES resume_snapshots(id) ON DELETE SET NULL
+);
 CREATE TABLE IF NOT EXISTS user_education_entries (
     entry_id      INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id       INTEGER NOT NULL,
