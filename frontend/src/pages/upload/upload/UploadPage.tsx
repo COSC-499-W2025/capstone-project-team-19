@@ -98,6 +98,11 @@ export default function UploadPage() {
       onAction={onSidebarNext}
       actionDisabled={flow.sidebarNextDisabled}
       showAction
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Upload", href: "/upload" },
+        { label: "Upload", href: "/upload/upload" },
+      ]}
     >
       <div className="wizardPlaceholderCard">
         <div className="uploadStageProgress" aria-label="Upload flow progress">

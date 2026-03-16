@@ -340,6 +340,11 @@ export default function UploadSetupPage() {
         onAction={onAnalyzeAction}
         actionDisabled={analyzeButtonDisabled}
         showAction
+        breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Upload", href: "/upload" },
+        { label: "Setup", href: "/upload/setup" },
+      ]}
       >
         <div className="max-w-[1040px] px-2 pt-5 pb-8 max-[980px]:px-0">
 
