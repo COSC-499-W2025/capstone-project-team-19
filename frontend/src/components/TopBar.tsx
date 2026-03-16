@@ -23,7 +23,7 @@ export default function TopBar({ showNav = false }: Props) {
           className="font-['Open_Sans'] text-4xl font-bold leading-none no-underline"
           aria-label="Go to home"
         >
-          resuMe
+          resuME
         </Link>
 
         {showNav && (

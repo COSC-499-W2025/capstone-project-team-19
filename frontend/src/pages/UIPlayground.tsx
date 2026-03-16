@@ -53,7 +53,7 @@ export default function UIPlaygroundPage() {
 
         <SectionCard className="space-y-[16px]">
           <div className="logoText text-[36px] leading-none text-primary">
-            resuMe
+            resuME
           </div>
 
           <div>

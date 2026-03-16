@@ -85,7 +85,7 @@ Use Roboto weights that appear in the designs:
 - `medium`
 - `bold`
 
-Use Open Sans Bold only for the `resuMe` wordmark/logo.
+Use Open Sans Bold only for the `resuME` wordmark/logo.
 
 ---
 
