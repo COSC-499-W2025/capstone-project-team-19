@@ -2,6 +2,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 10 (March 9-March 15)](#t2-week-10-monday-march-9---sunday-march-15)
 - [Week 9 (March 2-March 8)](#t2-week-9-monday-march-2---sunday-march-8)
 - [Week 8 (Feb 9-March 1)](#t2-week-8-monday-february-9---sunday-march-1)
 - [Week 4 (Jan 26-Feb 8)](#t2-week-4-monday-january-26---sunday-february-8)
@@ -255,5 +256,29 @@ PRs I reviewed:
 
 Next Week:
 I plan to work on adding the backend support for the components I added in the profile's page. And helping the team make the ui consitent across all pages with Tailwind + shadcn (if thats what we decide on in the team meeting).
+
+
+## (T2 Week 10) Monday March 9 - Sunday March 15
+![Screenshot of this week's peer eval](./screenshots/Ivona-Mar.9-15.PNG)
+
+This sprint I worked on 2 PRs but I didn't finnish them in time so I wasn't able to get them merged into main this sprint, and I reviewed teammate's code.
+
+Coding PRs: (UNMERGED, BUT WORKED ON THIS WEEK)
+I worked on PR ([#599](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/599)) which was to make the resumes only 1 page maximux. Right now we have no validation for how long someone's resume is so I am working on implementing restrictions for fields on the resume items and also checks to see if the resume is too long and if so we have to safely size it down without ruining the resume contents.
+
+I worked on PR ([#601](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/601)) which creates the api endpoints for the profile page fields which Adara added in the backend in the PR #573 so that then we can add it to the frontend.
+
+
+PRs I reviewed:
+
+1st PR review (Timmi's): ([#576](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/576)) on refactoring the insights page's ui to be more visual use tailwind/shandcn.
+
+2nd PR review (Adara's) ([#587](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/587)) on creating a ui baseline with a theme and components to be used by the whole team, this is so we can all be consistent with the updated version of our ui.
+
+3rd PR review (Salma's) ([#585](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/585)) the frontend implementation of the upload/setup pages.
+
+Next Week:
+I plan finish my PRs that I didn't merge, update the profile page in the frontend to include the new fields. And add backend , api functionality for some extra profile page features such as adding a profile picutre/editing it ect.
+
 
 
