@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import TimelineSortControls from "../tabs/SkillTimeline/TimelineSortControls";
+import TimelineSortControls from "../tabs/Skills/TimelineSortControls";
 
 describe("TimelineSortControls", () => {
 	it("renders Sort by label and select", () => {

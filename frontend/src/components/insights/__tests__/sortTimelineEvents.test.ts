@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sortTimelineEvents } from "../tabs/SkillTimeline/utils/sortTimelineEvents";
+import { sortTimelineEvents } from "../tabs/Skills/utils/sortTimelineEvents";
 import type { TimelineEventDTO } from "../../../api/insights";
 
 const makeEvent = (overrides: Partial<TimelineEventDTO>): TimelineEventDTO => ({

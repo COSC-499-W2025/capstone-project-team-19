@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import DatedTimelinePanel from "../tabs/SkillTimeline/DatedTimelinePanel";
+import SkillsTimeline from "../tabs/Skills/SkillsTimeline";
 import type { SkillTimelineDTO } from "../../../api/insights";
 
 const mockTimelineWithDated: SkillTimelineDTO = {
@@ -39,32 +38,26 @@ const mockTimelineEmpty: SkillTimelineDTO = {
 	summary: { total_skills: 0, total_projects: 0, date_range: {}, skill_names: [] },
 };
 
-describe("DatedTimelinePanel", () => {
+describe("SkillsTimeline", () => {
 	it("shows empty state when no dated events", () => {
-		render(<DatedTimelinePanel timeline={mockTimelineEmpty} />);
+		render(<SkillsTimeline timeline={mockTimelineEmpty} />);
 		expect(screen.getByText(/no dated events/i)).toBeInTheDocument();
 	});
 
 	it("shows dated events grouped by date", () => {
-		render(<DatedTimelinePanel timeline={mockTimelineWithDated} />);
-		expect(screen.getByText(/jun\.\s*\d+,?\s*2024/i)).toBeInTheDocument();
+		render(<SkillsTimeline timeline={mockTimelineWithDated} />);
+		// toShortDate uses en-US e.g. "Jun 15, 2024"
+		expect(screen.getByText(/2024/)).toBeInTheDocument();
 		expect(screen.getAllByText(/testing and ci/i).length).toBeGreaterThan(0);
 		expect(screen.getAllByText(/clarity/i).length).toBeGreaterThan(0);
 		expect(screen.getByText(/My App/)).toBeInTheDocument();
 		expect(screen.getByText(/Essay/)).toBeInTheDocument();
 	});
 
-	it("shows sort controls when there are dated events", () => {
-		render(<DatedTimelinePanel timeline={mockTimelineWithDated} />);
-		expect(screen.getByText(/sort by/i)).toBeInTheDocument();
-	});
-
-	it("toggles sort direction when direction button clicked", async () => {
-		const user = userEvent.setup();
-		render(<DatedTimelinePanel timeline={mockTimelineWithDated} />);
-		const dirButton = screen.getByRole("button", { name: /A→Z/i });
-		expect(dirButton).toBeInTheDocument();
-		await user.click(dirButton);
-		expect(screen.getByRole("button", { name: /Z→A/i })).toBeInTheDocument();
+	it("shows column headers for skill rows", () => {
+		render(<SkillsTimeline timeline={mockTimelineWithDated} />);
+		expect(screen.getByText(/^Skill$/)).toBeInTheDocument();
+		expect(screen.getByText(/^Level$/)).toBeInTheDocument();
+		expect(screen.getByText(/^Project$/)).toBeInTheDocument();
 	});
 });

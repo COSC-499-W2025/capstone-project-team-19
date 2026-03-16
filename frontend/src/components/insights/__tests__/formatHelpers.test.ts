@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatSkillName, toYMD } from "../tabs/SkillTimeline/utils/formatHelpers";
+import { formatSkillName, toYMD } from "../tabs/Skills/utils/formatHelpers";
 
 describe("formatSkillName", () => {
 	it("capitalizes first letter of each word when space-separated", () => {
