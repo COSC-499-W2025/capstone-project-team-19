@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 10 (March9-March 15)](#t2-week-10-monday-9th-march-sunday-15th-march)
 - [Week 9 (March 2-March 8)](#t2-week-9-monday-2nd-march-sunday-8th-march)
 - [Week 6-8 (Feb 9-March 1)](#t2-week-6-8-monday-9th-february--sunday-1st-march)
 - [Week 4&5 (Jan 26-Feb 8)](#t2-week-45-monday-26th-january---sunday-8th-february)
@@ -214,3 +215,26 @@ PRs I reviewed:
 
 Next week plan: 
 Probably designing web portfolio layout and implementing it.
+
+## (T2 Week 10) Monday 9th March-Sunday 15th March
+![Screenshot of week 10_T2 peer eval](./screenshots/Johanes-March9-March15.png)
+Week recap:
+This week, I worked on 2 PRs:
+
+First PR: #579
+This is a PR for setting up the backend for the public page. For now, it only have the endpoints to support get project, project detail, ranking, skills. More endpoints such as heatmap and portfolio will be implemented to support the implementation of the public insights and output page.
+
+This PR also implement the feature of setting which projects is public/private, and whether the public page is accessible or not.
+
+
+Second PR: #584
+This PR is the implementation of Public Projects and Public Project Details page. Public Projects only shows projects that the account owner sets to public, while public project details, shows the details such as summary, contribution, thumbnail, duration, and skills.
+
+PRs I reviewed:
+#576: I reviewed this PR regarding maximizing the utilisation of skills timeline endpoint by making a line chart to show the improvement of each skill from time to time
+
+#590: I reviewed this PR regarding the consistency of the status update when user clicked each save button.
+
+
+Next week plan: 
+Continue implementing public page for the output and insights. Planning to have it merged before Wednesday (Peer Testing)
