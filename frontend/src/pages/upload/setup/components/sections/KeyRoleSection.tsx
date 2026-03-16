@@ -43,7 +43,9 @@ export default function KeyRoleSection({ project, actions, isMutating }: Props) 
         >
           Save key role
         </button>
-        <span className="text-sm text-zinc-600">Leave blank to clear.</span>
+        <span className="text-sm text-zinc-600">
+          Leave blank to clear. If LLM consent is enabled, this can be auto-generated during analysis.
+        </span>
       </div>
       {saveMessage && <p className="mt-1 text-sm text-zinc-700">{saveMessage}</p>}
     </div>
