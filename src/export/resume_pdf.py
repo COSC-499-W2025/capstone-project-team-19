@@ -39,6 +39,8 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.flowables import HRFlowable
 
+from pypdf import PdfReader
+
 from src.export.resume_helpers import (
     format_date_range,
     parse_date,
@@ -308,6 +310,14 @@ def export_resume_record_to_pdf(
         else:
             story.append(Paragraph("Resume data is missing or unreadable.", Body))
         doc.build(story)
+
+        # For snapshot-only exports, a single page is expected by design. If
+        # this grows, fail fast so callers can adjust content.
+        reader = PdfReader(str(filepath))
+        if len(reader.pages) > 1:
+            filepath.unlink(missing_ok=True)
+            raise ValueError("Resume PDF exceeds one page; please shorten content.")
+
         return filepath
 
     projects: List[Dict[str, Any]] = snapshot.get("projects") or []
@@ -376,7 +386,12 @@ def export_resume_record_to_pdf(
 
     projects_sorted = sorted(projects, key=sort_key, reverse=True)
 
-    for p in projects_sorted:
+    # Limit the number of projects shown on the PDF resume to keep layout tight.
+    # We keep the newest projects by taking from the already date-sorted list.
+    MAX_PROJECTS = 4
+    visible_projects = projects_sorted[:MAX_PROJECTS]
+
+    for p in visible_projects:
         title = (
             p.get("resume_display_name_override")
             or p.get("manual_display_name")
@@ -396,6 +411,10 @@ def export_resume_record_to_pdf(
             or p.get("contribution_bullets")
             or []
         )
+
+        # Cap the number of bullets per project for readability and space.
+        MAX_BULLETS_PER_PROJECT = 4
+        bullets = bullets[:MAX_BULLETS_PER_PROJECT]
 
         if bullets:
             story.append(
@@ -424,4 +443,14 @@ def export_resume_record_to_pdf(
         _render_education_block(story, certificate_only, ProjectTitleStyle, MetaItalic, Body)
 
     doc.build(story)
+
+    # Enforce a strict single-page resume for PDF exports. If the rendered
+    # document exceeds one page, delete the file and raise an error so the
+    # caller can prompt the user to reduce content (fewer projects, shorter
+    # experience, etc.).
+    reader = PdfReader(str(filepath))
+    if len(reader.pages) > 1:
+        filepath.unlink(missing_ok=True)
+        raise ValueError("Resume PDF exceeds one page; please shorten content.")
+
     return filepath

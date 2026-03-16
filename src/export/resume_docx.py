@@ -320,9 +320,14 @@ def export_resume_record_to_docx(
         reverse=True,
     )
 
+    # Limit the number of projects shown on the resume to keep layout tight.
+    # We keep the newest projects by taking from the already date-sorted list.
+    MAX_PROJECTS = 4
+    visible_projects = projects_sorted[:MAX_PROJECTS]
+
     add_section_heading(doc, "Projects")
 
-    for p in projects_sorted:
+    for p in visible_projects:
         project_name = _resume_display_name(p)
         doc.add_heading(project_name, level=2)
 
@@ -350,6 +355,10 @@ def export_resume_record_to_docx(
                 pct = p.get("contribution_percent")
                 if isinstance(pct, (int, float)):
                     bullets_to_use.append(f"Contributed to {pct:.1f}% of document")
+
+        # Cap the number of bullets per project for readability and space.
+        MAX_BULLETS_PER_PROJECT = 4
+        bullets_to_use = bullets_to_use[:MAX_BULLETS_PER_PROJECT]
 
         for b in bullets_to_use:
             add_bullet(doc, str(b))

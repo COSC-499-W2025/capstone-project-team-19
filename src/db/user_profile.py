@@ -91,6 +91,15 @@ def upsert_user_profile(
     clean_location = _clean_optional_text(location)
     clean_profile_text = _clean_optional_text(profile_text)
 
+    # Enforce a maximum length for the profile paragraph so it fits well on a resume.
+    # This is a backend guard; callers should provide shorter text rather than expecting truncation.
+    if clean_profile_text is not None:
+        MAX_PROFILE_CHARS = 900
+        if len(clean_profile_text) > MAX_PROFILE_CHARS:
+            raise ValueError(
+                f"profile_text must be at most {MAX_PROFILE_CHARS} characters."
+            )
+
     conn.execute(
         """
         UPDATE users

@@ -41,6 +41,43 @@ from src.db.skill_preferences import (
 import json
 
 
+def _clean_bullet_text(value: Any) -> str:
+    # Keep behavior consistent with other parts of the app: trim and strip leading bullet markers.
+    text = str(value).strip()
+    if text.startswith(("-", "•")):
+        text = text.lstrip("-•").strip()
+    return text
+
+
+def _validate_contribution_bullets(bullets: List[Any]) -> List[str]:
+    """
+    Enforce resume-safe constraints on contribution bullets.
+
+    - Must be between 2 and 4 bullets (inclusive)
+    - Each bullet must be non-empty after cleaning
+    - Each bullet must be short enough to fit cleanly in exports
+    """
+    MIN_BULLETS = 2
+    MAX_BULLETS = 4
+    MAX_BULLET_CHARS = 240
+
+    cleaned: List[str] = [_clean_bullet_text(b) for b in bullets]
+    cleaned = [b for b in cleaned if b]
+
+    if len(cleaned) < MIN_BULLETS or len(cleaned) > MAX_BULLETS:
+        raise ValueError(
+            f"contribution_bullets must contain between {MIN_BULLETS} and {MAX_BULLETS} bullet points."
+        )
+
+    too_long = [i + 1 for i, b in enumerate(cleaned) if len(b) > MAX_BULLET_CHARS]
+    if too_long:
+        raise ValueError(
+            f"Contribution bullet(s) {', '.join(map(str, too_long))} exceed {MAX_BULLET_CHARS} characters."
+        )
+
+    return cleaned
+
+
 def list_user_resumes(conn, user_id: int) -> List[Dict[str, Any]]:
     """
     Service method for listing resumes.
@@ -210,13 +247,20 @@ def edit_resume(
     if summary_text is not None:
         updates["summary_text"] = summary_text or None
     if contribution_bullets is not None:
+        # Validate user-provided bullets so exports don't need to truncate text.
+        # Note: we validate the final bullet list after applying append/replace logic.
         if contribution_edit_mode == "append" and contribution_bullets:
             # Append new bullets to existing ones
             current_bullets = resolve_resume_contribution_bullets(project_entry)
-            updates["contribution_bullets"] = current_bullets + contribution_bullets
+            combined = current_bullets + contribution_bullets
+            updates["contribution_bullets"] = _validate_contribution_bullets(combined)
         else:
             # Replace mode: use provided bullets directly
-            updates["contribution_bullets"] = contribution_bullets or None
+            updates["contribution_bullets"] = (
+                _validate_contribution_bullets(contribution_bullets)
+                if contribution_bullets
+                else None
+            )
     if key_role is not None:
         updates["key_role"] = key_role or None
 
