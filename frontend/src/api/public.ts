@@ -22,6 +22,8 @@ export interface PublicProjectDetail {
   project_type: string | null;
   project_mode: string | null;
   created_at: string | null;
+  start_date: string | null;
+  end_date: string | null;
   summary_text: string | null;
   languages: string[];
   frameworks: string[];

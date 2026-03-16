@@ -122,7 +122,9 @@ def get_public_project_detail(
             ps.project_type,
             ps.project_mode,
             ps.summary_json,
-            ps.created_at
+            ps.created_at,
+            ps.manual_start_date,
+            ps.manual_end_date
         FROM project_summaries ps
         JOIN projects p ON p.project_key = ps.project_key
         WHERE ps.user_id = ? AND ps.project_summary_id = ? AND ps.is_public = 1
@@ -144,6 +146,8 @@ def get_public_project_detail(
         "project_type": row["project_type"],
         "project_mode": row["project_mode"],
         "created_at": row["created_at"],
+        "start_date": row["manual_start_date"],
+        "end_date": row["manual_end_date"],
         "summary_text": summary_dict.get("summary_text"),
         "languages": summary_dict.get("languages", []),
         "frameworks": summary_dict.get("frameworks", []),

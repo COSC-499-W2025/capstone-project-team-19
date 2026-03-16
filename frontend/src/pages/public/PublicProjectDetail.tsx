@@ -7,16 +7,16 @@ import {
   publicFetchThumbnailUrl,
   publicListProjects,
 } from "../../api/public";
-import type { Project, ProjectDetail } from "../../api/projects";
+import type { PublicProjectDetail, PublicProject } from "../../api/public";
 
 export default function PublicProjectDetailPage() {
   const { username, id } = useParams<{ username: string; id: string }>();
   const projectId = Number(id);
   const nav = useNavigate();
 
-  const [project, setProject] = useState<ProjectDetail | null>(null);
+  const [project, setProject] = useState<PublicProjectDetail | null>(null);
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
-  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [allProjects, setAllProjects] = useState<PublicProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +42,11 @@ export default function PublicProjectDetailPage() {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [username, projectId]);
+
+  function formatDate(d: string | null | undefined) {
+    if (!d) return "—";
+    return d;
+  }
 
   function formatSkillName(s: string) {
     return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -97,8 +102,20 @@ export default function PublicProjectDetailPage() {
             <h2 className="pdTitle">{project.project_name}</h2>
             {project.project_type && <span className="pdMeta">{project.project_type}</span>}
             {project.project_mode && <span className="pdMeta">{project.project_mode}</span>}
-          </div>
+            </div>
         </div>
+
+        {/* Duration */}
+        {(project.start_date || project.end_date) && (
+          <div className="pdSection">
+            <div className="pdSectionHeader">
+              <h3>Duration</h3>
+            </div>
+            <p className="pdDateDisplay">
+              {formatDate(project.start_date)} → {formatDate(project.end_date)}
+            </p>
+          </div>
+        )}
 
         {/* Summary */}
         <div className="pdSection">
@@ -110,9 +127,7 @@ export default function PublicProjectDetailPage() {
             <>
               <h3 className="pdContribHeading">Contribution Summary</h3>
               <p className="pdSummaryText">
-                {project.contributions?.manual_contribution_summary ?? (
-                  <em>No contribution summary available.</em>
-                )}
+                <em>No contribution summary available.</em>
               </p>
             </>
           )}
