@@ -711,6 +711,7 @@ export function useUploadFlow() {
   }
 
   return {
+    uploadId: uploadData?.upload_id ?? null,
     stageIndex,
     currentStage,
     canGoBack,
