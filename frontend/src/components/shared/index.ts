@@ -5,6 +5,7 @@ export { default as AppInput } from "./AppInput";
 export { default as AppRadio } from "./AppRadio";
 export { default as AppSelect } from "./AppSelect";
 export { default as AppTextarea } from "./AppTextArea";
+export { default as AuthPageShell } from "./AuthPageShell";
 export { default as Breadcrumbs } from "./Breadcrumbs";
 export { default as ConfirmDialog } from "./ConfirmDialog";
 export { default as ContactDialog } from "./ContactDialog";

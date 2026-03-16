@@ -1,10 +1,14 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import TopBar from "../components/TopBar";
 import { login } from "../api/auth";
 import { tokenStore } from "../auth/token";
-import { Button } from "../components/ui/button";
+import {
+  AppButton,
+  AppField,
+  AppInput,
+  AuthPageShell,
+} from "../components/shared";
 
 export default function LoginPage() {
   const nav = useNavigate();
@@ -30,43 +34,49 @@ export default function LoginPage() {
   }
 
   return (
-    <>
-      <TopBar />
-      <div className="page">
-        <form className="card" onSubmit={onSubmit}>
-          <label>Username</label>
-          <input
-            placeholder="Username"
+    <AuthPageShell
+      footer={
+        <>
+          Don&apos;t have an account?{" "}
+          <Link to="/register" className="text-[#7f7f7f] underline underline-offset-2">
+            Register here
+          </Link>
+        </>
+      }
+    >
+      <form
+        className="mx-auto flex w-full max-w-[300px] flex-col gap-[14px]"
+        onSubmit={onSubmit}
+      >
+        <AppField label="Username">
+          <AppInput
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
+            aria-label="Username"
           />
+        </AppField>
 
-          <label>Password</label>
-          <input
-            placeholder="Password"
+        <AppField label="Password">
+          <AppInput
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
+            aria-label="Password"
           />
+        </AppField>
 
-          {err && (
-            <div className="error" style={{ whiteSpace: "pre-line" }}>
-              {err}
-            </div>
-          )}
-
-          <Button type="submit" disabled={loading} className="w-full mt-1.5">
-            {loading ? "Logging in..." : "Login"}
-          </Button>
-
-
-          <div className="helper">
-            Don&apos;t have an account? <Link to="/register">Register here</Link>
+        {err ? (
+          <div className="text-[13px] leading-[1.35] text-[#cc4b4b]" style={{ whiteSpace: "pre-line" }}>
+            {err}
           </div>
-        </form>
-      </div>
-    </>
+        ) : null}
+
+        <AppButton type="submit" disabled={loading} fullWidth className="mt-[4px]">
+          {loading ? "Logging in..." : "Login"}
+        </AppButton>
+      </form>
+    </AuthPageShell>
   );
 }
