@@ -11,10 +11,11 @@ import ExportDropdown from "./ExportDropdown";
 type Props = {
   onBack: () => void;
   onView: (id: number) => void;
+  onEdit: (id: number) => void;
   onCreateNew: () => void;
 };
 
-export default function ResumeList({ onBack, onView, onCreateNew }: Props) {
+export default function ResumeList({ onBack, onView, onEdit, onCreateNew }: Props) {
   const [resumes, setResumes] = useState<ResumeListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -102,7 +103,7 @@ export default function ResumeList({ onBack, onView, onCreateNew }: Props) {
               <button className="actionBtn dark" onClick={() => onView(r.id)}>
                 View
               </button>
-              <button className="actionBtn outline" onClick={() => onView(r.id)}>
+              <button className="actionBtn outline" onClick={() => onEdit(r.id)}>
                 Edit
               </button>
               <button

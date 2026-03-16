@@ -33,3 +33,14 @@ export function toYMD(iso?: string | null) {
     // add the period after the month abbreviation
     return formatted.replace(/^(\w{3})/, "$1.");
 }
+
+/** Short format for timeline spine: "Oct 19, 2025" */
+export function toShortDate(iso?: string | null) {
+    if (!iso) return "";
+    const normalized = iso
+        .replace(" ", "T")
+        .replace(/ ([+-])/, "$1")
+        .replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
+    const d = new Date(normalized);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}

@@ -84,3 +84,36 @@ export type SkillTimelineApiResponse = {
 export function getSkillTimeline() {
     return api.get<SkillTimelineApiResponse>("/skills/timeline");
 }
+
+// Project Skill Heatmap (skills x projects)
+
+export type ProjectSkillMatrixDTO = {
+    title: string;
+    row_labels: string[];
+    col_labels: string[];
+    matrix: number[][];
+};
+
+export function getProjectSkillMatrix(): Promise<ProjectSkillMatrixDTO> {
+    return api
+        .get<{ success: boolean; data: ProjectSkillMatrixDTO }>("/skills/project-matrix")
+        .then((r) => r.data);
+}
+
+// Activity by Date (GitHub-style contribution heatmap)
+
+export type ActivityByDateMatrixDTO = {
+    title: string;
+    row_labels: string[];
+    col_labels: string[];
+    matrix: number[][];
+    available_years: number[];
+    projects_by_date: Record<string, string[]>;  // date -> project names
+};
+
+export function getActivityByDate(year?: number | null): Promise<ActivityByDateMatrixDTO> {
+    const params = year != null ? `?year=${year}` : "";
+    return api
+        .get<{ success: boolean; data: ActivityByDateMatrixDTO }>(`/skills/activity-by-date${params}`)
+        .then((r) => r.data);
+}
