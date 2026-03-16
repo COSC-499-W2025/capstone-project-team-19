@@ -6,15 +6,14 @@ Layout:
 - Name (largest)
 - line between name and contact
 - Contact line
-- PROFILE (placeholder)
-- SKILLS
-- PROJECTS (experience-style per project)
-- EDUCATION & CERTIFICATES (placeholder)
-- Add spacing BETWEEN sections (Profile/Skills/Projects/Education)
+- Profile (only shown if populated)
+- Education
+- Skills
+- Experience
+- Projects
+- Certificates
 
-Notes:
-- Uses snapshot JSON from get_resume_snapshot(...). No external converters needed.
-- Long lines/bullets wrap automatically (Platypus Paragraph + ListFlowable).
+Sections are only shown when they have content.
 """
 
 from __future__ import annotations
@@ -52,6 +51,7 @@ from src.db import (
     get_visible_profile_text,
     get_resume_name,
 )
+
 
 def _safe_slug(s: str) -> str:
     s = (s or "").strip().lower()
@@ -94,7 +94,6 @@ def _clean_str(value: Any) -> str | None:
 
 
 def _resume_key_role(p: Dict[str, Any]) -> str | None:
-    """Resolve key role with priority: resume override → manual override → base."""
     resume_role = _clean_str(p.get("resume_key_role_override"))
     if resume_role:
         return resume_role
@@ -125,6 +124,60 @@ def _pdf_contact_html(profile: Dict[str, Any]) -> str | None:
     return " | ".join(chunks)
 
 
+def _render_education_block(
+    story: List[Any],
+    entries: List[Dict[str, Any]],
+    project_title_style: ParagraphStyle,
+    meta_italic: ParagraphStyle,
+    body: ParagraphStyle,
+) -> None:
+    for entry in entries:
+        title = entry.get("title") or "Untitled"
+        story.append(Paragraph(escape(str(title)), project_title_style))
+
+        details = []
+        if entry.get("organization"):
+            details.append(str(entry["organization"]).strip())
+        if entry.get("date_text"):
+            details.append(str(entry["date_text"]).strip())
+
+        if details:
+            story.append(Paragraph(escape(" | ".join(details)), meta_italic))
+
+        description = _clean_str(entry.get("description"))
+        if description:
+            story.append(Paragraph(escape(description), body))
+
+        story.append(Spacer(1, 10))
+
+
+def _render_experience_block(
+    story: List[Any],
+    entries: List[Dict[str, Any]],
+    project_title_style: ParagraphStyle,
+    meta_italic: ParagraphStyle,
+    body: ParagraphStyle,
+) -> None:
+    for entry in entries:
+        role = entry.get("role") or "Untitled role"
+        story.append(Paragraph(escape(str(role)), project_title_style))
+
+        details = []
+        if entry.get("company"):
+            details.append(str(entry["company"]).strip())
+        if entry.get("date_text"):
+            details.append(str(entry["date_text"]).strip())
+
+        if details:
+            story.append(Paragraph(escape(" | ".join(details)), meta_italic))
+
+        description = _clean_str(entry.get("description"))
+        if description:
+            story.append(Paragraph(escape(description), body))
+
+        story.append(Spacer(1, 10))
+
+
 def export_resume_record_to_pdf(
     *,
     username: str,
@@ -133,6 +186,8 @@ def export_resume_record_to_pdf(
     highlighted_skills: Optional[List[str]] = None,
     highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,
     user_profile: Optional[Dict[str, Any]] = None,
+    education_entries: Optional[List[Dict[str, Any]]] = None,
+    experience_entries: Optional[List[Dict[str, Any]]] = None,
 ) -> Path:
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
@@ -152,6 +207,11 @@ def export_resume_record_to_pdf(
         except Exception:
             snapshot = None
 
+    profile = user_profile or {}
+    education_entries = education_entries or []
+    experience_entries = experience_entries or []
+    display_name = get_resume_name(profile, username)
+
     doc = SimpleDocTemplate(
         str(filepath),
         pagesize=LETTER,
@@ -159,13 +219,12 @@ def export_resume_record_to_pdf(
         rightMargin=0.85 * inch,
         topMargin=0.85 * inch,
         bottomMargin=0.85 * inch,
-        title=f"Resume - {username}",
-        author=username,
+        title=f"Resume - {display_name}",
+        author=display_name,
     )
 
     styles = getSampleStyleSheet()
 
-    # --- Sizing order requested: Name (biggest) > Section > Project title ---
     NameStyle = ParagraphStyle(
         "NameStyle",
         parent=styles["Normal"],
@@ -223,29 +282,14 @@ def export_resume_record_to_pdf(
         spaceAfter=2,
     )
 
-    PlaceholderItalic = ParagraphStyle(
-        "PlaceholderItalic",
-        parent=Body,
-        fontName="Helvetica-Oblique",
-        spaceAfter=0,
-    )
-
     def rule() -> HRFlowable:
-        # Only used for name->contact separator now
         return HRFlowable(width="100%", thickness=0.8, lineCap="round", spaceBefore=6, spaceAfter=10)
 
     def section_gap() -> Spacer:
-        # spacing BETWEEN sections (requested)
         return Spacer(1, 14)
 
     story: List[Any] = []
 
-    # ---------------------------
-    # Header
-    # ---------------------------
-    profile = user_profile or {}
-
-    display_name = get_resume_name(profile, username)
     story.append(Paragraph(display_name.upper(), NameStyle))
     story.append(rule())
 
@@ -253,7 +297,6 @@ def export_resume_record_to_pdf(
     if contact_html:
         story.append(Paragraph(contact_html, ContactStyle))
 
-    # If JSON is broken, dump rendered_text as paragraphs
     if snapshot is None:
         story.append(section_gap())
         story.append(Paragraph("RESUME SNAPSHOT", SectionStyle))
@@ -270,18 +313,20 @@ def export_resume_record_to_pdf(
     projects: List[Dict[str, Any]] = snapshot.get("projects") or []
     agg: Dict[str, Any] = snapshot.get("aggregated_skills") or {}
 
-    # ---------------------------
-    # PROFILE
-    # ---------------------------
     profile_text = get_visible_profile_text(profile)
     if profile_text:
         story.append(section_gap())
         story.append(Paragraph("PROFILE", SectionStyle))
         story.append(Paragraph(escape(profile_text), Body))
 
-    # ---------------------------
-    # SKILLS
-    # ---------------------------
+    education_only = [e for e in education_entries if e.get("entry_type") == "education"]
+    certificate_only = [e for e in education_entries if e.get("entry_type") == "certificate"]
+
+    if education_only:
+        story.append(section_gap())
+        story.append(Paragraph("EDUCATION", SectionStyle))
+        _render_education_block(story, education_only, ProjectTitleStyle, MetaItalic, Body)
+
     story.append(section_gap())
     story.append(Paragraph("SKILLS", SectionStyle))
 
@@ -297,10 +342,8 @@ def export_resume_record_to_pdf(
     )
 
     add_skill_line("Languages", languages)
-
     add_skill_line("Frameworks", agg.get("frameworks") or [])
 
-    # Compute effective highlighted skills (union of per-project or flat list)
     effective_highlighted = highlighted_skills
     if highlighted_skills_by_project is not None:
         all_hl: set = set()
@@ -320,9 +363,11 @@ def export_resume_record_to_pdf(
     add_skill_line("Technical skills", tech_skills)
     add_skill_line("Writing skills", writing_skills)
 
-    # ---------------------------
-    # PROJECTS
-    # ---------------------------
+    if experience_entries:
+        story.append(section_gap())
+        story.append(Paragraph("EXPERIENCE", SectionStyle))
+        _render_experience_block(story, experience_entries, ProjectTitleStyle, MetaItalic, Body)
+
     story.append(section_gap())
     story.append(Paragraph("PROJECTS", SectionStyle))
 
@@ -338,7 +383,6 @@ def export_resume_record_to_pdf(
             or p.get("project_name")
             or "Unnamed project"
         )
-        # Resolve key role with priority: resume override → manual override → base
         role = _resume_key_role(p) or "[Role]"
         date_line = format_date_range(p.get("start_date"), p.get("end_date"))
         meta = f"{role} | {date_line}" if date_line else role
@@ -346,7 +390,6 @@ def export_resume_record_to_pdf(
         story.append(Paragraph(str(title), ProjectTitleStyle))
         story.append(Paragraph(meta, MetaItalic))
 
-        # Priority: resume-specific override > global override > base field
         bullets = _clean_bullets(
             p.get("resume_contributions_override")
             or p.get("manual_contribution_bullets")
@@ -375,12 +418,10 @@ def export_resume_record_to_pdf(
 
         story.append(Spacer(1, 10))
 
-    # ---------------------------
-    # EDUCATION & CERTIFICATES
-    # ---------------------------
-    story.append(section_gap())
-    story.append(Paragraph("EDUCATION & CERTIFICATES", SectionStyle))
-    story.append(Paragraph("To be updated later.", PlaceholderItalic))
+    if certificate_only:
+        story.append(section_gap())
+        story.append(Paragraph("CERTIFICATES", SectionStyle))
+        _render_education_block(story, certificate_only, ProjectTitleStyle, MetaItalic, Body)
 
     doc.build(story)
     return filepath
