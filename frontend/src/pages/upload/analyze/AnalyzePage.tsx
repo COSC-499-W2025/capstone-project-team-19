@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { getUploadStatus, postUploadRun, type RunPreflightRecord, type UploadStatus } from "../../../api/uploads";
+import { postUploadRun, type RunPreflightRecord } from "../../../api/uploads";
 import { getUsername } from "../../../auth/user";
 import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
@@ -50,8 +50,6 @@ export default function UploadAnalyzePage() {
   const hasValidUploadId = Number.isInteger(uploadId) && uploadId > 0;
   const [cards, setCards] = useState<Record<ScopeName, ScopeCard>>(INITIAL_CARDS);
   const [pageMessage, setPageMessage] = useState<string | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus | null>(null);
-  const [pollingEnabled, setPollingEnabled] = useState(false);
   const [scopeStartedAt, setScopeStartedAt] = useState<Record<ScopeName, number | null>>({
     individual: null,
     collaborative: null,
@@ -154,23 +152,19 @@ export default function UploadAnalyzePage() {
     async function runSequence() {
       if (!active) return;
       setPageMessage("Running analysis...");
-      setPollingEnabled(true);
       const individual = await runScope("individual");
       if (!active) return;
       if (individual === "failed") {
         setPageMessage("Analysis stopped: individual scope failed.");
-        setPollingEnabled(false);
         return;
       }
       const collaborative = await runScope("collaborative");
       if (!active) return;
       if (collaborative === "failed") {
         setPageMessage("Analysis finished with errors.");
-        setPollingEnabled(false);
         return;
       }
       setPageMessage("Analysis sequence finished.");
-      setPollingEnabled(false);
     }
     const timeoutId = window.setTimeout(() => {
       void runSequence();
@@ -193,8 +187,8 @@ export default function UploadAnalyzePage() {
     if (scopeStatuses.includes("running")) return "analyzing";
     if (scopeStatuses.every((status) => status === "completed" || status === "skipped")) return "done";
     if (scopeStatuses.some((status) => status === "completed" || status === "skipped")) return "analyzing";
-    return uploadStatus;
-  }, [cards.collaborative.status, cards.individual.status, uploadStatus]);
+    return null;
+  }, [cards.collaborative.status, cards.individual.status]);
 
   useEffect(() => {
     const hasRunningScope = cards.individual.status === "running" || cards.collaborative.status === "running";
@@ -224,30 +218,6 @@ export default function UploadAnalyzePage() {
     const remaining = Math.max(1, Math.ceil(SCOPE_ESTIMATE_SECONDS[scope] - elapsedSeconds));
     return `${remaining}s remaining`;
   }, [clockMs, scopeStartedAt]);
-
-  useEffect(() => {
-    if (!hasValidUploadId || !pollingEnabled) return;
-    let active = true;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-
-    async function pollOnce() {
-      const data = await getUploadStatus(uploadId);
-      if (!active || !data.success || !data.data) return;
-      const status = data.data.status;
-      setUploadStatus(status);
-      if (status === "done" || status === "failed") {
-        setPollingEnabled(false);
-      }
-    }
-
-    pollOnce();
-    intervalId = setInterval(pollOnce, 2000);
-
-    return () => {
-      active = false;
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [hasValidUploadId, pollingEnabled, uploadId]);
 
   function statusLabel(status: ScopeStatus): string {
     if (status === "running") return "In progress";
@@ -286,7 +256,7 @@ export default function UploadAnalyzePage() {
                 {eta && <p className="mb-2 text-xs text-zinc-500">{displayProgress}% • {eta}</p>}
                 <div className="h-2 w-full rounded bg-zinc-200">
                   <div
-                    className="h-2 rounded bg-black transition-[width] duration-700 ease-linear"
+                    className="h-2 rounded bg-[#001166] transition-[width] duration-700 ease-linear"
                     style={{ width: `${displayProgress}%` }}
                   />
                 </div>
@@ -318,7 +288,7 @@ export default function UploadAnalyzePage() {
               <button
                 type="button"
                 onClick={() => nav("/outputs")}
-                className="rounded border border-zinc-300 bg-zinc-900 px-4 py-2 text-sm font-medium text-white"
+                className="rounded border border-zinc-300 bg-[#001166] px-4 py-2 text-sm font-medium text-white"
               >
                 Go to Outputs
               </button>

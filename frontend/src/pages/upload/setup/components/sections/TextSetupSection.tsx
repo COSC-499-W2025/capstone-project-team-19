@@ -36,6 +36,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   const [selectedLocalFile, setSelectedLocalFile] = useState("");
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
   const [driveLoading, setDriveLoading] = useState(false);
+  const [driveAuthUrl, setDriveAuthUrl] = useState<string | null>(null);
   const [selectedDriveFileId, setSelectedDriveFileId] = useState("");
   const [driveMapByLocalFile, setDriveMapByLocalFile] = useState<Record<string, DriveFile>>({});
   const [driveMessage, setDriveMessage] = useState<string | null>(null);
@@ -212,6 +213,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     if (driveChoice === "no") {
       const data = await actions.driveStart(project.projectName, false);
       if (!data) return;
+      setDriveAuthUrl(null);
       setDriveFiles([]);
       setDriveMessage("Google Drive skipped for now.");
       return;
@@ -220,10 +222,11 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     const data = await actions.driveStart(project.projectName, true);
     if (!data) return;
     if (data.auth_url) {
-      window.open(data.auth_url, "_blank", "noopener,noreferrer");
-      setDriveMessage("Authorization opened. Complete it, then click Refresh Drive Files.");
+      setDriveAuthUrl(data.auth_url);
+      setDriveMessage("Continue with Google Drive OAuth using the link below.");
       return;
     }
+    setDriveAuthUrl(null);
     setDriveMessage("Google Drive is connected.");
     await onRefreshDriveFiles();
   }
@@ -231,9 +234,11 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   async function onDriveChoiceChange(choice: "yes" | "no") {
     setDriveChoice(choice);
     if (choice === "yes") {
+      setDriveAuthUrl(null);
       setDriveMessage(null);
       return;
     }
+    setDriveAuthUrl(null);
     setDriveFiles([]);
     setDriveMapByLocalFile({});
     setSelectedDriveFileId("");
@@ -465,6 +470,17 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               </button>
             </div>
           )}
+          {driveAuthUrl && (
+            <a
+              href={driveAuthUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-medium underline"
+              style={{ color: "#001166" }}
+            >
+              Open Google Drive authorization{" "}
+            </a>
+          )}
           <p className="text-sm text-zinc-700">
             Current state: <span className="font-medium">{project.driveState}</span>
             {project.driveLinkedFilesCount > 0 ? ` | Linked files: ${project.driveLinkedFilesCount}` : ""}
@@ -616,7 +632,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                     type="button"
                     onClick={onFinalizeDriveLinks}
                     disabled={isMutating || mappedDriveCount <= 0}
-                    className="rounded border border-zinc-300 bg-zinc-900 px-3 py-1.5 font-medium text-white disabled:opacity-50"
+                    className="rounded border border-zinc-300 bg-[#001166] px-3 py-1.5 font-medium text-white disabled:opacity-50"
                   >
                     Finalize
                   </button>
