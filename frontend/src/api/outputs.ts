@@ -83,6 +83,26 @@ export function getRankedProjects() {
   );
 }
 
+/* ── Resume editing ── */
+
+export interface ResumeEditRequest {
+  name?: string;
+  project_summary_id?: number;
+  scope?: "resume_only" | "global";
+  display_name?: string;
+  summary_text?: string;
+  contribution_bullets?: string[];
+  contribution_edit_mode?: "append" | "replace";
+  key_role?: string;
+}
+
+export function editResume(resumeId: number, payload: ResumeEditRequest) {
+  return api.postJson<ApiResponse<ResumeDetail>>(
+    `/resume/${resumeId}/edit`,
+    payload
+  );
+}
+
 /* ── Export helpers ── */
 
 export async function downloadResumeDocx(id: number) {
