@@ -284,6 +284,7 @@
 .projectsStageList {
   margin: 0;
   padding-left: 24px;
+  list-style: disc outside;
   display: grid;
   gap: 12px;
 }
@@ -465,6 +466,7 @@
 .dedupSavedList {
   margin: 0;
   padding-left: 18px;
+  list-style: disc outside;
   display: grid;
   gap: 6px;
 }

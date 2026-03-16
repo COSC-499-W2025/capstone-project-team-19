@@ -537,6 +537,7 @@ button {
 .consentBulletList {
   margin: 0 0 18px 34px;
   padding: 0;
+  list-style: disc outside;
 }
 
 .consentBulletList li {
@@ -898,6 +899,7 @@ button {
 .portfolioMeta ul {
   margin: 2px 0;
   padding-left: 40px;
+  list-style: disc outside;
 }
 
 .portfolioMeta li {
@@ -951,6 +953,7 @@ button {
 .bulletList {
   margin: 2px 0;
   padding-left: 24px;
+  list-style: disc outside;
 }
 
 .bulletList li {
