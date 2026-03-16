@@ -8,10 +8,19 @@ describe("InsightsSidebar", () => {
 		const onChange = vi.fn();
 		render(<InsightsSidebar activeView="ranked-projects" onChange={onChange} />);
 		expect(screen.getByRole("button", { name: /ranked projects/i })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /^timeline$/i })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /skills overview/i })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /chronological skills/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /activity heatmap/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /project heatmap/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /^timeline$/i })).toBeInTheDocument();
+	});
+
+	it("heatmaps appear above Skills section", () => {
+		const { container } = render(<InsightsSidebar activeView="ranked-projects" onChange={() => {}} />);
+		const buttons = container.querySelectorAll("nav button");
+		const labels = Array.from(buttons).map((b) => b.textContent);
+		const activityIdx = labels.findIndex((t) => /activity heatmap/i.test(t ?? ""));
+		const timelineIdx = labels.findIndex((t) => /^timeline$/i.test(t ?? ""));
+		expect(activityIdx).toBeGreaterThan(-1);
+		expect(timelineIdx).toBeGreaterThan(activityIdx);
 	});
 
 	it("marks active view with sky border (not literal active class)", () => {

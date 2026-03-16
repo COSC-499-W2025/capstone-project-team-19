@@ -49,7 +49,7 @@ describe("InsightsLayout", () => {
 		expect(screen.getByRole("button", { name: /ranked projects/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /^timeline$/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /skills overview/i })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /chronological skills/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /skills log/i })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: /activity heatmap/i })).toBeInTheDocument();
 	});
 
@@ -72,15 +72,15 @@ describe("InsightsLayout", () => {
 		expectNavInactive(screen.getByRole("button", { name: /ranked projects/i }));
 	});
 
-	it("switches to Chronological Skills when clicked", async () => {
+	it("switches to Skills Logs when clicked", async () => {
 		const user = userEvent.setup();
 		render(<InsightsLayout />);
 		await waitFor(() => {
 			expect(screen.getByText("Project A")).toBeInTheDocument();
 		});
-		await user.click(screen.getByRole("button", { name: /chronological skills/i }));
-		expectNavActive(screen.getByRole("button", { name: /chronological skills/i }));
-		expect(screen.getAllByText(/chronological skills/i).length).toBeGreaterThan(0);
+		await user.click(screen.getByRole("button", { name: /skills log/i }));
+		expectNavActive(screen.getByRole("button", { name: /skills log/i }));
+		expect(screen.getAllByText(/skills log/i).length).toBeGreaterThan(0);
 	});
 
 	it("switches to Activity Heatmap when clicked", async () => {

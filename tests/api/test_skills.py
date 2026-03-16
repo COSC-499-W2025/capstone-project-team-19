@@ -1,6 +1,9 @@
+import json
+
 import pytest
 import src.db as db
 from src.db.projects import record_project_classification
+from tests.api.conftest import seed_project
 
 @pytest.fixture
 def setup_db(tmp_path, monkeypatch):
@@ -62,3 +65,24 @@ def test_skills_with_data(client, auth_headers, seed_conn):
     assert skill["skill_name"] == "Python"
     assert skill["level"] == "Advanced"
     assert skill["score"] == 0.9
+
+
+def test_activity_by_date_returns_structure(client, auth_headers):
+    """GET /skills/activity-by-date returns 200 with expected keys."""
+    res = client.get("/skills/activity-by-date", headers=auth_headers)
+    assert res.status_code == 200
+    d = res.json()["data"]
+    for k in ("row_labels", "col_labels", "matrix", "available_years", "projects_by_date"):
+        assert k in d
+
+
+def test_activity_by_date_with_project_dates(client, auth_headers, seed_conn):
+    """With project dates set, activity-by-date includes project in projects_by_date."""
+    seed_project(seed_conn, 1, "ProjA")
+    db.set_project_dates(seed_conn, 1, "ProjA", "2024-01-01", "2024-01-07")
+    seed_conn.commit()
+    res = client.get("/skills/activity-by-date?year=2024", headers=auth_headers)
+    assert res.status_code == 200
+    d = res.json()["data"]
+    assert d["projects_by_date"]
+    assert any("ProjA" in projs for projs in d["projects_by_date"].values())

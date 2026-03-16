@@ -1,8 +1,12 @@
 from sqlite3 import Connection
-from typing import Literal, Tuple
+from typing import Any, Dict, Literal, Tuple
 
+from src.db.project_summaries import get_project_summary_by_id
 from src.db.projects import get_project_key
-from src.analysis.visualizations.activity_heatmap import write_project_activity_heatmap
+from src.analysis.visualizations.activity_heatmap import (
+    write_project_activity_heatmap,
+    build_project_activity_heatmap_matrix,
+)
 
 HeatmapMode = Literal["diff", "snapshot"]
 
@@ -12,16 +16,8 @@ def _resolve_project_name_from_project_id(
     user_id: int,
     project_id: int,
 ) -> str | None:
-    row = conn.execute(
-        """
-        SELECT project_name
-        FROM project_summaries
-        WHERE user_id = ? AND project_summary_id = ?
-        LIMIT 1
-        """,
-        (user_id, project_id),
-    ).fetchone()
-    return row[0] if row and row[0] else None
+    row = get_project_summary_by_id(conn, user_id, project_id)
+    return row.get("project_name") if row else None
 
 
 def get_activity_heatmap_png_path(
@@ -65,3 +61,40 @@ def build_activity_heatmap_png_url(
         f"&normalize={'true' if normalize else 'false'}"
         f"&include_unclassified_text={'true' if include_unclassified_text else 'false'}"
     )
+
+
+def get_activity_heatmap_data(
+    conn: Connection,
+    user_id: int,
+    project_id: int,
+    mode: HeatmapMode = "diff",
+    normalize: bool = True,
+    include_unclassified_text: bool = True,
+) -> Dict[str, Any]:
+    project_name = _resolve_project_name_from_project_id(conn, user_id, project_id)
+    if project_name is None:
+        raise ValueError("Project not found")
+
+    project_key = get_project_key(conn, user_id, project_name)
+    if project_key is None:
+        raise ValueError("Project not found")
+
+    mat, row_labels, col_labels, title = build_project_activity_heatmap_matrix(
+        conn,
+        user_id,
+        project_name,
+        mode=mode,
+        normalize=normalize,
+        include_unclassified_text=include_unclassified_text,
+    )
+    return {
+        "project_id": project_id,
+        "project_name": project_name,
+        "mode": mode,
+        "normalize": normalize,
+        "include_unclassified_text": include_unclassified_text,
+        "matrix": mat.tolist(),
+        "row_labels": list(row_labels),
+        "col_labels": list(col_labels),
+        "title": title,
+    }

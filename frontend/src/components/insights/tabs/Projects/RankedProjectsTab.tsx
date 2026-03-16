@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getRanking, replaceRankingOrder, resetRanking } from "../../../../api/insights";
 import type { RankedProject } from "../../../../api/insights";
 import { useInsightsHeaderActions } from "../../InsightsHeaderActionsContext";
 
-const actionBtn =
-	"px-4 py-0 rounded-lg border-2 border-slate-600 bg-white font-medium cursor-pointer transition-all duration-150 hover:bg-slate-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed";
-const moveBtn =
-	"w-6 h-6 flex items-center justify-center rounded border border-slate-300 bg-white text-slate-600 font-bold text-xs cursor-pointer transition-all hover:bg-slate-100 hover:border-slate-400 hover:text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-slate-300 shrink-0";
+const actionBtn = "px-4 py-0 rounded-lg border-2 border-slate-600 bg-white font-medium cursor-pointer transition-all duration-150 hover:bg-slate-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed";
+const moveBtn = "w-6 h-6 flex items-center justify-center rounded border border-slate-300 bg-white text-slate-600 font-bold text-xs cursor-pointer transition-all hover:bg-slate-100 hover:border-slate-400 hover:text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-slate-300 shrink-0";
 
 const BAR_COLORS = ["bg-slate-700", "bg-slate-600", "bg-slate-500", "bg-slate-300"];
 const BADGE_STYLES = ["bg-slate-700 text-white font-black", "bg-slate-600 text-white font-black", "bg-slate-500 text-white font-black"];
