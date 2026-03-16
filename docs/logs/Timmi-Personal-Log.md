@@ -3,7 +3,8 @@
 ## Table of Contents
 
 ### Term 2
-- [Week 9 (Mar 2 - Mar 9)](#term-2-week-9-monday-march-2---sunday-march-9)
+- [Week 10 (Mar 9 - Mar 15)](#term-2-week-10-monday-march-9---sunday-march-15)
+- [Week 9 (Mar 2 - Mar 8)](#term-2-week-9-monday-march-2---sunday-march-9)
 - [Week 6-8 (Feb 9 - Mar 1)](#term-2-week-6-8-monday-february-9---sunday-march-1)
 - [Week 4-5 (Jan 26 - Feb 8)](#t2-week-4-5-monday-january-26---sunday-february-8)
 - [Week 3 (Jan 19-25)](#t2-week-3-monday-january-19---sunday-january-25)
@@ -293,7 +294,7 @@ Because of the schema updates, this PR requires recreating the local database (`
 
 Next week, I plan on beginning to implement the frontend UI. I don't know yet which pages I will be assigned, the team will discuss this in our weekly Monday meeting. I will also begin structuring the frontend HTTP requests needed to call the backend API endpoints.
 
-## (Term 2 Week 9) Monday March 2 - Sunday March 9
+## (Term 2 Week 9) Monday March 2 - Sunday March 8
 
 ![Screenshot of this week's peer evaluation](./screenshots/Timmi-Mar2-Mar8.png)
 
@@ -323,3 +324,21 @@ Since the testing environment was set up after my PR's, I could not write the te
 **Plan for Next Week**
 
 Next week I plan to finish implementing the Chronological Skills and Activity Heatmap tabs on the Insights page. I would also like to explore the private vs. public dashboards, since our current architecture does not directly support this distinction. It may require some more backend implementations so I wwant to start that as early as possible.
+
+
+## (Term 2 Week 10) Monday March 9 - Sunday March 15
+
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Mar9-Mar15.png)
+
+This week I focused on refactoring and expanding the Insights dashboard to improve the structure and visualization of the skill analytics data.
+
+**Coding Tasks**
+
+In the Insights Page Refactor, [PR #576](#https://github.com/COSC-499-W2025/capstone-project-team-19/pull/576), I reorganized the Insights feature into a clearer Projects / Skills tab structure and migrated the UI from custom CSS to Tailwind. I introduced an `InsightsSidebar`, removed the old `InsightsSubNav`, and updated the layout to support the new structure. I also refactored the Ranked Projects view and added more visual skill analytics such as bars, improved timelines, and search functionality. The old SkillTimeline component tree was removed and replaced with a new structure under `tabs/Skills/`, and associated tests were updated.
+
+In [PR #578](#https://github.com/COSC-499-W2025/capstone-project-team-19/pull/578), I implemented the new heatmap views and the Skills Log (previously Chronological Skills) for the Insights page. The Activity Heatmap shows a matrix of skills x versions for a selected project, while the Project Heatmap displays a GitHub-style activity grid based on project start and end dates. If you hover over the squares it will tell you which projects contributed to the square being coloured. I also implemented the Skills Log, which provides a chronological list of skill events with search and filtering by project, this one is meant to be straight text, and I am hoping the rest of the Insights page/tabs are visual enough that this page is fine to be a lot of text. On the backend, I added aggregation logic to generate activity-by-date data and heatmap matrices, and implemented tests for both the backend and frontend changes.
+
+
+**Plan for Next Week**
+
+Next week, I plan to implement Adara’s idea of representing project difficulty levels with star icons instead of the text labels “Beginner”, “Intermediate”, and “Advanced”. A beginner project will display one star, intermediate two stars, and advanced three stars. This should reduce the amount of text on the screen and make the information easier to scan. I would also like to review the frontend with the team so we can identify inconsistencies and small UI changes we want to address before the Milestone 3 deliverable. Finally, I will be participating in the peer evaluations during Wednesday’s class.
