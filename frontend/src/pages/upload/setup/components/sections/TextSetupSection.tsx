@@ -20,6 +20,10 @@ function toggleNumber(values: number[], value: number): number[] {
   return [...values, value].sort((a, b) => a - b);
 }
 
+function isCsvRelpath(relpath: string): boolean {
+  return relpath.trim().toLowerCase().endsWith(".csv");
+}
+
 export default function TextSetupSection({ project, actions, isMutating }: Props) {
   const [filesPayload, setFilesPayload] = useState<UploadProjectFilesRecord | null>(null);
   const [filesLoading, setFilesLoading] = useState(false);
@@ -42,12 +46,13 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   const [driveMessage, setDriveMessage] = useState<string | null>(null);
   const [localPage, setLocalPage] = useState(1);
   const [drivePage, setDrivePage] = useState(1);
+  const [mainFileSaveMessage, setMainFileSaveMessage] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setMainFile(project.mainFileRelpath ?? "");
     setSelectedSectionIds(project.mainSectionIds);
-    setSelectedSupportingText(project.supportingTextRelpaths);
+    setSelectedSupportingText(project.supportingTextRelpaths.filter((relpath) => !isCsvRelpath(relpath)));
     setSelectedSupportingCsv(project.supportingCsvRelpaths);
     setDriveChoice(project.driveState === "connected" ? "yes" : project.driveState === "skipped" ? "no" : "");
   }, [
@@ -84,13 +89,14 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
 
   const supportingTextOptions = useMemo(() => {
     if (!filesPayload) return [];
-    return filesPayload.text_files.filter((item) => item.relpath !== mainFile);
+    return filesPayload.text_files.filter((item) => item.relpath !== mainFile && !isCsvRelpath(item.relpath));
   }, [filesPayload, mainFile]);
 
   const supportingCsvOptions = useMemo(() => {
     if (!filesPayload) return [];
     return filesPayload.csv_files;
   }, [filesPayload]);
+  const mainFileStatusMessage = mainFileSaveMessage ?? (project.mainFileRelpath ? "Main file saved." : null);
   const driveLocalFiles = useMemo(() => filesPayload?.all_files ?? [], [filesPayload]);
   const filteredDriveResults = useMemo(
     () =>
@@ -154,7 +160,8 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     if (project.projectKey === null || !mainFile) return;
     const data = await actions.setMainFile(project.projectKey, mainFile);
     if (!data) return;
-    setSaveMessage("Main file saved.");
+    setMainFileSaveMessage("Main file saved.");
+    setSaveMessage(null);
   }
 
   async function onLoadSections() {
@@ -179,8 +186,10 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
 
   async function onSaveSupportingText() {
     if (project.projectKey === null) return;
-    const data = await actions.setSupportingTextFiles(project.projectKey, selectedSupportingText);
+    const nonCsvRelpaths = selectedSupportingText.filter((relpath) => !isCsvRelpath(relpath));
+    const data = await actions.setSupportingTextFiles(project.projectKey, nonCsvRelpaths);
     if (!data) return;
+    setSelectedSupportingText(nonCsvRelpaths);
     setSaveMessage("Supporting text files saved.");
   }
 
@@ -306,6 +315,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
             >
               Save main file
             </button>
+            {mainFileStatusMessage && <p className="text-sm text-zinc-700">{mainFileStatusMessage}</p>}
           </>
         )}
       </div>
@@ -475,10 +485,9 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               href={driveAuthUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-sm font-medium underline"
-              style={{ color: "#001166" }}
+              className="inline-flex items-center rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-[#001166]"
             >
-              Open Google Drive authorization{" "}
+              Open Google Drive Authorization
             </a>
           )}
           <p className="text-sm text-zinc-700">
