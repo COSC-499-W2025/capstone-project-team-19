@@ -13,7 +13,7 @@ describe("SkillBarsTable", () => {
 		expect(screen.getByText("Score")).toBeInTheDocument();
 		expect(screen.getAllByText("Javascript").length).toBeGreaterThan(0);
 		expect(screen.getAllByText("Python").length).toBeGreaterThan(0);
-		expect(screen.getByText("0.90")).toBeInTheDocument();
-		expect(screen.getByText("0.50")).toBeInTheDocument();
+		expect(screen.getByText(/90\.0\s*%/)).toBeInTheDocument();
+		expect(screen.getByText(/50\.0\s*%/)).toBeInTheDocument();
 	});
 });

@@ -38,8 +38,8 @@ describe("Auth pages", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByPlaceholderText("Username"), "testuser");
-    await user.type(screen.getByPlaceholderText("Password"), "Password123");
+    await user.type(screen.getByLabelText("Username"), "testuser");
+    await user.type(screen.getByLabelText("Password"), "Password123");
     await user.click(screen.getByRole("button", { name: "Login" }));
 
     expect(await screen.findByTestId("home")).toBeInTheDocument();
@@ -62,8 +62,8 @@ describe("Auth pages", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByPlaceholderText("Username"), "testuser");
-    await user.type(screen.getByPlaceholderText("Password"), "wrong");
+    await user.type(screen.getByLabelText("Username"), "testuser");
+    await user.type(screen.getByLabelText("Password"), "wrong");
     await user.click(screen.getByRole("button", { name: "Login" }));
 
     expect(await screen.findByText("Invalid credentials")).toBeInTheDocument();
@@ -80,9 +80,9 @@ describe("Auth pages", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByPlaceholderText("Username"), "testuser");
-    await user.type(screen.getByPlaceholderText("Password"), "Password123");
-    await user.type(screen.getByPlaceholderText("Confirm Password"), "Password124");
+    await user.type(screen.getByLabelText("Username"), "testuser");
+    await user.type(screen.getByLabelText("Password"), "Password123");
+    await user.type(screen.getByLabelText("Confirm Password"), "Password124");
     await user.click(screen.getByRole("button", { name: "Register" }));
 
     expect(await screen.findByText("Passwords do not match")).toBeInTheDocument();
@@ -106,9 +106,9 @@ describe("Auth pages", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByPlaceholderText("Username"), "testuser");
-    await user.type(screen.getByPlaceholderText("Password"), "Password123");
-    await user.type(screen.getByPlaceholderText("Confirm Password"), "Password123");
+    await user.type(screen.getByLabelText("Username"), "testuser");
+    await user.type(screen.getByLabelText("Password"), "Password123");
+    await user.type(screen.getByLabelText("Confirm Password"), "Password123");
     await user.click(screen.getByRole("button", { name: "Register" }));
 
     expect(await screen.findByTestId("login")).toBeInTheDocument();
