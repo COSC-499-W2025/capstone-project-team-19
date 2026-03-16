@@ -13,7 +13,6 @@ import {
   publicGetProject,
   publicFetchThumbnailUrl,
   publicGetRanking,
-  publicGetSkillsTimeline,
   publicListResumes,
   publicGetResume,
 } from '../public'
@@ -79,49 +78,37 @@ describe('public API', () => {
 
   describe('publicGetRanking', () => {
     it('calls the correct endpoint', async () => {
-      const ranking = { projects: [] }
-      vi.mocked(api.get).mockResolvedValue(ranking)
+      const rankings = [{ rank: 1, project_summary_id: 1, project_name: 'Alpha' }]
+      vi.mocked(api.get).mockResolvedValue({ success: true, data: { rankings } })
 
       const result = await publicGetRanking('johndoe')
 
       expect(api.get).toHaveBeenCalledWith('/public/johndoe/ranking')
-      expect(result).toEqual(ranking)
-    })
-  })
-
-  describe('publicGetSkillsTimeline', () => {
-    it('calls the correct endpoint', async () => {
-      const timeline = { events: [] }
-      vi.mocked(api.get).mockResolvedValue(timeline)
-
-      const result = await publicGetSkillsTimeline('johndoe')
-
-      expect(api.get).toHaveBeenCalledWith('/public/johndoe/skills/timeline')
-      expect(result).toEqual(timeline)
+      expect(result).toEqual(rankings)
     })
   })
 
   describe('publicListResumes', () => {
     it('calls the correct endpoint', async () => {
-      const response = { data: { resumes: [] } }
-      vi.mocked(api.get).mockResolvedValue(response)
+      const resumes = [{ id: 1, name: 'My Resume', created_at: null }]
+      vi.mocked(api.get).mockResolvedValue({ success: true, data: { resumes } })
 
       const result = await publicListResumes('johndoe')
 
       expect(api.get).toHaveBeenCalledWith('/public/johndoe/resumes')
-      expect(result).toEqual(response)
+      expect(result).toEqual(resumes)
     })
   })
 
   describe('publicGetResume', () => {
     it('calls the correct endpoint', async () => {
-      const response = { data: { resume_id: 7 } }
-      vi.mocked(api.get).mockResolvedValue(response)
+      const resume = { id: 7, name: 'My Resume', created_at: null, projects: [], aggregated_skills: {}, rendered_text: null }
+      vi.mocked(api.get).mockResolvedValue({ success: true, data: resume })
 
       const result = await publicGetResume('johndoe', 7)
 
       expect(api.get).toHaveBeenCalledWith('/public/johndoe/resumes/7')
-      expect(result).toEqual(response)
+      expect(result).toEqual(resume)
     })
   })
 })

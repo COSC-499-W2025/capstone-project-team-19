@@ -43,6 +43,8 @@ const baseProject = {
   project_type: 'personal',
   project_mode: 'solo',
   created_at: null,
+  start_date: null,
+  end_date: null,
   summary_text: 'A test summary.',
   languages: ['TypeScript'],
   frameworks: ['React'],
@@ -199,12 +201,11 @@ describe('PublicProjectDetailPage', () => {
       vi.mocked(publicGetProject).mockResolvedValue({
         ...baseProject,
         project_mode: 'collaborative',
-        contributions: { manual_contribution_summary: 'I built the frontend.' },
       })
       render(<PublicProjectDetailPage />)
       await waitFor(() => {
         expect(screen.getByText('Contribution Summary')).toBeInTheDocument()
-        expect(screen.getByText('I built the frontend.')).toBeInTheDocument()
+        expect(screen.getByText('No contribution summary available.')).toBeInTheDocument()
       })
     })
 
