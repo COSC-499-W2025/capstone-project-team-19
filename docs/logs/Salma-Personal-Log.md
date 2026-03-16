@@ -4,6 +4,7 @@
 
 ### Term 2
 
+- [Week 10 (March 9-15)](#t2-week-10-monday-march-9---sunday-march-15)
 - [Week 9 (Mar 2–8)](#t2-week-9-monday-2nd---sunday-8th-march)
 - [Weeks 6–8 (Feb 9–Mar 1)](#t2-weeks-6-8-monday-february-9---sunday-march-1)
 - [Weeks 4–5 (Jan 26–Feb 8)](#t2-weeks-4-5-monday-january-26---sunday-february-8)
@@ -286,3 +287,18 @@ I also reviewed some PRs, three of them are:
 - PR [#535](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/535) on frontend/projects, where I corrected some invalid syntax, pointed out missing client method exports, and provided UI improvement suggestions.
 
 Next week: I plan to continue implementing the remaining pages in the upload tab (step 3 for setup). I may also update the Figma files with a new color scheme and apply those color changes across the codebase.
+
+## (T2 Week 10) Monday March 9 - Sunday March 15
+
+![Screenshot of this week's peer evaluation](./screenshots/Salma-Mar9-Mar15.PNG)
+
+I worked on PR [#585](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/585), where I implemented the Upload Step 3 (Setup) frontend functionality using existing APIs. This included wiring setup actions such as manual summaries, key role selection, text file/section/supporting file selection, git identity, and GitHub. The work also added project readiness and warning states and restructured the Setup flow into modular files and components while keeping individual and collaborative behavior aligned with CLI expectations.
+
+I worked on PR [#590](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/590) which added Google Drive connection and mapping UI for collaborative text in the Setup page (including OAuth linking, refresh, mapping, finalize actions, and pagination). In addition, the Step 4 Analyze page was wired to run real per-scope analysis with live status and progress cards. The PR also fixed backend readiness and run-state behavior and updated the upload page styling to the blue #001166 theme.
+
+I also reviewed some PRs, three of them are:
+- PR [#574](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/574) on the profile feature backend for the CLI. I suggested reducing menu redundancy, validating user input, and adding the actual GitHub and LinkedIn links.
+- PR [#575](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/575) on frontend resume editing, where I suggested UI improvements and spotted a button bug.
+- PR [#579](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/579) on public API endpoints, where I suggested adding documentation for the new endpoints.
+
+Next week: I plan to add tests for the Upload pages frontend UI and possibly modify the UI to better match the baseline design.
