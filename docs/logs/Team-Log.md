@@ -862,3 +862,33 @@ The main blockers this week came from integration complexity rather than isolate
 ### Plan / goals for next week
 
 Next week, the team plans to continue stabilizing these newly connected flows so they behave consistently from end to end. Especially there will be more test PRs added that were not covered in this sprint. We will also be refining the UI migration to the new design, and preparing our system for peer testing on Wednesday.
+
+### Burnup chart
+
+![Burnup chart for Mar 9 - Mar 15](screenshots/week10_T2-burnupchart.png)
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshots                                                        |
+| --------------- | ------------------------------------------------------------------ |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-week10.png)       |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-week10.png)     |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-week10.png)   |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-week10.png)       |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-week10.png)       |
+
+### Table view of in progress tasks by username
+| GitHub Username | Screenshots                                                        |
+| --------------- | ------------------------------------------------------------------ |
+| `ivonanicetin`  | ![In progress tasks for Ivona](screenshots/InProgress-Ivona-week10.png)       |
