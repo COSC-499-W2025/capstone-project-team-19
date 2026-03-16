@@ -10,6 +10,7 @@
   margin: 0 0 10px;
   font-size: 28px;
   line-height: 1.2;
+  color: var(--upload-accent);
 }
 
 .wizardPlaceholderText {

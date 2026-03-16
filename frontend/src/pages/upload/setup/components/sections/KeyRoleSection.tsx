@@ -31,7 +31,7 @@ export default function KeyRoleSection({ project, actions, isMutating }: Props) 
         value={keyRole}
         onChange={(event) => setKeyRole(event.target.value)}
         placeholder="e.g., Backend Developer, Research Assistant"
-        className="h-12 w-full rounded border border-zinc-300 !bg-zinc-50 !px-4 !py-3 text-sm text-zinc-700 placeholder:text-zinc-400 disabled:!bg-zinc-50"
+        className="h-12 w-full rounded !border !border-zinc-300 !bg-zinc-50 !px-4 !py-3 text-sm text-zinc-700 placeholder:text-zinc-400 disabled:!border-zinc-300 disabled:!bg-zinc-50"
         disabled={isMutating}
       />
       <div className="mt-2 flex items-center gap-2">

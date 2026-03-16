@@ -9,10 +9,12 @@ from fastapi import HTTPException
 
 from src.db import get_latest_consent, get_latest_external_consent
 from src.db.uploads import get_upload_by_id, set_upload_state
+from src.services.uploads_file_roles_util import build_file_item_from_row
 from src.services.uploads_run_execute_service import (
     execute_upload_scope_analysis,
     has_executable_files_for_scope,
 )
+from src.utils.parsing import ZIP_DATA_DIR
 
 
 _SCOPE_VALUES = {"all", "individual", "collaborative"}
@@ -45,6 +47,8 @@ def run_analysis_preflight(
     internal_consent = get_latest_consent(conn, user_id)
     external_consent = get_latest_external_consent(conn, user_id)
     errors, warnings = evaluate_run_readiness(
+        conn,
+        user_id,
         upload,
         scope_norm,
         internal_consent=internal_consent,
@@ -146,6 +150,10 @@ def run_analysis_preflight(
         }
         is_done = bool(required_scopes) and required_scopes.issubset(completed_scopes)
 
+        resume_status = upload.get("status")
+        if resume_status not in {"needs_file_roles", "needs_summaries"}:
+            resume_status = "needs_file_roles"
+
         final_state = dict(started_state)
         final_run_state = dict(final_state.get("run_state") or {})
         final_run_state.update(
@@ -157,7 +165,7 @@ def run_analysis_preflight(
             }
         )
         final_state["run_state"] = final_run_state
-        set_upload_state(conn, upload_id, final_state, status="done" if is_done else "needs_file_roles")
+        set_upload_state(conn, upload_id, final_state, status="done" if is_done else resume_status)
 
     return {
         "upload_id": upload_id,
@@ -169,6 +177,8 @@ def run_analysis_preflight(
 
 
 def evaluate_run_readiness(
+    conn: sqlite3.Connection,
+    user_id: int,
     upload: dict,
     scope: str,
     *,
@@ -249,6 +259,8 @@ def evaluate_run_readiness(
         return errors, warnings
 
     _populate_project_warnings(
+        conn=conn,
+        user_id=user_id,
         state=state,
         projects_in_scope=projects_in_scope,
         classifications=classifications,
@@ -379,6 +391,8 @@ def _missing_main_file_projects(state: dict, text_projects: list[str]) -> list[s
 
 def _populate_project_warnings(
     *,
+    conn: sqlite3.Connection,
+    user_id: int,
     state: dict,
     projects_in_scope: list[str],
     classifications: dict[str, str],
@@ -441,17 +455,25 @@ def _populate_project_warnings(
                 _add_warning(warnings, "missing_contribution_sections", project_name)
 
             has_supporting = bool(manual.get("supporting_text_files_set")) or bool(manual.get("supporting_csv_files_set"))
-            if not has_supporting:
+            has_supporting_candidates = _project_has_supporting_candidates(
+                conn=conn,
+                user_id=user_id,
+                state=state,
+                project_name=project_name,
+            )
+            if has_supporting_candidates and not has_supporting:
                 _add_warning(warnings, "missing_supporting_files", project_name)
 
-            drive_state = (drive.get("state") or "unset").strip().lower()
-            if drive_state == "unset":
-                _add_warning(warnings, "drive_not_configured", project_name)
-            elif drive_state == "skipped":
-                _add_warning(warnings, "drive_skipped", project_name)
+            # Drive integration is only required/used for collaborative text projects.
+            if classification == "collaborative":
+                drive_state = (drive.get("state") or "unset").strip().lower()
+                if drive_state == "unset":
+                    _add_warning(warnings, "drive_not_configured", project_name)
+                elif drive_state == "skipped":
+                    _add_warning(warnings, "drive_skipped", project_name)
 
-            if classification == "collaborative" and drive_state == "connected" and int(drive.get("linked_files_count") or 0) <= 0:
-                _add_warning(warnings, "missing_drive_links", project_name)
+                if drive_state == "connected" and int(drive.get("linked_files_count") or 0) <= 0:
+                    _add_warning(warnings, "missing_drive_links", project_name)
 
             if not llm_enabled:
                 _add_warning(warnings, "llm_disabled", project_name)
@@ -478,6 +500,54 @@ def _project_run_inputs(state: dict, project_name: str) -> dict[str, Any]:
     if not isinstance(project_inputs, dict):
         project_inputs = {}
     return _deep_merge(_project_input_defaults(), project_inputs)
+
+
+def _project_has_supporting_candidates(
+    *,
+    conn: sqlite3.Connection,
+    user_id: int,
+    state: dict,
+    project_name: str,
+) -> bool:
+    dedup_version_keys = state.get("dedup_version_keys") or {}
+    if not isinstance(dedup_version_keys, dict):
+        return False
+
+    version_key = dedup_version_keys.get(project_name)
+    if not isinstance(version_key, int):
+        return False
+
+    file_roles = state.get("file_roles") or {}
+    if not isinstance(file_roles, dict):
+        file_roles = {}
+    project_roles = file_roles.get(project_name) or {}
+    if not isinstance(project_roles, dict):
+        project_roles = {}
+    main_file = (project_roles.get("main_file") or "").strip()
+
+    rows = conn.execute(
+        """
+        SELECT file_name, file_path, extension, file_type, size_bytes, created, modified
+        FROM files
+        WHERE user_id = ? AND version_key = ?
+        ORDER BY file_path ASC
+        """,
+        (user_id, version_key),
+    ).fetchall()
+    if not rows:
+        return False
+
+    for row in rows:
+        item = build_file_item_from_row(Path(ZIP_DATA_DIR), (*row, project_name))
+        relpath = (item.get("relpath") or "").strip()
+        ext = (item.get("extension") or "").lower()
+        fname = (item.get("file_name") or "").lower()
+        is_csv = ext == ".csv" or fname.endswith(".csv")
+        if is_csv:
+            return True
+        if item.get("file_type") == "text" and relpath and relpath != main_file:
+            return True
+    return False
 
 
 def _project_input_defaults() -> dict[str, Any]:

@@ -8,7 +8,7 @@
   align-items: center;
   font-size: 14px;
   font-weight: 600;
-  color: #444;
+  color: var(--upload-accent);
   margin-bottom: 8px;
 }
 
@@ -38,7 +38,7 @@
 }
 
 .uploadStageProgressStepBtn--active {
-  color: #111;
+  color: var(--upload-accent);
   font-weight: 700;
 }
 
@@ -53,7 +53,7 @@
 .uploadStageProgressFill {
   height: 100%;
   border-radius: 999px;
-  background: #111;
+  background: var(--upload-accent);
   transition: width 180ms ease;
 }
 
@@ -99,7 +99,7 @@
   min-width: 168px;
   border: 0;
   border-radius: 8px;
-  background: #111;
+  background: var(--upload-accent);
   color: #fff;
   font-size: 14px;
   font-weight: 700;
@@ -284,6 +284,7 @@
 .projectsStageList {
   margin: 0;
   padding-left: 24px;
+  list-style: disc outside;
   display: grid;
   gap: 12px;
 }
@@ -465,6 +466,7 @@
 .dedupSavedList {
   margin: 0;
   padding-left: 18px;
+  list-style: disc outside;
   display: grid;
   gap: 6px;
 }
