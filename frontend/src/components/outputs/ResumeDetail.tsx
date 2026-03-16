@@ -269,11 +269,11 @@ export default function ResumeDetail({
         </button>
 
         {editing && editingName ? (
-          <>
+          <div className="flex items-center gap-2" style={{ flex: 1 }}>
             <Input
               value={nameVal}
               onChange={(e) => setNameVal(e.target.value)}
-              className="max-w-xs text-lg font-semibold flex-1"
+              className="max-w-xs text-lg font-semibold"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSaveName();
@@ -301,7 +301,7 @@ export default function ResumeDetail({
             >
               <X className="size-4 text-slate-400" />
             </Button>
-          </>
+          </div>
         ) : (
           <>
             <h2>
