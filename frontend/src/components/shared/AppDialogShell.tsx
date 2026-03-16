@@ -17,9 +17,9 @@ type Props = {
 };
 
 const widthMap: Record<DialogWidth, string> = {
-  sm: "max-w-[340px]",
-  md: "max-w-[420px]",
-  lg: "max-w-[520px]",
+  sm: "max-w-[360px]",
+  md: "max-w-[460px]",
+  lg: "max-w-[620px]",
 };
 
 export default function AppDialogShell({
@@ -66,25 +66,32 @@ export default function AppDialogShell({
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[#ececec] px-[10px] py-[8px]">
-          <h2 className="text-[12px] font-normal text-foreground">{title}</h2>
+        <div className="flex items-center justify-between border-b border-[#ececec] px-[12px] py-[10px]">
+          <h2 className="text-[18px] font-normal leading-none text-foreground">
+            {title}
+          </h2>
 
           <button
             type="button"
-            className="inline-flex h-[18px] w-[18px] items-center justify-center bg-transparent text-[#9b9b9b]"
+            className="inline-flex h-[20px] w-[20px] items-center justify-center bg-transparent text-[#9b9b9b]"
             onClick={() => onOpenChange(false)}
             aria-label="Close dialog"
           >
-            <X className="h-[12px] w-[12px]" strokeWidth={1.5} />
+            <X className="h-[14px] w-[14px]" strokeWidth={1.5} />
           </button>
         </div>
 
-        <div className={cn("flex flex-col gap-[10px] px-[18px] py-[14px]", bodyClassName)}>
+        <div
+          className={cn(
+            "flex flex-col gap-[12px] px-[18px] py-[16px]",
+            bodyClassName
+          )}
+        >
           {children}
         </div>
 
         {footer ? (
-          <div className="flex items-center justify-end gap-[8px] border-t border-[#ececec] px-[12px] py-[8px]">
+          <div className="flex items-center justify-end gap-[8px] border-t border-[#ececec] px-[12px] py-[10px]">
             {footer}
           </div>
         ) : null}

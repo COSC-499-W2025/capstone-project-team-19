@@ -46,28 +46,28 @@ export default function CreateResumeDialog({
         <AppInput placeholder="resume1" className="max-w-[260px]" />
       </AppField>
 
-      <div className="space-y-[4px]">
-        <div className="text-[8px] font-medium text-foreground">
+      <div className="space-y-[6px]">
+        <div className="text-[14px] font-medium text-foreground">
           Available Projects
         </div>
-        <div className="text-[7px] text-[#8a8a8a]">
+        <div className="text-[13px] text-[#8a8a8a]">
           Select projects to include in the resume.
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_48px] gap-y-[6px] text-[8px] text-[#3f3f3f]">
+      <div className="grid grid-cols-[1fr_56px] gap-y-[8px] text-[13px] text-[#3f3f3f]">
         <div className="font-medium">Project</div>
         <div className="font-medium">Score</div>
 
         {projects.map((project) => (
           <label key={project.id} className="contents">
-            <div className="flex items-center gap-[6px]">
+            <div className="flex items-center gap-[8px]">
               <AppRadio name="resume-project-preview" />
-              <span className="text-[8px] leading-none text-[#3f3f3f]">
+              <span className="text-[13px] leading-none text-[#3f3f3f]">
                 {project.label}
               </span>
             </div>
-            <div className="text-[8px] leading-none text-[#3f3f3f]">
+            <div className="text-[13px] leading-none text-[#3f3f3f]">
               {project.score}
             </div>
           </label>

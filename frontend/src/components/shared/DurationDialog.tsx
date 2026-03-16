@@ -23,26 +23,26 @@ export default function DurationDialog({ open, onOpenChange }: Props) {
         </>
       }
     >
-      <div className="grid grid-cols-2 gap-[14px]">
-        <div className="space-y-[4px]">
-          <div className="text-[8px] font-medium text-foreground">Start Date</div>
-          <div className="flex gap-[6px]">
-            <AppSelect className="w-[82px]">
+      <div className="grid grid-cols-2 gap-[16px]">
+        <div className="space-y-[6px]">
+          <div className="text-[14px] font-medium text-foreground">Start Date</div>
+          <div className="flex gap-[8px]">
+            <AppSelect className="w-[96px]">
               <option>Month</option>
             </AppSelect>
-            <AppSelect className="w-[62px]">
+            <AppSelect className="w-[76px]">
               <option>Year</option>
             </AppSelect>
           </div>
         </div>
 
-        <div className="space-y-[4px]">
-          <div className="text-[8px] font-medium text-foreground">End Date</div>
-          <div className="flex gap-[6px]">
-            <AppSelect className="w-[82px]">
+        <div className="space-y-[6px]">
+          <div className="text-[14px] font-medium text-foreground">End Date</div>
+          <div className="flex gap-[8px]">
+            <AppSelect className="w-[96px]">
               <option>Month</option>
             </AppSelect>
-            <AppSelect className="w-[62px]">
+            <AppSelect className="w-[76px]">
               <option>Year</option>
             </AppSelect>
           </div>

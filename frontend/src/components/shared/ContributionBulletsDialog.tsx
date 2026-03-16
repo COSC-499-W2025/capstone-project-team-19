@@ -29,33 +29,37 @@ export default function ContributionBulletsDialog({
         </>
       }
     >
-      <div className="text-[8px] text-[#3f3f3f]">{projectName}</div>
+      <div className="text-[14px] text-[#3f3f3f]">{projectName}</div>
 
-      <div className="space-y-[6px]">
+      <div className="space-y-[8px]">
         {[1, 2, 3].map((index) => (
           <div
             key={index}
-            className="grid grid-cols-[12px_1fr_14px] items-center gap-[6px]"
+            className="grid grid-cols-[16px_1fr_18px] items-center gap-[8px]"
           >
-            <span className="text-[8px] leading-none text-[#3f3f3f]">
+            <span className="text-[13px] leading-none text-[#3f3f3f]">
               {index}.
             </span>
 
-            <AppInput placeholder="" className="h-[20px]" />
+            <AppInput placeholder="" className="h-[30px]" />
 
             <button
               type="button"
-              className="flex h-[18px] w-[14px] items-center justify-center text-[#cc4b4b]"
+              className="flex h-[20px] w-[18px] items-center justify-center text-[#cc4b4b]"
               aria-label={`Remove bullet ${index}`}
             >
-              <Trash2 className="h-[10px] w-[10px]" strokeWidth={1.7} />
+              <Trash2 className="h-[12px] w-[12px]" strokeWidth={1.7} />
             </button>
           </div>
         ))}
       </div>
 
       <div>
-        <AppButton variant="outline" size="sm" className="h-[18px] px-[8px] text-[8px]">
+        <AppButton
+          variant="outline"
+          size="sm"
+          className="h-[28px] px-[10px] text-[14px]"
+        >
           + Add bullet
         </AppButton>
       </div>

@@ -19,7 +19,12 @@ export default function SectionTabs({
   align = "right",
 }: Props) {
   return (
-    <div className={cn("flex border-b border-[#e6e6e6]", align === "right" && "justify-end")}>
+    <div
+      className={cn(
+        "flex border-b border-[#e6e6e6]",
+        align === "right" && "justify-end"
+      )}
+    >
       {tabs.map((tab) => {
         const active = tab.key === activeKey;
 
@@ -29,7 +34,7 @@ export default function SectionTabs({
             type="button"
             onClick={() => onChange(tab.key)}
             className={cn(
-              "relative h-[24px] px-[10px] text-[10px] text-[#666]",
+              "relative h-[34px] px-[12px] text-[14px] font-normal leading-none text-[#666]",
               active && "text-foreground"
             )}
           >

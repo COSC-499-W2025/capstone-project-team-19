@@ -33,14 +33,14 @@ export default function OverflowMenu({ items, className }: Props) {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="inline-flex h-[18px] w-[18px] items-center justify-center bg-transparent text-[#8c8c8c]"
+        className="inline-flex h-[20px] w-[20px] items-center justify-center bg-transparent text-[#8c8c8c]"
         aria-label="Open options"
       >
-        <MoreVertical className="h-[12px] w-[12px]" strokeWidth={1.5} />
+        <MoreVertical className="h-[14px] w-[14px]" strokeWidth={1.5} />
       </button>
 
       {open ? (
-        <div className="ui-surface-radius ui-menu-shadow absolute right-0 top-[18px] z-50 min-w-[132px] border border-[#dcdcdc] bg-white py-[3px]">
+        <div className="ui-surface-radius ui-menu-shadow absolute right-0 top-[22px] z-50 min-w-[170px] border border-[#dcdcdc] bg-white py-[4px]">
           {items.map((item) => (
             <button
               key={item.label}
@@ -50,7 +50,7 @@ export default function OverflowMenu({ items, className }: Props) {
                 setOpen(false);
               }}
               className={cn(
-                "flex h-[22px] w-full items-center whitespace-nowrap px-[8px] text-left text-[10px] font-normal leading-none text-foreground hover:bg-[#f5f5f5]",
+                "flex h-[30px] w-full items-center whitespace-nowrap px-[10px] text-left text-[12px] font-normal leading-none text-foreground hover:bg-[#f5f5f5]",
                 item.destructive && "text-[#cc4b4b]"
               )}
             >

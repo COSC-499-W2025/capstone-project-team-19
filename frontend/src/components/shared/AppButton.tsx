@@ -21,10 +21,10 @@ const variantClasses: Record<Variant, string> = {
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: "h-[22px] px-[8px] text-[10px]",
-  default: "h-[26px] px-[12px] text-[11px]",
-  lg: "h-[30px] px-[14px] text-[12px]",
-  icon: "h-[24px] w-[24px] p-0 text-[11px]",
+  sm: "h-[30px] px-[10px] text-[14px]",
+  default: "h-[34px] px-[14px] text-[14px]",
+  lg: "h-[38px] px-[16px] text-[14px]",
+  icon: "h-[30px] w-[30px] p-0 text-[14px]",
 };
 
 export default function AppButton({
@@ -39,7 +39,7 @@ export default function AppButton({
     <button
       type={type}
       className={cn(
-        "ui-button-radius inline-flex items-center justify-center gap-1 font-medium leading-none outline-none transition disabled:pointer-events-none disabled:opacity-50",
+        "ui-button-radius inline-flex items-center justify-center gap-[6px] font-normal leading-none outline-none transition disabled:pointer-events-none disabled:opacity-50",
         variantClasses[variant],
         sizeClasses[size],
         fullWidth && "w-full",

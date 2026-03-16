@@ -25,16 +25,23 @@ export default function PageHeader({
   titleClassName,
 }: Props) {
   return (
-    <div className={cn("flex flex-col gap-[10px]", className)}>
+    <div className={cn("flex flex-col gap-[12px]", className)}>
       {breadcrumbs?.length ? <Breadcrumbs items={breadcrumbs} /> : null}
 
       <div className="flex items-start justify-between gap-[12px]">
-        <div className="space-y-[2px]">
-          <h1 className={cn("text-[16px] font-normal text-foreground", titleClassName)}>
+        <div className="space-y-[4px]">
+          <h1
+            className={cn(
+              "text-[20px] font-medium leading-none text-foreground",
+              titleClassName
+            )}
+          >
             {title}
           </h1>
           {subtitle ? (
-            <p className="text-[10px] text-[#7f7f7f]">{subtitle}</p>
+            <p className="text-[14px] leading-[1.3] text-[#7f7f7f]">
+              {subtitle}
+            </p>
           ) : null}
         </div>
 

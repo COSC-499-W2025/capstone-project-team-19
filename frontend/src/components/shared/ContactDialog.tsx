@@ -25,43 +25,43 @@ export default function ContactDialog({ open, onOpenChange }: Props) {
         </>
       }
     >
-      <div className="space-y-[10px]">
-        <div className="grid grid-cols-[1fr_14px] items-end gap-[8px]">
+      <div className="space-y-[12px]">
+        <div className="grid grid-cols-[1fr_18px] items-end gap-[8px]">
           <AppField label="Email">
             <AppInput placeholder="testuser@gmail.com" />
           </AppField>
           <button
             type="button"
-            className="flex h-[18px] w-[14px] items-center justify-center text-[#cc4b4b]"
+            className="flex h-[20px] w-[18px] items-center justify-center text-[#cc4b4b]"
             aria-label="Remove email"
           >
-            <Trash2 className="h-[10px] w-[10px]" strokeWidth={1.7} />
+            <Trash2 className="h-[12px] w-[12px]" strokeWidth={1.7} />
           </button>
         </div>
 
-        <div className="grid grid-cols-[1fr_14px] items-end gap-[8px]">
+        <div className="grid grid-cols-[1fr_18px] items-end gap-[8px]">
           <AppField label="LinkedIn Profile">
             <AppInput placeholder="linkedin.com/in/test-user" />
           </AppField>
           <button
             type="button"
-            className="flex h-[18px] w-[14px] items-center justify-center text-[#cc4b4b]"
+            className="flex h-[20px] w-[18px] items-center justify-center text-[#cc4b4b]"
             aria-label="Remove linkedin"
           >
-            <Trash2 className="h-[10px] w-[10px]" strokeWidth={1.7} />
+            <Trash2 className="h-[12px] w-[12px]" strokeWidth={1.7} />
           </button>
         </div>
 
-        <div className="grid grid-cols-[1fr_14px] items-end gap-[8px]">
+        <div className="grid grid-cols-[1fr_18px] items-end gap-[8px]">
           <AppField label="GitHub Profile">
             <AppInput placeholder="github.com/testuser" />
           </AppField>
           <button
             type="button"
-            className="flex h-[18px] w-[14px] items-center justify-center text-[#cc4b4b]"
+            className="flex h-[20px] w-[18px] items-center justify-center text-[#cc4b4b]"
             aria-label="Remove github"
           >
-            <Trash2 className="h-[10px] w-[10px]" strokeWidth={1.7} />
+            <Trash2 className="h-[12px] w-[12px]" strokeWidth={1.7} />
           </button>
         </div>
       </div>

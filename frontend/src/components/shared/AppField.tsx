@@ -17,17 +17,21 @@ export default function AppField({
   children,
 }: Props) {
   return (
-    <div className={cn("flex w-full flex-col gap-[4px]", className)}>
+    <div className={cn("flex w-full flex-col gap-[6px]", className)}>
       {label ? (
-        <label className="text-[10px] font-medium text-foreground">{label}</label>
+        <label className="text-[14px] font-medium leading-none text-foreground">
+          {label}
+        </label>
       ) : null}
 
       {children}
 
       {errorText ? (
-        <p className="text-[10px] text-[#cc4b4b]">{errorText}</p>
+        <p className="text-[13px] leading-[1.3] text-[#cc4b4b]">{errorText}</p>
       ) : helperText ? (
-        <p className="text-[10px] text-muted-foreground">{helperText}</p>
+        <p className="text-[13px] leading-[1.3] text-muted-foreground">
+          {helperText}
+        </p>
       ) : null}
     </div>
   );

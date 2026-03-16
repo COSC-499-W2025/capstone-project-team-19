@@ -9,7 +9,7 @@ export default function AppSelect({ className, children, ...props }: Props) {
     <div className="relative w-full">
       <select
         className={cn(
-          "ui-field-radius h-[22px] w-full appearance-none border border-[#cfd5df] bg-white px-[6px] pr-[20px] text-[10px] text-foreground outline-none",
+          "ui-field-radius h-[34px] w-full appearance-none border border-[#cfd5df] bg-white px-[8px] pr-[28px] text-[14px] font-normal leading-none text-foreground outline-none",
           "focus:border-primary",
           className
         )}
@@ -18,7 +18,10 @@ export default function AppSelect({ className, children, ...props }: Props) {
         {children}
       </select>
 
-      <ChevronDown className="pointer-events-none absolute right-[6px] top-1/2 h-[12px] w-[12px] -translate-y-1/2 text-[#7c8798]" strokeWidth={1.5} />
+      <ChevronDown
+        className="pointer-events-none absolute right-[8px] top-1/2 h-[14px] w-[14px] -translate-y-1/2 text-[#7c8798]"
+        strokeWidth={1.5}
+      />
     </div>
   );
 }

@@ -13,7 +13,7 @@ type Props = {
 export default function ConfirmDialog({
   open,
   onOpenChange,
-  title = "",
+  title = "Confirm",
   description,
   confirmLabel = "Ok",
   onConfirm,
@@ -41,7 +41,7 @@ export default function ConfirmDialog({
         </>
       }
     >
-      <div className="border-y border-[#ececec] px-[12px] py-[14px] text-center text-[10px] leading-[1.4] text-[#3f3f3f]">
+      <div className="border-y border-[#ececec] px-[12px] py-[14px] text-center text-[14px] leading-[1.4] text-[#3f3f3f]">
         {description}
       </div>
     </AppDialogShell>
