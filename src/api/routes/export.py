@@ -54,6 +54,24 @@ def export_resume_docx(
     temp_dir = tempfile.mkdtemp()
     background_tasks.add_task(_cleanup_temp_dir, temp_dir)
 
+    # First, validate that this resume fits on a single PDF page using the
+    # same export pipeline and layout. If the PDF export raises a ValueError
+    # about exceeding one page, we propagate that as a 400 and avoid
+    # generating the DOCX as well.
+    pdf_check_dir = tempfile.mkdtemp()
+    try:
+        try:
+            export_resume_record_to_pdf(
+                username=username,
+                record=record,
+                out_dir=pdf_check_dir,
+            )
+        except ValueError as e:
+            _cleanup_temp_dir(pdf_check_dir)
+            raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        _cleanup_temp_dir(pdf_check_dir)
+
     filepath = export_resume_record_to_docx(
         username=username,
         record=record,

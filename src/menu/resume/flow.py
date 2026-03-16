@@ -8,6 +8,8 @@ Separated from menu.py to keep menu wiring light.
 import json
 from typing import Any
 from datetime import datetime
+import tempfile
+import shutil
 
 from src.db import (
     get_all_user_project_summaries,
@@ -310,10 +312,31 @@ def _handle_export_resume_docx(conn, user_id: int, username: str) -> bool:
     highlighted_skills = get_highlighted_skills_for_display(
         conn, user_id, context="resume", context_id=resume_id
     )
-    
+
     user_profile = get_user_profile(conn, user_id)
     education_entries = list_user_education_entries(conn, user_id)
     experience_entries = list_user_experience_entries(conn, user_id)
+
+    # Before exporting to DOCX, validate that the same content fits on a
+    # single PDF page. This ensures the 1-page rule is consistently applied
+    # regardless of the chosen format.
+    tmp_dir = tempfile.mkdtemp()
+    try:
+        try:
+            export_resume_record_to_pdf(
+                username=username,
+                record=record,
+                out_dir=tmp_dir,
+                highlighted_skills=highlighted_skills,
+                user_profile=user_profile,
+                education_entries=education_entries,
+                experience_entries=experience_entries,
+            )
+        except ValueError as e:
+            print(f"\n[Resume] Unable to export: {e}")
+            return False
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
     out_file = export_resume_record_to_docx(
         username=username,
