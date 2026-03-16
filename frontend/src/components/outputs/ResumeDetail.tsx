@@ -41,7 +41,6 @@ type ProjectEdits = {
   summary_text: string;
   key_role: string;
   contribution_bullets: string[];
-  contribution_edit_mode: "append" | "replace";
   scope: "resume_only" | "global";
 };
 
@@ -146,7 +145,6 @@ export default function ResumeDetail({
       summary_text: p.summary_text ?? "",
       key_role: p.key_role ?? "",
       contribution_bullets: [...p.contribution_bullets],
-      contribution_edit_mode: "replace",
       scope: "resume_only",
     });
     setErr(null);
@@ -185,7 +183,7 @@ export default function ResumeDetail({
           JSON.stringify(original.contribution_bullets);
         if (bulletsChanged) {
           payload.contribution_bullets = projectEdits.contribution_bullets;
-          payload.contribution_edit_mode = projectEdits.contribution_edit_mode;
+          payload.contribution_edit_mode = "replace";
         }
       }
 
@@ -641,35 +639,7 @@ function ProjectEditForm({
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label>Contribution Bullets</Label>
-          <div className="flex items-center gap-3 text-xs text-slate-500">
-            <label className="flex items-center gap-1 cursor-pointer">
-              <input
-                type="radio"
-                name="edit-mode"
-                checked={edits.contribution_edit_mode === "replace"}
-                onChange={() =>
-                  setEdits({ ...edits, contribution_edit_mode: "replace" })
-                }
-                className="accent-slate-700"
-              />
-              Replace all
-            </label>
-            <label className="flex items-center gap-1 cursor-pointer">
-              <input
-                type="radio"
-                name="edit-mode"
-                checked={edits.contribution_edit_mode === "append"}
-                onChange={() =>
-                  setEdits({ ...edits, contribution_edit_mode: "append" })
-                }
-                className="accent-slate-700"
-              />
-              Append new
-            </label>
-          </div>
-        </div>
+        <Label>Contribution Bullets</Label>
 
         <div className="space-y-2">
           {edits.contribution_bullets.map((bullet, i) => (
