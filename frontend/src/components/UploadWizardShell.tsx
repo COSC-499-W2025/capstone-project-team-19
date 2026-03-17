@@ -21,7 +21,6 @@ type Props = {
   onAction?: () => void;
   actionDisabled?: boolean;
   showAction?: boolean;
-  title: string;
   breadcrumbs: { label: string; href?: string }[];
 };
 
@@ -33,7 +32,6 @@ export default function UploadWizardShell({
   onAction,
   actionDisabled = false,
   showAction = true,
-  title,
   breadcrumbs,
 }: Props) {
   const nav = useNavigate();
@@ -44,7 +42,7 @@ export default function UploadWizardShell({
 
       <div className="wizardPage">
         <PageContainer className="pt-[12px]">
-          <PageHeader title={title} breadcrumbs={breadcrumbs} />
+          <PageHeader breadcrumbs={breadcrumbs} />
 
           <SectionCard className="w-full max-w-[1110px] self-center overflow-hidden !p-0 bg-white">
             <div className="wizardLayout">
