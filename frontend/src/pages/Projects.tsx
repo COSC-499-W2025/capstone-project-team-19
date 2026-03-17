@@ -5,6 +5,7 @@ import ProjectCard from "../components/project-card";
 import { listProjects, type Project } from "../api/projects";
 import { updateProjectVisibility } from "../api/portfolioSettings";
 import { getUsername } from "../auth/user";
+import { PageContainer, PageHeader, SectionCard } from "../components/shared";
 
 export default function ProjectsPage() {
   const username = getUsername();
@@ -26,14 +27,15 @@ export default function ProjectsPage() {
       if (toggling === project.project_summary_id) return;
       setToggling(project.project_summary_id);
       const newValue = !project.is_public;
+
       try {
         await updateProjectVisibility(project.project_summary_id, newValue);
         setProjects((prev) =>
           prev.map((p) =>
             p.project_summary_id === project.project_summary_id
               ? { ...p, is_public: newValue }
-              : p,
-          ),
+              : p
+          )
         );
       } catch {
         // state stays unchanged on error
@@ -41,41 +43,64 @@ export default function ProjectsPage() {
         setToggling(null);
       }
     },
-    [toggling],
+    [toggling]
   );
 
   return (
     <>
       <TopBar showNav username={username} />
-      <div className="content">
-        <h2>Projects</h2>
 
-        {loading && <p>Loading…</p>}
-        {error && <p className="error">{error}</p>}
+      <div className="min-h-[calc(100vh-56px)] bg-background">
+        <PageContainer className="pt-[12px]">
+          <PageHeader
+            breadcrumbs={[
+              { label: "Home", href: "/" },
+              { label: "Projects" },
+            ]}
+          />
 
-        {!loading && !error && projects.length === 0 && (
-          <p>No projects yet. Upload one to get started.</p>
-        )}
+          <SectionCard className="w-full max-w-[1110px] self-center bg-white">
+            <div className="content">
+              <h2>Projects</h2>
 
-        <div className="projectGrid">
-          {projects.map((p) => (
-            <div key={p.project_summary_id} className="projectCardWrapper">
-              <ProjectCard projectId={p.project_summary_id} name={p.project_name} />
-              <button
-                className={`projectVisibilityToggle${p.is_public ? " public" : ""}`}
-                onClick={(e) => handleToggleVisibility(e, p)}
-                disabled={toggling === p.project_summary_id}
-                title={
-                  p.is_public
-                    ? "Visible on public portfolio — click to hide"
-                    : "Hidden from public portfolio — click to show"
-                }
-              >
-                {toggling === p.project_summary_id ? "…" : p.is_public ? "Public" : "Private"}
-              </button>
+              {loading && <p>Loading…</p>}
+              {error && <p className="error">{error}</p>}
+
+              {!loading && !error && projects.length === 0 && (
+                <p>No projects yet. Upload one to get started.</p>
+              )}
+
+              <div className="projectGrid">
+                {projects.map((p) => (
+                  <div key={p.project_summary_id} className="projectCardWrapper">
+                    <ProjectCard
+                      projectId={p.project_summary_id}
+                      name={p.project_name}
+                    />
+                    <button
+                      className={`projectVisibilityToggle${
+                        p.is_public ? " public" : ""
+                      }`}
+                      onClick={(e) => handleToggleVisibility(e, p)}
+                      disabled={toggling === p.project_summary_id}
+                      title={
+                        p.is_public
+                          ? "Visible on public portfolio — click to hide"
+                          : "Hidden from public portfolio — click to show"
+                      }
+                    >
+                      {toggling === p.project_summary_id
+                        ? "…"
+                        : p.is_public
+                        ? "Public"
+                        : "Private"}
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
+          </SectionCard>
+        </PageContainer>
       </div>
     </>
   );
