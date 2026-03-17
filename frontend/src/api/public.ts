@@ -116,6 +116,12 @@ export function publicGetResume(
     .then((r) => r.data ?? null);
 }
 
+export function publicGetActiveResume(username: string): Promise<PublicResumeDetail | null> {
+  return api
+    .get<ApiResponse<PublicResumeDetail>>(`/public/${username}/active-resume`)
+    .then((r) => r.data ?? null);
+}
+
 export function publicGetSkills(username: string): Promise<PublicSkill[]> {
   return api
     .get<ApiResponse<{ skills: PublicSkill[] }>>(`/public/${username}/skills`)

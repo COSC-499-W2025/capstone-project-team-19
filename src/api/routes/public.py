@@ -21,6 +21,7 @@ from src.api.schemas.resumes import ResumeListDTO, ResumeListItemDTO
 from src.api.schemas.skills import SkillTimelineDTO
 from src.db.users import get_user_by_username
 from src.services.public_portfolio_service import (
+    get_portfolio_settings,
     get_public_project_detail,
     get_public_projects,
     get_public_ranking,
@@ -161,3 +162,16 @@ def public_get_activity_heatmap_data(
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to generate heatmap")
     return ApiResponse(success=True, data=ActivityHeatmapDataDTO(**data), error=None)
+
+
+@router.get("/{username}/active-resume", response_model=ApiResponse[Optional[PublicResumeDetailDTO]])
+def public_get_active_resume(username: str, conn: Connection = Depends(get_db)):
+    user_id = _resolve_user(conn, username)
+    settings = get_portfolio_settings(conn, user_id)
+    active_resume_id = settings.get("active_resume_id")
+    if not active_resume_id:
+        return ApiResponse(success=True, data=None, error=None)
+    resume = get_public_resume_by_id(conn, user_id, active_resume_id)
+    if not resume:
+        return ApiResponse(success=True, data=None, error=None)
+    return ApiResponse(success=True, data=PublicResumeDetailDTO(**resume), error=None)
