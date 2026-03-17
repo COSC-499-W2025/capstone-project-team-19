@@ -86,18 +86,6 @@ def test_put_profile_clears_fields_with_blank_strings(client, auth_headers, seed
         assert profile[key] is None
 
 
-def test_put_profile_rejects_overlong_profile_text(client, auth_headers, seed_conn):
-    seed_conn.execute(
-        "INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)"
-    )
-    seed_conn.commit()
-    long_text = "x" * 601
-    res = client.put("/profile", headers=auth_headers, json={"profile_text": long_text})
-    assert res.status_code == 400
-    body = res.json()
-    assert "profile_text must be at most" in body["detail"]
-
-
 def test_education_and_certifications_defaults_empty(client, auth_headers, seed_conn):
     seed_conn.execute(
         "INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)"

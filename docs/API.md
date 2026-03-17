@@ -1972,8 +1972,8 @@ All endpoints require authentication (`Authorization: Bearer <access_token>`).
     - `linkedin` (string, optional): LinkedIn profile URL.
     - `github` (string, optional): GitHub profile URL.
     - `location` (string, optional): Location line (e.g., `"Kelowna, BC"`).
-    - `profile_text` (string, optional): Short profile paragraph (max 600 characters). If empty/blank, the profile section is hidden in exports.
-  - **Response Status**: `200 OK` on success, `400 Bad Request` on validation error
+    - `profile_text` (string, optional): Short profile paragraph. If empty/blank, the profile section is hidden in exports.
+  - **Response Status**: `200 OK`
   - **Response Body**: Uses `UserProfileDTO` with the updated profile
     ```json
     {
@@ -1992,7 +1992,6 @@ All endpoints require authentication (`Authorization: Bearer <access_token>`).
     }
     ```
   - **Error Responses**:
-    - `400 Bad Request`: Profile text exceeds maximum length (currently 600 characters) or other profile validation errors
     - `401 Unauthorized`: Missing or invalid Bearer token
     
 - **List Education Entries**
@@ -3065,7 +3064,7 @@ Example:
   - `linkedin` (string, optional): New LinkedIn URL; blank or whitespace-only strings clear the URL
   - `github` (string, optional): New GitHub URL; blank or whitespace-only strings clear the URL
   - `location` (string, optional): New location; blank or whitespace-only strings clear the location
-  - `profile_text` (string, optional): New profile paragraph; trimmed and limited to 600 characters; blank/whitespace-only strings clear the profile section
+  - `profile_text` (string, optional): New profile paragraph; blank/whitespace-only strings clear the profile section
   
 - **UserEducationEntryDTO**
   - `entry_id` (int, required): Unique identifier for the education/certification entry
