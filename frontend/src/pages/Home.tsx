@@ -13,7 +13,7 @@ export default function HomePage() {
     <>
       <TopBar showNav username={username} />
 
-      <PageContainer className="flex flex-col items-center px-0 pt-[200px]">
+      <PageContainer className="flex flex-col items-center px-0 pt-[150px]">
         <div className="flex w-full max-w-[1110px] flex-col items-center">
           <h1 className="text-center text-[56px] font-normal leading-[1.05] tracking-[-0.02em] text-[#3F3F3F]">
             Welcome, {username}!
