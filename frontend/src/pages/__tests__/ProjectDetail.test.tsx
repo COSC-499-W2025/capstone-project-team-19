@@ -8,6 +8,8 @@ const mockNavigate = vi.fn()
 vi.mock('react-router-dom', () => ({
     useNavigate: vi.fn(() => mockNavigate),
     useParams: vi.fn(() => ({ id: '42' })),
+    Link: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
+    NavLink: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
 }))
 
 vi.mock('../../api/projects', () => ({
@@ -73,7 +75,7 @@ function setupDefaultMocks() {
     vi.mocked(getProjectDates).mockResolvedValue(baseDates)
     vi.mocked(getProjectFeedback).mockResolvedValue([])
     vi.mocked(listProjects).mockResolvedValue([
-        { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null },
+        { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null, is_public: false },
     ])
 }
 
@@ -119,7 +121,7 @@ describe('ProjectDetailPage', () => {
         it('renders project name after loading', async () => {
             render(<ProjectDetailPage />)
             await waitFor(() => {
-                expect(screen.getByText('Test Project')).toBeInTheDocument()
+                expect(screen.getByRole('heading', { name: 'Test Project' })).toBeInTheDocument()
             })
         })
 
@@ -154,7 +156,10 @@ describe('ProjectDetailPage', () => {
         })
 
         it('shows "No feedback available" when feedback is empty', async () => {
+            const user = userEvent.setup()
             render(<ProjectDetailPage />)
+            await waitFor(() => screen.getByText('Feedback'))
+            await user.click(screen.getByText('Feedback'))
             await waitFor(() => {
                 expect(screen.getByText('No feedback available for this project.')).toBeInTheDocument()
             })
@@ -168,7 +173,10 @@ describe('ProjectDetailPage', () => {
                 { feedback_id: 2, skill_name: 'code_quality', file_name: 'utils.ts', criterion_key: 'ck2', criterion_label: 'Quality', expected: null, suggestion: 'Avoid any.', generated_at: null },
                 { feedback_id: 3, skill_name: 'testing', file_name: 'app.test.ts', criterion_key: 'ck3', criterion_label: 'Testing', expected: null, suggestion: 'Add edge cases.', generated_at: null },
             ])
+            const user = userEvent.setup()
             render(<ProjectDetailPage />)
+            await waitFor(() => screen.getByText('Feedback'))
+            await user.click(screen.getByText('Feedback'))
             await waitFor(() => {
                 expect(screen.getByText('Code Quality')).toBeInTheDocument()
                 expect(screen.getByText('Testing')).toBeInTheDocument()
@@ -182,7 +190,10 @@ describe('ProjectDetailPage', () => {
             vi.mocked(getProjectFeedback).mockResolvedValue([
                 { feedback_id: 1, skill_name: 'testing', file_name: 'app.test.ts', criterion_key: 'ck1', criterion_label: 'Testing', expected: null, suggestion: 'Add more tests.', generated_at: null },
             ])
+            const user = userEvent.setup()
             render(<ProjectDetailPage />)
+            await waitFor(() => screen.getByText('Feedback'))
+            await user.click(screen.getByText('Feedback'))
             await waitFor(() => {
                 expect(screen.getByText('app.test.ts')).toBeInTheDocument()
             })
@@ -195,7 +206,7 @@ describe('ProjectDetailPage', () => {
             render(<ProjectDetailPage />)
             await waitFor(() => screen.getByText('Delete Project'))
             await user.click(screen.getByText('Delete Project'))
-            expect(screen.getByText('Are you sure? This cannot be undone.')).toBeInTheDocument()
+            expect(screen.getByText('Are you sure you want to delete this project? This cannot be undone.')).toBeInTheDocument()
         })
 
         it('can cancel the delete confirmation', async () => {
@@ -204,7 +215,7 @@ describe('ProjectDetailPage', () => {
             await waitFor(() => screen.getByText('Delete Project'))
             await user.click(screen.getByText('Delete Project'))
             await user.click(screen.getByText('Cancel'))
-            expect(screen.queryByText('Are you sure? This cannot be undone.')).not.toBeInTheDocument()
+            expect(screen.queryByText('Are you sure you want to delete this project? This cannot be undone.')).not.toBeInTheDocument()
         })
 
         it('calls deleteProject and navigates to /projects on confirm', async () => {
@@ -213,7 +224,7 @@ describe('ProjectDetailPage', () => {
             render(<ProjectDetailPage />)
             await waitFor(() => screen.getByText('Delete Project'))
             await user.click(screen.getByText('Delete Project'))
-            await user.click(screen.getByText('Yes, delete'))
+            await user.click(screen.getByRole('button', { name: 'Delete' }))
             await waitFor(() => {
                 expect(deleteProject).toHaveBeenCalledWith(42)
                 expect(mockNavigate).toHaveBeenCalledWith('/projects')
@@ -226,7 +237,7 @@ describe('ProjectDetailPage', () => {
             render(<ProjectDetailPage />)
             await waitFor(() => screen.getByText('Delete Project'))
             await user.click(screen.getByText('Delete Project'))
-            await user.click(screen.getByText('Yes, delete'))
+            await user.click(screen.getByRole('button', { name: 'Delete' }))
             await waitFor(() => {
                 expect(screen.getByText('Delete failed')).toBeInTheDocument()
             })
@@ -239,8 +250,8 @@ describe('ProjectDetailPage', () => {
             render(<ProjectDetailPage />)
             await waitFor(() => screen.getByText('Edit'))
             await user.click(screen.getByText('Edit'))
-            expect(screen.getByLabelText('Start date')).toBeInTheDocument()
-            expect(screen.getByLabelText('End date')).toBeInTheDocument()
+            expect(screen.getByText('Start date')).toBeInTheDocument()
+            expect(screen.getByText('End date')).toBeInTheDocument()
         })
 
         it('cancels date editing and restores original values', async () => {
@@ -249,7 +260,7 @@ describe('ProjectDetailPage', () => {
             await waitFor(() => screen.getByText('Edit'))
             await user.click(screen.getByText('Edit'))
             await user.click(screen.getByText('Cancel'))
-            expect(screen.queryByLabelText('Start date')).not.toBeInTheDocument()
+            expect(screen.queryByText('Start date')).not.toBeInTheDocument()
         })
 
         it('calls patchProjectDates with correct args on save', async () => {
@@ -319,8 +330,8 @@ describe('ProjectDetailPage', () => {
             render(<ProjectDetailPage />)
             await waitFor(() => screen.getByText('Remove Thumbnail'))
             await user.click(screen.getByText('Remove Thumbnail'))
-            await waitFor(() => screen.getByText('Yes, remove'))
-            await user.click(screen.getByText('Yes, remove'))
+            await waitFor(() => screen.getByRole('button', { name: 'Remove' }))
+            await user.click(screen.getByRole('button', { name: 'Remove' }))
             await waitFor(() => {
                 expect(deleteThumbnail).toHaveBeenCalledWith(42)
                 expect(screen.getByText('No Image')).toBeInTheDocument()
@@ -331,8 +342,8 @@ describe('ProjectDetailPage', () => {
     describe('prev/next navigation', () => {
         it('shows next project button when current is not last', async () => {
             vi.mocked(listProjects).mockResolvedValue([
-                { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null },
-                { project_summary_id: 43, project_name: 'Next Project', project_key: null, project_type: null, project_mode: null, created_at: null },
+                { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null, is_public: false },
+                { project_summary_id: 43, project_name: 'Next Project', project_key: null, project_type: null, project_mode: null, created_at: null, is_public: false },
             ])
             render(<ProjectDetailPage />)
             await waitFor(() => {
@@ -342,8 +353,8 @@ describe('ProjectDetailPage', () => {
 
         it('shows prev project button when current is not first', async () => {
             vi.mocked(listProjects).mockResolvedValue([
-                { project_summary_id: 41, project_name: 'Prev Project', project_key: null, project_type: null, project_mode: null, created_at: null },
-                { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null },
+                { project_summary_id: 41, project_name: 'Prev Project', project_key: null, project_type: null, project_mode: null, created_at: null, is_public: false },
+                { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null, is_public: false },
             ])
             render(<ProjectDetailPage />)
             await waitFor(() => {
@@ -353,8 +364,8 @@ describe('ProjectDetailPage', () => {
 
         it('navigates to next project when next button is clicked', async () => {
             vi.mocked(listProjects).mockResolvedValue([
-                { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null },
-                { project_summary_id: 43, project_name: 'Next Project', project_key: null, project_type: null, project_mode: null, created_at: null },
+                { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null, is_public: false },
+                { project_summary_id: 43, project_name: 'Next Project', project_key: null, project_type: null, project_mode: null, created_at: null, is_public: false },
             ])
             const user = userEvent.setup()
             render(<ProjectDetailPage />)
@@ -364,9 +375,9 @@ describe('ProjectDetailPage', () => {
         })
 
         it('hides nav row when project is the only one', async () => {
-            const { container } = render(<ProjectDetailPage />)
-            await waitFor(() => screen.getByText('Test Project'))
-            expect(container.querySelector('.pdNavBtn')).toBeNull()
+            render(<ProjectDetailPage />)
+            await waitFor(() => screen.getByRole('heading', { name: 'Test Project' }))
+            expect(screen.queryByText(/← /)).not.toBeInTheDocument()
         })
     })
 
