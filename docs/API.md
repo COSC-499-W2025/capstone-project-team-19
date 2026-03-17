@@ -1994,71 +1994,128 @@ All endpoints require authentication (`Authorization: Bearer <access_token>`).
   - **Error Responses**:
     - `400 Bad Request`: Profile text exceeds maximum length (currently 600 characters) or other profile validation errors
     - `401 Unauthorized`: Missing or invalid Bearer token
-
-- **Delete Resume by ID**
-  - **Endpoint**: `DELETE /{resume_id}`
-  - **Description**: Permanently deletes a specific résumé snapshot.
-  - **Path Parameters**:
-    - `{resume_id}` (integer, required): The ID of the résumé snapshot to delete
-  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-  - **Response Status**: `200 OK` on success, `404 Not Found` if résumé doesn't exist or belong to user
-  - **Response Body**:
-    ```json
-    {
-      "success": true,
-      "data": null,
-      "error": null
-    }
-    ```
-
-- **Delete All Resumes**
-  - **Endpoint**: `DELETE /`
-  - **Description**: Permanently deletes all résumé snapshots belonging to the current user.
-  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+    
+- **List Education Entries**
+  - **Endpoint**: `GET /education`
+  - **Description**: Returns all education entries for the authenticated user (e.g., degrees, diplomas). Results are ordered by `display_order` and `entry_id`.
+  - **Auth**: Bearer token required
+  - **Request Body**: None
   - **Response Status**: `200 OK`
-  - **Response DTO**: `DeleteResultDTO`
-  - **Response Body**:
+  - **Response Body**: Uses `UserEducationListDTO`
     ```json
     {
       "success": true,
       "data": {
-        "deleted_count": 2
+        "entries": [
+          {
+            "entry_id": 1,
+            "entry_type": "education",
+            "title": "BSc in Computer Science",
+            "organization": "UBCO",
+            "date_text": "2022 - 2026",
+            "description": "Major in data science.",
+            "display_order": 1,
+            "created_at": "2025-01-15T10:00:00",
+            "updated_at": "2025-01-15T10:00:00"
+          }
+        ]
       },
       "error": null
     }
     ```
+  - **Error Responses**:
+    - `401 Unauthorized`: Missing or invalid Bearer token
 
-- **Remove Project from Resume**
-  - **Endpoint**: `DELETE /{resume_id}/projects?project_name=<name>`
-  - **Description**: Removes a single project from a résumé snapshot. Recomputes aggregated skills from the remaining projects. If no projects remain after removal, the résumé is deleted entirely.
-  - **Path Parameters**:
-    - `{resume_id}` (integer, required): The ID of the résumé snapshot
-  - **Query Parameters**:
-    - `project_name` (string, required): The name of the project to remove
-  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-  - **Response Status**: `200 OK` on success, `404 Not Found` if résumé doesn't exist or project isn't in the résumé
-  - **Response Body** (project removed, résumé still has other projects):
+- **Replace Education Entries**
+  - **Endpoint**: `PUT /education`
+  - **Description**: Replaces all of the user's education entries with the provided list. This is a full replace operation: existing `"education"` entries are deleted and re-inserted in the order provided.
+  - **Auth**: Bearer token required
+  - **Request Body**: Uses `UserEducationEntriesUpdateDTO`
+    ```json
+    {
+      "entries": [
+        {
+          "title": "BSc in Computer Science",
+          "organization": "UBCO",
+          "date_text": "2022 - 2026",
+          "description": "Major in data science."
+        },
+        {
+          "title": "MSc in Computer Science",
+          "organization": "UBCO",
+          "date_text": "2026 - 2028",
+          "description": "Graduate program."
+        }
+      ]
+    }
+    ```
+    - `title` (string, required): Degree or program name
+    - `organization` (string, optional): Institution name
+    - `date_text` (string, optional): Free-form date range (e.g., `"2022 - 2026"`)
+    - `description` (string, optional): Short description or notes
+  - **Response Status**: `200 OK` on success, `400 Bad Request` on validation error
+  - **Response Body**: Uses `UserEducationListDTO` with the updated entries
+  - **Error Responses**:
+    - `400 Bad Request`: Validation error (for example, missing `title`)
+    - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **List Certification Entries**
+  - **Endpoint**: `GET /certifications`
+  - **Description**: Returns all certificate-style entries for the authenticated user (e.g., professional certifications). Results are ordered by `display_order` and `entry_id`.
+  - **Auth**: Bearer token required
+  - **Request Body**: None
+  - **Response Status**: `200 OK`
+  - **Response Body**: Uses `UserEducationListDTO`
     ```json
     {
       "success": true,
       "data": {
-        "id": 1,
-        "name": "My Resume",
-        "projects": [...],
-        "aggregated_skills": {...},
-        "rendered_text": "..."
+        "entries": [
+          {
+            "entry_id": 2,
+            "entry_type": "certificate",
+            "title": "AWS Cloud Practitioner",
+            "organization": "Amazon Web Services",
+            "date_text": "2025",
+            "description": "Foundational cloud certification.",
+            "display_order": 1,
+            "created_at": "2025-01-15T10:05:00",
+            "updated_at": "2025-01-15T10:05:00"
+          }
+        ]
       },
       "error": null
     }
     ```
-  - **Response Body** (last project removed, résumé deleted):
+  - **Error Responses**:
+    - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **Replace Certification Entries**
+  - **Endpoint**: `PUT /certifications`
+  - **Description**: Replaces all of the user's certification entries with the provided list. Existing `"certificate"` entries are deleted and re-inserted in the order provided.
+  - **Auth**: Bearer token required
+  - **Request Body**: Uses `UserEducationEntriesUpdateDTO`
     ```json
     {
-      "success": true,
-      "data": null,
-      "error": null
+      "entries": [
+        {
+          "title": "AWS Cloud Practitioner",
+          "organization": "Amazon Web Services",
+          "date_text": "2025",
+          "description": "Foundational cloud certification."
+        }
+      ]
     }
     ```
+    - `title` (string, required): Certificate name
+    - `organization` (string, optional): Issuing organization
+    - `date_text` (string, optional): Free-form date text (e.g., `"2025"`)
+    - `description` (string, optional): Short description or notes
+  - **Response Status**: `200 OK` on success, `400 Bad Request` on validation error
+  - **Response Body**: Uses `UserEducationListDTO` with the updated entries
+  - **Error Responses**:
+    - `400 Bad Request`: Validation error (for example, missing `title` or invalid entry type)
+    - `401 Unauthorized`: Missing or invalid Bearer token
   - **Error Responses**:
     - `401 Unauthorized`: Missing or invalid Bearer token
     - `404 Not Found`: `"Resume not found"` or `"Project not found in resume"` (distinct messages)
@@ -3009,6 +3066,29 @@ Example:
   - `github` (string, optional): New GitHub URL; blank or whitespace-only strings clear the URL
   - `location` (string, optional): New location; blank or whitespace-only strings clear the location
   - `profile_text` (string, optional): New profile paragraph; trimmed and limited to 600 characters; blank/whitespace-only strings clear the profile section
+  
+- **UserEducationEntryDTO**
+  - `entry_id` (int, required): Unique identifier for the education/certification entry
+  - `entry_type` (string, required): Either `"education"` or `"certificate"`
+  - `title` (string, required): Degree, program, or certificate name
+  - `organization` (string, optional): Institution or issuing organization
+  - `date_text` (string, optional): Free-form date string (e.g. `"2022 - 2026"` or `"2025"`)
+  - `description` (string, optional): Short description or notes
+  - `display_order` (int, required): Order in which entries should appear on the resume
+  - `created_at` (string, optional): ISO timestamp when the entry was created
+  - `updated_at` (string, optional): ISO timestamp when the entry was last updated
+
+- **UserEducationListDTO**
+  - `entries` (List[UserEducationEntryDTO], required): Ordered list of education or certification entries
+
+- **UserEducationEntryInputDTO**
+  - `title` (string, required): Degree, program, or certificate name
+  - `organization` (string, optional): Institution or issuing organization
+  - `date_text` (string, optional): Free-form date string to show on the resume
+  - `description` (string, optional): Short description or notes
+
+- **UserEducationEntriesUpdateDTO**
+  - `entries` (List[UserEducationEntryInputDTO], required): New list of entries to replace existing ones
 
 ### **GitHub Integration DTOs**
 
