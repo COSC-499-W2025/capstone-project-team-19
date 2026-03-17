@@ -4,8 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from src.api.dependencies import get_current_user_id, get_db
 from src.api.schemas.common import ApiResponse
-from src.api.schemas.user_profile import UserProfileDTO, UserProfileUpdateDTO
+from src.api.schemas.user_profile import (
+    UserProfileDTO,
+    UserProfileUpdateDTO,
+    UserEducationEntryDTO,
+    UserEducationListDTO,
+    UserEducationEntriesUpdateDTO,
+)
 from src.db.user_profile import get_user_profile, upsert_user_profile
+from src.db.user_education import list_user_education_entries, add_user_education_entry
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -53,5 +60,94 @@ def put_profile(
 
     updated = get_user_profile(conn, user_id)
     dto = UserProfileDTO(**updated)
+    return ApiResponse(success=True, data=dto, error=None)
+
+
+def _map_education_entries(entries, *, entry_type: str) -> UserEducationListDTO:
+    filtered = [e for e in entries if e.get("entry_type") == entry_type]
+    return UserEducationListDTO(
+        entries=[UserEducationEntryDTO(**entry) for entry in filtered]
+    )
+
+
+@router.get("/education", response_model=ApiResponse[UserEducationListDTO])
+def get_education(
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    entries = list_user_education_entries(conn, user_id)
+    dto = _map_education_entries(entries, entry_type="education")
+    return ApiResponse(success=True, data=dto, error=None)
+
+
+@router.put("/education", response_model=ApiResponse[UserEducationListDTO])
+def put_education(
+    request: UserEducationEntriesUpdateDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    try:
+        conn.execute(
+            "DELETE FROM user_education_entries WHERE user_id = ? AND entry_type = 'education'",
+            (user_id,),
+        )
+        conn.commit()
+
+        for entry in request.entries:
+            add_user_education_entry(
+                conn,
+                user_id,
+                entry_type="education",
+                title=entry.title,
+                organization=entry.organization,
+                date_text=entry.date_text,
+                description=entry.description,
+            )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    entries = list_user_education_entries(conn, user_id)
+    dto = _map_education_entries(entries, entry_type="education")
+    return ApiResponse(success=True, data=dto, error=None)
+
+
+@router.get("/certifications", response_model=ApiResponse[UserEducationListDTO])
+def get_certifications(
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    entries = list_user_education_entries(conn, user_id)
+    dto = _map_education_entries(entries, entry_type="certificate")
+    return ApiResponse(success=True, data=dto, error=None)
+
+
+@router.put("/certifications", response_model=ApiResponse[UserEducationListDTO])
+def put_certifications(
+    request: UserEducationEntriesUpdateDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    try:
+        conn.execute(
+            "DELETE FROM user_education_entries WHERE user_id = ? AND entry_type = 'certificate'",
+            (user_id,),
+        )
+        conn.commit()
+
+        for entry in request.entries:
+            add_user_education_entry(
+                conn,
+                user_id,
+                entry_type="certificate",
+                title=entry.title,
+                organization=entry.organization,
+                date_text=entry.date_text,
+                description=entry.description,
+            )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    entries = list_user_education_entries(conn, user_id)
+    dto = _map_education_entries(entries, entry_type="certificate")
     return ApiResponse(success=True, data=dto, error=None)
 
