@@ -37,11 +37,12 @@ http://localhost:8000
 11. [Portfolio Settings](#portfolio-settings)
 12. [Public Portfolio](#public-portfolio)
 13. [Activity Heatmap](#activity-heatmap)
-14. [Path Variables](#path-variables)
-15. [DTO References](#dto-references)
-16. [Best Practices](#best-practices)
-17. [Error Codes](#error-codes)
-18. [Example Error Response](#example-error-response)
+14. [User Profile](#user-profile)
+15. [Path Variables](#path-variables)
+16. [DTO References](#dto-references)
+17. [Best Practices](#best-practices)
+18. [Error Codes](#error-codes)
+19. [Example Error Response](#example-error-response)
 
 ---
 
@@ -1911,6 +1912,89 @@ Manages résumé-specific representations of projects.
         }
         ```
 
+---
+
+## **User Profile**
+
+**Base URL:** `/profile`
+
+Manages standalone user profile information used for resume and portfolio exports. This includes full name, email, phone, LinkedIn URL, GitHub URL, location, and a short profile paragraph.
+
+All endpoints require authentication (`Authorization: Bearer <access_token>`).
+
+### **Endpoints**
+
+- **Get Current User Profile**
+  - **Endpoint**: `GET /`
+  - **Description**: Returns the authenticated user's current profile information. If the user has not saved a profile yet, all fields (except `user_id`) will be `null`.
+  - **Auth**: Bearer token required
+  - **Request Body**: None
+  - **Response Status**: `200 OK`
+  - **Response Body**: Uses `UserProfileDTO`
+    ```json
+    {
+      "success": true,
+      "data": {
+        "user_id": 1,
+        "email": "user@example.com",
+        "full_name": "Alice Example",
+        "phone": "123-456-7890",
+        "linkedin": "https://linkedin.com/in/alice",
+        "github": "https://github.com/alice",
+        "location": "Kelowna, BC",
+        "profile_text": "Software and data student building practical tools."
+      },
+      "error": null
+    }
+    ```
+  - **Error Responses**:
+    - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **Update Current User Profile**
+  - **Endpoint**: `PUT /`
+  - **Description**: Creates or updates the authenticated user's profile information. All fields are optional; only provided fields are changed. Blank strings are normalized to `null`, which clears those fields.
+  - **Auth**: Bearer token required
+  - **Request Body**: Uses `UserProfileUpdateDTO`
+    ```json
+    {
+      "email": "user@example.com",
+      "full_name": "Alice Example",
+      "phone": "123-456-7890",
+      "linkedin": "https://linkedin.com/in/alice",
+      "github": "https://github.com/alice",
+      "location": "Kelowna, BC",
+      "profile_text": "Software and data student building practical tools."
+    }
+    ```
+    - `email` (string, optional): Contact email address. Also updates `users.email`.
+    - `full_name` (string, optional): Full name used for resume/portfolio exports.
+    - `phone` (string, optional): Phone number to show in contact details.
+    - `linkedin` (string, optional): LinkedIn profile URL.
+    - `github` (string, optional): GitHub profile URL.
+    - `location` (string, optional): Location line (e.g., `"Kelowna, BC"`).
+    - `profile_text` (string, optional): Short profile paragraph (max 600 characters). If empty/blank, the profile section is hidden in exports.
+  - **Response Status**: `200 OK` on success, `400 Bad Request` on validation error
+  - **Response Body**: Uses `UserProfileDTO` with the updated profile
+    ```json
+    {
+      "success": true,
+      "data": {
+        "user_id": 1,
+        "email": "user@example.com",
+        "full_name": "Alice Example",
+        "phone": "123-456-7890",
+        "linkedin": "https://linkedin.com/in/alice",
+        "github": "https://github.com/alice",
+        "location": "Kelowna, BC",
+        "profile_text": "Software and data student building practical tools."
+      },
+      "error": null
+    }
+    ```
+  - **Error Responses**:
+    - `400 Bad Request`: Profile text exceeds maximum length (currently 600 characters) or other profile validation errors
+    - `401 Unauthorized`: Missing or invalid Bearer token
+
 - **Delete Resume by ID**
   - **Endpoint**: `DELETE /{resume_id}`
   - **Description**: Permanently deletes a specific résumé snapshot.
@@ -2904,6 +2988,27 @@ Example:
   - `user_id` (int, required): User identifier
   - `internal_consent` (string, optional): Latest internal consent status, or null if not set
   - `external_consent` (string, optional): Latest external consent status, or null if not set
+
+### **User Profile DTOs**
+
+- **UserProfileDTO**
+  - `user_id` (int, required): Authenticated user's ID
+  - `email` (string, optional): Contact email address (also stored on `users.email`)
+  - `full_name` (string, optional): Full name used for resume/portfolio exports
+  - `phone` (string, optional): Phone number shown in contact details
+  - `linkedin` (string, optional): LinkedIn profile URL
+  - `github` (string, optional): GitHub profile URL
+  - `location` (string, optional): Location line (e.g. `"Kelowna, BC"`)
+  - `profile_text` (string, optional): Short profile paragraph (max 600 characters)
+
+- **UserProfileUpdateDTO**
+  - `email` (string, optional): New email; blank or whitespace-only strings clear the email
+  - `full_name` (string, optional): New full name; blank or whitespace-only strings clear the name
+  - `phone` (string, optional): New phone; blank or whitespace-only strings clear the phone
+  - `linkedin` (string, optional): New LinkedIn URL; blank or whitespace-only strings clear the URL
+  - `github` (string, optional): New GitHub URL; blank or whitespace-only strings clear the URL
+  - `location` (string, optional): New location; blank or whitespace-only strings clear the location
+  - `profile_text` (string, optional): New profile paragraph; trimmed and limited to 600 characters; blank/whitespace-only strings clear the profile section
 
 ### **GitHub Integration DTOs**
 
