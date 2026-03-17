@@ -25,11 +25,11 @@ export default function PageHeader({
   titleClassName,
 }: Props) {
   return (
-    <div className={cn("flex flex-col gap-[12px]", className)}>
+    <div className={cn("flex flex-col gap-[14px] pt-[10px] pb-[14px]", className)}>
       {breadcrumbs?.length ? <Breadcrumbs items={breadcrumbs} /> : null}
 
       <div className="flex items-start justify-between gap-[12px]">
-        <div className="space-y-[4px]">
+        <div className="space-y-[6px]">
           <h1
             className={cn(
               "text-[20px] font-medium leading-none text-foreground",

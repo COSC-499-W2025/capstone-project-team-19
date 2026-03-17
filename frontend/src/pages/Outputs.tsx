@@ -6,6 +6,7 @@ import ResumeList from "../components/outputs/ResumeList";
 import ResumeDetail from "../components/outputs/ResumeDetail";
 import CreateResumeModal from "../components/outputs/CreateResumeModal";
 import PortfolioView from "../components/outputs/PortfolioView";
+import { PageContainer, PageHeader, SectionCard } from "../components/shared";
 
 type View =
   | { kind: "landing" }
@@ -24,10 +25,15 @@ export default function OutputsPage() {
         return (
           <OutputsLanding
             onSelect={(v) =>
-              setView(v === "resumes" ? { kind: "resumes" } : { kind: "portfolio" })
+              setView(
+                v === "resumes"
+                  ? { kind: "resumes" }
+                  : { kind: "portfolio" }
+              )
             }
           />
         );
+
       case "resumes":
         return (
           <ResumeList
@@ -37,6 +43,7 @@ export default function OutputsPage() {
             onCreateNew={() => setShowCreate(true)}
           />
         );
+
       case "resume-detail":
         return (
           <ResumeDetail
@@ -45,6 +52,7 @@ export default function OutputsPage() {
             onBack={() => setView({ kind: "resumes" })}
           />
         );
+
       case "portfolio":
         return (
           <PortfolioView onBack={() => setView({ kind: "landing" })} />
@@ -52,10 +60,60 @@ export default function OutputsPage() {
     }
   }
 
+  const headerConfig =
+    view.kind === "landing"
+      ? {
+          title: "Outputs",
+          breadcrumbs: [
+            { label: "Home", href: "/" },
+            { label: "Outputs" },
+          ],
+        }
+      : view.kind === "resumes"
+      ? {
+          title: "Resume Items",
+          breadcrumbs: [
+            { label: "Home", href: "/" },
+            { label: "Outputs", href: "/outputs" },
+            { label: "Resume Items" },
+          ],
+        }
+      : view.kind === "resume-detail"
+      ? {
+          title: "Resume Detail",
+          breadcrumbs: [
+            { label: "Home", href: "/" },
+            { label: "Outputs", href: "/outputs" },
+            { label: "Resume Items" },
+            { label: "Resume Detail" },
+          ],
+        }
+      : {
+          title: "Portfolio Items",
+          breadcrumbs: [
+            { label: "Home", href: "/" },
+            { label: "Outputs", href: "/outputs" },
+            { label: "Portfolio Items" },
+          ],
+        };
+
   return (
     <>
       <TopBar showNav username={username} />
-      {renderView()}
+
+      <div className="min-h-[calc(100vh-56px)] bg-background">
+        <PageContainer className="pt-[12px]">
+          <PageHeader
+            title={headerConfig.title}
+            breadcrumbs={headerConfig.breadcrumbs}
+          />
+
+          <SectionCard className="w-full max-w-[1110px] self-center bg-white">
+            {renderView()}
+          </SectionCard>
+        </PageContainer>
+      </div>
+
       {showCreate && (
         <CreateResumeModal
           onClose={() => setShowCreate(false)}

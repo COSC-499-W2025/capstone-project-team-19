@@ -13,6 +13,7 @@ export default function InsightsPage() {
       <div className="min-h-[calc(100vh-56px)] bg-background">
         <PageContainer className="pt-[12px]">
           <PageHeader
+            title="Insights"
             breadcrumbs={[
               { label: "Home", href: "/" },
               { label: "Insights" },

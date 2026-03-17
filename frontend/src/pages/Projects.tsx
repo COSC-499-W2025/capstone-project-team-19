@@ -53,6 +53,7 @@ export default function ProjectsPage() {
       <div className="min-h-[calc(100vh-56px)] bg-background">
         <PageContainer className="pt-[12px]">
           <PageHeader
+            title="Projects"
             breadcrumbs={[
               { label: "Home", href: "/" },
               { label: "Projects" },
@@ -61,7 +62,6 @@ export default function ProjectsPage() {
 
           <SectionCard className="w-full max-w-[1110px] self-center bg-white">
             <div className="content">
-              <h2>Projects</h2>
 
               {loading && <p>Loading…</p>}
               {error && <p className="error">{error}</p>}
