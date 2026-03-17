@@ -127,7 +127,14 @@ def public_get_activity_by_date(
     conn: Connection = Depends(get_db),
 ):
     user_id = _resolve_user(conn, username)
-    data = get_activity_by_date_grid(conn, user_id, year=year)
+    public_ids = {
+        row[0]
+        for row in conn.execute(
+            "SELECT project_summary_id FROM project_summaries WHERE user_id = ? AND is_public = 1",
+            (user_id,),
+        ).fetchall()
+    }
+    data = get_activity_by_date_grid(conn, user_id, year=year, project_ids=public_ids)
     return ApiResponse(success=True, data=ActivityByDateMatrixDTO(**data), error=None)
 
 
