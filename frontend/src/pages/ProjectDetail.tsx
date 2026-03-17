@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import "./ProjectDetail.css";
 import TopBar from "../components/TopBar";
 import { getUsername } from "../auth/user";
 import {
@@ -18,17 +19,6 @@ import {
   type ProjectDatesItem,
   type ProjectDetail,
 } from "../api/projects";
-import {
-  AppButton,
-  AppField,
-  AppInput,
-  ConfirmDialog,
-  PageContainer,
-  PageHeader,
-  SectionCard,
-  SectionTabs,
-  TagPill,
-} from "../components/shared";
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -60,9 +50,6 @@ export default function ProjectDetailPage() {
   // Delete
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-
-  // Tabs
-  const [activeTab, setActiveTab] = useState("summary");
 
   useEffect(() => {
     let objectUrl: string | null = null;
@@ -191,9 +178,7 @@ export default function ProjectDetailPage() {
     return (
       <>
         <TopBar showNav username={username} />
-        <PageContainer>
-          <p className="text-[14px] text-[#7f7f7f]">Loading…</p>
-        </PageContainer>
+        <div className="content"><p>Loading…</p></div>
       </>
     );
   }
@@ -202,318 +187,230 @@ export default function ProjectDetailPage() {
     return (
       <>
         <TopBar showNav username={username} />
-        <PageContainer className="flex flex-col gap-[20px]">
-          <p className="text-[14px] text-[#cc4b4b]">
-            {error ?? "Project not found."}
-          </p>
-          <div>
-            <AppButton variant="ghost" onClick={() => nav("/projects")}>
-              ← Back to Projects
-            </AppButton>
-          </div>
-        </PageContainer>
+        <div className="content">
+          <p className="error">{error ?? "Project not found."}</p>
+          <button className="btn" onClick={() => nav("/projects")}>← Back to Projects</button>
+        </div>
       </>
     );
   }
 
-  const currentIndex = allProjects.findIndex(
-    (p) => p.project_summary_id === projectId,
-  );
+  // Prev/next navigation
+  const currentIndex = allProjects.findIndex((p) => p.project_summary_id === projectId);
   const prevProject = currentIndex > 0 ? allProjects[currentIndex - 1] : null;
-  const nextProject =
-    currentIndex !== -1 && currentIndex < allProjects.length - 1
-      ? allProjects[currentIndex + 1]
-      : null;
+  const nextProject = currentIndex !== -1 && currentIndex < allProjects.length - 1 ? allProjects[currentIndex + 1] : null;
 
-  const feedbackBySkill = feedback.reduce<Record<string, FeedbackItem[]>>(
-    (acc, item) => {
-      if (!acc[item.skill_name]) acc[item.skill_name] = [];
-      acc[item.skill_name].push(item);
-      return acc;
-    },
-    {},
-  );
+  // Group feedback by skill_name
+  const feedbackBySkill = feedback.reduce<Record<string, FeedbackItem[]>>((acc, item) => {
+    if (!acc[item.skill_name]) acc[item.skill_name] = [];
+    acc[item.skill_name].push(item);
+    return acc;
+  }, {});
 
   return (
     <>
-      <TopBar showNav username={username} />
-      <PageContainer className="flex flex-col gap-[20px]">
-        <PageHeader
-          title={project.project_name}
-          breadcrumbs={[
-            { label: "Home", href: "/" },
-            { label: "Projects", href: "/projects" },
-            { label: project.project_name },
-          ]}
-          actions={
-            <AppButton
-              variant="destructive"
-              onClick={() => setConfirmDelete(true)}
-            >
-              Delete Project
-            </AppButton>
-          }
-        />
-
-        {/* Thumbnail + Meta */}
-        <SectionCard>
-          <div className="flex gap-[20px]">
-            <div className="shrink-0 space-y-[8px]">
-              <div
-                className="relative h-[140px] w-[186px] overflow-hidden rounded-[6px] bg-[#ebebeb] bg-cover bg-center"
-                style={
-                  thumbUrl
-                    ? { backgroundImage: `url(${thumbUrl})` }
-                    : undefined
-                }
+      {confirmRemoveThumbnail && (
+        <div className="pdModalOverlay">
+          <div className="pdModal">
+            <p>Remove this thumbnail? This cannot be undone.</p>
+            <div className="pdFormActions">
+              <button
+                className="btn pdThumbBtnDanger"
+                onClick={() => { setConfirmRemoveThumbnail(false); handleRemoveThumbnail(); }}
+                disabled={thumbLoading}
               >
-                {!thumbUrl && (
-                  <div className="flex h-full items-center justify-center text-[13px] text-[#9f9f9f]">
-                    No Image
-                  </div>
-                )}
-                {thumbLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-[13px] text-white">
-                    Uploading…
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-[6px]">
-                <AppButton
-                  variant="outline"
-                  size="sm"
-                  disabled={thumbLoading}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {thumbUrl ? "Change" : "Upload"} Thumbnail
-                </AppButton>
-                {thumbUrl && (
-                  <AppButton
-                    variant="destructive"
-                    size="sm"
-                    disabled={thumbLoading}
-                    onClick={() => setConfirmRemoveThumbnail(true)}
-                  >
-                    Remove Thumbnail
-                  </AppButton>
-                )}
-              </div>
-              {thumbError && (
-                <p className="text-[13px] text-[#cc4b4b]">{thumbError}</p>
-              )}
-            </div>
-
-            <div className="flex flex-wrap gap-[8px] self-start">
-              {project.project_type && (
-                <TagPill className="capitalize">{project.project_type}</TagPill>
-              )}
-              {project.project_mode && (
-                <TagPill className="capitalize">{project.project_mode}</TagPill>
-              )}
+                {thumbLoading ? "Removing…" : "Yes, remove"}
+              </button>
+              <button
+                className="btn"
+                onClick={() => setConfirmRemoveThumbnail(false)}
+                disabled={thumbLoading}
+              >
+                Cancel
+              </button>
             </div>
           </div>
+        </div>
+      )}
+      <TopBar showNav username={username} />
+      <div className="content">
+        <button className="pdBackBtn" onClick={() => nav("/projects")}>← Back to Projects</button>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleThumbnailChange}
-          />
-        </SectionCard>
+        {/* Header */}
+        <div className="pdHeader">
+          {/* Thumbnail */}
+          <div className="pdThumbWrap">
+            <div
+              className="pdThumb"
+              style={thumbUrl ? { backgroundImage: `url(${thumbUrl})` } : undefined}
+            >
+              {!thumbUrl && <span className="pdThumbPlaceholder">No Image</span>}
+              {thumbLoading && <div className="pdThumbOverlay">Uploading…</div>}
+            </div>
+            <div className="pdThumbActions">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={handleThumbnailChange}
+              />
+              <button
+                className="btn pdThumbBtn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={thumbLoading}
+              >
+                {thumbUrl ? "Change" : "Upload"} Thumbnail
+              </button>
+              {thumbUrl && (
+                <button
+                  className="btn pdThumbBtnDanger"
+                  onClick={() => setConfirmRemoveThumbnail(true)}
+                  disabled={thumbLoading}
+                >
+                  Remove Thumbnail
+                </button>
+              )}
+            </div>
+            {thumbError && <p className="error">{thumbError}</p>}
+          </div>
+
+          {/* Project name + meta */}
+          <div className="pdHeaderInfo">
+            <h2 className="pdTitle">{project.project_name}</h2>
+            {project.project_type && (
+              <span className="pdMeta">{project.project_type}</span>
+            )}
+            {project.project_mode && (
+              <span className="pdMeta">{project.project_mode}</span>
+            )}
+          </div>
+            {!confirmDelete ? (
+              <button
+                className="primaryBtn pdDeleteBtn"
+                onClick={() => setConfirmDelete(true)}
+              >
+                Delete Project
+              </button>
+            ) : (
+              <div className="pdDeleteConfirm">
+                <p>Are you sure? This cannot be undone.</p>
+                <div className="pdFormActions">
+                  <button className="primaryBtn pdDeleteBtn" onClick={handleDeleteProject} disabled={deleting}>
+                    {deleting ? "Deleting…" : "Yes, delete"}
+                  </button>
+                  <button className="btn" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+        </div>
 
         {/* Duration */}
-        <SectionCard className="space-y-[14px]">
-          <div className="flex items-center justify-between">
-            <div className="text-[18px] font-medium leading-none text-foreground">
-              Duration
-            </div>
+        <div className="pdSection">
+          <div className="pdSectionHeader">
+            <h3>Duration</h3>
             {!editingDates && (
-              <AppButton
-                variant="outline"
-                size="sm"
-                onClick={() => setEditingDates(true)}
-              >
-                Edit
-              </AppButton>
+              <button className="pdEditBtn" onClick={() => setEditingDates(true)}>Edit</button>
             )}
           </div>
-
           {!editingDates ? (
-            <div className="flex items-center gap-[8px]">
-              <span className="text-[14px] text-foreground">
-                {formatDate(dates?.start_date)} → {formatDate(dates?.end_date)}
-              </span>
-              {dates?.source === "MANUAL" && (
-                <TagPill className="text-[12px]">manual</TagPill>
-              )}
-            </div>
+            <p className="pdDateDisplay">
+              {formatDate(dates?.start_date)} → {formatDate(dates?.end_date)}
+              {dates?.source === "MANUAL" && <span className="pdDateTag">manual</span>}
+            </p>
           ) : (
-            <div className="space-y-[14px]">
-              <div className="grid gap-[14px] md:grid-cols-2">
-                <AppField label="Start date">
-                  <AppInput
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </AppField>
-                <AppField label="End date">
-                  <AppInput
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </AppField>
-              </div>
-              {datesError && (
-                <p className="text-[13px] text-[#cc4b4b]">{datesError}</p>
-              )}
-              <div className="flex gap-[8px]">
-                <AppButton onClick={handleSaveDates} disabled={savingDates}>
+            <div className="pdDateForm">
+              <label>
+                Start date
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </label>
+              <label>
+                End date
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </label>
+              {datesError && <p className="error">{datesError}</p>}
+              <div className="pdFormActions">
+                <button className="primaryBtn" onClick={handleSaveDates} disabled={savingDates}>
                   {savingDates ? "Saving…" : "Save"}
-                </AppButton>
-                <AppButton
-                  variant="outline"
-                  onClick={handleCancelDates}
-                  disabled={savingDates}
-                >
+                </button>
+                <button className="btn" onClick={handleCancelDates} disabled={savingDates}>
                   Cancel
-                </AppButton>
+                </button>
                 {dates?.source === "MANUAL" && (
-                  <AppButton
-                    variant="ghost"
-                    onClick={handleResetDates}
-                    disabled={savingDates}
-                  >
+                  <button className="btn" onClick={handleResetDates} disabled={savingDates}>
                     Reset to auto
-                  </AppButton>
+                  </button>
                 )}
               </div>
             </div>
           )}
-        </SectionCard>
+        </div>
 
-        {/* Summary / Feedback */}
-        <SectionCard className="space-y-[16px]">
-          <SectionTabs
-            tabs={[
-              { key: "summary", label: "Summary" },
-              { key: "feedback", label: "Feedback" },
-            ]}
-            activeKey={activeTab}
-            onChange={setActiveTab}
-            align="left"
-          />
-
-          {activeTab === "summary" && (
-            <div className="space-y-[14px]">
-              <p className="whitespace-pre-wrap text-[14px] leading-[1.6] text-foreground">
-                {project.summary_text ?? (
-                  <em className="text-[#9f9f9f]">No summary yet.</em>
-                )}
+        {/* Summary */}
+        <div className="pdSection">
+          <h3>Summary</h3>
+          <p className="pdSummaryText">
+            {project.summary_text ?? <em>No summary yet.</em>}
+          </p>
+          {project.project_mode === "collaborative" && (
+            <>
+              <h3 className="pdContribHeading">Contribution Summary</h3>
+              <p className="pdSummaryText">
+                {project.contributions?.manual_contribution_summary ?? <em>No contribution summary yet.</em>}
               </p>
-              {project.project_mode === "collaborative" && (
-                <>
-                  <div className="text-[16px] font-medium text-foreground">
-                    Contribution Summary
-                  </div>
-                  <p className="whitespace-pre-wrap text-[14px] leading-[1.6] text-foreground">
-                    {project.contributions?.manual_contribution_summary ?? (
-                      <em className="text-[#9f9f9f]">
-                        No contribution summary yet.
-                      </em>
+            </>
+          )}
+        </div>
+
+        {/* Feedback */}
+        <div className="pdSection">
+          <h3>Feedback</h3>
+          {feedback.length === 0 ? (
+            <p className="pdEmpty">No feedback available for this project.</p>
+          ) : (
+            Object.entries(feedbackBySkill).map(([skill, items]) => (
+              <div key={skill} className="pdFeedbackGroup">
+                <h4 className="pdFeedbackSkill">{formatSkillName(skill)}</h4>
+                {items.map((item, i) => (
+                  <div key={item.feedback_id ?? i} className="pdFeedbackItem">
+                    {item.suggestion && (
+                      <p className="pdFeedbackSuggestion">{item.suggestion}</p>
                     )}
-                  </p>
-                </>
-              )}
-            </div>
-          )}
-
-          {activeTab === "feedback" && (
-            <div className="space-y-[20px]">
-              {feedback.length === 0 ? (
-                <p className="text-[14px] text-[#7f7f7f]">
-                  No feedback available for this project.
-                </p>
-              ) : (
-                Object.entries(feedbackBySkill).map(([skill, items]) => (
-                  <div key={skill} className="space-y-[8px]">
-                    <div className="text-[14px] font-medium text-foreground">
-                      {formatSkillName(skill)}
-                    </div>
-                    {items.map((item, i) => (
-                      <div
-                        key={item.feedback_id ?? i}
-                        className="rounded-[4px] border border-[#e0e0e0] bg-white px-[12px] py-[10px]"
-                      >
-                        {item.suggestion && (
-                          <p className="text-[14px] leading-[1.5] text-foreground">
-                            {item.suggestion}
-                          </p>
-                        )}
-                        {item.file_name && (
-                          <span className="mt-[4px] block text-[12px] italic text-[#7f7f7f]">
-                            {item.file_name}
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                    {item.file_name && (
+                      <span className="pdFeedbackFile">{item.file_name}</span>
+                    )}
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            ))
           )}
-        </SectionCard>
-
+        </div>
         {/* Prev/Next navigation */}
         {(prevProject || nextProject) && (
-          <div className="flex justify-between">
+          <div className="pdNavRow">
             {prevProject ? (
-              <AppButton
-                variant="ghost"
-                onClick={() =>
-                  nav(`/projects/${prevProject.project_summary_id}`)
-                }
-              >
+              <button className="pdNavBtn" onClick={() => nav(`/projects/${prevProject.project_summary_id}`)}>
                 ← {prevProject.project_name}
-              </AppButton>
-            ) : (
-              <span />
-            )}
+              </button>
+            ) : <span />}
             {nextProject && (
-              <AppButton
-                variant="ghost"
-                onClick={() =>
-                  nav(`/projects/${nextProject.project_summary_id}`)
-                }
-              >
+              <button className="pdNavBtn" onClick={() => nav(`/projects/${nextProject.project_summary_id}`)}>
                 {nextProject.project_name} →
-              </AppButton>
+              </button>
             )}
           </div>
         )}
-      </PageContainer>
-
-      <ConfirmDialog
-        open={confirmRemoveThumbnail}
-        onOpenChange={setConfirmRemoveThumbnail}
-        title="Remove Thumbnail"
-        description="Remove this thumbnail? This cannot be undone."
-        confirmLabel="Remove"
-        onConfirm={handleRemoveThumbnail}
-      />
-
-      <ConfirmDialog
-        open={confirmDelete}
-        onOpenChange={(open) => {
-          if (!deleting) setConfirmDelete(open);
-        }}
-        title="Delete Project"
-        description="Are you sure you want to delete this project? This cannot be undone."
-        confirmLabel="Delete"
-        onConfirm={handleDeleteProject}
-      />
+      </div>
     </>
   );
 }
