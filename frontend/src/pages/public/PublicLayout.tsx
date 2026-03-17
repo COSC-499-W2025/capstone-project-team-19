@@ -61,6 +61,9 @@ export default function PublicLayout({ children }: Props) {
                 <CircleUserRound className="h-[18px] w-[18px] text-[#6C6C6C]" strokeWidth={1.8} />
               </Link>
             )}
+            <span className="font-['Roboto'] text-sm text-white/60">
+              Viewing {username}&apos;s portfolio
+            </span>
           </div>
         </div>
       </header>
