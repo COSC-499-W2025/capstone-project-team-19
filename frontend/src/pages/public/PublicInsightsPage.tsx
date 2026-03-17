@@ -8,6 +8,8 @@ import SkillsOverview from "../../components/insights/tabs/Skills/SkillsOverview
 import SkillProgressChart from "../../components/insights/tabs/Skills/SkillProgressChart";
 import SkillsTimeline from "../../components/insights/tabs/Skills/SkillsTimeline";
 import SkillsLog from "../../components/insights/tabs/Skills/SkillsLog";
+import PublicActivityHeatmapTab from "../../components/insights/tabs/Projects/PublicActivityHeatmapTab";
+import PublicProjectSkillHeatmapTab from "../../components/insights/tabs/Projects/PublicProjectSkillHeatmapTab";
 
 type PublicView = "ranked-projects" | "skills-overview" | "skills-timeline" | "skills-log" | "activity-heatmap" | "project-heatmap";
 
@@ -66,14 +68,6 @@ function RankedProjectsView({ rankings }: { rankings: PublicRankingItem[] }) {
     );
 }
 
-function HeatmapPlaceholder({ title }: { title: string }) {
-    return (
-        <div className="py-12 flex flex-col items-center gap-2 text-slate-500">
-            <p className="text-base font-medium">{title}</p>
-            <p className="text-sm">Heatmap data is not available on public portfolios.</p>
-        </div>
-    );
-}
 
 export default function PublicInsightsPage() {
     const { username } = useParams<{ username: string }>();
@@ -115,8 +109,8 @@ export default function PublicInsightsPage() {
             if (rankingsError) return <div className="py-4 text-center text-red-600">{rankingsError}</div>;
             return <RankedProjectsView rankings={rankings} />;
         }
-        if (activeView === "activity-heatmap") return <HeatmapPlaceholder title="Activity Heatmap" />;
-        if (activeView === "project-heatmap") return <HeatmapPlaceholder title="Project Heatmap" />;
+        if (activeView === "activity-heatmap") return <PublicActivityHeatmapTab username={username!} />;
+        if (activeView === "project-heatmap") return <PublicProjectSkillHeatmapTab username={username!} />;
 
         if (loadingTimeline) return <div className="py-4 text-center text-slate-600">Loading...</div>;
         if (timelineError) return <div className="py-4 text-center text-red-600">{timelineError}</div>;

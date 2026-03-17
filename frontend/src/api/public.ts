@@ -1,5 +1,6 @@
 import { api } from "./client";
-import type { SkillTimelineDTO } from "./insights";
+import type { SkillTimelineDTO, ActivityByDateMatrixDTO } from "./insights";
+import type { ActivityHeatmapData } from "./projects";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -124,6 +125,19 @@ export function publicGetSkills(username: string): Promise<PublicSkill[]> {
 export function publicGetSkillsTimeline(username: string): Promise<SkillTimelineDTO> {
   return api
     .get<{ success: boolean; data: SkillTimelineDTO }>(`/public/${username}/skills/timeline`)
+    .then((r) => r.data);
+}
+
+export function publicGetActivityByDate(username: string, year?: number | null): Promise<ActivityByDateMatrixDTO> {
+  const params = year != null ? `?year=${year}` : "";
+  return api
+    .get<{ success: boolean; data: ActivityByDateMatrixDTO }>(`/public/${username}/skills/activity-by-date${params}`)
+    .then((r) => r.data);
+}
+
+export function publicGetActivityHeatmapData(username: string, projectId: number): Promise<ActivityHeatmapData> {
+  return api
+    .get<{ success: boolean; data: ActivityHeatmapData }>(`/public/${username}/projects/${projectId}/activity-heatmap/data`)
     .then((r) => r.data);
 }
 
