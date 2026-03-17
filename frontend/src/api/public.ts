@@ -1,4 +1,5 @@
 import { api } from "./client";
+import type { SkillTimelineDTO } from "./insights";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -118,6 +119,12 @@ export function publicGetSkills(username: string): Promise<PublicSkill[]> {
   return api
     .get<ApiResponse<{ skills: PublicSkill[] }>>(`/public/${username}/skills`)
     .then((r) => r.data?.skills ?? []);
+}
+
+export function publicGetSkillsTimeline(username: string): Promise<SkillTimelineDTO> {
+  return api
+    .get<{ success: boolean; data: SkillTimelineDTO }>(`/public/${username}/skills/timeline`)
+    .then((r) => r.data);
 }
 
 export async function publicFetchThumbnailUrl(
