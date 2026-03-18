@@ -31,9 +31,6 @@ type EditableExperienceEntry = Omit<UserExperienceEntry, "entry_id" | "display_o
 
 export default function ProfilePage() {
   const username = getUsername();
-  const displayName = username;
-  const initials = displayName.slice(0, 1).toUpperCase();
-
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [education, setEducation] = useState<UserEducationEntry[]>([]);
   const [certifications, setCertifications] = useState<UserEducationEntry[]>([]);
@@ -246,11 +243,11 @@ export default function ProfilePage() {
       <main className="min-h-[calc(100vh-56px)] bg-gradient-to-b from-slate-50 via-white to-slate-100/40">
         <div className="mx-auto w-full max-w-6xl px-6 py-10">
           <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
-            <aside className="lg:sticky lg:top-24 lg:self-start">
+            <aside className="lg:self-start">
               <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm">
                 <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-slate-100">
                   <div>
-                    <p className="text-sm text-slate-500">@{username}</p>
+                    <p className="text-base font-medium text-slate-800">@{username}</p>
                   </div>
                   <Button
                     variant="outline"
@@ -684,7 +681,9 @@ function EditableEntriesList({
         <div key={idx} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Title</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Title (required)
+              </label>
               <Input
                 value={entry.title}
                 onChange={(e) => updateEntry(idx, { title: e.target.value })}
@@ -693,7 +692,7 @@ function EditableEntriesList({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
-                Organization
+                Organization (optional)
               </label>
               <Input
                 value={entry.organization ?? ""}
@@ -703,7 +702,7 @@ function EditableEntriesList({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
-                Dates (display text)
+                Dates (display text, optional)
               </label>
               <Input
                 value={entry.date_text ?? ""}
@@ -793,7 +792,9 @@ function EditableExperienceList({
         <div key={idx} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Role</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Role (required)
+              </label>
               <Input
                 value={entry.role}
                 onChange={(e) => updateEntry(idx, { role: e.target.value })}
@@ -802,7 +803,7 @@ function EditableExperienceList({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
-                Company
+                Company (optional)
               </label>
               <Input
                 value={entry.company ?? ""}
@@ -812,7 +813,7 @@ function EditableExperienceList({
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
-                Dates (display text)
+                Dates (display text, optional)
               </label>
               <Input
                 value={entry.date_text ?? ""}
