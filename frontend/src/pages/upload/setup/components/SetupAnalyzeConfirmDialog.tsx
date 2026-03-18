@@ -20,7 +20,7 @@ export default function SetupAnalyzeConfirmDialog({ open, onCancel, onConfirm }:
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="button" onClick={onConfirm} className="bg-black text-white hover:bg-zinc-800">
+          <Button type="button" onClick={onConfirm} className="bg-[#001166] text-white hover:bg-[#00104d]">
             Continue
           </Button>
         </div>

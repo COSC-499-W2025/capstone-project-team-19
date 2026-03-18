@@ -263,7 +263,7 @@ export default function UploadSetupPage() {
           source: "local",
         });
       }
-      if (project.projectType === "text") {
+      if (project.projectType === "text" && project.classification === "collaborative") {
         if (project.driveState === "connected") {
           if (project.driveLinkedFilesCount === 0) {
             out.push({
@@ -303,6 +303,10 @@ export default function UploadSetupPage() {
     return effectiveNonBlockingWarnings.filter((item) => {
       const code = String(item.code || "");
       const projectName = typeof item.project === "string" ? item.project.trim() : "";
+      if (code === "drive_not_configured" || code === "drive_skipped" || code === "missing_drive_links") {
+        const project = flow.projectCards.find((p) => p.projectName === projectName);
+        if (!project || project.projectType !== "text" || project.classification !== "collaborative") return false;
+      }
       const summaryModes = resolvedSummaryModesByProject[projectName];
       if (code === "missing_manual_summary") {
         if (summaryModes?.project === "llm" || summaryModes?.project === null) return false;
@@ -312,7 +316,7 @@ export default function UploadSetupPage() {
       }
       return true;
     });
-  }, [effectiveNonBlockingWarnings, resolvedSummaryModesByProject]);
+  }, [effectiveNonBlockingWarnings, flow.projectCards, resolvedSummaryModesByProject]);
 
   const optionalWarningsByProject = useMemo(() => {
     const out: Record<string, string | null> = {};

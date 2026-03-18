@@ -251,8 +251,13 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
         </div>
 
         {authUrl && (
-          <a href={authUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-700 underline">
-            Open GitHub authorization
+          <a
+            href={authUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-[#001166]"
+          >
+            Open GitHub Authorization
           </a>
         )}
 

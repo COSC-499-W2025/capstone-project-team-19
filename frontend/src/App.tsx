@@ -19,6 +19,7 @@ import ProjectDetailPage from "./pages/ProjectDetail";
 import InsightsPage from "./pages/InsightsPage";
 import OutputsPage from "./pages/Outputs";
 import ProfilePage from "./pages/Profile";
+import UIPlaygroundPage from "./pages/UIPlayground";
 import PublicProjectsPage from "./pages/public/PublicProjects";
 import PublicProjectDetailPage from "./pages/public/PublicProjectDetail";
 
@@ -139,6 +140,15 @@ export default function App() {
         <Route path="/public/:username/projects" element={<PublicProjectsPage />} />
         <Route path="/public/:username/projects/:id" element={<PublicProjectDetailPage />} />
 
+        <Route
+          path="/ui-preview"
+          element={
+            <RequireAuth>
+              <UIPlaygroundPage />
+            </RequireAuth>
+          }
+        />
+        
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
