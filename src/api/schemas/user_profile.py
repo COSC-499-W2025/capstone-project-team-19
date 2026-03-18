@@ -50,3 +50,29 @@ class UserEducationEntryInputDTO(BaseModel):
 class UserEducationEntriesUpdateDTO(BaseModel):
     entries: List[UserEducationEntryInputDTO]
 
+
+class UserExperienceEntryDTO(BaseModel):
+    entry_id: int
+    role: str
+    company: Optional[str] = None
+    date_text: Optional[str] = None
+    description: Optional[str] = None
+    display_order: int
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class UserExperienceListDTO(BaseModel):
+    entries: List[UserExperienceEntryDTO]
+
+
+class UserExperienceEntryInputDTO(BaseModel):
+    role: str
+    company: Optional[str] = None
+    date_text: Optional[str] = None
+    description: Optional[str] = None
+
+
+class UserExperienceEntriesUpdateDTO(BaseModel):
+    entries: List[UserExperienceEntryInputDTO]
+
