@@ -278,6 +278,47 @@ export default function ProfilePage() {
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  function startEditList<TSource, TDraft>({
+    sourceEntries,
+    pickDraft,
+    emptyRow,
+    setDraft,
+    setEditing,
+  }: {
+    sourceEntries: TSource[];
+    pickDraft: (e: TSource) => TDraft;
+    emptyRow: TDraft;
+    setDraft: (next: TDraft[]) => void;
+    setEditing: (next: boolean) => void;
+  }) {
+    const initial = sourceEntries.map(pickDraft);
+    setDraft(initial.length === 0 ? [{ ...emptyRow }] : initial);
+    setEditing(true);
+  }
+
+  async function saveList<TDraft, TList>({
+    draftEntries,
+    requiredKey,
+    replaceFn,
+    setList,
+    setEditing,
+  }: {
+    draftEntries: TDraft[];
+    requiredKey: keyof TDraft;
+    replaceFn: (payload: { entries: TDraft[] }) => Promise<{ entries: TList[] }>;
+    setList: (next: TList[]) => void;
+    setEditing: (next: boolean) => void;
+  }) {
+    try {
+      const cleaned = draftEntries.filter((e) => String(e[requiredKey] ?? "").trim() !== "");
+      const updated = await replaceFn({ entries: cleaned });
+      setList(updated.entries);
+      setEditing(false);
+    } catch {
+      // ignore for now
+    }
+  }
+
   const educationFields = useMemo<Array<FieldSpec<EditableEducationEntry>>>(
     () => [
       {
@@ -310,6 +351,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setLoading(true);
+    setSettingsLoading(true);
     Promise.all([
       getProfile(),
       getEducation(),
@@ -327,8 +369,10 @@ export default function ProfilePage() {
         setResumes(resumeRes.data?.resumes ?? []);
       })
       .catch(() => {})
-      .finally(() => setLoading(false));
-    setSettingsLoading(false);
+      .finally(() => {
+        setLoading(false);
+        setSettingsLoading(false);
+      });
   }, []);
 
   function startEditProfile() {
@@ -356,87 +400,78 @@ export default function ProfilePage() {
   }
 
   function startEditEducation() {
-    setEducationDraft(
-      education.map((e) => ({
+    startEditList<UserEducationEntry, EditableEducationEntry>({
+      sourceEntries: education,
+      pickDraft: (e) => ({
         title: e.title,
         organization: e.organization,
         date_text: e.date_text,
         description: e.description,
-      })),
-    );
-    if (education.length === 0) {
-      setEducationDraft([
-        { title: "", organization: "", date_text: "", description: "" },
-      ]);
-    }
-    setEditingEducation(true);
+      }),
+      emptyRow: { title: "", organization: "", date_text: "", description: "" },
+      setDraft: setEducationDraft,
+      setEditing: setEditingEducation,
+    });
   }
 
   async function saveEducation() {
-    try {
-      const cleaned = educationDraft.filter((e) => e.title.trim() !== "");
-      const updated = await replaceEducation({ entries: cleaned });
-      setEducation(updated.entries);
-      setEditingEducation(false);
-    } catch {
-      // ignore for now
-    }
+    await saveList<EditableEducationEntry, UserEducationEntry>({
+      draftEntries: educationDraft,
+      requiredKey: "title",
+      replaceFn: replaceEducation,
+      setList: setEducation,
+      setEditing: setEditingEducation,
+    });
   }
 
   function startEditCerts() {
-    setCertsDraft(
-      certifications.map((e) => ({
+    startEditList<UserEducationEntry, EditableEducationEntry>({
+      sourceEntries: certifications,
+      pickDraft: (e) => ({
         title: e.title,
         organization: e.organization,
         date_text: e.date_text,
         description: e.description,
-      })),
-    );
-    if (certifications.length === 0) {
-      setCertsDraft([
-        { title: "", organization: "", date_text: "", description: "" },
-      ]);
-    }
-    setEditingCerts(true);
+      }),
+      emptyRow: { title: "", organization: "", date_text: "", description: "" },
+      setDraft: setCertsDraft,
+      setEditing: setEditingCerts,
+    });
   }
 
   async function saveCerts() {
-    try {
-      const cleaned = certsDraft.filter((e) => e.title.trim() !== "");
-      const updated = await replaceCertifications({ entries: cleaned });
-      setCertifications(updated.entries);
-      setEditingCerts(false);
-    } catch {
-      // ignore for now
-    }
+    await saveList<EditableEducationEntry, UserEducationEntry>({
+      draftEntries: certsDraft,
+      requiredKey: "title",
+      replaceFn: replaceCertifications,
+      setList: setCertifications,
+      setEditing: setEditingCerts,
+    });
   }
 
   function startEditExperience() {
-    setExperienceDraft(
-      experience.map((e) => ({
+    startEditList<UserExperienceEntry, EditableExperienceEntry>({
+      sourceEntries: experience,
+      pickDraft: (e) => ({
         role: e.role,
         company: e.company,
         date_text: e.date_text,
         description: e.description,
-      })),
-    );
-    if (experience.length === 0) {
-      setExperienceDraft([
-        { role: "", company: "", date_text: "", description: "" },
-      ]);
-    }
-    setEditingExperience(true);
+      }),
+      emptyRow: { role: "", company: "", date_text: "", description: "" },
+      setDraft: setExperienceDraft,
+      setEditing: setEditingExperience,
+    });
   }
 
   async function saveExperience() {
-    try {
-      const cleaned = experienceDraft.filter((e) => e.role.trim() !== "");
-      const updated = await replaceExperience({ entries: cleaned });
-      setExperience(updated.entries);
-      setEditingExperience(false);
-    } catch {
-      // ignore for now
-    }
+    await saveList<EditableExperienceEntry, UserExperienceEntry>({
+      draftEntries: experienceDraft,
+      requiredKey: "role",
+      replaceFn: replaceExperience,
+      setList: setExperience,
+      setEditing: setEditingExperience,
+    });
   }
 
   function startEditSummary() {
