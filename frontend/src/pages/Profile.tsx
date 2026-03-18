@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import TopBar from "../components/TopBar";
 import { getUsername } from "../auth/user";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,225 @@ import { listResumes, type ResumeListItem } from "../api/outputs";
 type EditableEducationEntry = Omit<UserEducationEntry, "entry_id" | "entry_type" | "display_order" | "created_at" | "updated_at">;
 type EditableExperienceEntry = Omit<UserExperienceEntry, "entry_id" | "display_order" | "created_at" | "updated_at">;
 
+type FieldKind = "input" | "textarea";
+type FieldSpec<T extends Record<string, unknown>> = {
+  key: keyof T;
+  label: string;
+  required?: boolean;
+  placeholder?: string;
+  kind?: FieldKind;
+  rows?: number;
+  colSpan?: 1 | 2;
+};
+
+function ProfileSectionCard({
+  title,
+  description,
+  actionLabel,
+  onAction,
+  actionDisabled,
+  contentClassName,
+  headerClassName,
+  children,
+}: {
+  title: ReactNode;
+  description?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  actionDisabled?: boolean;
+  contentClassName?: string;
+  headerClassName?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm">
+      <CardHeader
+        className={[
+          "flex flex-row items-start justify-between gap-4 border-b border-slate-100 px-6 py-3",
+          headerClassName ?? "",
+        ].join(" ")}
+      >
+        <div>
+          <CardTitle className="text-base text-slate-900">{title}</CardTitle>
+          {description ? (
+            <CardDescription className="text-slate-500">{description}</CardDescription>
+          ) : null}
+        </div>
+        {actionLabel && onAction ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-1 gap-2"
+            onClick={onAction}
+            disabled={actionDisabled}
+          >
+            <Pencil className="size-4" />
+            {actionLabel}
+          </Button>
+        ) : null}
+      </CardHeader>
+      <CardContent className={["space-y-4 pt-2", contentClassName ?? ""].join(" ")}>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProfileFormField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-slate-600">
+        {label}
+        {required ? " (required)" : " (optional)"}
+      </label>
+      <Input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+function EditableList<T extends Record<string, any>>({
+  entries,
+  setEntries,
+  emptyRow,
+  fields,
+  addLabel = "Add another",
+  requiredKey,
+}: {
+  entries: T[];
+  setEntries: (next: T[]) => void;
+  emptyRow: T;
+  fields: Array<FieldSpec<T>>;
+  addLabel?: string;
+  requiredKey: keyof T;
+}) {
+  const gridFields = fields.filter((f) => (f.kind ?? "input") === "input");
+  const textareaFields = fields.filter((f) => (f.kind ?? "input") === "textarea");
+
+  function updateEntry(index: number, key: keyof T, value: string) {
+    setEntries(entries.map((e, i) => (i === index ? { ...e, [key]: value } : e)));
+  }
+
+  function addEntry() {
+    setEntries([...entries, { ...emptyRow }]);
+  }
+
+  function removeEntry(index: number) {
+    setEntries(entries.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div className="space-y-4">
+      {entries.map((entry, idx) => {
+        const canRemove = entries.length > 1 || String(entry[requiredKey] ?? "").trim() !== "";
+        return (
+          <div
+            key={idx}
+            className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 space-y-3"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="w-full space-y-3">
+                {gridFields.length ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {gridFields.map((f) => (
+                      <div key={String(f.key)} className={f.colSpan === 2 ? "sm:col-span-2" : ""}>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                          {f.label}
+                          {f.required ? " (required)" : " (optional)"}
+                        </label>
+                        <Input
+                          value={String(entry[f.key] ?? "")}
+                          placeholder={f.placeholder}
+                          onChange={(e) => updateEntry(idx, f.key, e.target.value)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {textareaFields.map((f) => (
+                  <div key={String(f.key)}>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">
+                      {f.label}
+                      {f.required ? " (required)" : " (optional)"}
+                    </label>
+                    <Textarea
+                      rows={f.rows ?? 2}
+                      value={String(entry[f.key] ?? "")}
+                      placeholder={f.placeholder}
+                      onChange={(e) => updateEntry(idx, f.key, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {canRemove ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  className="text-slate-500 hover:text-slate-900"
+                  onClick={() => removeEntry(idx)}
+                  aria-label="Remove entry"
+                >
+                  ✕
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+      <Button variant="outline" size="sm" type="button" className="mt-1" onClick={addEntry}>
+        {addLabel}
+      </Button>
+    </div>
+  );
+}
+
+function EntryListDisplay<T extends Record<string, any>>({
+  entries,
+  titleKey,
+  metaKeys,
+  descriptionKey,
+  keyField,
+}: {
+  entries: T[];
+  titleKey: keyof T;
+  metaKeys: Array<keyof T>;
+  descriptionKey?: keyof T;
+  keyField: keyof T;
+}) {
+  return (
+    <div className="space-y-3">
+      {entries.map((e) => {
+        const meta = metaKeys.map((k) => e[k]).filter(Boolean).join(" • ");
+        const desc = descriptionKey ? (e[descriptionKey] as unknown as string | null) : null;
+        return (
+          <div
+            key={String(e[keyField])}
+            className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2"
+          >
+            <p className="text-sm font-medium text-slate-900">{String(e[titleKey] ?? "")}</p>
+            {meta ? <p className="text-xs text-slate-500">{meta}</p> : null}
+            {desc ? <p className="mt-1 text-sm text-slate-700 whitespace-pre-line">{desc}</p> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const username = getUsername();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -57,6 +277,36 @@ export default function ProfilePage() {
   const [resumes, setResumes] = useState<ResumeListItem[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const educationFields = useMemo<Array<FieldSpec<EditableEducationEntry>>>(
+    () => [
+      {
+        key: "title",
+        label: "Title",
+        required: true,
+        placeholder: "BSc in Computer Science",
+      },
+      { key: "organization", label: "Organization", placeholder: "University / Provider" },
+      { key: "date_text", label: "Dates (display text)", placeholder: "2022 - 2026" },
+      { key: "description", label: "Description", kind: "textarea", rows: 2 },
+    ],
+    [],
+  );
+
+  const experienceFields = useMemo<Array<FieldSpec<EditableExperienceEntry>>>(
+    () => [
+      {
+        key: "role",
+        label: "Role",
+        required: true,
+        placeholder: "Full Stack Engineer",
+      },
+      { key: "company", label: "Company", placeholder: "Company name" },
+      { key: "date_text", label: "Dates (display text)", placeholder: "Sep 2025 - Dec 2025" },
+      { key: "description", label: "Description", kind: "textarea", rows: 2 },
+    ],
+    [],
+  );
 
   useEffect(() => {
     setLoading(true);
@@ -244,106 +494,64 @@ export default function ProfilePage() {
         <div className="mx-auto w-full max-w-6xl px-6 py-10">
           <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
             <aside className="lg:self-start">
-              <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm">
-                <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-slate-100">
-                  <div>
-                    <p className="text-base font-medium text-slate-800">@{username}</p>
+              <ProfileSectionCard
+                title={`@${username}`}
+                actionLabel={editingProfile ? "Save" : "Edit"}
+                onAction={editingProfile ? saveProfile : startEditProfile}
+                actionDisabled={loading || (!profile && !editingProfile)}
+              >
+                {loading || !profile ? (
+                  <p className="text-sm text-slate-500">Loading profile…</p>
+                ) : editingProfile ? (
+                  <div className="space-y-3">
+                    <ProfileFormField
+                      label="Full name"
+                      required={false}
+                      value={profileDraft.full_name ?? profile.full_name ?? ""}
+                      onChange={(v) => setProfileDraft((d) => ({ ...d, full_name: v }))}
+                    />
+                    <ProfileFormField
+                      label="Email"
+                      required={false}
+                      value={profileDraft.email ?? profile.email ?? ""}
+                      onChange={(v) => setProfileDraft((d) => ({ ...d, email: v }))}
+                    />
+                    <ProfileFormField
+                      label="Phone"
+                      required={false}
+                      value={profileDraft.phone ?? profile.phone ?? ""}
+                      onChange={(v) => setProfileDraft((d) => ({ ...d, phone: v }))}
+                    />
+                    <ProfileFormField
+                      label="Location"
+                      required={false}
+                      value={profileDraft.location ?? profile.location ?? ""}
+                      onChange={(v) => setProfileDraft((d) => ({ ...d, location: v }))}
+                    />
+                    <ProfileFormField
+                      label="LinkedIn URL"
+                      required={false}
+                      value={profileDraft.linkedin ?? profile.linkedin ?? ""}
+                      onChange={(v) => setProfileDraft((d) => ({ ...d, linkedin: v }))}
+                    />
+                    <ProfileFormField
+                      label="GitHub URL"
+                      required={false}
+                      value={profileDraft.github ?? profile.github ?? ""}
+                      onChange={(v) => setProfileDraft((d) => ({ ...d, github: v }))}
+                    />
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-1 gap-2"
-                    onClick={editingProfile ? saveProfile : startEditProfile}
-                    disabled={loading || (!profile && !editingProfile)}
-                  >
-                    <Pencil className="size-4" />
-                    {editingProfile ? "Save" : "Edit"}
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-5">
-                  {loading || !profile ? (
-                    <p className="text-sm text-slate-500">Loading profile…</p>
-                  ) : editingProfile ? (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
-                          Full name
-                        </label>
-                        <Input
-                          value={profileDraft.full_name ?? profile.full_name ?? ""}
-                          onChange={(e) =>
-                            setProfileDraft((d) => ({ ...d, full_name: e.target.value }))
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
-                          Email
-                        </label>
-                        <Input
-                          value={profileDraft.email ?? profile.email ?? ""}
-                          onChange={(e) =>
-                            setProfileDraft((d) => ({ ...d, email: e.target.value }))
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
-                          Phone
-                        </label>
-                        <Input
-                          value={profileDraft.phone ?? profile.phone ?? ""}
-                          onChange={(e) =>
-                            setProfileDraft((d) => ({ ...d, phone: e.target.value }))
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
-                          Location
-                        </label>
-                        <Input
-                          value={profileDraft.location ?? profile.location ?? ""}
-                          onChange={(e) =>
-                            setProfileDraft((d) => ({ ...d, location: e.target.value }))
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
-                          LinkedIn URL
-                        </label>
-                        <Input
-                          value={profileDraft.linkedin ?? profile.linkedin ?? ""}
-                          onChange={(e) =>
-                            setProfileDraft((d) => ({ ...d, linkedin: e.target.value }))
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
-                          GitHub URL
-                        </label>
-                        <Input
-                          value={profileDraft.github ?? profile.github ?? ""}
-                          onChange={(e) =>
-                            setProfileDraft((d) => ({ ...d, github: e.target.value }))
-                          }
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <ProfileField label="Full name" value={profile.full_name} />
-                      <ProfileField label="Email" value={profile.email} />
-                      <ProfileField label="Phone" value={profile.phone} />
-                      <ProfileField label="Location" value={profile.location} />
-                      <ProfileField label="LinkedIn" value={profile.linkedin} isLink />
-                      <ProfileField label="GitHub" value={profile.github} isLink />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                ) : (
+                  <div className="space-y-3">
+                    <ProfileField label="Full name" value={profile.full_name} />
+                    <ProfileField label="Email" value={profile.email} />
+                    <ProfileField label="Phone" value={profile.phone} />
+                    <ProfileField label="Location" value={profile.location} />
+                    <ProfileField label="LinkedIn" value={profile.linkedin} isLink />
+                    <ProfileField label="GitHub" value={profile.github} isLink />
+                  </div>
+                )}
+              </ProfileSectionCard>
             </aside>
 
             <section className="space-y-6">
@@ -355,170 +563,140 @@ export default function ProfilePage() {
                 </p>
               </div>
 
-              {/* Profile summary */}
-              <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm">
-                <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-slate-100">
-                  <div>
-                    <CardTitle className="text-base text-slate-900">Profile summary</CardTitle>
-                    <CardDescription className="text-slate-500">
-                      A short paragraph that appears at the top of your resumes.
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-1 gap-2"
-                    onClick={editingSummary ? saveSummary : startEditSummary}
-                    disabled={loading || (!profile && !editingSummary)}
-                  >
-                    <Pencil className="size-4" />
-                    {editingSummary ? "Save" : "Edit"}
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-6">
-                  {loading || !profile ? (
-                    <p className="text-sm text-slate-500">Loading profile…</p>
-                  ) : editingSummary ? (
-                    <div>
-                      <Textarea
-                        rows={4}
-                        value={summaryDraft}
-                        onChange={(e) => setSummaryDraft(e.target.value)}
-                      />
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-700 whitespace-pre-line">
-                      {profile.profile_text || "Not added yet."}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+              <ProfileSectionCard
+                title="Profile summary"
+                description="A short paragraph that appears at the top of your resumes."
+                actionLabel={editingSummary ? "Save" : "Edit"}
+                onAction={editingSummary ? saveSummary : startEditSummary}
+                actionDisabled={loading || (!profile && !editingSummary)}
+              >
+                {loading || !profile ? (
+                  <p className="text-sm text-slate-500">Loading profile…</p>
+                ) : editingSummary ? (
+                  <Textarea
+                    rows={4}
+                    value={summaryDraft}
+                    onChange={(e) => setSummaryDraft(e.target.value)}
+                  />
+                ) : (
+                  <p className="text-sm text-slate-700 whitespace-pre-line">
+                    {profile.profile_text || "Not added yet."}
+                  </p>
+                )}
+              </ProfileSectionCard>
 
-              {/* Education */}
-              <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm">
-                <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-slate-100">
-                  <div>
-                    <CardTitle className="text-base text-slate-900">Education</CardTitle>
-                    <CardDescription className="text-slate-500">
-                      Degrees and academic programs to include on your resumes.
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-1 gap-2"
-                    onClick={editingEducation ? saveEducation : startEditEducation}
-                    disabled={loading}
-                  >
-                    <Pencil className="size-4" />
-                    {editingEducation ? "Save" : "Edit"}
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-6">
-                  {loading ? (
-                    <p className="text-sm text-slate-500">Loading education…</p>
-                  ) : editingEducation ? (
-                    <EditableEntriesList entries={educationDraft} setEntries={setEducationDraft} />
-                  ) : education.length === 0 ? (
-                    <p className="text-sm text-slate-500">
-                      No education added yet. Add entries to show your degrees and programs on exported
-                      resumes.
-                    </p>
-                  ) : (
-                    <EntriesDisplay entries={education} emptyMessage="" />
-                  )}
-                </CardContent>
-              </Card>
+              <ProfileSectionCard
+                title="Education"
+                description="Degrees and academic programs to include on your resumes."
+                actionLabel={editingEducation ? "Save" : "Edit"}
+                onAction={editingEducation ? saveEducation : startEditEducation}
+                actionDisabled={loading}
+              >
+                {loading ? (
+                  <p className="text-sm text-slate-500">Loading education…</p>
+                ) : editingEducation ? (
+                  <EditableList
+                    entries={educationDraft}
+                    setEntries={setEducationDraft}
+                    emptyRow={{ title: "", organization: "", date_text: "", description: "" }}
+                    fields={educationFields}
+                    requiredKey="title"
+                  />
+                ) : education.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    No education added yet. Add entries to show your degrees and programs on exported
+                    resumes.
+                  </p>
+                ) : (
+                  <EntryListDisplay
+                    entries={education}
+                    titleKey="title"
+                    metaKeys={["organization", "date_text"]}
+                    descriptionKey="description"
+                    keyField="entry_id"
+                  />
+                )}
+              </ProfileSectionCard>
 
-              {/* Experience */}
-              <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm">
-                <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-slate-100">
-                  <div>
-                    <CardTitle className="text-base text-slate-900">Experience</CardTitle>
-                    <CardDescription className="text-slate-500">
-                      Work experience and internships to include on your resumes.
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-1 gap-2"
-                    onClick={editingExperience ? saveExperience : startEditExperience}
-                    disabled={loading}
-                  >
-                    <Pencil className="size-4" />
-                    {editingExperience ? "Save" : "Edit"}
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-6">
-                  {loading ? (
-                    <p className="text-sm text-slate-500">Loading experience…</p>
-                  ) : editingExperience ? (
-                    <EditableExperienceList
-                      entries={experienceDraft}
-                      setEntries={setExperienceDraft}
-                    />
-                  ) : experience.length === 0 ? (
-                    <p className="text-sm text-slate-500">
-                      No experience added yet. Add roles to showcase on exported resumes.
-                    </p>
-                  ) : (
-                    <ExperienceDisplay entries={experience} />
-                  )}
-                </CardContent>
-              </Card>
+              <ProfileSectionCard
+                title="Experience"
+                description="Work experience and internships to include on your resumes."
+                actionLabel={editingExperience ? "Save" : "Edit"}
+                onAction={editingExperience ? saveExperience : startEditExperience}
+                actionDisabled={loading}
+              >
+                {loading ? (
+                  <p className="text-sm text-slate-500">Loading experience…</p>
+                ) : editingExperience ? (
+                  <EditableList
+                    entries={experienceDraft}
+                    setEntries={setExperienceDraft}
+                    emptyRow={{ role: "", company: "", date_text: "", description: "" }}
+                    fields={experienceFields}
+                    requiredKey="role"
+                  />
+                ) : experience.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    No experience added yet. Add roles to showcase on exported resumes.
+                  </p>
+                ) : (
+                  <EntryListDisplay
+                    entries={experience}
+                    titleKey="role"
+                    metaKeys={["company", "date_text"]}
+                    descriptionKey="description"
+                    keyField="entry_id"
+                  />
+                )}
+              </ProfileSectionCard>
 
-              {/* Certifications */}
-              <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm">
-                <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-slate-100">
-                  <div>
-                    <CardTitle className="text-base text-slate-900">Certifications</CardTitle>
-                    <CardDescription className="text-slate-500">
-                      Professional certificates to highlight in your resumes.
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-1 gap-2"
-                    onClick={editingCerts ? saveCerts : startEditCerts}
-                    disabled={loading}
-                  >
-                    <Pencil className="size-4" />
-                    {editingCerts ? "Save" : "Edit"}
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-6">
-                  {loading ? (
-                    <p className="text-sm text-slate-500">Loading certifications…</p>
-                  ) : editingCerts ? (
-                    <EditableEntriesList entries={certsDraft} setEntries={setCertsDraft} />
-                  ) : certifications.length === 0 ? (
-                    <p className="text-sm text-slate-500">
-                      No certificates added yet. Add some to include them on your resumes.
-                    </p>
-                  ) : (
-                    <EntriesDisplay entries={certifications} emptyMessage="" />
-                  )}
-                </CardContent>
-              </Card>
+              <ProfileSectionCard
+                title="Certifications"
+                description="Professional certificates to highlight in your resumes."
+                actionLabel={editingCerts ? "Save" : "Edit"}
+                onAction={editingCerts ? saveCerts : startEditCerts}
+                actionDisabled={loading}
+              >
+                {loading ? (
+                  <p className="text-sm text-slate-500">Loading certifications…</p>
+                ) : editingCerts ? (
+                  <EditableList
+                    entries={certsDraft}
+                    setEntries={setCertsDraft}
+                    emptyRow={{ title: "", organization: "", date_text: "", description: "" }}
+                    fields={educationFields}
+                    requiredKey="title"
+                  />
+                ) : certifications.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    No certificates added yet. Add some to include them on your resumes.
+                  </p>
+                ) : (
+                  <EntryListDisplay
+                    entries={certifications}
+                    titleKey="title"
+                    metaKeys={["organization", "date_text"]}
+                    descriptionKey="description"
+                    keyField="entry_id"
+                  />
+                )}
+              </ProfileSectionCard>
 
-              {/* Public Portfolio Settings */}
-              <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm">
-                <CardHeader className="border-b border-slate-100">
-                  <div className="flex items-center gap-2">
+              <ProfileSectionCard
+                title={
+                  <span className="inline-flex items-center gap-2">
                     <Globe className="size-4 text-slate-500" />
-                    <CardTitle className="text-base text-slate-900">Public Portfolio</CardTitle>
-                  </div>
-                  <CardDescription className="text-slate-500">
-                    Control what visitors see at your public portfolio URL.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-5 pt-6">
-                  {settingsLoading ? (
-                    <p className="text-sm text-slate-500">Loading…</p>
-                  ) : (
-                    <>
+                    Public Portfolio
+                  </span>
+                }
+                description="Control what visitors see at your public portfolio URL."
+                contentClassName="space-y-5"
+                headerClassName="items-center"
+              >
+                {settingsLoading ? (
+                  <p className="text-sm text-slate-500">Loading…</p>
+                ) : (
+                  <Fragment>
                       <div className="flex items-center justify-between gap-4">
                         <div>
                           <p className="text-sm font-medium text-slate-800">Portfolio visibility</p>
@@ -570,22 +748,21 @@ export default function ProfilePage() {
                         </a>{" "}
                         page — each card has a Public / Private toggle.
                       </p>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+                  </Fragment>
+                )}
+              </ProfileSectionCard>
 
-              <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm">
-                <CardHeader className="border-b border-slate-100">
-                  <div className="flex items-center gap-2">
+              <ProfileSectionCard
+                title={
+                  <span className="inline-flex items-center gap-2">
                     <ShieldCheck className="size-4 text-slate-500" />
-                    <CardTitle className="text-base text-slate-900">Security</CardTitle>
-                  </div>
-                  <CardDescription className="text-slate-500">
-                    Password and account controls (placeholder actions for now).
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-6">
+                    Security
+                  </span>
+                }
+                description="Password and account controls (placeholder actions for now)."
+                contentClassName="space-y-3"
+                headerClassName="items-center"
+              >
                   <Button
                     variant="outline"
                     size="default"
@@ -615,8 +792,7 @@ export default function ProfilePage() {
                     <Trash2 className="size-4" />
                     Delete account
                   </Button>
-                </CardContent>
-              </Card>
+              </ProfileSectionCard>
             </section>
           </div>
         </div>
@@ -653,219 +829,6 @@ function ProfileField({
       ) : (
         <p className="mt-0.5 text-sm text-slate-400">Not set</p>
       )}
-    </div>
-  );
-}
-
-function EditableEntriesList({
-  entries,
-  setEntries,
-}: {
-  entries: EditableEducationEntry[];
-  setEntries: (next: EditableEducationEntry[]) => void;
-}) {
-  function updateEntry(index: number, patch: Partial<EditableEducationEntry>) {
-    setEntries(entries.map((e, i) => (i === index ? { ...e, ...patch } : e)));
-  }
-
-  function addEntry() {
-    setEntries([
-      ...entries,
-      { title: "", organization: "", date_text: "", description: "" },
-    ]);
-  }
-
-  return (
-    <div className="space-y-4">
-      {entries.map((entry, idx) => (
-        <div key={idx} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Title (required)
-              </label>
-              <Input
-                value={entry.title}
-                onChange={(e) => updateEntry(idx, { title: e.target.value })}
-                placeholder="BSc in Computer Science"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Organization (optional)
-              </label>
-              <Input
-                value={entry.organization ?? ""}
-                onChange={(e) => updateEntry(idx, { organization: e.target.value })}
-                placeholder="University / Provider"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Dates (display text, optional)
-              </label>
-              <Input
-                value={entry.date_text ?? ""}
-                onChange={(e) => updateEntry(idx, { date_text: e.target.value })}
-                placeholder="2022 - 2026"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              Description (optional)
-            </label>
-            <Textarea
-              rows={2}
-              value={entry.description ?? ""}
-              onChange={(e) => updateEntry(idx, { description: e.target.value })}
-            />
-          </div>
-        </div>
-      ))}
-      <Button
-        variant="outline"
-        size="sm"
-        type="button"
-        className="mt-1"
-        onClick={addEntry}
-      >
-        Add another
-      </Button>
-    </div>
-  );
-}
-
-function EntriesDisplay({
-  entries,
-  emptyMessage,
-}: {
-  entries: UserEducationEntry[];
-  emptyMessage: string;
-}) {
-  if (entries.length === 0 && emptyMessage) {
-    return <p className="text-sm text-slate-500">{emptyMessage}</p>;
-  }
-  return (
-    <div className="space-y-3">
-      {entries.map((e) => (
-        <div
-          key={e.entry_id}
-          className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2"
-        >
-          <p className="text-sm font-medium text-slate-900">{e.title}</p>
-          {(e.organization || e.date_text) && (
-            <p className="text-xs text-slate-500">
-              {[e.organization, e.date_text].filter(Boolean).join(" • ")}
-            </p>
-          )}
-          {e.description && (
-            <p className="mt-1 text-sm text-slate-700 whitespace-pre-line">{e.description}</p>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EditableExperienceList({
-  entries,
-  setEntries,
-}: {
-  entries: EditableExperienceEntry[];
-  setEntries: (next: EditableExperienceEntry[]) => void;
-}) {
-  function updateEntry(index: number, patch: Partial<EditableExperienceEntry>) {
-    setEntries(entries.map((e, i) => (i === index ? { ...e, ...patch } : e)));
-  }
-
-  function addEntry() {
-    setEntries([
-      ...entries,
-      { role: "", company: "", date_text: "", description: "" },
-    ]);
-  }
-
-  return (
-    <div className="space-y-4">
-      {entries.map((entry, idx) => (
-        <div key={idx} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Role (required)
-              </label>
-              <Input
-                value={entry.role}
-                onChange={(e) => updateEntry(idx, { role: e.target.value })}
-                placeholder="Full Stack Engineer"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Company (optional)
-              </label>
-              <Input
-                value={entry.company ?? ""}
-                onChange={(e) => updateEntry(idx, { company: e.target.value })}
-                placeholder="Company name"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">
-                Dates (display text, optional)
-              </label>
-              <Input
-                value={entry.date_text ?? ""}
-                onChange={(e) => updateEntry(idx, { date_text: e.target.value })}
-                placeholder="Sep 2025 - Dec 2025"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
-              Description (optional)
-            </label>
-            <Textarea
-              rows={2}
-              value={entry.description ?? ""}
-              onChange={(e) => updateEntry(idx, { description: e.target.value })}
-            />
-          </div>
-        </div>
-      ))}
-      <Button
-        variant="outline"
-        size="sm"
-        type="button"
-        className="mt-1"
-        onClick={addEntry}
-      >
-        Add another
-      </Button>
-    </div>
-  );
-}
-
-function ExperienceDisplay({ entries }: { entries: UserExperienceEntry[] }) {
-  return (
-    <div className="space-y-3">
-      {entries.map((e) => (
-        <div
-          key={e.entry_id}
-          className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2"
-        >
-          <p className="text-sm font-medium text-slate-900">{e.role}</p>
-          {(e.company || e.date_text) && (
-            <p className="text-xs text-slate-500">
-              {[e.company, e.date_text].filter(Boolean).join(" • ")}
-            </p>
-          )}
-          {e.description && (
-            <p className="mt-1 text-sm text-slate-700 whitespace-pre-line">{e.description}</p>
-          )}
-        </div>
-      ))}
     </div>
   );
 }
