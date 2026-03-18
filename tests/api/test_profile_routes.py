@@ -182,3 +182,65 @@ def test_put_certifications_replaces_entries(client, auth_headers, seed_conn):
     assert entries[0]["entry_type"] == "certificate"
     assert entries[0]["title"] == "AWS Cloud Practitioner"
 
+
+def test_experience_defaults_empty(client, auth_headers, seed_conn):
+    seed_conn.execute(
+        "INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)"
+    )
+    seed_conn.commit()
+
+    res = client.get("/profile/experience", headers=auth_headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+    assert body["data"]["entries"] == []
+
+
+def test_put_experience_replaces_entries(client, auth_headers, seed_conn):
+    seed_conn.execute(
+        "INSERT OR IGNORE INTO users(user_id, username, email) VALUES (1, 'test-user', NULL)"
+    )
+    seed_conn.commit()
+
+    payload = {
+        "entries": [
+            {
+                "role": "Full Stack Engineer",
+                "company": "Company ABC",
+                "date_text": "Sep 2025 - Dec 2025",
+                "description": "Worked on backend and frontend features.",
+            },
+            {
+                "role": "Teaching Assistant",
+                "company": "UBCO",
+                "date_text": "Jan 2024 - Apr 2024",
+                "description": "Assisted with labs and grading.",
+            },
+        ]
+    }
+
+    res = client.put("/profile/experience", headers=auth_headers, json=payload)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+    entries = body["data"]["entries"]
+    assert len(entries) == 2
+    assert entries[0]["role"] == "Full Stack Engineer"
+
+    # Replace with a single entry and verify previous ones are gone.
+    replace_payload = {
+        "entries": [
+            {
+                "role": "Data Science Intern",
+                "company": "PETRONAS",
+                "date_text": "May 2025 - Aug 2025",
+                "description": "Built analytics workflows and dashboards.",
+            }
+        ]
+    }
+    res2 = client.put("/profile/experience", headers=auth_headers, json=replace_payload)
+    assert res2.status_code == 200
+    entries2 = res2.json()["data"]["entries"]
+    assert len(entries2) == 1
+    assert entries2[0]["role"] == "Data Science Intern"
+

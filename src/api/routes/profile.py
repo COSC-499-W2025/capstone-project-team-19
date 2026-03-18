@@ -10,9 +10,16 @@ from src.api.schemas.user_profile import (
     UserEducationEntryDTO,
     UserEducationListDTO,
     UserEducationEntriesUpdateDTO,
+    UserExperienceEntryDTO,
+    UserExperienceListDTO,
+    UserExperienceEntriesUpdateDTO,
 )
 from src.db.user_profile import get_user_profile, upsert_user_profile
 from src.db.user_education import list_user_education_entries, add_user_education_entry
+from src.db.user_experience import (
+    list_user_experience_entries,
+    add_user_experience_entry,
+)
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -119,6 +126,56 @@ def get_certifications(
     entries = list_user_education_entries(conn, user_id)
     dto = _map_education_entries(entries, entry_type="certificate")
     return ApiResponse(success=True, data=dto, error=None)
+
+
+@router.get("/experience", response_model=ApiResponse[UserExperienceListDTO])
+def get_experience(
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    entries = list_user_experience_entries(conn, user_id)
+    return ApiResponse(
+        success=True,
+        data=UserExperienceListDTO(
+            entries=[UserExperienceEntryDTO(**entry) for entry in entries]
+        ),
+        error=None,
+    )
+
+
+@router.put("/experience", response_model=ApiResponse[UserExperienceListDTO])
+def put_experience(
+    request: UserExperienceEntriesUpdateDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    try:
+        conn.execute(
+            "DELETE FROM user_experience_entries WHERE user_id = ?",
+            (user_id,),
+        )
+        conn.commit()
+
+        for entry in request.entries:
+            add_user_experience_entry(
+                conn,
+                user_id,
+                role=entry.role,
+                company=entry.company,
+                date_text=entry.date_text,
+                description=entry.description,
+            )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    entries = list_user_experience_entries(conn, user_id)
+    return ApiResponse(
+        success=True,
+        data=UserExperienceListDTO(
+            entries=[UserExperienceEntryDTO(**entry) for entry in entries]
+        ),
+        error=None,
+    )
 
 
 @router.put("/certifications", response_model=ApiResponse[UserEducationListDTO])

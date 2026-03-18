@@ -2115,6 +2115,69 @@ All endpoints require authentication (`Authorization: Bearer <access_token>`).
   - **Error Responses**:
     - `400 Bad Request`: Validation error (for example, missing `title` or invalid entry type)
     - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **List Experience Entries**
+  - **Endpoint**: `GET /experience`
+  - **Description**: Returns all work experience entries for the authenticated user (e.g., jobs, internships). Results are ordered by `display_order` and `entry_id`.
+  - **Auth**: Bearer token required
+  - **Request Body**: None
+  - **Response Status**: `200 OK`
+  - **Response Body**: Uses `UserExperienceListDTO`
+    ```json
+    {
+      "success": true,
+      "data": {
+        "entries": [
+          {
+            "entry_id": 1,
+            "role": "Full Stack Engineer",
+            "company": "Company ABC",
+            "date_text": "Sep 2025 - Dec 2025",
+            "description": "Worked on backend and frontend features.",
+            "display_order": 1,
+            "created_at": "2025-01-15T10:00:00",
+            "updated_at": "2025-01-15T10:00:00"
+          }
+        ]
+      },
+      "error": null
+    }
+    ```
+  - **Error Responses**:
+    - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **Replace Experience Entries**
+  - **Endpoint**: `PUT /experience`
+  - **Description**: Replaces all of the user's work experience entries with the provided list. Existing experience entries are deleted and re-inserted in the order provided.
+  - **Auth**: Bearer token required
+  - **Request Body**: Uses `UserExperienceEntriesUpdateDTO`
+    ```json
+    {
+      "entries": [
+        {
+          "role": "Full Stack Engineer",
+          "company": "Company ABC",
+          "date_text": "Sep 2025 - Dec 2025",
+          "description": "Worked on backend and frontend features."
+        },
+        {
+          "role": "Data Science Intern",
+          "company": "PETRONAS",
+          "date_text": "May 2025 - Aug 2025",
+          "description": "Built analytics workflows and dashboards."
+        }
+      ]
+    }
+    ```
+    - `role` (string, required): Job title or role name
+    - `company` (string, optional): Company or organization name
+    - `date_text` (string, optional): Free-form date text (e.g., `"Sep 2025 - Dec 2025"`)
+    - `description` (string, optional): Short description of responsibilities or impact
+  - **Response Status**: `200 OK` on success, `400 Bad Request` on validation error
+  - **Response Body**: Uses `UserExperienceListDTO` with the updated entries
+  - **Error Responses**:
+    - `400 Bad Request`: Validation error (for example, missing `role`)
+    - `401 Unauthorized`: Missing or invalid Bearer token
   - **Error Responses**:
     - `401 Unauthorized`: Missing or invalid Bearer token
     - `404 Not Found`: `"Resume not found"` or `"Project not found in resume"` (distinct messages)
@@ -3088,6 +3151,28 @@ Example:
 
 - **UserEducationEntriesUpdateDTO**
   - `entries` (List[UserEducationEntryInputDTO], required): New list of entries to replace existing ones
+
+- **UserExperienceEntryDTO**
+  - `entry_id` (int, required): Unique identifier for the experience entry
+  - `role` (string, required): Job title or role name
+  - `company` (string, optional): Company or organization name
+  - `date_text` (string, optional): Free-form date string (e.g. `"Sep 2025 - Dec 2025"`)
+  - `description` (string, optional): Short description or notes
+  - `display_order` (int, required): Order in which entries should appear on the resume
+  - `created_at` (string, optional): ISO timestamp when the entry was created
+  - `updated_at` (string, optional): ISO timestamp when the entry was last updated
+
+- **UserExperienceListDTO**
+  - `entries` (List[UserExperienceEntryDTO], required): Ordered list of experience entries
+
+- **UserExperienceEntryInputDTO**
+  - `role` (string, required): Job title or role name
+  - `company` (string, optional): Company or organization name
+  - `date_text` (string, optional): Free-form date text shown on the resume
+  - `description` (string, optional): Short description or notes
+
+- **UserExperienceEntriesUpdateDTO**
+  - `entries` (List[UserExperienceEntryInputDTO], required): New list of entries to replace existing ones
 
 ### **GitHub Integration DTOs**
 
