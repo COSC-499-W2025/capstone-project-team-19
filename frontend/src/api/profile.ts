@@ -44,6 +44,32 @@ export interface UserEducationEntriesUpdate {
   entries: UserEducationEntryInput[];
 }
 
+export interface UserExperienceEntry {
+  entry_id: number;
+  role: string;
+  company: string | null;
+  date_text: string | null;
+  description: string | null;
+  display_order: number;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface UserExperienceList {
+  entries: UserExperienceEntry[];
+}
+
+export interface UserExperienceEntryInput {
+  role: string;
+  company?: string | null;
+  date_text?: string | null;
+  description?: string | null;
+}
+
+export interface UserExperienceEntriesUpdate {
+  entries: UserExperienceEntryInput[];
+}
+
 export function getProfile(): Promise<UserProfile> {
   return api
     .get<ApiResponse<UserProfile>>("/profile")
@@ -77,6 +103,18 @@ export function getCertifications(): Promise<UserEducationList> {
 export function replaceCertifications(payload: UserEducationEntriesUpdate): Promise<UserEducationList> {
   return api
     .putJson<ApiResponse<UserEducationList>>("/profile/certifications", payload)
+    .then((r) => r.data ?? { entries: [] });
+}
+
+export function getExperience(): Promise<UserExperienceList> {
+  return api
+    .get<ApiResponse<UserExperienceList>>("/profile/experience")
+    .then((r) => r.data ?? { entries: [] });
+}
+
+export function replaceExperience(payload: UserExperienceEntriesUpdate): Promise<UserExperienceList> {
+  return api
+    .putJson<ApiResponse<UserExperienceList>>("/profile/experience", payload)
     .then((r) => r.data ?? { entries: [] });
 }
 
