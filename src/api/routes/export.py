@@ -19,6 +19,9 @@ from src.api.dependencies import get_current_user, get_db
 from src.db.resumes import get_resume_snapshot
 from src.export.resume_docx import export_resume_record_to_docx
 from src.export.resume_pdf import export_resume_record_to_pdf
+from src.db.user_profile import get_user_profile
+from src.db.user_education import list_user_education_entries
+from src.db.user_experience import list_user_experience_entries
 from src.export.portfolio_docx import export_portfolio_to_docx
 from src.export.portfolio_pdf import export_portfolio_to_pdf
 from src.insights.rank_projects.rank_project_importance import collect_project_data
@@ -51,6 +54,10 @@ def export_resume_docx(
     if not record:
         raise HTTPException(status_code=404, detail="Resume not found")
 
+    user_profile = get_user_profile(conn, user_id)
+    education_entries = list_user_education_entries(conn, user_id)
+    experience_entries = list_user_experience_entries(conn, user_id)
+
     temp_dir = tempfile.mkdtemp()
     background_tasks.add_task(_cleanup_temp_dir, temp_dir)
 
@@ -58,6 +65,9 @@ def export_resume_docx(
         username=username,
         record=record,
         out_dir=temp_dir,
+        user_profile=user_profile,
+        education_entries=education_entries,
+        experience_entries=experience_entries,
     )
 
     return FileResponse(
@@ -82,6 +92,10 @@ def export_resume_pdf(
     if not record:
         raise HTTPException(status_code=404, detail="Resume not found")
 
+    user_profile = get_user_profile(conn, user_id)
+    education_entries = list_user_education_entries(conn, user_id)
+    experience_entries = list_user_experience_entries(conn, user_id)
+
     temp_dir = tempfile.mkdtemp()
     background_tasks.add_task(_cleanup_temp_dir, temp_dir)
 
@@ -89,6 +103,9 @@ def export_resume_pdf(
         username=username,
         record=record,
         out_dir=temp_dir,
+        user_profile=user_profile,
+        education_entries=education_entries,
+        experience_entries=experience_entries,
     )
 
     return FileResponse(
