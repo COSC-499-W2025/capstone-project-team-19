@@ -56,13 +56,6 @@ export default function UploadAnalyzePage() {
   });
   const [clockMs, setClockMs] = useState(() => Date.now());
 
-  const steps = [
-    { label: "1. Consent", status: "inactive" as const, to: "/upload/consent" },
-    { label: "2. Upload", status: "inactive" as const, to: "/upload/upload" },
-    { label: "3. Setup", status: "disabled" as const, disabled: true },
-    { label: "4. Analyze", status: "active" as const },
-  ];
-
   const setScope = useCallback((scope: ScopeName, patch: Partial<ScopeCard>) => {
     setCards((previous) => ({
       ...previous,
@@ -190,6 +183,24 @@ export default function UploadAnalyzePage() {
     return null;
   }, [cards.collaborative.status, cards.individual.status]);
 
+  const steps = useMemo(() => {
+    if (derivedRunStatus === "done") {
+      return [
+        { label: "1. Consent", status: "disabled" as const, disabled: true },
+        { label: "2. Upload", status: "disabled" as const, disabled: true },
+        { label: "3. Setup", status: "disabled" as const, disabled: true },
+        { label: "4. Analyze", status: "disabled" as const, disabled: true },
+      ];
+    }
+
+    return [
+      { label: "1. Consent", status: "inactive" as const, to: "/upload/consent" },
+      { label: "2. Upload", status: "inactive" as const, to: "/upload/upload" },
+      { label: "3. Setup", status: "disabled" as const, disabled: true },
+      { label: "4. Analyze", status: "active" as const },
+    ];
+  }, [derivedRunStatus]);
+
   useEffect(() => {
     const hasRunningScope = cards.individual.status === "running" || cards.collaborative.status === "running";
     if (!hasRunningScope) return;
@@ -283,24 +294,17 @@ export default function UploadAnalyzePage() {
             <div className="flex flex-wrap justify-center gap-3">
               <button
                 type="button"
-                onClick={() => nav("/projects")}
+                onClick={() => nav("/upload/consent")}
                 className="rounded border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-900"
               >
-                Go to Projects
+                Analyze again
               </button>
               <button
                 type="button"
                 onClick={() => nav("/insights")}
-                className="rounded border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-900"
-              >
-                Go to Insights
-              </button>
-              <button
-                type="button"
-                onClick={() => nav("/outputs")}
                 className="rounded border border-zinc-300 bg-[#001166] px-4 py-2 text-sm font-medium text-white"
               >
-                Go to Outputs
+                Go to Insights
               </button>
             </div>
           </div>
