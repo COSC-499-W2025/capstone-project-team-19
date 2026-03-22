@@ -140,7 +140,12 @@ export default function GitHubIntegrationSection({ project, actions, isMutating,
             onSelect={setSelectedRepo}
             disabled={isMutating}
           />
-          <button type="button" onClick={onLinkRepo} disabled={isMutating || !selectedRepo} className={BTN_PRIMARY}>
+          <button
+            type="button"
+            onClick={onLinkRepo}
+            disabled={isMutating || !selectedRepo}
+            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 hover:bg-zinc-50 disabled:opacity-50"
+          >
             Link repository
           </button>
         </div>
@@ -189,7 +194,15 @@ function StepContent({
   }
 
   if (reposLoading) {
-    return <p className="text-sm text-zinc-700">Loading your repositories...</p>;
+    return (
+      <div className="flex items-center gap-2">
+        <span
+          className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600"
+          aria-hidden
+        />
+        <p className="text-sm text-zinc-700">Loading your repositories...</p>
+      </div>
+    );
   }
 
   if (reposCount === 0) {
