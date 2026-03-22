@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import PublicLayout from "./PublicLayout";
-import { publicGetActiveResume } from "../../api/public";
+import { publicGetActiveResume, publicDownloadResumeDocx, publicDownloadResumePdf } from "../../api/public";
 import type { PublicResumeDetail, PublicResumeProject } from "../../api/public";
+import ExportDropdown from "../../components/outputs/ExportDropdown";
 
 function formatDateRange(start: string | null, end: string | null): string {
     const fmt = (iso: string) => {
@@ -29,7 +30,7 @@ function sortProjectsByDate(projects: PublicResumeProject[]): PublicResumeProjec
     });
 }
 
-function ResumeView({ resume }: { resume: PublicResumeDetail }) {
+function ResumeView({ resume, username }: { resume: PublicResumeDetail; username: string }) {
     const agg = resume.aggregated_skills;
     const sortedProjects = sortProjectsByDate(resume.projects);
 
@@ -37,6 +38,10 @@ function ResumeView({ resume }: { resume: PublicResumeDetail }) {
         <div className="content">
             <div className="outputsHeader">
                 <h2>{resume.name}</h2>
+                <ExportDropdown
+                    onDocx={() => publicDownloadResumeDocx(username, resume.id)}
+                    onPdf={() => publicDownloadResumePdf(username, resume.id)}
+                />
             </div>
 
             <hr className="divider" />
@@ -110,7 +115,7 @@ export default function PublicOutputsPage() {
             ) : !resume ? (
                 <div className="content"><p>No resume has been set for this portfolio.</p></div>
             ) : (
-                <ResumeView resume={resume} />
+                <ResumeView resume={resume} username={username!} />
             )}
         </PublicLayout>
     );

@@ -147,6 +147,30 @@ export function publicGetActivityHeatmapData(username: string, projectId: number
     .then((r) => r.data);
 }
 
+export async function publicDownloadResumeDocx(username: string, resumeId: number): Promise<void> {
+  const blob = await api.getBlob(`/public/${username}/resumes/${resumeId}/export/docx`);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `resume_${resumeId}.docx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function publicDownloadResumePdf(username: string, resumeId: number): Promise<void> {
+  const blob = await api.getBlob(`/public/${username}/resumes/${resumeId}/export/pdf`);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `resume_${resumeId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function publicFetchThumbnailUrl(
   username: string,
   projectId: number,

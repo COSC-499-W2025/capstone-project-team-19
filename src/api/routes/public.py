@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+import shutil
+import tempfile
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlite3 import Connection
 from typing import Optional
@@ -19,7 +22,10 @@ from src.api.schemas.public_schemas import (
 )
 from src.api.schemas.resumes import ResumeListDTO, ResumeListItemDTO
 from src.api.schemas.skills import SkillTimelineDTO
+from src.db.resumes import get_resume_snapshot
 from src.db.users import get_user_by_username
+from src.export.resume_docx import export_resume_record_to_docx
+from src.export.resume_pdf import export_resume_record_to_pdf
 from src.services.public_portfolio_service import (
     get_portfolio_settings,
     get_public_project_detail,
@@ -162,6 +168,54 @@ def public_get_activity_heatmap_data(
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to generate heatmap")
     return ApiResponse(success=True, data=ActivityHeatmapDataDTO(**data), error=None)
+
+
+@router.get("/{username}/resumes/{resume_id:int}/export/docx", response_class=FileResponse)
+def public_export_resume_docx(
+    username: str,
+    resume_id: int,
+    background_tasks: BackgroundTasks,
+    conn: Connection = Depends(get_db),
+):
+    """Export a public resume to DOCX format (no auth required)."""
+    user_id = _resolve_user(conn, username)
+    record = get_resume_snapshot(conn, user_id, resume_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    temp_dir = tempfile.mkdtemp()
+    background_tasks.add_task(shutil.rmtree, temp_dir, True)
+
+    filepath = export_resume_record_to_docx(username=username, record=record, out_dir=temp_dir)
+    return FileResponse(
+        path=str(filepath),
+        filename=filepath.name,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+
+
+@router.get("/{username}/resumes/{resume_id:int}/export/pdf", response_class=FileResponse)
+def public_export_resume_pdf(
+    username: str,
+    resume_id: int,
+    background_tasks: BackgroundTasks,
+    conn: Connection = Depends(get_db),
+):
+    """Export a public resume to PDF format (no auth required)."""
+    user_id = _resolve_user(conn, username)
+    record = get_resume_snapshot(conn, user_id, resume_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    temp_dir = tempfile.mkdtemp()
+    background_tasks.add_task(shutil.rmtree, temp_dir, True)
+
+    filepath = export_resume_record_to_pdf(username=username, record=record, out_dir=temp_dir)
+    return FileResponse(
+        path=str(filepath),
+        filename=filepath.name,
+        media_type="application/pdf",
+    )
 
 
 @router.get("/{username}/active-resume", response_model=ApiResponse[Optional[PublicResumeDetailDTO]])
