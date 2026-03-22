@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import {
+  getUploadStatus,
   postProjectsUpload,
   postUploadClassifications,
   postUploadDedupResolve,
@@ -39,7 +40,9 @@ import {
   uploadState,
 } from "./uploadHelpers";
 
-export function useUploadFlow() {
+export function useUploadFlow(
+  classificationResumeUploadIdParam: string | null = null,
+) {
   const [stageIndex, setStageIndex] = useState(0);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -334,6 +337,41 @@ export function useUploadFlow() {
   ]);
 
   const sizeLabel = selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB` : null;
+  const requestedUploadId = useMemo(() => {
+    const raw = (classificationResumeUploadIdParam ?? "").trim();
+    if (!raw) return null;
+    const parsed = Number.parseInt(raw, 10);
+    if (!Number.isInteger(parsed) || parsed <= 0) return null;
+    return parsed;
+  }, [classificationResumeUploadIdParam]);
+
+  useEffect(() => {
+    if (requestedUploadId === null) return;
+
+    let active = true;
+
+    async function loadRequestedUpload() {
+      try {
+        const response = await getUploadStatus(requestedUploadId);
+        if (!response.success || !response.data) {
+          throw new Error(response.error?.message ?? "Failed to load upload context.");
+        }
+        if (!active) return;
+
+        setUploadData(response.data);
+        const classificationStage = STAGES.findIndex((stage) => stage.key === "classification");
+        setStageIndex(classificationStage);
+      } catch (e: unknown) {
+        if (!active) return;
+        setSubmitError(e instanceof Error ? e.message : "Failed to load upload context.");
+      }
+    }
+
+    loadRequestedUpload();
+    return () => {
+      active = false;
+    };
+  }, [requestedUploadId]);
 
   useEffect(() => {
     if (dedupCases.length > 0) {

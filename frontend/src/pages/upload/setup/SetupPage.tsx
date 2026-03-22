@@ -354,6 +354,9 @@ export default function UploadSetupPage() {
           {flow.actionError && <p className="error mb-3 text-sm">{flow.actionError}</p>}
           {!flow.loading && !flow.loadError && (
             <div className="mb-8 rounded-md border border-zinc-300 bg-white px-4 py-3">
+              <p className="mb-2 text-sm text-zinc-700">
+                Expand each project card below to complete setup details before moving to Analyze.
+              </p>
               <p className="text-sm font-semibold text-zinc-900">Status Guide</p>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 font-medium text-rose-700">
@@ -414,7 +417,7 @@ export default function UploadSetupPage() {
           <div className="mt-10 flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={() => nav("/upload/upload")}
+              onClick={() => nav(`/upload/upload?uploadId=${uploadIdParam}&stage=classification`)}
               className="h-10 min-w-[96px] rounded-md border border-zinc-400 bg-white px-5 text-sm font-semibold text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={flow.isMutating}
             >

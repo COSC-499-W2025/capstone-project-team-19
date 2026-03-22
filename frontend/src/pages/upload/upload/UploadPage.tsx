@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getUsername } from "../../../auth/user";
 import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
@@ -14,8 +14,12 @@ import { useUploadFlow } from "./useUploadFlow";
 export default function UploadPage() {
   const username = getUsername();
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
-  const flow = useUploadFlow();
+  const uploadIdParam = searchParams.get("uploadId");
+  const stageParam = searchParams.get("stage");
+  const classificationResumeUploadId = stageParam === "classification" ? uploadIdParam : null;
+  const flow = useUploadFlow(classificationResumeUploadId);
 
   const steps = [
     { label: "1. Consent", status: "inactive" as const, to: "/upload/consent" },
