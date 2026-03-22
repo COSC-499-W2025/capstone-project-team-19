@@ -8,6 +8,7 @@ import {
   publicListProjects,
 } from "../../api/public";
 import type { PublicProjectDetail, PublicProject } from "../../api/public";
+import { toShortDate } from "../../components/insights/tabs/Skills/utils/formatHelpers";
 
 export default function PublicProjectDetailPage() {
   const { username, id } = useParams<{ username: string; id: string }>();
@@ -112,7 +113,13 @@ export default function PublicProjectDetailPage() {
               <h3>Duration</h3>
             </div>
             <p className="pdDateDisplay">
-              {formatDate(project.start_date)} → {formatDate(project.end_date)}
+              {!project.start_date && !project.end_date
+                ? "No dates available"
+                : !project.start_date
+                  ? `Unknown start – ${toShortDate(project.end_date)}`
+                  : !project.end_date
+                    ? `${toShortDate(project.start_date)} – Present`
+                    : `${toShortDate(project.start_date)} – ${toShortDate(project.end_date)}`}
             </p>
           </div>
         )}

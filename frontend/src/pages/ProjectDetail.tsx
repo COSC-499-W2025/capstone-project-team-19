@@ -20,6 +20,7 @@ import {
   type ProjectDetail,
 } from "../api/projects";
 import { PageContainer, PageHeader, SectionCard } from "../components/shared";
+import { toShortDate } from "../components/insights/tabs/Skills/utils/formatHelpers";
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -164,11 +165,6 @@ export default function ProjectDetailPage() {
       setDeleting(false);
       setConfirmDelete(false);
     }
-  }
-
-  function formatDate(d: string | null | undefined) {
-    if (!d) return "—";
-    return d;
   }
 
   function formatSkillName(s: string) {
@@ -389,7 +385,13 @@ export default function ProjectDetailPage() {
                 </div>
                 {!editingDates ? (
                   <p className="pdDateDisplay">
-                    {formatDate(dates?.start_date)} → {formatDate(dates?.end_date)}
+                    {!dates?.start_date && !dates?.end_date
+                      ? "No dates available"
+                      : !dates?.start_date
+                        ? `Unknown start – ${toShortDate(dates?.end_date)}`
+                        : !dates?.end_date
+                          ? `${toShortDate(dates?.start_date)} – Present`
+                          : `${toShortDate(dates?.start_date)} – ${toShortDate(dates?.end_date)}`}
                     {dates?.source === "MANUAL" && (
                       <span className="pdDateTag">manual</span>
                     )}
