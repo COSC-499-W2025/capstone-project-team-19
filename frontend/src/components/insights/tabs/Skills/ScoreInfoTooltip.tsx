@@ -42,6 +42,10 @@ export default function ScoreInfoTooltip({ inline }: { inline?: boolean }) {
                                 you see one combined score per skill.
                             </li>
                             <li>
+                                <strong>Level indicators:</strong> On the Timeline and Skills Log, skill
+                                levels appear as stars: 1 star = Beginner, 2 stars = Intermediate, 3 stars = Advanced.
+                            </li>
+                            <li>
                                 <strong>See the breakdown:</strong> On the Skills Overview tab, hover
                                 over a skill's bar to see which projects contributed to that skill.
                             </li>
