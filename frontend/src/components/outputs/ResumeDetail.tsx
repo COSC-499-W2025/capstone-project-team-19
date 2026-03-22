@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import {
   getResume,
   editResume,
+  removeProjectFromResume,
   downloadResumeDocx,
   downloadResumePdf,
   type ResumeDetail as ResumeDetailType,
   type ResumeProject,
 } from "../../api/outputs";
+import { MinimalConfirmDialog } from "../shared";
 import ExportDropdown from "./ExportDropdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,6 +68,12 @@ export default function ResumeDetail({
   const [projectEdits, setProjectEdits] = useState<ProjectEdits | null>(null);
   const [savingProject, setSavingProject] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Remove project from resume
+  const [projectToRemove, setProjectToRemove] = useState<ResumeProject | null>(
+    null
+  );
+  const [removingProject, setRemovingProject] = useState(false);
 
   function loadResume() {
     setLoading(true);
@@ -233,6 +241,27 @@ export default function ResumeDetail({
       ...projectEdits,
       contribution_bullets: [...projectEdits.contribution_bullets, ""],
     });
+  }
+
+  /* ── Remove project from resume ── */
+  async function handleRemoveProject() {
+    if (!projectToRemove) return;
+    setRemovingProject(true);
+    setErr(null);
+    try {
+      const res = await removeProjectFromResume(resumeId, projectToRemove.project_name);
+      setProjectToRemove(null);
+      if (res.data) {
+        setResume(res.data);
+        setSuccessMsg("Project removed from resume");
+      } else {
+        onBack();
+      }
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setRemovingProject(false);
+    }
   }
 
   /* ── Render ── */
@@ -417,14 +446,28 @@ export default function ResumeDetail({
                     </div>
                   </div>
                   <CardAction>
-                    {!isEditingProject && p.project_summary_id != null && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => startEditingProject(p)}
-                      >
-                        <Pencil className="size-4 text-slate-500" />
-                      </Button>
+                    {!isEditingProject && (
+                      <div className="flex items-center gap-1">
+                        {p.project_summary_id != null && (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => startEditingProject(p)}
+                            title="Edit project"
+                          >
+                            <Pencil className="size-4 text-slate-500" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setProjectToRemove(p)}
+                          title="Remove from resume"
+                          className="text-slate-400 hover:text-red-500"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
                     )}
                   </CardAction>
                 </CardHeader>
@@ -460,6 +503,18 @@ export default function ResumeDetail({
           ))}
         </div>
       )}
+
+      <MinimalConfirmDialog
+        open={projectToRemove != null}
+        onOpenChange={(open) => !open && setProjectToRemove(null)}
+        message={`Remove "${projectToRemove?.project_name}" from this resume?${
+          resume.projects.length <= 1
+            ? " This is the last project — the resume will be deleted."
+            : ""
+        }`}
+        confirmLabel={removingProject ? "Removing…" : "Remove"}
+        onConfirm={handleRemoveProject}
+      />
     </div>
   );
 }
