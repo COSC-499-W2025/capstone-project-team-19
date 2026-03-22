@@ -22,11 +22,11 @@ export default function ScoreInfoTooltip({ inline }: { inline?: boolean }) {
                             <h2 id="score-info-title" className="m-0 text-lg font-bold text-slate-900">How skill scores work</h2>
                             <button type="button" className={`inline-flex rounded-full w-[18px] h-[18px] p-0 items-center justify-center align-middle text-xs leading-none border border-slate-700 bg-transparent cursor-pointer hover:bg-black/5 shrink-0 ${inline ? "" : "absolute right-4 top-1/2 -translate-y-1/2"}`} onClick={() => setOpen(false)} aria-label="Close">×</button>
                         </div>
-                        <p className="m-0 mb-4 text-sm leading-relaxed text-left text-slate-700">
+                        <p className="m-0 mb-4 text-sm leading-relaxed text-justify text-slate-700">
                             Skill scores are calculated from the analysis of your projects' content.
                             Each time a skill is detected in a project, it contributes to that skill's total score.
                         </p>
-                        <ul className="m-0 mb-5 pl-5 text-sm leading-snug text-slate-700 [&>li]:mb-4 last:[&>li]:mb-0 [&_strong]:text-slate-900">
+                        <ul className="m-0 mb-5 pl-5 pr-5 text-sm leading-snug text-justify text-slate-700 [&>li]:mb-4 last:[&>li]:mb-0 [&_strong]:text-slate-900">
                             <li>
                                 <strong>Source:</strong> Each project where a skill appears contributes a score to that skill (based on our skill detection and classification).
                             </li>
