@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import "./Projects.css";
 import TopBar from "../components/TopBar";
 import ProjectCard from "../components/project-card";
 import { listProjects, type Project } from "../api/projects";
-import { updateProjectVisibility } from "../api/portfolioSettings";
 import { getUsername } from "../auth/user";
 import { PageContainer, PageHeader, SectionCard } from "../components/shared";
 
@@ -12,7 +11,6 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toggling, setToggling] = useState<number | null>(null);
 
   useEffect(() => {
     listProjects()
@@ -20,31 +18,6 @@ export default function ProjectsPage() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
-
-  const handleToggleVisibility = useCallback(
-    async (e: React.MouseEvent, project: Project) => {
-      e.stopPropagation();
-      if (toggling === project.project_summary_id) return;
-      setToggling(project.project_summary_id);
-      const newValue = !project.is_public;
-
-      try {
-        await updateProjectVisibility(project.project_summary_id, newValue);
-        setProjects((prev) =>
-          prev.map((p) =>
-            p.project_summary_id === project.project_summary_id
-              ? { ...p, is_public: newValue }
-              : p
-          )
-        );
-      } catch {
-        // state stays unchanged on error
-      } finally {
-        setToggling(null);
-      }
-    },
-    [toggling]
-  );
 
   return (
     <>
@@ -77,24 +50,18 @@ export default function ProjectsPage() {
                       projectId={p.project_summary_id}
                       name={p.project_name}
                     />
-                    <button
-                      className={`projectVisibilityToggle${
+                    <span
+                      className={`projectVisibilityTag${
                         p.is_public ? " public" : ""
                       }`}
-                      onClick={(e) => handleToggleVisibility(e, p)}
-                      disabled={toggling === p.project_summary_id}
                       title={
                         p.is_public
-                          ? "Visible on public portfolio — click to hide"
-                          : "Hidden from public portfolio — click to show"
+                          ? "Visible on public dashboard"
+                          : "Hidden from public dashboard"
                       }
                     >
-                      {toggling === p.project_summary_id
-                        ? "…"
-                        : p.is_public
-                        ? "Public"
-                        : "Private"}
-                    </button>
+                      {p.is_public ? "Public" : "Private"}
+                    </span>
                   </div>
                 ))}
               </div>

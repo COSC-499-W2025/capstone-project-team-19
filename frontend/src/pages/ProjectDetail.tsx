@@ -19,6 +19,7 @@ import {
   type ProjectDatesItem,
   type ProjectDetail,
 } from "../api/projects";
+import { updateProjectVisibility } from "../api/portfolioSettings";
 import { PageContainer, PageHeader, SectionCard } from "../components/shared";
 
 export default function ProjectDetailPage() {
@@ -51,6 +52,9 @@ export default function ProjectDetailPage() {
   // Delete
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Visibility (public dashboard)
+  const [savingVisibility, setSavingVisibility] = useState(false);
 
   useEffect(() => {
     let objectUrl: string | null = null;
@@ -163,6 +167,27 @@ export default function ProjectDetailPage() {
       setError(e instanceof Error ? e.message : "Delete failed");
       setDeleting(false);
       setConfirmDelete(false);
+    }
+  }
+
+  const isPublic =
+    allProjects.find((p) => p.project_summary_id === projectId)?.is_public ??
+    false;
+
+  async function handleVisibilityChange(newIsPublic: boolean) {
+    if (newIsPublic === isPublic || savingVisibility) return;
+    setSavingVisibility(true);
+    try {
+      await updateProjectVisibility(projectId, newIsPublic);
+      setAllProjects((prev) =>
+        prev.map((p) =>
+          p.project_summary_id === projectId ? { ...p, is_public: newIsPublic } : p
+        )
+      );
+    } catch {
+      // state stays unchanged on error
+    } finally {
+      setSavingVisibility(false);
     }
   }
 
@@ -371,6 +396,38 @@ export default function ProjectDetailPage() {
                       </button>
                     </div>
                   </div>
+                )}
+              </div>
+
+              {/* Public dashboard visibility */}
+              <div className="pdSection">
+                <h3>Public dashboard visibility</h3>
+                <p className="pdVisibilityHelp">
+                  This controls whether this project is shown on your public
+                  dashboard. Private projects are only visible to you.
+                </p>
+                <div className="pdVisibilityToggle" role="group" aria-label="Project visibility">
+                  <button
+                    type="button"
+                    className={`pdVisibilityOption${!isPublic ? " selected" : ""}`}
+                    onClick={() => handleVisibilityChange(false)}
+                    disabled={savingVisibility}
+                    aria-pressed={!isPublic}
+                  >
+                    Private
+                  </button>
+                  <button
+                    type="button"
+                    className={`pdVisibilityOption${isPublic ? " selected" : ""}`}
+                    onClick={() => handleVisibilityChange(true)}
+                    disabled={savingVisibility}
+                    aria-pressed={isPublic}
+                  >
+                    Public
+                  </button>
+                </div>
+                {savingVisibility && (
+                  <span className="pdVisibilitySaving">Saving…</span>
                 )}
               </div>
 

@@ -117,6 +117,54 @@
 
 .pdFormActions { display: flex; gap: 8px; margin-top: 4px; }
 
+.pdVisibilityHelp {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.pdVisibilityToggle {
+  display: inline-flex;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.pdVisibilityOption {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.pdVisibilityOption:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.pdVisibilityOption.selected {
+  background: #16a34a;
+  color: white;
+}
+
+.pdVisibilityOption:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.pdVisibilitySaving {
+  margin-left: 12px;
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+}
+
 .pdContribHeading { margin: 16px 0 8px; font-size: 15px; }
 
 .pdSummaryText {
