@@ -1,3 +1,4 @@
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ResumeDetail from "../ResumeDetail";
@@ -5,6 +6,7 @@ import ResumeDetail from "../ResumeDetail";
 vi.mock("../../../api/outputs", () => ({
   getResume: vi.fn(),
   editResume: vi.fn(),
+  removeProjectFromResume: vi.fn(),
   downloadResumeDocx: vi.fn(),
   downloadResumePdf: vi.fn(),
 }));
@@ -13,7 +15,11 @@ vi.mock("../ExportDropdown", () => ({
   default: () => <button>Export</button>,
 }));
 
-import { getResume, editResume } from "../../../api/outputs";
+import {
+  getResume,
+  editResume,
+  removeProjectFromResume,
+} from "../../../api/outputs";
 
 const baseResume = {
   id: 1,
@@ -172,7 +178,6 @@ describe("ResumeDetail", () => {
   describe("editing resume name", () => {
     it("shows name pencil icon only in edit mode", async () => {
       setupMocks();
-      const user = userEvent.setup();
       render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
 
       await waitFor(() => screen.getByText("My Resume"));
@@ -385,6 +390,121 @@ describe("ResumeDetail", () => {
 
         expect(editResume).not.toHaveBeenCalled();
       }
+    });
+  });
+
+  describe("remove project from resume", () => {
+    it("shows remove button on project card in edit mode", async () => {
+      setupMocks();
+      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
+
+      await waitFor(() => screen.getByText("Project Alpha"));
+
+      const removeBtn = screen.getByTitle("Remove from resume");
+      expect(removeBtn).toBeInTheDocument();
+    });
+
+    it("opens confirmation dialog when remove button is clicked", async () => {
+      setupMocks();
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
+
+      await waitFor(() => screen.getByText("Project Alpha"));
+      await user.click(screen.getByTitle("Remove from resume"));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Remove "Project Alpha" from this resume\?/)
+        ).toBeInTheDocument();
+      });
+      expect(screen.getByText("Cancel")).toBeInTheDocument();
+      expect(screen.getByText("Remove")).toBeInTheDocument();
+    });
+
+    it("closes dialog and does not call API when Cancel is clicked", async () => {
+      setupMocks();
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
+
+      await waitFor(() => screen.getByText("Project Alpha"));
+      await user.click(screen.getByTitle("Remove from resume"));
+      await waitFor(() => screen.getByText(/Remove "Project Alpha"/));
+      await user.click(screen.getByText("Cancel"));
+
+      expect(removeProjectFromResume).not.toHaveBeenCalled();
+      expect(screen.queryByText(/Remove "Project Alpha"/)).not.toBeInTheDocument();
+    });
+
+    it("calls removeProjectFromResume and updates resume on success", async () => {
+      const resumeWithoutProject = {
+        ...baseResume,
+        projects: [],
+        aggregated_skills: { languages: [], frameworks: [], technical_skills: [], writing_skills: [] },
+      };
+      vi.mocked(removeProjectFromResume).mockResolvedValue({
+        success: true,
+        data: resumeWithoutProject,
+        error: null,
+      } as any);
+
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
+
+      await waitFor(() => screen.getByText("Project Alpha"));
+      await user.click(screen.getByTitle("Remove from resume"));
+      await waitFor(() => screen.getByText("Remove"));
+      await user.click(screen.getByText("Remove"));
+
+      await waitFor(() => {
+        expect(removeProjectFromResume).toHaveBeenCalledWith(
+          1,
+          "Project Alpha"
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Project removed from resume")).toBeInTheDocument();
+      });
+    });
+
+    it("calls onBack when resume is deleted (last project removed)", async () => {
+      vi.mocked(removeProjectFromResume).mockResolvedValue({
+        success: true,
+        data: null,
+        error: null,
+      } as any);
+
+      const onBack = vi.fn();
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} initialEditing onBack={onBack} />);
+
+      await waitFor(() => screen.getByText("Project Alpha"));
+      await user.click(screen.getByTitle("Remove from resume"));
+      await waitFor(() => screen.getByText("Remove"));
+      await user.click(screen.getByText("Remove"));
+
+      await waitFor(() => {
+        expect(removeProjectFromResume).toHaveBeenCalledWith(1, "Project Alpha");
+        expect(onBack).toHaveBeenCalled();
+      });
+    });
+
+    it("shows error when remove fails", async () => {
+      vi.mocked(removeProjectFromResume).mockRejectedValue(
+        new Error("Failed to remove project")
+      );
+
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
+
+      await waitFor(() => screen.getByText("Project Alpha"));
+      await user.click(screen.getByTitle("Remove from resume"));
+      await waitFor(() => screen.getByText("Remove"));
+      await user.click(screen.getByText("Remove"));
+
+      await waitFor(() => {
+        expect(screen.getByText("Failed to remove project")).toBeInTheDocument();
+      });
     });
   });
 
