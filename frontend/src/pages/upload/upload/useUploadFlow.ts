@@ -284,7 +284,7 @@ export function useUploadFlow() {
     }
 
     if (currentStage.key === "classification") {
-      if (classificationStageCompleted) return "Completed";
+      if (classificationStageCompleted) return "Continue to Setup";
       if (uploadData && !needsClassification && !needsProjectTypes && classificationDirtySinceSubmit) return "Resubmit";
       return "Submit and Continue";
     }
@@ -311,8 +311,10 @@ export function useUploadFlow() {
     if (currentStage.key === "deduplication") return !uploadData || !dedupResolved;
 
     if (!uploadData) return true;
+    if (currentStage.key === "classification" && classificationStageCompleted) {
+      return !uploadData.upload_id;
+    }
     if (!allClassificationRowsComplete) return true;
-    if (classificationStageCompleted) return true;
     if (!needsClassification && !needsProjectTypes) return !classificationDirtySinceSubmit;
     return !classificationReady;
   }, [
@@ -330,17 +332,6 @@ export function useUploadFlow() {
     selectedFile,
     uploadData,
   ]);
-
-  const sidebarNextDisabled = useMemo(() => {
-    if (isSubmitting) return true;
-    if (!uploadData) return true;
-    if (uploadData.status === "failed") return true;
-    return (
-      uploadData.status === "needs_dedup" ||
-      uploadData.status === "needs_classification" ||
-      uploadData.status === "needs_project_types"
-    );
-  }, [isSubmitting, uploadData]);
 
   const sizeLabel = selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB` : null;
 
@@ -679,9 +670,9 @@ export function useUploadFlow() {
     }
   }
 
-  async function onPrimaryAction() {
-    if (primaryDisabled) return;
-    await runCurrentStageAction(currentStage.key);
+  async function onPrimaryAction(): Promise<boolean> {
+    if (primaryDisabled) return false;
+    return runCurrentStageAction(currentStage.key);
   }
 
   function onDedupDecisionChange(projectName: string, value: VisibleDedupDecision) {
@@ -724,7 +715,6 @@ export function useUploadFlow() {
     primaryLabel,
     primaryDisabled,
     classificationStageCompleted,
-    sidebarNextDisabled,
     discoveredProjects,
     projectNotes,
     allProjectsPreviouslySkipped,

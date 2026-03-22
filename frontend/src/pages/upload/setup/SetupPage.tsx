@@ -337,9 +337,7 @@ export default function UploadSetupPage() {
         username={username}
         steps={steps}
         actionLabel={hasAnalysisStarted ? "Open Analyze" : "Analyze"}
-        onAction={onAnalyzeAction}
-        actionDisabled={analyzeButtonDisabled}
-        showAction
+        showAction={false}
         breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Upload", href: "/upload" },
@@ -412,6 +410,26 @@ export default function UploadSetupPage() {
               />
             </div>
           )}
+
+          <div className="mt-10 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => nav("/upload/upload")}
+              className="h-10 min-w-[96px] rounded-md border border-zinc-400 bg-white px-5 text-sm font-semibold text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={flow.isMutating}
+            >
+              Back
+            </button>
+
+            <button
+              type="button"
+              onClick={onAnalyzeAction}
+              className="h-10 min-w-[160px] rounded-md bg-[var(--upload-accent)] px-5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={analyzeButtonDisabled}
+            >
+              {hasAnalysisStarted ? "Open Analyze" : "Analyze"}
+            </button>
+          </div>
         </div>
       </UploadWizardShell>
       <SetupAnalyzeConfirmDialog

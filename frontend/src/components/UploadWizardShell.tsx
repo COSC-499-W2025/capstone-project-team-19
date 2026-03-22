@@ -42,9 +42,11 @@ export default function UploadWizardShell({
 
       <div className="wizardPage">
         <PageContainer className="pt-[12px]">
-          <PageHeader title="Upload" breadcrumbs={breadcrumbs} />
+          <div className="wizardHeaderSticky">
+            <PageHeader title="Upload" breadcrumbs={breadcrumbs} />
+          </div>
 
-          <SectionCard className="w-full max-w-[1110px] self-center overflow-hidden !p-0 bg-white">
+          <SectionCard className="w-full max-w-[1110px] self-center !p-0 bg-white">
             <div className="wizardLayout">
               <aside className="wizardSidebar">
                 <div className="wizardSidebarSticky">

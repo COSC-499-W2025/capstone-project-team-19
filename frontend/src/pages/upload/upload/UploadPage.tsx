@@ -24,12 +24,6 @@ export default function UploadPage() {
     { label: "4. Analyze", status: "disabled" as const, disabled: true },
   ];
 
-  function onSidebarNext() {
-    if (flow.sidebarNextDisabled) return;
-    if (!flow.uploadId) return;
-    nav(`/upload/setup?uploadId=${flow.uploadId}`);
-  }
-
   function renderStageBody() {
     if (flow.currentStage.key === "upload") {
       return (
@@ -90,14 +84,21 @@ export default function UploadPage() {
     );
   }
 
+  async function onPrimaryClick() {
+    const succeeded = await flow.onPrimaryAction();
+    if (!succeeded) return;
+
+    if (flow.currentStage.key === "classification" && flow.uploadId) {
+      nav(`/upload/setup?uploadId=${flow.uploadId}`);
+    }
+  }
+
   return (
     <UploadWizardShell
       username={username}
       steps={steps}
       actionLabel="Next"
-      onAction={onSidebarNext}
-      actionDisabled={flow.sidebarNextDisabled}
-      showAction
+      showAction={false}
       breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Upload", href: "/upload" },
@@ -149,7 +150,7 @@ export default function UploadPage() {
           <button
             type="button"
             className={`uploadStagePrimaryBtn${flow.classificationStageCompleted ? " uploadStagePrimaryBtn--completed" : ""}`}
-            onClick={flow.onPrimaryAction}
+            onClick={onPrimaryClick}
             disabled={flow.primaryDisabled}
           >
             {flow.primaryLabel}

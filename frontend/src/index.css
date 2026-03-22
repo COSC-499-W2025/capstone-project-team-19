@@ -470,6 +470,13 @@ button {
   padding: 0;
 }
 
+.wizardHeaderSticky {
+  position: sticky;
+  top: 64px;
+  z-index: 40;
+  background: var(--background);
+}
+
 .wizardLayout {
   width: 100%;
   display: grid;
@@ -485,7 +492,7 @@ button {
 
 .wizardSidebarSticky {
   position: sticky;
-  top: 24px;
+  top: 150px;
 }
 
 .wizardProgressTitle {
@@ -669,6 +676,11 @@ button {
 
   .wizardSidebarSticky {
     position: static;
+  }
+
+  .wizardHeaderSticky {
+    position: static;
+    top: auto;
   }
 
   .wizardDivider {

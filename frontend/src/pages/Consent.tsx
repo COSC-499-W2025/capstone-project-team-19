@@ -17,7 +17,7 @@ export default function ConsentPage() {
       username={username}
       steps={steps}
       actionLabel="Next"
-      onAction={() => nav("/upload/upload")}
+      showAction={false}
     >
       <div className="consentContent">
         <section className="consentSectionBlock">
@@ -80,6 +80,16 @@ export default function ConsentPage() {
             <span>No, I don&apos;t want to use LLM.</span>
           </label>
         </section>
+
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            className="h-10 min-w-[140px] rounded-md bg-[var(--upload-accent)] px-5 text-sm font-bold text-white"
+            onClick={() => nav("/upload/upload")}
+          >
+            Next
+          </button>
+        </div>
       </div>
     </UploadWizardShell>
   );
