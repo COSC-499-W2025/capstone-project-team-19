@@ -230,7 +230,12 @@ export default function UploadSetupPage() {
           source: "local",
         });
       }
-      if (project.projectType === "text" && project.mainFileRelpath && project.mainSectionIds.length === 0) {
+      if (
+        project.projectType === "text" &&
+        project.classification === "collaborative" &&
+        project.mainFileRelpath &&
+        project.mainSectionIds.length === 0
+      ) {
         out.push({
           code: "missing_contribution_sections",
           project: project.projectName,
@@ -304,6 +309,10 @@ export default function UploadSetupPage() {
       const code = String(item.code || "");
       const projectName = typeof item.project === "string" ? item.project.trim() : "";
       if (code === "drive_not_configured" || code === "drive_skipped" || code === "missing_drive_links") {
+        const project = flow.projectCards.find((p) => p.projectName === projectName);
+        if (!project || project.projectType !== "text" || project.classification !== "collaborative") return false;
+      }
+      if (code === "missing_contribution_sections") {
         const project = flow.projectCards.find((p) => p.projectName === projectName);
         if (!project || project.projectType !== "text" || project.classification !== "collaborative") return false;
       }

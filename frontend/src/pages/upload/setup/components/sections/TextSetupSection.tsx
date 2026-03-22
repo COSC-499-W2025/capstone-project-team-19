@@ -109,6 +109,8 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     () => Object.keys(driveMapByLocalFile).filter((name) => Boolean(driveMapByLocalFile[name])).length,
     [driveMapByLocalFile],
   );
+  const showContributionSectionPicker =
+    project.projectType === "text" && project.classification === "collaborative";
   const showCollaborativeDriveUi = project.projectType === "text" && project.classification === "collaborative";
   const localPageCount = useMemo(
     () => Math.max(1, Math.ceil(driveLocalFiles.length / DRIVE_PAGE_SIZE)),
@@ -287,7 +289,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     <div className="space-y-4">
 
       <div className="space-y-3">
-        <div className="text-sm font-semibold text-zinc-900">Main file</div>
+        <h4 className="text-lg leading-tight font-semibold text-zinc-900">Main file</h4>
         {filesLoading && <p className="text-sm text-zinc-600">Loading project files...</p>}
         {!filesLoading && mainFileOptions.length === 0 && (
           <p className="text-sm text-zinc-600">No text files found for this project.</p>
@@ -320,50 +322,56 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
         )}
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-sm font-semibold text-zinc-900">Contributed sections</div>
-          <button
-            type="button"
-            onClick={onLoadSections}
-            disabled={isMutating || sectionsLoading || project.projectKey === null}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-          >
-            {sectionsLoading ? "Loading..." : "Load sections"}
-          </button>
-        </div>
-
-        {sections.length === 0 && (
-          <p className="text-sm text-zinc-600">No sections loaded yet. Load sections after saving a main file.</p>
-        )}
-
-        {sections.length > 0 && (
-          <div className="space-y-1">
-            {sections.map((section) => (
-              <label key={section.id} className="flex items-start gap-2 text-sm text-zinc-800">
-                <input
-                  type="checkbox"
-                  checked={selectedSectionIds.includes(section.id)}
-                  onChange={() => setSelectedSectionIds((prev) => toggleNumber(prev, section.id))}
-                  disabled={isMutating}
-                />
-                <span>
-                  <span className="font-medium">{section.title}</span>
-                  {section.preview ? ` - ${section.preview}` : ""}
-                </span>
-              </label>
-            ))}
+      {showContributionSectionPicker ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-sm font-semibold text-zinc-900">Contributed sections</div>
             <button
               type="button"
-              onClick={onSaveSections}
-              disabled={isMutating || project.projectKey === null}
+              onClick={onLoadSections}
+              disabled={isMutating || sectionsLoading || project.projectKey === null}
               className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
             >
-              Save section selection
+              {sectionsLoading ? "Loading..." : "Load sections"}
             </button>
           </div>
-        )}
-      </div>
+
+          {sections.length === 0 && (
+            <p className="text-sm text-zinc-600">No sections loaded yet. Load sections after saving a main file.</p>
+          )}
+
+          {sections.length > 0 && (
+            <div className="space-y-1">
+              {sections.map((section) => (
+                <label key={section.id} className="flex items-start gap-2 text-sm text-zinc-800">
+                  <input
+                    type="checkbox"
+                    checked={selectedSectionIds.includes(section.id)}
+                    onChange={() => setSelectedSectionIds((prev) => toggleNumber(prev, section.id))}
+                    disabled={isMutating}
+                  />
+                  <span>
+                    <span className="font-medium">{section.title}</span>
+                    {section.preview ? ` - ${section.preview}` : ""}
+                  </span>
+                </label>
+              ))}
+              <button
+                type="button"
+                onClick={onSaveSections}
+                disabled={isMutating || project.projectKey === null}
+                className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+              >
+                Save section selection
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm text-zinc-600">
+          Section selection is not needed for individual text projects. All main-file sections are treated as your work.
+        </p>
+      )}
 
       <div className="space-y-3">
         <div className="text-sm font-semibold text-zinc-900">Supporting text files</div>
