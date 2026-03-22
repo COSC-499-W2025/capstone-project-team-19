@@ -530,12 +530,18 @@ export default function ResumeDetail({
       <MinimalConfirmDialog
         open={projectToRemove != null}
         onOpenChange={(open) => !open && setProjectToRemove(null)}
-        message={`Remove "${projectToRemove?.project_name}" from this resume?${
+        message={
           resume.projects.length <= 1
-            ? " This is the last project — the resume will be deleted."
-            : ""
-        }`}
-        confirmLabel={removingProject ? "Removing…" : "Remove"}
+            ? "If you remove all projects, this resume will be deleted. Continue?"
+            : `Remove "${projectToRemove?.project_name}" from this resume?`
+        }
+        confirmLabel={
+          removingProject
+            ? "Removing…"
+            : resume.projects.length <= 1
+              ? "Continue"
+              : "Remove"
+        }
         onConfirm={handleRemoveProject}
       />
     </div>
