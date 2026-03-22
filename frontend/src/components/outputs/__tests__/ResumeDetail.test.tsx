@@ -35,7 +35,6 @@ import {
   getResume,
   editResume,
   removeProjectFromResume,
-  addProjectToResume,
 } from "../../../api/outputs";
 
 const baseResume = {
@@ -417,17 +416,27 @@ describe("ResumeDetail", () => {
 
       await waitFor(() => screen.getByText("Project Alpha"));
 
-      const removeBtn = screen.getByTitle("Remove from resume");
-      expect(removeBtn).toBeInTheDocument();
+      const removeBtns = screen.getAllByRole("button", { name: "Remove from resume" });
+      expect(removeBtns.length).toBeGreaterThanOrEqual(1);
     });
 
     it("opens confirmation dialog when remove button is clicked", async () => {
-      setupMocks();
+      setupMocks({
+        projects: [
+          baseResume.projects[0],
+          {
+            ...baseResume.projects[0],
+            project_summary_id: 11,
+            project_name: "Project Beta",
+          },
+        ],
+      });
       const user = userEvent.setup();
       render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
 
       await waitFor(() => screen.getByText("Project Alpha"));
-      await user.click(screen.getByTitle("Remove from resume"));
+      const removeBtns = screen.getAllByRole("button", { name: "Remove from resume" });
+      await user.click(removeBtns[0]);
 
       await waitFor(() => {
         expect(
@@ -439,12 +448,22 @@ describe("ResumeDetail", () => {
     });
 
     it("closes dialog and does not call API when Cancel is clicked", async () => {
-      setupMocks();
+      setupMocks({
+        projects: [
+          baseResume.projects[0],
+          {
+            ...baseResume.projects[0],
+            project_summary_id: 11,
+            project_name: "Project Beta",
+          },
+        ],
+      });
       const user = userEvent.setup();
       render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
 
       await waitFor(() => screen.getByText("Project Alpha"));
-      await user.click(screen.getByTitle("Remove from resume"));
+      const removeBtns = screen.getAllByRole("button", { name: "Remove from resume" });
+      await user.click(removeBtns[0]);
       await waitFor(() => screen.getByText(/Remove "Project Alpha"/));
       await user.click(screen.getByText("Cancel"));
 
@@ -453,6 +472,7 @@ describe("ResumeDetail", () => {
     });
 
     it("calls removeProjectFromResume and updates resume on success", async () => {
+      setupMocks();
       const resumeWithoutProject = {
         ...baseResume,
         projects: [],
@@ -468,9 +488,10 @@ describe("ResumeDetail", () => {
       render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
 
       await waitFor(() => screen.getByText("Project Alpha"));
-      await user.click(screen.getByTitle("Remove from resume"));
-      await waitFor(() => screen.getByText("Remove"));
-      await user.click(screen.getByText("Remove"));
+      const removeBtns = screen.getAllByRole("button", { name: "Remove from resume" });
+      await user.click(removeBtns[0]);
+      const confirmBtn = await screen.findByTestId("minimal-confirm-button");
+      await user.click(confirmBtn);
 
       await waitFor(() => {
         expect(removeProjectFromResume).toHaveBeenCalledWith(
@@ -485,6 +506,7 @@ describe("ResumeDetail", () => {
     });
 
     it("calls onBack when resume is deleted (last project removed)", async () => {
+      setupMocks();
       vi.mocked(removeProjectFromResume).mockResolvedValue({
         success: true,
         data: null,
@@ -496,9 +518,10 @@ describe("ResumeDetail", () => {
       render(<ResumeDetail resumeId={1} initialEditing onBack={onBack} />);
 
       await waitFor(() => screen.getByText("Project Alpha"));
-      await user.click(screen.getByTitle("Remove from resume"));
-      await waitFor(() => screen.getByText("Remove"));
-      await user.click(screen.getByText("Remove"));
+      const removeBtns = screen.getAllByRole("button", { name: "Remove from resume" });
+      await user.click(removeBtns[0]);
+      const confirmBtn = await screen.findByTestId("minimal-confirm-button");
+      await user.click(confirmBtn);
 
       await waitFor(() => {
         expect(removeProjectFromResume).toHaveBeenCalledWith(1, "Project Alpha");
@@ -547,9 +570,10 @@ describe("ResumeDetail", () => {
       render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
 
       await waitFor(() => screen.getByText("Project Alpha"));
-      await user.click(screen.getByTitle("Remove from resume"));
-      await waitFor(() => screen.getByText("Remove"));
-      await user.click(screen.getByText("Remove"));
+      const removeBtns = screen.getAllByRole("button", { name: "Remove from resume" });
+      await user.click(removeBtns[0]);
+      const confirmBtn = await screen.findByTestId("minimal-confirm-button");
+      await user.click(confirmBtn);
 
       await waitFor(() => {
         expect(screen.getByText("Failed to remove project")).toBeInTheDocument();

@@ -474,6 +474,7 @@ export default function ResumeDetail({
                           size="icon-sm"
                           onClick={() => setProjectToRemove(p)}
                           title="Remove from resume"
+                          aria-label="Remove from resume"
                           className="text-slate-400 hover:text-red-500"
                         >
                           <Trash2 className="size-4" />

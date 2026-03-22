@@ -54,6 +54,7 @@ export default function MinimalConfirmDialog({
               onConfirm();
               onOpenChange(false);
             }}
+            data-testid="minimal-confirm-button"
           >
             {confirmLabel}
           </Button>
