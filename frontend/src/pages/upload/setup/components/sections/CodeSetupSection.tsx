@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { GitHubRepo, GitIdentityOption } from "../../../../../api/uploads";
 import type { SetupFlowResult, SetupProjectCard } from "../../types";
 
@@ -32,6 +33,23 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [selectedRepo, setSelectedRepo] = useState(project.githubRepoFullName ?? "");
   const [reposLoading, setReposLoading] = useState(false);
+  const [repoSearchQuery, setRepoSearchQuery] = useState("");
+  const [repoListOpen, setRepoListOpen] = useState(false);
+  const repoListRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<{ bottom: number; left: number; width: number } | null>(null);
+
+  const filteredRepos = useMemo(() => {
+    const q = repoSearchQuery.trim().toLowerCase();
+    if (!q) return repos;
+    return repos.filter((r) => r.full_name.toLowerCase().includes(q));
+  }, [repos, repoSearchQuery]);
+
+  const hideRepoList = useCallback(() => {
+    setRepoListOpen(false);
+  }, []);
+
   const [authUrl, setAuthUrl] = useState<string | null>(null);
   const [githubMessage, setGithubMessage] = useState<string | null>(null);
 
@@ -50,8 +68,74 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
   }, [project.gitSelectedIdentityIndices]);
 
   useEffect(() => {
-    setSelectedRepo(project.githubRepoFullName ?? "");
+    const fullName = project.githubRepoFullName ?? "";
+    setSelectedRepo(fullName);
+    if (fullName) setRepoSearchQuery(fullName);
   }, [project.githubRepoFullName]);
+
+  useLayoutEffect(() => {
+    if (repoListOpen && inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        bottom: window.innerHeight - rect.top + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    } else {
+      setDropdownStyle(null);
+    }
+  }, [repoListOpen]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      const inInput = inputRef.current?.contains(target);
+      const inDropdown = dropdownRef.current?.contains(target);
+      if (!inInput && !inDropdown) {
+        hideRepoList();
+      }
+    }
+    function handleScroll(e: Event) {
+      const target = e.target as Node;
+      if (dropdownRef.current?.contains(target)) return;
+      hideRepoList();
+    }
+    if (repoListOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      window.addEventListener("scroll", handleScroll, true);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        window.removeEventListener("scroll", handleScroll, true);
+      };
+    }
+  }, [repoListOpen, hideRepoList]);
+
+  useEffect(() => {
+    if (
+      project.githubState !== "connected" ||
+      repos.length > 0 ||
+      reposLoading ||
+      project.githubRepoLinked
+    ) {
+      return;
+    }
+    let active = true;
+    setReposLoading(true);
+    setGithubMessage(null);
+    actions
+      .githubRepos(project.projectName)
+      .then((data) => {
+        if (!active || !data) return;
+        setRepos(data.repos);
+        setGithubMessage(data.repos.length > 0 ? "Repositories loaded. Search and select one, then click Link." : "No repositories found.");
+      })
+      .finally(() => {
+        if (active) setReposLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [project.githubState, project.githubRepoLinked, project.projectName, actions]);
 
   useEffect(() => {
     if (project.projectKey === null) {
@@ -126,7 +210,13 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
     }
 
     if (data.auth_url) {
-      setGithubMessage("Continue with GitHub OAuth using the link below.");
+      const opened = window.open(data.auth_url, "_blank");
+      if (opened) {
+        setGithubMessage("Authorize in the new tab. It will close automatically when done.");
+      } else {
+        setGithubMessage("Popup was blocked. Click the link below to authorize.");
+      }
+      setGithubMessage("Click “Open GitHub Authorization” to authorize in your browser.");
       return;
     }
 
@@ -141,10 +231,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
     if (!data) return;
 
     setRepos(data.repos);
-    if (!selectedRepo && data.repos.length > 0) {
-      setSelectedRepo(data.repos[0].full_name);
-    }
-    setGithubMessage(data.repos.length > 0 ? "Repositories loaded." : "No repositories found.");
+    setGithubMessage(data.repos.length > 0 ? "Repositories loaded. Search and select one, then click Link." : "No repositories found.");
   }
 
   async function onLinkRepo() {
@@ -213,75 +300,158 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
 
       <div className="space-y-3">
         <h4 className="text-lg leading-tight font-semibold text-zinc-900">GitHub Integration</h4>
-        <p className="text-sm text-zinc-700">
-          State: <span className="font-medium">{project.githubState}</span>
-          {project.githubRepoLinked && project.githubRepoFullName ? ` | Linked repo: ${project.githubRepoFullName}` : ""}
-        </p>
-        {!localGitDetected && project.classification === "collaborative" && (
+        {project.githubRepoLinked && project.githubRepoFullName ? (
           <p className="text-sm text-zinc-700">
+            Linked repo: <span className="font-medium">{project.githubRepoFullName}</span>
+          </p>
+        ) : (
+          <>
+            {project.githubState !== "connected" ? (
+              <div className="space-y-2">
+                <p className="text-sm text-zinc-700">
+                  <strong>Step 1:</strong> Connect your GitHub account to fetch your repositories.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onGithubStart(true)}
+                    disabled={isMutating}
+                    className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    Connect GitHub
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onGithubStart(false)}
+                    disabled={isMutating}
+                    className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+                  >
+                    Skip GitHub
+                  </button>
+                </div>
+              </div>
+            ) : reposLoading ? (
+              <p className="text-sm text-zinc-700">Loading your repositories...</p>
+            ) : repos.length === 0 ? (
+              <div className="space-y-2">
+                <p className="text-sm text-zinc-700">
+                  <strong>Step 2:</strong> Load your repositories from GitHub.
+                </p>
+                <button
+                  type="button"
+                  onClick={onLoadRepos}
+                  disabled={isMutating || reposLoading}
+                  className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                >
+                  Load repositories
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-zinc-700">
+                  <strong>Step 3:</strong> Select the repo that matches this project and link it.
+                </p>
+              </div>
+            )}
+            {authUrl && (
+              <a
+                href={authUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-[#0969da] hover:underline"
+              >
+                Open GitHub Authorization (if the tab didn&apos;t open)
+              </a>
+            )}
+          </>
+        )}
+        {!localGitDetected && project.classification === "collaborative" && (
+          <p className="text-sm text-zinc-600">
             With no local .git history, collaborative identity is inferred from the connected GitHub account during analysis.
           </p>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onGithubStart(true)}
-            disabled={isMutating}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-          >
-            Connect GitHub
-          </button>
-          <button
-            type="button"
-            onClick={() => onGithubStart(false)}
-            disabled={isMutating}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-          >
-            Skip for now
-          </button>
-          <button
-            type="button"
-            onClick={onLoadRepos}
-            disabled={isMutating || reposLoading}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-          >
-            {reposLoading ? "Loading..." : "Load repositories"}
-          </button>
-        </div>
-
-        {authUrl && (
-          <a
-            href={authUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-[#001166]"
-          >
-            Open GitHub Authorization
-          </a>
-        )}
-
         {repos.length > 0 && (
-          <div className="space-y-2">
-            <select
-              value={selectedRepo}
-              onChange={(event) => setSelectedRepo(event.target.value)}
-              className="h-12 w-full rounded border border-zinc-300 bg-zinc-50 px-4 py-3 text-sm text-zinc-700"
-              disabled={isMutating}
-            >
-              {repos.map((repo) => (
-                <option key={repo.full_name} value={repo.full_name}>
-                  {repo.full_name}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-2" ref={repoListRef}>
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={repoListOpen ? repoSearchQuery : selectedRepo || ""}
+                onChange={(e) => {
+                  setRepoSearchQuery(e.target.value);
+                  setRepoListOpen(true);
+                }}
+                onFocus={() => setRepoListOpen(true)}
+                placeholder="Select a repository..."
+                className="h-12 w-full rounded border border-zinc-300 bg-zinc-50 px-4 py-3 pr-10 text-sm text-zinc-700 placeholder:text-zinc-400"
+                disabled={isMutating}
+                aria-expanded={repoListOpen}
+                aria-haspopup="listbox"
+                aria-label="Search repositories"
+              />
+              <span
+                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-zinc-500"
+                onClick={() => inputRef.current?.focus()}
+                role="button"
+                aria-label={repoListOpen ? "Close repository list" : "Open repository list"}
+              >
+                {repoListOpen ? (
+                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M3 6 L8 11 L13 6 Z" />
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M3 10 L8 5 L13 10 Z" />
+                  </svg>
+                )}
+              </span>
+              {repoListOpen &&
+                dropdownStyle &&
+                createPortal(
+                  <div
+                    ref={dropdownRef}
+                    className="fixed z-[9999] max-h-48 overflow-y-auto rounded border border-zinc-300 bg-white shadow-lg"
+                    role="listbox"
+                    style={{
+                      bottom: dropdownStyle.bottom,
+                      left: dropdownStyle.left,
+                      width: dropdownStyle.width,
+                    }}
+                  >
+                    {filteredRepos.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-zinc-500">No matching repositories</div>
+                    ) : (
+                      filteredRepos.map((repo) => (
+                        <button
+                          key={repo.full_name}
+                          type="button"
+                          role="option"
+                          aria-selected={selectedRepo === repo.full_name}
+                          className={`block w-full px-4 py-2.5 text-left text-sm hover:bg-zinc-100 ${
+                            selectedRepo === repo.full_name ? "bg-zinc-100 font-medium" : "text-zinc-700"
+                          }`}
+                          onClick={() => {
+                            setSelectedRepo(repo.full_name);
+                            setRepoSearchQuery(repo.full_name);
+                            setRepoListOpen(false);
+                          }}
+                        >
+                          {repo.full_name}
+                        </button>
+                      ))
+                    )}
+                  </div>,
+                  document.body,
+                )}
+            </div>
             <button
               type="button"
               onClick={onLinkRepo}
               disabled={isMutating || !selectedRepo}
-              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+              className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
             >
-              Link selected repository
+              Link repository
             </button>
           </div>
         )}

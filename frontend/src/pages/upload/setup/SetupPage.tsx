@@ -45,7 +45,7 @@ function deriveInitialSummaryModes(manualOnlySummaries: boolean): ProjectSummary
 export default function UploadSetupPage() {
   const username = getUsername();
   const nav = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [readiness, setReadiness] = useState<RunPreflightRecord | null>(null);
   const [checkingReadiness, setCheckingReadiness] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -59,6 +59,59 @@ export default function UploadSetupPage() {
     if (flow.hasValidUploadId) return;
     nav("/upload/upload", { replace: true });
   }, [flow.hasValidUploadId, nav]);
+
+  useEffect(() => {
+    const githubStatus = searchParams.get("github");
+    if (githubStatus === "success") {
+      if (window.opener) {
+        window.opener.postMessage({ type: "github-auth-success" }, window.location.origin);
+        window.close();
+        return;
+      }
+      if (flow.hasValidUploadId) {
+        void flow.refreshUpload();
+      }
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          p.delete("github");
+          return Object.fromEntries(p.entries());
+        },
+        { replace: true },
+      );
+    } else if (githubStatus === "error") {
+      if (window.opener) {
+        const errorMsg = searchParams.get("message") ?? "GitHub authorization failed.";
+        window.opener.postMessage({ type: "github-auth-error", message: errorMsg }, window.location.origin);
+        window.close();
+        return;
+      }
+      const errorMsg = searchParams.get("message") ?? "GitHub authorization failed.";
+      flow.setActionError(errorMsg);
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          p.delete("github");
+          p.delete("message");
+          return Object.fromEntries(p.entries());
+        },
+        { replace: true },
+      );
+    }
+  }, [searchParams, flow.hasValidUploadId, flow.refreshUpload, flow.setActionError, setSearchParams]);
+
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === "github-auth-success") {
+        void flow.refreshUpload();
+      } else if (event.data?.type === "github-auth-error") {
+        flow.setActionError(event.data.message ?? "GitHub authorization failed.");
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [flow.refreshUpload, flow.setActionError]);
 
   useEffect(() => {
     if (!flow.uploadNotFound) return;

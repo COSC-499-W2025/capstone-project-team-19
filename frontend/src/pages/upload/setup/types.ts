@@ -65,6 +65,7 @@ export type SetupFlowResult = {
   expandedProjectNames: string[];
   onToggleProject: (projectName: string) => void;
   clearActionError: () => void;
+  setActionError: (message: string | null) => void;
   refreshUpload: () => Promise<boolean>;
   actions: {
     getProjectFiles: (projectKey: number) => Promise<UploadProjectFilesRecord | null>;
