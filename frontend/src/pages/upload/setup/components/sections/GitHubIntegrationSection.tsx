@@ -73,7 +73,7 @@ export default function GitHubIntegrationSection({ project, actions, isMutating,
       setMessage(
         opened
           ? "Authorize in the new tab. It will close automatically when done."
-          : "Popup was blocked. Click the link below to authorize.",
+          : "Popup was blocked. Try Connect GitHub again or allow popups for this site.",
       );
       return;
     }

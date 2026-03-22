@@ -16,10 +16,10 @@ type Deps = {
  *
  * Two paths:
  * 1. **Popup** – The page was opened by `window.open` during the Connect
- *    flow.  Post a message back to the opener tab and close this tab.
- * 2. **Direct** – The user navigated here directly (e.g. popup was blocked
- *    and they clicked the fallback link).  Refresh upload data in-place and
- *    strip the query params.
+ *    flow. Post a message back to the opener tab and close this tab.
+ * 2. **Direct** – The user navigated here in the same window (e.g. opened
+ *    the auth URL in the same tab, or popup was blocked). Refresh upload
+ *    data in-place and strip the query params.
  *
  * Also listens for cross-tab messages from the popup path so the opener
  * tab can react without a full page reload.
