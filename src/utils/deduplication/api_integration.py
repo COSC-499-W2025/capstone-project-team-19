@@ -112,7 +112,14 @@ def run_deduplication_for_projects_api(
         if not project_dir:
             continue
 
-        result = register_project(conn, user_id, project_name, project_dir, upload_id=upload_id)
+        result = register_project(
+            conn,
+            user_id,
+            project_name,
+            project_dir,
+            upload_id=upload_id,
+            skip_only_analyzed_duplicates=True,
+        )
         kind = result.get("kind")
 
         if kind == "duplicate":
@@ -164,5 +171,4 @@ def run_deduplication_for_projects_api(
             }
 
     return {"skipped": skipped, "asks": asks, "new_versions": new_versions, "decisions": decisions}
-
 

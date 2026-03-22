@@ -13,16 +13,45 @@ from src.db import (
     insert_version_files,
 )
 
-def register_project(conn, user_id: int, display_name: str, project_root: str, upload_id=None, high=0.85, low=0.35, noisy_file_count=10):
+def register_project(
+    conn,
+    user_id: int,
+    display_name: str,
+    project_root: str,
+    upload_id=None,
+    high=0.85,
+    low=0.35,
+    noisy_file_count=10,
+    skip_only_analyzed_duplicates: bool = False,
+):
     fp_strict, fp_loose, entries = project_fingerprints(project_root)
     new_hashes = {h for _, h in entries}
     new_paths = {rel for rel, _ in entries}
 
     # 1. Check for exact duplicate: content + structure identical
-    dupl_strict = find_existing_version_by_strict_fp(conn, user_id, fp_strict)
+    dupl_strict = find_existing_version_by_strict_fp(
+        conn,
+        user_id,
+        fp_strict,
+        only_done_uploads=skip_only_analyzed_duplicates,
+    )
     if dupl_strict:
         project_key, version_key = dupl_strict
         return {"kind": "duplicate", "project_key": project_key, "version_key": version_key}
+
+    # When API mode is configured to skip only after analysis, we still need to
+    # handle strict duplicates from pending uploads. Reuse the existing version
+    # key instead of skipping so this upload can continue through the wizard.
+    if skip_only_analyzed_duplicates:
+        dupl_any = find_existing_version_by_strict_fp(conn, user_id, fp_strict)
+        if dupl_any:
+            project_key, version_key = dupl_any
+            return {
+                "kind": "new_version",
+                "project_key": project_key,
+                "version_key": version_key,
+                "reused_existing_version": True,
+            }
 
     # 1b. Project names are unique per user (projects.user_id + display_name).
     # If this name already exists, we must treat this upload as a new version of that project.

@@ -104,6 +104,7 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
     # Attach version_key to parsed files (per final project name)
     version_keys: dict[str, int] = {}
     project_keys: dict[str, int] = {}
+    reused_version_projects: set[str] = set()
     for orig_name, d in (decisions or {}).items():
         kind = (d or {}).get("kind")
         if kind in {"new_project", "new_version"}:
@@ -113,6 +114,8 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
             final_name = existing_name or orig_name
             if isinstance(vk, int) and final_name:
                 version_keys[final_name] = vk
+                if kind == "new_version" and bool((d or {}).get("reused_existing_version")):
+                    reused_version_projects.add(final_name)
             if isinstance(pk, int) and final_name:
                 project_keys[final_name] = pk
 
@@ -121,8 +124,12 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
         if pname in version_keys:
             f["version_key"] = version_keys[pname]
 
+    files_to_store = files_info
+    if reused_version_projects:
+        files_to_store = [f for f in files_info if f.get("project_name") not in reused_version_projects]
+
     # Persist parsed files once (after dedup tagging)
-    store_parsed_files(conn, files_info, user_id)
+    store_parsed_files(conn, files_to_store, user_id)
 
     # Persist extraction root for these versions (used by skills/text pipelines to locate files on disk)
     zip_root = Path(str(zip_path)).stem
