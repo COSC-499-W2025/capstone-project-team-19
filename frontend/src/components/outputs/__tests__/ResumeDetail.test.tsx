@@ -7,6 +7,7 @@ vi.mock("../../../api/outputs", () => ({
   getResume: vi.fn(),
   editResume: vi.fn(),
   removeProjectFromResume: vi.fn(),
+  addProjectToResume: vi.fn(),
   downloadResumeDocx: vi.fn(),
   downloadResumePdf: vi.fn(),
 }));
@@ -14,11 +15,27 @@ vi.mock("../../../api/outputs", () => ({
 vi.mock("../ExportDropdown", () => ({
   default: () => <button>Export</button>,
 }));
+vi.mock("../AddProjectModal", () => ({
+  default: (props: { onClose: () => void; onAdded: () => void }) => (
+    <div data-testid="add-project-modal">
+      <button onClick={props.onClose}>Close</button>
+      <button
+        onClick={() => {
+          props.onAdded();
+          props.onClose();
+        }}
+      >
+        Add
+      </button>
+    </div>
+  ),
+}));
 
 import {
   getResume,
   editResume,
   removeProjectFromResume,
+  addProjectToResume,
 } from "../../../api/outputs";
 
 const baseResume = {
@@ -486,6 +503,38 @@ describe("ResumeDetail", () => {
       await waitFor(() => {
         expect(removeProjectFromResume).toHaveBeenCalledWith(1, "Project Alpha");
         expect(onBack).toHaveBeenCalled();
+      });
+    });
+
+    it("hides Export when editing", async () => {
+      setupMocks();
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+      await waitFor(() => screen.getByText("Edit"));
+      expect(screen.getByText("Export")).toBeInTheDocument();
+      await user.click(screen.getByText("Edit"));
+      expect(screen.queryByText("Export")).not.toBeInTheDocument();
+    });
+
+    it("shows Add Project button in edit mode and opens modal on click", async () => {
+      setupMocks();
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
+      await waitFor(() => screen.getByText("Add Project"));
+      expect(screen.queryByTestId("add-project-modal")).not.toBeInTheDocument();
+      await user.click(screen.getByText("Add Project"));
+      expect(screen.getByTestId("add-project-modal")).toBeInTheDocument();
+    });
+
+    it("adds project via modal and shows success message", async () => {
+      setupMocks();
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
+      await waitFor(() => screen.getByText("Add Project"));
+      await user.click(screen.getByText("Add Project"));
+      await user.click(screen.getByText("Add"));
+      await waitFor(() => {
+        expect(screen.getByText("Project added to resume")).toBeInTheDocument();
       });
     });
 

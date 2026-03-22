@@ -113,6 +113,16 @@ export function removeProjectFromResume(
   );
 }
 
+export function addProjectToResume(
+  resumeId: number,
+  projectSummaryId: number
+): Promise<ApiResponse<ResumeDetail>> {
+  return api.postJson<ApiResponse<ResumeDetail>>(
+    `/resume/${resumeId}/projects`,
+    { project_summary_id: projectSummaryId }
+  );
+}
+
 /* ── Export helpers ── */
 
 export async function downloadResumeDocx(id: number) {
