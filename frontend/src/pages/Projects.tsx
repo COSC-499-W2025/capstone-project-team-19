@@ -50,58 +50,46 @@ export default function ProjectsPage() {
     <>
       <TopBar showNav username={username} />
 
-      <div className="min-h-[calc(100vh-56px)] bg-background">
-        <PageContainer className="pt-[12px]">
-          <PageHeader
-            title="Projects"
-            breadcrumbs={[
-              { label: "Home", href: "/" },
-              { label: "Projects" },
-            ]}
-          />
+      <PageContainer className="min-h-[calc(100vh-56px)] bg-background pt-[12px]">
+        <PageHeader
+          title="Projects"
+          breadcrumbs={[{ label: "Home", href: "/" }, { label: "Projects" }]}
+        />
 
-          <SectionCard className="w-full max-w-[1110px] self-center bg-white">
-            <div className="content">
+        <SectionCard className="w-full bg-white">
+          <div className="content">
+            {loading && <p>Loading…</p>}
+            {error && <p className="error">{error}</p>}
 
-              {loading && <p>Loading…</p>}
-              {error && <p className="error">{error}</p>}
+            {!loading && !error && projects.length === 0 && (
+              <p>No projects yet. Upload one to get started.</p>
+            )}
 
-              {!loading && !error && projects.length === 0 && (
-                <p>No projects yet. Upload one to get started.</p>
-              )}
-
-              <div className="projectGrid">
-                {projects.map((p) => (
-                  <div key={p.project_summary_id} className="projectCardWrapper">
-                    <ProjectCard
-                      projectId={p.project_summary_id}
-                      name={p.project_name}
-                    />
-                    <button
-                      className={`projectVisibilityToggle${
-                        p.is_public ? " public" : ""
-                      }`}
-                      onClick={(e) => handleToggleVisibility(e, p)}
-                      disabled={toggling === p.project_summary_id}
-                      title={
-                        p.is_public
-                          ? "Visible on public portfolio — click to hide"
-                          : "Hidden from public portfolio — click to show"
-                      }
-                    >
-                      {toggling === p.project_summary_id
-                        ? "…"
-                        : p.is_public
-                        ? "Public"
-                        : "Private"}
-                    </button>
-                  </div>
-                ))}
-              </div>
+            <div className="projectGrid">
+              {projects.map((p) => (
+                <div key={p.project_summary_id} className="projectCardWrapper">
+                  <ProjectCard
+                    projectId={p.project_summary_id}
+                    name={p.project_name}
+                  />
+                  <button
+                    className={`projectVisibilityToggle${p.is_public ? " public" : ""}`}
+                    onClick={(e) => handleToggleVisibility(e, p)}
+                    disabled={toggling === p.project_summary_id}
+                    title={
+                      p.is_public
+                        ? "Visible on public portfolio — click to hide"
+                        : "Hidden from public portfolio — click to show"
+                    }
+                  >
+                    {toggling === p.project_summary_id ? "…" : p.is_public ? "Public" : "Private"}
+                  </button>
+                </div>
+              ))}
             </div>
-          </SectionCard>
-        </PageContainer>
-      </div>
+          </div>
+        </SectionCard>
+      </PageContainer>
     </>
   );
 }

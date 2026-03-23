@@ -40,68 +40,61 @@ export default function UploadWizardShell({
     <>
       <TopBar showNav username={username} />
 
-      <div className="wizardPage">
-        <PageContainer className="pt-[12px]">
-          <PageHeader title="Upload" breadcrumbs={breadcrumbs} />
+      <PageContainer className="min-h-[calc(100vh-56px)] bg-background pt-[12px]">
+        <PageHeader title="Upload" breadcrumbs={breadcrumbs} />
 
-          <SectionCard className="w-full max-w-[1110px] self-center overflow-hidden !p-0 bg-white">
-            <div className="wizardLayout">
-              <aside className="wizardSidebar">
-                <div className="wizardSidebarSticky">
-                  <div className="wizardProgressTitle">Progress</div>
+        <SectionCard className="w-full overflow-hidden !p-0 bg-white">
+          <div className="wizardLayout">
+            <aside className="wizardSidebar">
+              <div className="wizardSidebarSticky">
+                <div className="wizardProgressTitle">Progress</div>
 
-                  <div className="wizardSteps">
-                    {steps.map((step) => {
-                      const stepDisabled =
-                        step.disabled ?? step.status === "disabled";
-                      const stepClickable =
-                        !stepDisabled &&
-                        (Boolean(step.to) || Boolean(step.onClick));
+                <div className="wizardSteps">
+                  {steps.map((step) => {
+                    const stepDisabled = step.disabled ?? step.status === "disabled";
+                    const stepClickable =
+                      !stepDisabled && (Boolean(step.to) || Boolean(step.onClick));
 
-                      return (
-                        <button
-                          key={step.label}
-                          type="button"
-                          className={`wizardStep wizardStep--${step.status}${
-                            stepClickable ? " wizardStep--clickable" : ""
-                          }`}
-                          disabled={stepDisabled}
-                          aria-disabled={stepDisabled}
-                          onClick={() => {
-                            if (stepDisabled) return;
-                            if (step.onClick) {
-                              step.onClick();
-                              return;
-                            }
-                            if (step.to) nav(step.to);
-                          }}
-                        >
-                          {step.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {showAction && (
-                    <button
-                      type="button"
-                      className="wizardActionBtn"
-                      onClick={onAction}
-                      disabled={actionDisabled}
-                    >
-                      {actionLabel}
-                    </button>
-                  )}
+                    return (
+                      <button
+                        key={step.label}
+                        type="button"
+                        className={`wizardStep wizardStep--${step.status}${
+                          stepClickable ? " wizardStep--clickable" : ""
+                        }`}
+                        disabled={stepDisabled}
+                        aria-disabled={stepDisabled}
+                        onClick={() => {
+                          if (stepDisabled) return;
+                          if (step.onClick) { step.onClick(); return; }
+                          if (step.to) nav(step.to);
+                        }}
+                      >
+                        {step.label}
+                      </button>
+                    );
+                  })}
                 </div>
-              </aside>
 
-              <div className="wizardDivider" aria-hidden="true" />
+                {showAction && (
+                  <button
+                    type="button"
+                    className="wizardActionBtn"
+                    onClick={onAction}
+                    disabled={actionDisabled}
+                  >
+                    {actionLabel}
+                  </button>
+                )}
+              </div>
+            </aside>
 
-              <main className="wizardContent">{children}</main>
-            </div>
-          </SectionCard>
-        </PageContainer>
-      </div>
+            <div className="wizardDivider" aria-hidden="true" />
+
+            <main className="wizardContent">{children}</main>
+          </div>
+        </SectionCard>
+      </PageContainer>
     </>
   );
 }

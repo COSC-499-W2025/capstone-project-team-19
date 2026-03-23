@@ -569,7 +569,7 @@ button {
 }
 
 .consentContent {
-  max-width: 640px;
+  max-width: 100%;
 }
 
 .consentStatusLine {
