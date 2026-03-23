@@ -21,6 +21,36 @@ import {
 } from "../api/projects";
 import { PageContainer, PageHeader, SectionCard } from "../components/shared";
 
+function normalizeContributionSummary(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  if (!text) return null;
+  if (/^\[no .*provided\]$/i.test(text)) return null;
+  if (/^\[no .*available\]$/i.test(text)) return null;
+  return text;
+}
+
+function resolveContributionSummary(project: ProjectDetail): string | null {
+  const contributions = project.contributions ?? {};
+  const textCollab =
+    contributions.text_collab && typeof contributions.text_collab === "object"
+      ? contributions.text_collab
+      : null;
+
+  const candidates: unknown[] = [
+    contributions.llm_contribution_summary,
+    textCollab?.contribution_summary,
+    contributions.manual_contribution_summary,
+    contributions.non_llm_contribution_summary,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeContributionSummary(candidate);
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const projectId = Number(id);
@@ -278,6 +308,7 @@ export default function ProjectDetailPage() {
     },
     {}
   );
+  const contributionSummaryText = resolveContributionSummary(project);
 
   return (
     <>
@@ -485,7 +516,7 @@ export default function ProjectDetailPage() {
                   <>
                     <h3 className="pdContribHeading">Contribution Summary</h3>
                     <p className="pdSummaryText">
-                      {project.contributions?.manual_contribution_summary ?? (
+                      {contributionSummaryText ?? (
                         <em>No contribution summary yet.</em>
                       )}
                     </p>

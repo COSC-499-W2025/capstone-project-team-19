@@ -559,5 +559,37 @@ describe("ProjectDetailPage", () => {
         expect(screen.getByText("I built the frontend.")).toBeInTheDocument();
       });
     });
+
+    it("shows LLM contribution summary when manual summary is missing", async () => {
+      vi.mocked(getProject).mockResolvedValue({
+        ...baseProject,
+        project_mode: "collaborative",
+        contributions: { llm_contribution_summary: "I led architecture and API integration." },
+      });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText("Contribution Summary")).toBeInTheDocument();
+        expect(screen.getByText("I led architecture and API integration.")).toBeInTheDocument();
+      });
+    });
+
+    it("falls back to text collaboration contribution summary", async () => {
+      vi.mocked(getProject).mockResolvedValue({
+        ...baseProject,
+        project_mode: "collaborative",
+        contributions: {
+          text_collab: { contribution_summary: "I authored the methods and results sections." },
+        },
+      });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText("Contribution Summary")).toBeInTheDocument();
+        expect(screen.getByText("I authored the methods and results sections.")).toBeInTheDocument();
+      });
+    });
   });
 });
