@@ -95,9 +95,11 @@ export default function OutputsPage() {
     <>
       <TopBar showNav username={username} />
 
-      <PageContainer className="min-h-[calc(100vh-56px)] bg-background pt-[12px]">
+      <PageContainer className="flex min-h-[calc(100vh-56px)] flex-col bg-background pt-[12px]">
         <PageHeader title={headerConfig.title} breadcrumbs={headerConfig.breadcrumbs} />
-        <SectionCard className="w-full bg-white">{renderView()}</SectionCard>
+        <SectionCard className="flex w-full flex-1 flex-col bg-white">
+          {renderView()}
+        </SectionCard>
       </PageContainer>
 
       {showCreate && (
