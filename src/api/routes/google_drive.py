@@ -1,7 +1,7 @@
 import html
 import json
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlite3 import Connection
 
@@ -129,47 +129,62 @@ def _render_oauth_callback_page(
 
 
 @router.get("/auth/google/callback")
-def get_google_callback(code: str = Query(...), state: str = Query(None), conn: Connection = Depends(get_db)):
+def get_google_callback(
+    request: Request,
+    code: str = Query(...),
+    state: str = Query(None),
+    conn: Connection = Depends(get_db),
+):
     """OAuth callback endpoint for Google Drive."""
+    # Browser pop-up flow expects an HTML page that can postMessage back and close.
+    # API clients/tests expect JSON payloads and plain HTTP errors.
+    wants_html = "text/html" in request.headers.get("accept", "").lower()
+
     try:
         result = drive_handle_callback(conn, code, state)
-        return _render_oauth_callback_page(
-            title="Google Drive connected",
-            detail="Returning to setup and closing this tab.",
-            payload={
-                "source": DRIVE_OAUTH_MESSAGE_SOURCE,
-                "status": "connected",
-                "project_name": result.get("project_name"),
-                "upload_id": result.get("upload_id"),
-            },
-            status_code=200,
-            auto_close=True,
-        )
+        if wants_html:
+            return _render_oauth_callback_page(
+                title="Google Drive connected",
+                detail="Returning to setup and closing this tab.",
+                payload={
+                    "source": DRIVE_OAUTH_MESSAGE_SOURCE,
+                    "status": "connected",
+                    "project_name": result.get("project_name"),
+                    "upload_id": result.get("upload_id"),
+                },
+                status_code=200,
+                auto_close=True,
+            )
+        return ApiResponse(success=True, data=result, error=None)
     except HTTPException as exc:
-        return _render_oauth_callback_page(
-            title="Google Drive connection failed",
-            detail=str(exc.detail),
-            payload={
-                "source": DRIVE_OAUTH_MESSAGE_SOURCE,
-                "status": "error",
-                "message": str(exc.detail),
-            },
-            status_code=exc.status_code,
-            auto_close=False,
-        )
+        if wants_html:
+            return _render_oauth_callback_page(
+                title="Google Drive connection failed",
+                detail=str(exc.detail),
+                payload={
+                    "source": DRIVE_OAUTH_MESSAGE_SOURCE,
+                    "status": "error",
+                    "message": str(exc.detail),
+                },
+                status_code=exc.status_code,
+                auto_close=False,
+            )
+        raise exc
     except Exception as e:
         detail = f"Failed to complete Google authorization: {str(e)}"
-        return _render_oauth_callback_page(
-            title="Google Drive connection failed",
-            detail=detail,
-            payload={
-                "source": DRIVE_OAUTH_MESSAGE_SOURCE,
-                "status": "error",
-                "message": detail,
-            },
-            status_code=500,
-            auto_close=False,
-        )
+        if wants_html:
+            return _render_oauth_callback_page(
+                title="Google Drive connection failed",
+                detail=detail,
+                payload={
+                    "source": DRIVE_OAUTH_MESSAGE_SOURCE,
+                    "status": "error",
+                    "message": detail,
+                },
+                status_code=500,
+                auto_close=False,
+            )
+        raise HTTPException(status_code=500, detail=detail)
 
 
 @router.post("/projects/upload/{upload_id}/projects/{project}/drive/start", response_model=ApiResponse[DriveStartResponse])
