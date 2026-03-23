@@ -51,6 +51,7 @@ export default function UploadPage() {
           discoveredProjects={flow.discoveredProjects}
           projectNotes={flow.projectNotes}
           allProjectsPreviouslySkipped={flow.allProjectsPreviouslySkipped}
+          onOpenProjectDetailsInNewTab={flow.onOpenProjectDetailsInNewTab}
         />
       );
     }

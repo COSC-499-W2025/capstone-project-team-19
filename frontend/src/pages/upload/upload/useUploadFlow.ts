@@ -78,7 +78,9 @@ export function useUploadFlow(
   const allProjectsPreviouslySkipped = useMemo(
     () =>
       discoveredProjects.length > 0 &&
-      discoveredProjects.every((projectName) => projectNotes[projectName]?.includes(SKIPPED_PROJECT_NOTE)),
+      discoveredProjects.every((projectName) =>
+        Boolean(projectNotes[projectName]?.some((note) => note.text === SKIPPED_PROJECT_NOTE)),
+      ),
     [discoveredProjects, projectNotes],
   );
 
@@ -347,12 +349,13 @@ export function useUploadFlow(
 
   useEffect(() => {
     if (requestedUploadId === null) return;
+    const targetUploadId = requestedUploadId;
 
     let active = true;
 
     async function loadRequestedUpload() {
       try {
-        const response = await getUploadStatus(requestedUploadId);
+        const response = await getUploadStatus(targetUploadId);
         if (!response.success || !response.data) {
           throw new Error(response.error?.message ?? "Failed to load upload context.");
         }
@@ -739,6 +742,19 @@ export function useUploadFlow(
     }));
   }
 
+  function onOpenProjectDetailsInNewTab(projectName: string) {
+    const trimmedProjectName = projectName.trim();
+    if (!trimmedProjectName) return;
+
+    const returnTo = uploadData?.upload_id ? `/upload/upload?uploadId=${uploadData.upload_id}` : "/upload/upload";
+    const query = new URLSearchParams({
+      openProject: trimmedProjectName,
+      openedFromUpload: "1",
+      returnTo,
+    });
+    window.open(`/projects?${query.toString()}`, "_blank");
+  }
+
   return {
     uploadId: uploadData?.upload_id ?? null,
     stageIndex,
@@ -783,5 +799,6 @@ export function useUploadFlow(
     onNextDedupCase,
     onClassificationChange,
     onProjectTypeChange,
+    onOpenProjectDetailsInNewTab,
   };
 }

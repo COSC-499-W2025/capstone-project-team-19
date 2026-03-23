@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import "./Projects.css";
 import TopBar from "../components/TopBar";
 import ProjectCard from "../components/project-card";
@@ -9,10 +10,17 @@ import { PageContainer, PageHeader, SectionCard } from "../components/shared";
 
 export default function ProjectsPage() {
   const username = getUsername();
+  const nav = useNavigate();
+  const [searchParams] = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState<number | null>(null);
+  const [autoOpenAttempted, setAutoOpenAttempted] = useState(false);
+
+  const requestedProjectName = (searchParams.get("openProject") ?? "").trim();
+  const openedFromUpload = searchParams.get("openedFromUpload") === "1";
+  const returnTo = (searchParams.get("returnTo") ?? "").trim();
 
   useEffect(() => {
     listProjects()
@@ -20,6 +28,28 @@ export default function ProjectsPage() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (autoOpenAttempted) return;
+    if (!requestedProjectName) {
+      setAutoOpenAttempted(true);
+      return;
+    }
+    if (loading) return;
+
+    setAutoOpenAttempted(true);
+    const target = projects.find(
+      (project) => project.project_name.trim().toLowerCase() === requestedProjectName.toLowerCase(),
+    );
+    if (!target) return;
+
+    const detailQuery = new URLSearchParams();
+    if (openedFromUpload) detailQuery.set("openedFromUpload", "1");
+    if (returnTo) detailQuery.set("returnTo", returnTo);
+
+    const suffix = detailQuery.toString();
+    nav(`/projects/${target.project_summary_id}${suffix ? `?${suffix}` : ""}`, { replace: true });
+  }, [autoOpenAttempted, loading, nav, openedFromUpload, projects, requestedProjectName, returnTo]);
 
   const handleToggleVisibility = useCallback(
     async (e: React.MouseEvent, project: Project) => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import "./ProjectDetail.css";
 import TopBar from "../components/TopBar";
 import { getUsername } from "../auth/user";
@@ -25,8 +25,12 @@ export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const projectId = Number(id);
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
   const username = getUsername();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const openedFromUpload = searchParams.get("openedFromUpload") === "1";
+  const returnToParam = (searchParams.get("returnTo") ?? "").trim();
+  const safeReturnTo = returnToParam.startsWith("/") ? returnToParam : "/upload/upload";
 
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
@@ -175,6 +179,35 @@ export default function ProjectDetailPage() {
     return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
+  function detailRoute(projectSummaryId: number): string {
+    if (!openedFromUpload) return `/projects/${projectSummaryId}`;
+    const query = new URLSearchParams({
+      openedFromUpload: "1",
+      returnTo: safeReturnTo,
+    });
+    return `/projects/${projectSummaryId}?${query.toString()}`;
+  }
+
+  function handleBackToProjects() {
+    if (!openedFromUpload) {
+      nav("/projects");
+      return;
+    }
+
+    if (window.opener && !window.opener.closed) {
+      try {
+        window.opener.location.assign(safeReturnTo);
+        window.opener.focus();
+        window.close();
+        return;
+      } catch {
+        // Fall back to same-tab navigation if opener is unavailable.
+      }
+    }
+
+    nav(safeReturnTo);
+  }
+
   if (loading) {
     return (
       <>
@@ -217,7 +250,7 @@ export default function ProjectDetailPage() {
             <SectionCard className="w-full max-w-[1110px] self-center bg-white">
               <div className="content">
                 <p className="error">{error ?? "Project not found."}</p>
-                <button className="btn" onClick={() => nav("/projects")}>
+                <button className="btn" onClick={handleBackToProjects}>
                   ← Back to Projects
                 </button>
               </div>
@@ -290,7 +323,7 @@ export default function ProjectDetailPage() {
 
           <SectionCard className="w-full max-w-[1110px] self-center bg-white">
             <div className="content">
-              <button className="pdBackBtn" onClick={() => nav("/projects")}>
+              <button className="pdBackBtn" onClick={handleBackToProjects}>
                 ← Back to Projects
               </button>
 
@@ -497,9 +530,7 @@ export default function ProjectDetailPage() {
                   {prevProject ? (
                     <button
                       className="pdNavBtn"
-                      onClick={() =>
-                        nav(`/projects/${prevProject.project_summary_id}`)
-                      }
+                      onClick={() => nav(detailRoute(prevProject.project_summary_id))}
                     >
                       ← {prevProject.project_name}
                     </button>
@@ -509,9 +540,7 @@ export default function ProjectDetailPage() {
                   {nextProject && (
                     <button
                       className="pdNavBtn"
-                      onClick={() =>
-                        nav(`/projects/${nextProject.project_summary_id}`)
-                      }
+                      onClick={() => nav(detailRoute(nextProject.project_summary_id))}
                     >
                       {nextProject.project_name} →
                     </button>
