@@ -22,6 +22,8 @@ type LevelStarsProps = {
     size?: "sm" | "md";
 };
 
+const MAX_STARS = 3;
+
 export default function LevelStars({ level, className = "", size = "md" }: LevelStarsProps) {
     const count = levelToStarCount(level);
     const label = levelToLabel(level);
@@ -32,17 +34,23 @@ export default function LevelStars({ level, className = "", size = "md" }: Level
             className={`inline-flex items-center gap-0.5 ${className}`}
             title={label}
             role="img"
-            aria-label={`${label} (${count} star${count !== 1 ? "s" : ""})`}
+            aria-label={`${label} (${count} of ${MAX_STARS} stars)`}
         >
-            {Array.from({ length: count }).map((_, i) => (
-                <Star
-                    key={i}
-                    size={iconSize}
-                    className="fill-sky-500 text-sky-500"
-                    strokeWidth={2}
-                    aria-hidden
-                />
-            ))}
+            {Array.from({ length: MAX_STARS }).map((_, i) => {
+                const filled = i < count;
+                return (
+                    <Star
+                        key={i}
+                        size={iconSize}
+                        className={filled
+                            ? "fill-sky-500 text-sky-500"
+                            : "fill-slate-300 text-slate-300"
+                        }
+                        strokeWidth={2}
+                        aria-hidden
+                    />
+                );
+            })}
         </span>
     );
 }
