@@ -113,13 +113,11 @@ export default function PublicProjectDetailPage() {
               <h3>Duration</h3>
             </div>
             <p className="pdDateDisplay">
-              {!project.start_date && !project.end_date
-                ? "No dates available"
-                : !project.start_date
-                  ? `Unknown start – ${toShortDate(project.end_date)}`
-                  : !project.end_date
-                    ? `${toShortDate(project.start_date)} – Present`
-                    : `${toShortDate(project.start_date)} – ${toShortDate(project.end_date)}`}
+              {!project.start_date
+                ? `Unknown start – ${toShortDate(project.end_date)}`
+                : !project.end_date
+                  ? `${toShortDate(project.start_date)} – Present`
+                  : `${toShortDate(project.start_date)} – ${toShortDate(project.end_date)}`}
             </p>
           </div>
         )}

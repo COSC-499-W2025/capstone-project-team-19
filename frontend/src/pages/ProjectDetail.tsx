@@ -22,6 +22,13 @@ import {
 import { PageContainer, PageHeader, SectionCard } from "../components/shared";
 import { toShortDate } from "../components/insights/tabs/Skills/utils/formatHelpers";
 
+/** Normalize a date string to YYYY-MM-DD for use in <input type="date">. */
+function toDateInputValue(iso?: string | null): string {
+  if (!iso) return "";
+  const match = iso.match(/^\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : "";
+}
+
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const projectId = Number(id);
@@ -69,8 +76,8 @@ export default function ProjectDetailPage() {
         setDates(dateItem);
         setFeedback(fb);
         setAllProjects(projects);
-        setStartDate(dateItem?.start_date ?? "");
-        setEndDate(dateItem?.end_date ?? "");
+        setStartDate(toDateInputValue(dateItem?.start_date));
+        setEndDate(toDateInputValue(dateItem?.end_date));
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
@@ -122,8 +129,8 @@ export default function ProjectDetailPage() {
         endDate || null,
       );
       setDates(updated);
-      setStartDate(updated.start_date ?? "");
-      setEndDate(updated.end_date ?? "");
+      setStartDate(toDateInputValue(updated.start_date));
+      setEndDate(toDateInputValue(updated.end_date));
       setEditingDates(false);
     } catch (e: unknown) {
       setDatesError(e instanceof Error ? e.message : "Save failed");
@@ -133,8 +140,8 @@ export default function ProjectDetailPage() {
   }
 
   function handleCancelDates() {
-    setStartDate(dates?.start_date ?? "");
-    setEndDate(dates?.end_date ?? "");
+    setStartDate(toDateInputValue(dates?.start_date));
+    setEndDate(toDateInputValue(dates?.end_date));
     setDatesError(null);
     setEditingDates(false);
   }
@@ -145,8 +152,8 @@ export default function ProjectDetailPage() {
     try {
       const updated = await resetProjectDates(projectId);
       setDates(updated);
-      setStartDate(updated.start_date ?? "");
-      setEndDate(updated.end_date ?? "");
+      setStartDate(toDateInputValue(updated.start_date));
+      setEndDate(toDateInputValue(updated.end_date));
       setEditingDates(false);
     } catch (e: unknown) {
       setDatesError(e instanceof Error ? e.message : "Reset failed");
@@ -377,7 +384,11 @@ export default function ProjectDetailPage() {
                   {!editingDates && (
                     <button
                       className="pdEditBtn"
-                      onClick={() => setEditingDates(true)}
+                      onClick={() => {
+                        setStartDate(toDateInputValue(dates?.start_date));
+                        setEndDate(toDateInputValue(dates?.end_date));
+                        setEditingDates(true);
+                      }}
                     >
                       Edit
                     </button>
