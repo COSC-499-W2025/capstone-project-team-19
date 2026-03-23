@@ -7,12 +7,18 @@ vi.mock('../../api/projects', () => ({
     fetchThumbnailUrl: vi.fn(),
 }))
 
+vi.mock('../../api/portfolioSettings', () => ({
+    updateProjectVisibility: vi.fn(),
+}))
+
 vi.mock('../../auth/user', () => ({
     getUsername: vi.fn(() => 'testuser'),
 }))
 
 vi.mock('react-router-dom', () => ({
     useNavigate: vi.fn(() => vi.fn()),
+    Link: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
+    NavLink: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
 }))
 
 vi.mock('../../components/TopBar', () => ({
@@ -38,8 +44,8 @@ describe('ProjectsPage', () => {
 
     it('renders project cards after successful load', async () => {
         vi.mocked(listProjects).mockResolvedValue([
-            { project_summary_id: 1, project_name: 'Project Alpha', project_key: null, project_type: null, project_mode: null, created_at: null },
-            { project_summary_id: 2, project_name: 'Project Beta', project_key: null, project_type: null, project_mode: null, created_at: null },
+            { project_summary_id: 1, project_name: 'Project Alpha', project_key: null, project_type: null, project_mode: null, created_at: null, is_public: false },
+            { project_summary_id: 2, project_name: 'Project Beta', project_key: null, project_type: null, project_mode: null, created_at: null, is_public: false },
         ])
         render(<ProjectsPage />)
         await waitFor(() => {
@@ -73,6 +79,6 @@ describe('ProjectsPage', () => {
     it('renders the page heading', async () => {
         vi.mocked(listProjects).mockResolvedValue([])
         render(<ProjectsPage />)
-        expect(screen.getByText('Projects')).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: 'Projects' })).toBeInTheDocument()
     })
 })
