@@ -16,4 +16,6 @@ export {
   X,
   FolderOpen,
   Search,
+  Eye,
+  EyeOff,
 } from "lucide-react";
