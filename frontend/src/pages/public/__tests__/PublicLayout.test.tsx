@@ -7,8 +7,8 @@ vi.mock('react-router-dom', () => ({
   NavLink: ({ to, children }: { to: string; children: React.ReactNode }) => (
     <a href={to}>{children}</a>
   ),
-  Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
-    <a href={to}>{children}</a>
+  Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
+    <a href={to} {...rest}>{children}</a>
   ),
 }))
 
@@ -54,16 +54,16 @@ describe('PublicLayout', () => {
     expect(screen.getByTestId('child-content')).toBeInTheDocument()
   })
 
-  it('shows logged-in username when user is logged in', () => {
+  it('shows profile link when user is logged in', () => {
     vi.mocked(tokenStore.get).mockReturnValue('some-token')
     vi.mocked(getUsername).mockReturnValue('currentuser')
     render(<PublicLayout><div /></PublicLayout>)
-    expect(screen.getByText('currentuser')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /logged in as currentuser/i })).toBeInTheDocument()
   })
 
   it('does not show logged-in user area when not logged in', () => {
     vi.mocked(tokenStore.get).mockReturnValue(null)
-    vi.mocked(getUsername).mockReturnValue(null)
+    vi.mocked(getUsername).mockReturnValue(null as unknown as string)
     render(<PublicLayout><div /></PublicLayout>)
     expect(screen.queryByText('currentuser')).not.toBeInTheDocument()
   })
