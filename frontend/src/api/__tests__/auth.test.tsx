@@ -38,8 +38,8 @@ describe("Auth pages", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByPlaceholderText("Username"), "testuser");
-    await user.type(screen.getByPlaceholderText("Password"), "Password123");
+    await user.type(screen.getByLabelText("Username"), "testuser");
+    await user.type(screen.getByLabelText("Password"), "Password123");
     await user.click(screen.getByRole("button", { name: "Login" }));
 
     expect(await screen.findByTestId("home")).toBeInTheDocument();
@@ -62,8 +62,8 @@ describe("Auth pages", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByPlaceholderText("Username"), "testuser");
-    await user.type(screen.getByPlaceholderText("Password"), "wrong");
+    await user.type(screen.getByLabelText("Username"), "testuser");
+    await user.type(screen.getByLabelText("Password"), "wrong");
     await user.click(screen.getByRole("button", { name: "Login" }));
 
     expect(await screen.findByText("Invalid credentials")).toBeInTheDocument();
@@ -80,12 +80,36 @@ describe("Auth pages", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByPlaceholderText("Username"), "testuser");
-    await user.type(screen.getByPlaceholderText("Password"), "Password123");
-    await user.type(screen.getByPlaceholderText("Confirm Password"), "Password124");
+    await user.type(screen.getByLabelText("Username"), "testuser");
+    // Password123! passes all rules; mismatched confirm triggers the mismatch error
+    await user.type(screen.getByLabelText("Password"), "Password123!");
+    await user.type(screen.getByLabelText("Confirm Password"), "Password124!");
     await user.click(screen.getByRole("button", { name: "Register" }));
 
-    expect(await screen.findByText("Passwords do not match")).toBeInTheDocument();
+    expect(await screen.findByText("Passwords do not match.")).toBeInTheDocument();
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  it("Register with weak password shows requirements error and does not call API", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/register"]}>
+        <Routes>
+          <Route path="/register" element={<RegisterPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await user.type(screen.getByLabelText("Username"), "testuser");
+    // Fails: no uppercase, no number, no special character
+    await user.type(screen.getByLabelText("Password"), "weakpass");
+    await user.type(screen.getByLabelText("Confirm Password"), "weakpass");
+    await user.click(screen.getByRole("button", { name: "Register" }));
+
+    expect(
+      await screen.findByText("Please meet all password requirements.")
+    ).toBeInTheDocument();
     expect(register).not.toHaveBeenCalled();
   });
 
@@ -106,12 +130,13 @@ describe("Auth pages", () => {
       </MemoryRouter>
     );
 
-    await user.type(screen.getByPlaceholderText("Username"), "testuser");
-    await user.type(screen.getByPlaceholderText("Password"), "Password123");
-    await user.type(screen.getByPlaceholderText("Confirm Password"), "Password123");
+    await user.type(screen.getByLabelText("Username"), "testuser");
+    // Password123! satisfies all five rules
+    await user.type(screen.getByLabelText("Password"), "Password123!");
+    await user.type(screen.getByLabelText("Confirm Password"), "Password123!");
     await user.click(screen.getByRole("button", { name: "Register" }));
 
     expect(await screen.findByTestId("login")).toBeInTheDocument();
-    expect(register).toHaveBeenCalledWith("testuser", "Password123");
+    expect(register).toHaveBeenCalledWith("testuser", "Password123!");
   });
 });

@@ -58,8 +58,8 @@ describe("RankedProjectsTab", () => {
 			expect(screen.getByText("Project A")).toBeInTheDocument();
 		});
 		expect(screen.getByText("Project B")).toBeInTheDocument();
-		expect(screen.getByText("0.85")).toBeInTheDocument();
-		expect(screen.getByText("0.72")).toBeInTheDocument();
+		expect(screen.getByText(/85\.0\s*%/)).toBeInTheDocument();
+		expect(screen.getByText(/72\.0\s*%/)).toBeInTheDocument();
 	});
 
 	it("shows error when fetch fails", async () => {

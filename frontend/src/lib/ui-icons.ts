@@ -14,4 +14,8 @@ export {
   Trash2,
   Upload,
   X,
+  FolderOpen,
+  Search,
+  Eye,
+  EyeOff,
 } from "lucide-react";

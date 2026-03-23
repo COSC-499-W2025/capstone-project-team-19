@@ -1,15 +1,21 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import TopBar from "../components/TopBar";
 import { login } from "../api/auth";
 import { tokenStore } from "../auth/token";
-import { Button } from "../components/ui/button";
+import {
+  AppButton,
+  AppField,
+  AppInput,
+  AuthPageShell,
+} from "../components/shared";
+import { Eye, EyeOff } from "../lib/ui-icons";
 
 export default function LoginPage() {
   const nav = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,43 +36,58 @@ export default function LoginPage() {
   }
 
   return (
-    <>
-      <TopBar />
-      <div className="page">
-        <form className="card" onSubmit={onSubmit}>
-          <label>Username</label>
-          <input
-            placeholder="Username"
+    <AuthPageShell>
+      <form
+        className="mx-auto flex w-full max-w-[300px] flex-col gap-[14px]"
+        onSubmit={onSubmit}
+      >
+        <AppField label="Username">
+          <AppInput
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
+            aria-label="Username"
           />
+        </AppField>
 
-          <label>Password</label>
-          <input
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-          />
-
-          {err && (
-            <div className="error" style={{ whiteSpace: "pre-line" }}>
-              {err}
-            </div>
-          )}
-
-          <Button type="submit" disabled={loading} className="w-full mt-1.5">
-            {loading ? "Logging in..." : "Login"}
-          </Button>
-
-
-          <div className="helper">
-            Don&apos;t have an account? <Link to="/register">Register here</Link>
+        <AppField label="Password">
+          <div className="relative">
+            <AppInput
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              aria-label="Password"
+              className="pr-[36px]"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-[10px] top-1/2 -translate-y-1/2 text-[#7f7f7f] hover:text-[#3f3f3f]"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
-        </form>
-      </div>
-    </>
+        </AppField>
+
+        {err && (
+          <div className="text-[13px] leading-[1.35] text-[#cc4b4b]">
+            {err}
+          </div>
+        )}
+
+        <AppButton type="submit" disabled={loading} fullWidth className="mt-[4px]">
+          {loading ? "Logging in..." : "Login"}
+        </AppButton>
+
+        <p className="text-center text-[12px] text-[#7f7f7f]">
+          Don&apos;t have an account?{" "}
+          <Link to="/register" className="underline underline-offset-2">
+            Register here
+          </Link>
+        </p>
+      </form>
+    </AuthPageShell>
   );
 }

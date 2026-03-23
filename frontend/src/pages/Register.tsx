@@ -1,23 +1,47 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import TopBar from "../components/TopBar";
 import { register } from "../api/auth";
+import {
+  AppButton,
+  AppField,
+  AppInput,
+  AuthPageShell,
+} from "../components/shared";
+import { Eye, EyeOff } from "../lib/ui-icons";
+
+const PASSWORD_RULES = [
+  { id: "length",  label: "At least 8 characters",              test: (p: string) => p.length >= 8 },
+  { id: "upper",   label: "At least one uppercase letter (A–Z)", test: (p: string) => /[A-Z]/.test(p) },
+  { id: "lower",   label: "At least one lowercase letter (a–z)", test: (p: string) => /[a-z]/.test(p) },
+  { id: "number",  label: "At least one number (0–9)",           test: (p: string) => /[0-9]/.test(p) },
+  { id: "special", label: "At least one special character",      test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+];
 
 export default function RegisterPage() {
   const nav = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const passwordTouched = password.length > 0;
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErr(null);
 
+    const failures = PASSWORD_RULES.filter((r) => !r.test(password));
+    if (failures.length > 0) {
+      setErr("Please meet all password requirements.");
+      return;
+    }
+
     if (password !== confirm) {
-      setErr("Passwords do not match");
+      setErr("Passwords do not match.");
       return;
     }
 
@@ -33,55 +57,98 @@ export default function RegisterPage() {
   }
 
   return (
-    <>
-      <TopBar />
-      <div className="page">
-        <form className="card" onSubmit={onSubmit}>
-          <label>Username</label>
-          <input
-            placeholder="Username"
+    <AuthPageShell>
+      <form
+        className="mx-auto flex w-full max-w-[300px] flex-col gap-[14px]"
+        onSubmit={onSubmit}
+      >
+        <AppField label="Username">
+          <AppInput
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
+            aria-label="Username"
           />
+        </AppField>
 
-          <label>Password</label>
-          <input
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-          />
+        <AppField label="Password">
+          <div className="relative">
+            <AppInput
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              aria-label="Password"
+              className="pr-[36px]"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-[10px] top-1/2 -translate-y-1/2 text-[#7f7f7f] hover:text-[#3f3f3f]"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
 
-          <label>Confirm Password</label>
-          <input
-            placeholder="Confirm Password"
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            autoComplete="new-password"
-          />
-
-          {err && (
-            <div className="error" style={{ whiteSpace: "pre-line" }}>
-              {err}
-            </div>
+          {passwordTouched && (
+            <ul className="mt-[6px] flex flex-col gap-[3px]">
+              {PASSWORD_RULES.map((rule) => {
+                const passed = rule.test(password);
+                return (
+                  <li
+                    key={rule.id}
+                    className={`flex items-center gap-[5px] text-[12px] leading-[1.3] ${
+                      passed ? "text-[#16a34a]" : "text-[#7f7f7f]"
+                    }`}
+                  >
+                    <span className="text-[10px]">{passed ? "✓" : "○"}</span>
+                    {rule.label}
+                  </li>
+                );
+              })}
+            </ul>
           )}
+        </AppField>
 
-          <button className="btn" type="submit" disabled={loading}>
-            {loading ? "Registering..." : "Register"}
-          </button>
-
-          <div className="helper">
-            Already have an account? <Link to="/login">Login here</Link>
+        <AppField label="Confirm Password">
+          <div className="relative">
+            <AppInput
+              type={showConfirm ? "text" : "password"}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="new-password"
+              aria-label="Confirm Password"
+              className="pr-[36px]"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm((v) => !v)}
+              className="absolute right-[10px] top-1/2 -translate-y-1/2 text-[#7f7f7f] hover:text-[#3f3f3f]"
+              aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
+            >
+              {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
+        </AppField>
 
-          <div className="hint">
-            Password must be 8+ chars and include uppercase, lowercase, and a number.
+        {err && (
+          <div className="text-[13px] leading-[1.35] text-[#cc4b4b]">
+            {err}
           </div>
-        </form>
-      </div>
-    </>
+        )}
+
+        <AppButton type="submit" disabled={loading} fullWidth className="mt-[4px]">
+          {loading ? "Registering..." : "Register"}
+        </AppButton>
+
+        <p className="text-center text-[12px] text-[#7f7f7f]">
+          Already have an account?{" "}
+          <Link to="/login" className="underline underline-offset-2">
+            Login here
+          </Link>
+        </p>
+      </form>
+    </AuthPageShell>
   );
 }

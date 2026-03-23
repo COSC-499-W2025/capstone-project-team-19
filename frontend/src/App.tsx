@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import HomePage from "./pages/Home";
-import { tokenStore } from "./auth/token";
+import { tokenStore, isTokenValid } from "./auth/token";
 import UploadPage from "./pages/upload/upload/UploadPage";
 import UploadSetupPage from "./pages/upload/setup/SetupPage";
 import UploadAnalyzePage from "./pages/upload/analyze/AnalyzePage";
@@ -27,7 +27,12 @@ import PublicOutputsPage from "./pages/public/PublicOutputsPage";
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const token = tokenStore.get();
-  if (!token) return <Navigate to="/login" replace />;
+
+  if (!isTokenValid(token)) {
+    tokenStore.clear();
+    return <Navigate to="/login" replace />;
+  }
+
   return <>{children}</>;
 }
 
@@ -152,7 +157,7 @@ export default function App() {
             </RequireAuth>
           }
         />
-        
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

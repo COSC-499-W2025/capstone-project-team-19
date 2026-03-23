@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import App from "../../App";
 import * as consentApi from "../../api/consent";
+import { tokenStore } from "../../auth/token";
 
 vi.mock("../../api/consent", () => ({
   getConsentStatus: vi.fn(),
@@ -19,9 +20,30 @@ function setRoute(path: string) {
   window.history.pushState({}, "", path);
 }
 
+function makeJwt(payload: Record<string, unknown>) {
+  const header = { alg: "HS256", typ: "JWT" };
+
+  const b64url = (obj: unknown) =>
+    btoa(JSON.stringify(obj))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
+
+  return `${b64url(header)}.${b64url(payload)}.sig`;
+}
+
 describe("upload wizard flow", () => {
   beforeEach(() => {
-    localStorage.setItem("resuME_token", "test-token");
+    vi.clearAllMocks();
+    localStorage.clear();
+
+    tokenStore.set(
+      makeJwt({
+        sub: "1",
+        username: "testuser",
+        exp: Math.floor(Date.now() / 1000) + 60 * 60,
+      })
+    );
 
     mockedGetConsentStatus.mockResolvedValue({
       success: true,
