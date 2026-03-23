@@ -123,20 +123,7 @@ export default function ProjectsPage() {
                     onClick={() => nav(`/projects/${p.project_summary_id}`)}
                   />
                   <button
-                    className="absolute right-[8px] top-[8px] z-10 rounded-full border px-[8px] py-[2px] text-[11px] font-medium leading-none transition disabled:opacity-50"
-                    style={
-                      p.is_public
-                        ? {
-                            background: "rgba(220,252,231,0.95)",
-                            borderColor: "#16a34a",
-                            color: "#15803d",
-                          }
-                        : {
-                            background: "rgba(255,255,255,0.92)",
-                            borderColor: "#d1d5db",
-                            color: "#6b7280",
-                          }
-                    }
+                    className={`absolute right-[8px] top-[8px] z-10 cursor-pointer rounded-full border px-[8px] py-[2px] text-[11px] font-medium leading-none transition disabled:opacity-50 ${p.is_public ? "border-green-600 bg-green-100/95 text-green-700" : "border-gray-300 bg-white/[.92] text-gray-500"}`}
                     onClick={(e) => handleToggleVisibility(e, p)}
                     disabled={toggling === p.project_summary_id}
                     title={

@@ -17,7 +17,7 @@ export default function FeatureTile({
 }: Props) {
   return (
     <button
-      className={cn("w-[220px] bg-transparent text-left", className)}
+      className={cn("w-[220px] cursor-pointer bg-transparent text-left", className)}
       {...props}
     >
       <div className="ui-surface-radius overflow-hidden border border-[#e5e5e5] bg-white">
@@ -25,7 +25,7 @@ export default function FeatureTile({
           {thumbnailUrl ? (
             <img
               src={thumbnailUrl}
-              alt=""
+              alt={title}
               className="h-full w-full object-cover"
             />
           ) : Icon ? (
