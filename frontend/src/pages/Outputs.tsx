@@ -51,18 +51,24 @@ export default function OutputsPage() {
     }
   }
 
+  const goLanding = () => setView({ kind: "landing" });
+  const goResumes = () => setView({ kind: "resumes" });
+
   const headerConfig =
     view.kind === "landing"
       ? {
           title: "Outputs",
-          breadcrumbs: [{ label: "Home", href: "/" }, { label: "Outputs", href: "/outputs" }],
+          breadcrumbs: [
+            { label: "Home", href: "/" },
+            { label: "Outputs" },
+          ],
         }
       : view.kind === "resumes"
       ? {
           title: "Resume Items",
           breadcrumbs: [
             { label: "Home", href: "/" },
-            { label: "Outputs", href: "/outputs" },
+            { label: "Outputs", onClick: goLanding },
             { label: "Resume Items" },
           ],
         }
@@ -71,8 +77,8 @@ export default function OutputsPage() {
           title: "Resume Detail",
           breadcrumbs: [
             { label: "Home", href: "/" },
-            { label: "Outputs", href: "/outputs" },
-            { label: "Resume Items", href: "/outputs/resumes" },
+            { label: "Outputs", onClick: goLanding },
+            { label: "Resume Items", onClick: goResumes },
             { label: "Resume Detail" },
           ],
         }
@@ -80,7 +86,7 @@ export default function OutputsPage() {
           title: "Portfolio Items",
           breadcrumbs: [
             { label: "Home", href: "/" },
-            { label: "Outputs", href: "/outputs" },
+            { label: "Outputs", onClick: goLanding },
             { label: "Portfolio Items" },
           ],
         };
