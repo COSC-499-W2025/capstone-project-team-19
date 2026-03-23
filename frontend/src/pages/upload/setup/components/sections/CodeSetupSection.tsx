@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { GitHubRepo, GitIdentityOption } from "../../../../../api/uploads";
 import type { SetupFlowResult, SetupProjectCard } from "../../types";
+import { setupPrimaryActionButtonClass, setupSecondaryActionButtonClass } from "./buttonStyles";
 
 type Props = {
   project: SetupProjectCard;
@@ -203,7 +204,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             type="button"
             onClick={onSaveIdentities}
             disabled={isMutating || project.projectKey === null}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+            className={setupPrimaryActionButtonClass}
           >
             Save identity selection
           </button>
@@ -228,7 +229,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             type="button"
             onClick={() => onGithubStart(true)}
             disabled={isMutating}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+            className={setupPrimaryActionButtonClass}
           >
             Connect GitHub
           </button>
@@ -236,7 +237,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             type="button"
             onClick={() => onGithubStart(false)}
             disabled={isMutating}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+            className={setupSecondaryActionButtonClass}
           >
             Skip for now
           </button>
@@ -244,7 +245,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             type="button"
             onClick={onLoadRepos}
             disabled={isMutating || reposLoading}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+            className={setupSecondaryActionButtonClass}
           >
             {reposLoading ? "Loading..." : "Load repositories"}
           </button>
@@ -255,7 +256,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             href={authUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-[#001166]"
+            className={setupSecondaryActionButtonClass}
           >
             Open GitHub Authorization
           </a>
@@ -279,7 +280,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
               type="button"
               onClick={onLinkRepo}
               disabled={isMutating || !selectedRepo}
-              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+              className={setupPrimaryActionButtonClass}
             >
               Link selected repository
             </button>

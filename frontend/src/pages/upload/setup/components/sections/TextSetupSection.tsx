@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { DriveFile, MainFileSection, UploadProjectFilesRecord } from "../../../../../api/uploads";
 import type { SetupFlowResult, SetupProjectCard } from "../../types";
+import { setupPrimaryActionButtonClass, setupSecondaryActionButtonClass } from "./buttonStyles";
 
 type Props = {
   project: SetupProjectCard;
@@ -314,7 +315,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               type="button"
               onClick={onSaveMainFile}
               disabled={isMutating || !mainFile || project.projectKey === null}
-              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+              className={setupPrimaryActionButtonClass}
             >
               Save main file
             </button>
@@ -331,7 +332,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               type="button"
               onClick={onLoadSections}
               disabled={isMutating || sectionsLoading || project.projectKey === null}
-              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+              className={setupSecondaryActionButtonClass}
             >
               {sectionsLoading ? "Loading..." : "Load sections"}
             </button>
@@ -361,7 +362,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 type="button"
                 onClick={onSaveSections}
                 disabled={isMutating || project.projectKey === null}
-                className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+                className={setupPrimaryActionButtonClass}
               >
                 Save section selection
               </button>
@@ -396,7 +397,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               type="button"
               onClick={onSaveSupportingText}
               disabled={isMutating || project.projectKey === null}
-              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+              className={setupPrimaryActionButtonClass}
             >
               Save supporting text files
             </button>
@@ -426,7 +427,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               type="button"
               onClick={onSaveSupportingCsv}
               disabled={isMutating || project.projectKey === null}
-              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+              className={setupPrimaryActionButtonClass}
             >
               Save supporting CSV files
             </button>
@@ -458,7 +459,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 type="button"
                 onClick={onConnectDrive}
                 disabled={isMutating}
-                className="rounded border border-zinc-300 bg-[#001166] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                className={setupPrimaryActionButtonClass}
               >
                 Connect Google Drive
               </button>
@@ -468,7 +469,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 type="button"
                 onClick={onLoadDriveFiles}
                 disabled={isMutating || driveLoading}
-                className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+                className={setupSecondaryActionButtonClass}
               >
                 {driveLoading ? "Loading..." : driveFilesLoaded ? "Reload Drive Files" : "Load Drive Files"}
               </button>
@@ -544,7 +545,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 />
                 <button
                   type="button"
-                  className="rounded border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-900"
+                  className={setupSecondaryActionButtonClass}
                   onClick={() => setDrivePage(1)}
                   disabled={isMutating || !isDriveConnected || driveLoading}
                 >
@@ -604,7 +605,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                   type="button"
                   onClick={onMapSelectedFile}
                   disabled={!isDriveConnected || !selectedLocalFile || !selectedDriveFileId}
-                  className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+                  className={setupSecondaryActionButtonClass}
                 >
                   Select
                 </button>
@@ -618,7 +619,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                   <button
                     type="button"
                     onClick={onResetDriveMapping}
-                    className="rounded border border-zinc-300 bg-white px-3 py-1.5 font-medium text-zinc-900"
+                    className={setupSecondaryActionButtonClass}
                   >
                     Reset
                   </button>
@@ -626,7 +627,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                     type="button"
                     onClick={onFinalizeDriveLinks}
                     disabled={isMutating || mappedDriveCount <= 0}
-                    className="rounded border border-zinc-300 bg-[#001166] px-3 py-1.5 font-medium text-white disabled:opacity-50"
+                    className={setupPrimaryActionButtonClass}
                   >
                     Finalize
                   </button>

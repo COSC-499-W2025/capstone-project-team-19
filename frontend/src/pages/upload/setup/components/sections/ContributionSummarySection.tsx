@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { SetupFlowResult, SetupProjectCard, SummaryMode } from "../../types";
+import { setupPrimaryActionButtonClass } from "./buttonStyles";
 
 type Props = {
   project: SetupProjectCard;
@@ -78,7 +79,7 @@ export default function ContributionSummarySection({
               type="button"
               onClick={onSave}
               disabled={isMutating || project.projectKey === null}
-              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+              className={setupPrimaryActionButtonClass}
             >
               Save contribution summary
             </button>
