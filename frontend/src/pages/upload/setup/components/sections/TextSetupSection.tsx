@@ -9,6 +9,7 @@ type Props = {
 };
 
 const DRIVE_PAGE_SIZE = 5;
+const DRIVE_OAUTH_MESSAGE_SOURCE = "capstone-google-drive-oauth";
 
 function toggleString(values: string[], value: string): string[] {
   if (values.includes(value)) return values.filter((item) => item !== value);
@@ -24,6 +25,17 @@ function isCsvRelpath(relpath: string): boolean {
   return relpath.trim().toLowerCase().endsWith(".csv");
 }
 
+type DriveOauthMessage = {
+  source?: string;
+  status?: string;
+  project_name?: string;
+};
+
+function asDriveOauthMessage(value: unknown): DriveOauthMessage | null {
+  if (!value || typeof value !== "object") return null;
+  return value as DriveOauthMessage;
+}
+
 export default function TextSetupSection({ project, actions, isMutating }: Props) {
   const [filesPayload, setFilesPayload] = useState<UploadProjectFilesRecord | null>(null);
   const [filesLoading, setFilesLoading] = useState(false);
@@ -33,14 +45,11 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   const [selectedSectionIds, setSelectedSectionIds] = useState<number[]>(project.mainSectionIds);
   const [selectedSupportingText, setSelectedSupportingText] = useState<string[]>(project.supportingTextRelpaths);
   const [selectedSupportingCsv, setSelectedSupportingCsv] = useState<string[]>(project.supportingCsvRelpaths);
-  const [driveChoice, setDriveChoice] = useState<"" | "yes" | "no">(
-    project.driveState === "connected" ? "yes" : project.driveState === "skipped" ? "no" : "",
-  );
   const [driveSearch, setDriveSearch] = useState("");
   const [selectedLocalFile, setSelectedLocalFile] = useState("");
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>([]);
+  const [driveFilesLoaded, setDriveFilesLoaded] = useState(false);
   const [driveLoading, setDriveLoading] = useState(false);
-  const [driveAuthUrl, setDriveAuthUrl] = useState<string | null>(null);
   const [selectedDriveFileId, setSelectedDriveFileId] = useState("");
   const [driveMapByLocalFile, setDriveMapByLocalFile] = useState<Record<string, DriveFile>>({});
   const [driveMessage, setDriveMessage] = useState<string | null>(null);
@@ -54,13 +63,11 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     setSelectedSectionIds(project.mainSectionIds);
     setSelectedSupportingText(project.supportingTextRelpaths.filter((relpath) => !isCsvRelpath(relpath)));
     setSelectedSupportingCsv(project.supportingCsvRelpaths);
-    setDriveChoice(project.driveState === "connected" ? "yes" : project.driveState === "skipped" ? "no" : "");
   }, [
     project.mainFileRelpath,
     project.mainSectionIds,
     project.supportingCsvRelpaths,
     project.supportingTextRelpaths,
-    project.driveState,
   ]);
 
   useEffect(() => {
@@ -109,6 +116,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     () => Object.keys(driveMapByLocalFile).filter((name) => Boolean(driveMapByLocalFile[name])).length,
     [driveMapByLocalFile],
   );
+  const isDriveConnected = project.driveState === "connected";
   const showContributionSectionPicker =
     project.projectType === "text" && project.classification === "collaborative";
   const showCollaborativeDriveUi = project.projectType === "text" && project.classification === "collaborative";
@@ -143,20 +151,36 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   }, [driveLocalFiles, selectedLocalFile]);
 
   useEffect(() => {
-    if (project.driveState !== "connected") return;
-    let active = true;
-    async function loadDriveFiles() {
-      setDriveLoading(true);
-      const data = await actions.driveFiles(project.projectName);
-      if (!active) return;
-      setDriveFiles(data?.files ?? []);
-      setDriveLoading(false);
+    if (isDriveConnected) return;
+    setDriveFiles([]);
+    setDriveFilesLoaded(false);
+    setDriveMapByLocalFile({});
+    setSelectedDriveFileId("");
+    setDriveSearch("");
+    setDrivePage(1);
+  }, [isDriveConnected]);
+
+  useEffect(() => {
+    function onDriveOauthMessage(event: MessageEvent) {
+      const data = asDriveOauthMessage(event.data);
+      if (!data || data.source !== DRIVE_OAUTH_MESSAGE_SOURCE) return;
+      if (data.project_name && data.project_name !== project.projectName) return;
+
+      if (data.status === "connected") {
+        setDriveMessage("Google Drive is connected.");
+        void actions.driveStart(project.projectName, true);
+        return;
+      }
+      if (data.status === "error") {
+        setDriveMessage("Google Drive authorization failed. Please try connecting again.");
+      }
     }
-    loadDriveFiles();
+
+    window.addEventListener("message", onDriveOauthMessage);
     return () => {
-      active = false;
+      window.removeEventListener("message", onDriveOauthMessage);
     };
-  }, [actions, project.driveState, project.projectName]);
+  }, [actions, project.projectName]);
 
   async function onSaveMainFile() {
     if (project.projectKey === null || !mainFile) return;
@@ -218,52 +242,29 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     setDriveMapByLocalFile({});
   }
 
-  async function onApplyDriveChoice() {
+  async function onConnectDrive() {
     setDriveMessage(null);
-    if (driveChoice === "") return;
-    if (driveChoice === "no") {
-      const data = await actions.driveStart(project.projectName, false);
-      if (!data) return;
-      setDriveAuthUrl(null);
-      setDriveFiles([]);
-      setDriveMessage("Google Drive skipped for now.");
-      return;
-    }
-
     const data = await actions.driveStart(project.projectName, true);
     if (!data) return;
     if (data.auth_url) {
-      setDriveAuthUrl(data.auth_url);
-      setDriveMessage("Continue with Google Drive OAuth using the link below.");
+      const authTab = window.open(data.auth_url, "_blank");
+      if (!authTab) {
+        setDriveMessage("Pop-up blocked. Please allow pop-ups, then click Connect Google Drive again.");
+        return;
+      }
+      setDriveMessage("Google Drive authorization opened in a new tab.");
       return;
     }
-    setDriveAuthUrl(null);
     setDriveMessage("Google Drive is connected.");
-    await onRefreshDriveFiles();
   }
 
-  async function onDriveChoiceChange(choice: "yes" | "no") {
-    setDriveChoice(choice);
-    if (choice === "yes") {
-      setDriveAuthUrl(null);
-      setDriveMessage(null);
-      return;
-    }
-    setDriveAuthUrl(null);
-    setDriveFiles([]);
-    setDriveMapByLocalFile({});
-    setSelectedDriveFileId("");
-    const data = await actions.driveStart(project.projectName, false);
-    if (!data) return;
-    setDriveMessage("Google Drive skipped for now.");
-  }
-
-  async function onRefreshDriveFiles() {
+  async function onLoadDriveFiles() {
     setDriveMessage(null);
     setDriveLoading(true);
     const data = await actions.driveFiles(project.projectName);
     setDriveLoading(false);
     if (!data) return;
+    setDriveFilesLoaded(true);
     setDriveFiles(data.files);
     setDrivePage(1);
     setDriveMessage(data.files.length > 0 ? "Drive files loaded." : "No supported Drive files found.");
@@ -435,75 +436,51 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
 
       {showCollaborativeDriveUi && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-zinc-900">
-              Connect Google Drive for collaborative text mapping?
+          <h4 className="text-lg leading-tight font-semibold text-zinc-900">Google Drive Integration</h4>
+          {!isDriveConnected && (
+            <p className="text-sm text-zinc-700">
+              <span className="font-semibold">Step 1:</span> Connect your Google Drive account to fetch your files.
             </p>
-            <div className="flex items-center gap-5 text-sm text-zinc-800">
-              <label className="flex items-center gap-1.5">
-                <input
-                  type="radio"
-                  name={`drive-choice-${project.projectName}`}
-                  value="yes"
-                  checked={driveChoice === "yes"}
-                  onChange={() => {
-                    void onDriveChoiceChange("yes");
-                  }}
-                  disabled={isMutating}
-                />
-                <span>Yes</span>
-              </label>
-              <label className="flex items-center gap-1.5">
-                <input
-                  type="radio"
-                  name={`drive-choice-${project.projectName}`}
-                  value="no"
-                  checked={driveChoice === "no"}
-                  onChange={() => {
-                    void onDriveChoiceChange("no");
-                  }}
-                  disabled={isMutating}
-                />
-                <span>No</span>
-              </label>
-            </div>
+          )}
+          {isDriveConnected && !driveFilesLoaded && (
+            <p className="text-sm text-zinc-700">
+              <span className="font-semibold">Step 2:</span> Load your Google Drive files.
+            </p>
+          )}
+          {isDriveConnected && driveFilesLoaded && (
+            <p className="text-sm text-zinc-700">
+              <span className="font-semibold">Step 3:</span> Select matching files and finalize the mapping.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {!isDriveConnected && (
+              <button
+                type="button"
+                onClick={onConnectDrive}
+                disabled={isMutating}
+                className="rounded border border-zinc-300 bg-[#001166] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+              >
+                Connect Google Drive
+              </button>
+            )}
+            {isDriveConnected && (
+              <button
+                type="button"
+                onClick={onLoadDriveFiles}
+                disabled={isMutating || driveLoading}
+                className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+              >
+                {driveLoading ? "Loading..." : driveFilesLoaded ? "Reload Drive Files" : "Load Drive Files"}
+              </button>
+            )}
           </div>
-          {driveChoice !== "no" && (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={onApplyDriveChoice}
-                disabled={isMutating || driveChoice === ""}
-                className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-              >
-                Connect Drive
-              </button>
-              <button
-                type="button"
-                onClick={onRefreshDriveFiles}
-                disabled={isMutating || driveChoice !== "yes"}
-                className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-              >
-                Refresh Drive Files
-              </button>
-            </div>
+          {project.driveLinkedFilesCount > 0 && (
+            <p className="text-sm text-zinc-700">
+              Linked files: <span className="font-medium">{project.driveLinkedFilesCount}</span>
+            </p>
           )}
-          {driveAuthUrl && (
-            <a
-              href={driveAuthUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-[#001166]"
-            >
-              Open Google Drive Authorization
-            </a>
-          )}
-          <p className="text-sm text-zinc-700">
-            Current state: <span className="font-medium">{project.driveState}</span>
-            {project.driveLinkedFilesCount > 0 ? ` | Linked files: ${project.driveLinkedFilesCount}` : ""}
-          </p>
 
-          {driveChoice === "yes" && (
+          {isDriveConnected && driveFilesLoaded && (
             <div className="space-y-3">
               <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-lg border border-zinc-300 bg-white p-3">
@@ -563,15 +540,15 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                   onChange={(event) => setDriveSearch(event.target.value)}
                   placeholder="Search Drive files by name..."
                   className="flex-1 rounded !border !border-zinc-300 !bg-zinc-50 !px-4 !py-3 text-sm text-zinc-700 placeholder:text-zinc-400 disabled:!border-zinc-300 disabled:!bg-zinc-50 disabled:!text-zinc-700 disabled:opacity-100"
-                  disabled={isMutating || driveChoice !== "yes"}
+                  disabled={isMutating || !isDriveConnected}
                 />
                 <button
                   type="button"
                   className="rounded border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-900"
                   onClick={() => setDrivePage(1)}
-                  disabled={isMutating || driveChoice !== "yes" || driveLoading}
+                  disabled={isMutating || !isDriveConnected || driveLoading}
                 >
-                  {driveLoading ? "Loading..." : "Search"}
+                  Search
                 </button>
               </div>
 
@@ -579,7 +556,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 {driveLoading && <p className="text-sm text-zinc-600">Loading Drive files...</p>}
                 {filteredDriveResults.length === 0 && (
                   <p className="text-sm text-zinc-600">
-                    {driveChoice === "yes" ? "No matching Drive files." : "Select Yes to start mapping."}
+                    No matching Drive files.
                   </p>
                 )}
                 {drivePageFiles.map((item) => {
@@ -589,7 +566,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                       key={item.id}
                       type="button"
                       onClick={() => onSelectDriveResult(item.id)}
-                      disabled={driveChoice !== "yes"}
+                      disabled={!isDriveConnected}
                       className={`w-full rounded border px-3 py-2 text-left text-sm disabled:opacity-60 ${selected ? "border-emerald-400 bg-emerald-50" : "border-zinc-200 bg-zinc-50"}`}
                     >
                       <div className="font-medium text-zinc-900">{item.name}</div>
@@ -626,7 +603,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 <button
                   type="button"
                   onClick={onMapSelectedFile}
-                  disabled={driveChoice !== "yes" || !selectedLocalFile || !selectedDriveFileId}
+                  disabled={!isDriveConnected || !selectedLocalFile || !selectedDriveFileId}
                   className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
                 >
                   Select
@@ -657,9 +634,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
               </div>
             </div>
           )}
-          {(driveMessage || driveChoice === "no") && (
-            <p className="text-sm text-zinc-700">{driveMessage || "Google Drive skipped for now."}</p>
-          )}
+          {driveMessage && <p className="text-sm text-zinc-700">{driveMessage}</p>}
         </div>
       )}
 

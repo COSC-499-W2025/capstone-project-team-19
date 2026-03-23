@@ -364,7 +364,7 @@ export default function UploadSetupPage() {
           {!flow.loading && !flow.loadError && (
             <div className="mb-8 rounded-md border border-zinc-300 bg-white px-4 py-3">
               <p className="mb-2 text-sm text-zinc-700">
-                Expand each project card below to complete setup details before moving to Analyze.
+                Expand each project card below to complete setup details before moving to Analyze. We recommend resolving any yellow warnings first for a more complete analysis.
               </p>
               <p className="text-sm font-semibold text-zinc-900">Status Guide</p>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
