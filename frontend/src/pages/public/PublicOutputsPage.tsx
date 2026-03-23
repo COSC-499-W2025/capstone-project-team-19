@@ -35,51 +35,51 @@ function ResumeView({ resume, username }: { resume: PublicResumeDetail; username
     const sortedProjects = sortProjectsByDate(resume.projects);
 
     return (
-        <div className="content">
-            <div className="outputsHeader">
-                <h2>{resume.name}</h2>
+        <div className="p-7">
+            <div className="flex items-center gap-3">
+                <h2 className="flex-1 m-0">{resume.name}</h2>
                 <ExportDropdown
                     onDocx={() => publicDownloadResumeDocx(username, resume.id)}
                     onPdf={() => publicDownloadResumePdf(username, resume.id)}
                 />
             </div>
 
-            <hr className="divider" />
+            <hr className="border-0 border-t border-[var(--border)] my-4" />
 
-            <div className="skillsSummaryBlock">
-                <h3>Skills</h3>
+            <div className="mt-6 py-4 px-5 bg-[var(--card)] border border-[var(--border)] rounded-xl">
+                <h3 className="m-0 mb-2 text-base border-b border-[var(--border)] pb-1">Skills</h3>
                 {agg.languages.length > 0 && (
-                    <p><strong>Languages:</strong> {agg.languages.join(", ")}</p>
+                    <p className="my-1 text-sm"><strong>Languages:</strong> {agg.languages.join(", ")}</p>
                 )}
                 {agg.frameworks.length > 0 && (
-                    <p><strong>Frameworks:</strong> {agg.frameworks.join(", ")}</p>
+                    <p className="my-1 text-sm"><strong>Frameworks:</strong> {agg.frameworks.join(", ")}</p>
                 )}
                 {agg.technical_skills.length > 0 && (
-                    <p><strong>Technical skills:</strong> {agg.technical_skills.join(", ")}</p>
+                    <p className="my-1 text-sm"><strong>Technical skills:</strong> {agg.technical_skills.join(", ")}</p>
                 )}
                 {agg.writing_skills.length > 0 && (
-                    <p><strong>Writing skills:</strong> {agg.writing_skills.join(", ")}</p>
+                    <p className="my-1 text-sm"><strong>Writing skills:</strong> {agg.writing_skills.join(", ")}</p>
                 )}
             </div>
 
-            <div className="resumeProjectsList">
-                <h3 className="groupHeader">Projects</h3>
+            <div>
+                <h3 className="text-base font-bold mt-5 mb-2 pb-1 border-b border-[var(--border)]">Projects</h3>
                 {sortedProjects.map((p, i) => {
                     const dateLine = formatDateRange(p.start_date, p.end_date);
                     const subtitle = p.key_role && dateLine
                         ? `${p.key_role} | ${dateLine}`
                         : p.key_role || dateLine;
                     return (
-                        <div key={i} className="resumeProjectBlock">
-                            <div className="projectBlockContent">
-                                <h4 className="projectBlockName">{p.project_name}</h4>
+                        <div key={i} className="bg-[var(--card)] border border-[var(--border)] rounded-xl py-4 px-5 mb-[10px] shadow-sm">
+                            <div>
+                                <h4 className="m-0 mb-1.5 text-[15px] font-bold">{p.project_name}</h4>
                                 {subtitle && (
-                                    <p className="projectField" style={{ fontStyle: "italic" }}>{subtitle}</p>
+                                    <p className="my-0.5 pl-4 text-sm leading-[1.5] italic">{subtitle}</p>
                                 )}
                                 {p.contribution_bullets.length > 0 && (
-                                    <ul className="bulletList">
+                                    <ul className="my-0.5 pl-6 list-disc">
                                         {p.contribution_bullets.map((b, j) => (
-                                            <li key={j}>{b}</li>
+                                            <li key={j} className="text-sm leading-[1.5]">{b}</li>
                                         ))}
                                     </ul>
                                 )}
@@ -109,11 +109,11 @@ export default function PublicOutputsPage() {
     return (
         <PublicLayout>
             {loading ? (
-                <div className="content"><p>Loading...</p></div>
+                <div className="p-7"><p>Loading...</p></div>
             ) : error ? (
-                <div className="content"><p className="error">{error}</p></div>
+                <div className="p-7"><p className="text-[#b00020] text-xs">{error}</p></div>
             ) : !resume ? (
-                <div className="content"><p>No resume has been set for this portfolio.</p></div>
+                <div className="p-7"><p>No resume has been set for this portfolio.</p></div>
             ) : (
                 <ResumeView resume={resume} username={username!} />
             )}
