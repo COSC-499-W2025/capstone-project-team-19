@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import PublicLayout from "./PublicLayout";
-import { publicGetRanking, publicGetSkillsTimeline } from "../../api/public";
+import { publicGetRanking, publicGetSkillsTimeline, publicListProjects } from "../../api/public";
 import type { PublicRankingItem } from "../../api/public";
-import type { SkillTimelineDTO } from "../../api/insights";
+import type { SkillTimelineDTO, CumulativeSkillDTO } from "../../api/insights";
 import SkillsOverview from "../../components/insights/tabs/Skills/SkillsOverview";
 import SkillProgressChart from "../../components/insights/tabs/Skills/SkillProgressChart";
 import SkillsTimeline from "../../components/insights/tabs/Skills/SkillsTimeline";
@@ -69,6 +69,53 @@ function RankedProjectsView({ rankings }: { rankings: PublicRankingItem[] }) {
     );
 }
 
+function filterTimelineByProjects(timeline: SkillTimelineDTO, publicNames: Set<string>): SkillTimelineDTO {
+    const undated = timeline.undated.filter((e) => publicNames.has(e.project_name));
+
+    const dated = timeline.dated
+        .map((group) => ({
+            ...group,
+            events: group.events.filter((e) => publicNames.has(e.project_name)),
+            cumulative_skills: Object.fromEntries(
+                Object.entries(group.cumulative_skills)
+                    .map(([skill, data]) => [
+                        skill,
+                        { ...data, projects: (data as CumulativeSkillDTO).projects.filter((p) => publicNames.has(p)) } as CumulativeSkillDTO,
+                    ])
+                    .filter(([, data]) => (data as CumulativeSkillDTO).projects.length > 0),
+            ),
+        }))
+        .filter((group) => group.events.length > 0);
+
+    const current_totals = Object.fromEntries(
+        Object.entries(timeline.current_totals)
+            .map(([skill, data]) => [skill, { ...data, projects: data.projects.filter((p) => publicNames.has(p)) }])
+            .filter(([, data]) => (data as { projects: string[] }).projects.length > 0),
+    );
+
+    const allSkills = new Set<string>([
+        ...Object.keys(current_totals),
+        ...undated.map((e) => e.skill_name),
+        ...dated.flatMap((g) => g.events.map((e) => e.skill_name)),
+    ]);
+    const allProjects = new Set<string>([
+        ...undated.map((e) => e.project_name),
+        ...dated.flatMap((g) => g.events.map((e) => e.project_name)),
+    ]);
+    const allDates = dated.map((g) => g.date);
+
+    const summary = {
+        total_skills: allSkills.size,
+        total_projects: allProjects.size,
+        date_range: {
+            earliest: allDates.length > 0 ? allDates[0] : timeline.summary.date_range.earliest,
+            latest: allDates.length > 0 ? allDates[allDates.length - 1] : timeline.summary.date_range.latest,
+        },
+        skill_names: [...allSkills],
+    };
+
+    return { dated, undated, current_totals, summary };
+}
 
 export default function PublicInsightsPage() {
     const { username } = useParams<{ username: string }>();
@@ -76,6 +123,7 @@ export default function PublicInsightsPage() {
 
     const [rankings, setRankings] = useState<PublicRankingItem[]>([]);
     const [timeline, setTimeline] = useState<SkillTimelineDTO | null>(null);
+    const [publicProjectNames, setPublicProjectNames] = useState<Set<string>>(new Set());
     const [loadingRankings, setLoadingRankings] = useState(true);
     const [loadingTimeline, setLoadingTimeline] = useState(true);
     const [rankingsError, setRankingsError] = useState<string | null>(null);
@@ -91,7 +139,15 @@ export default function PublicInsightsPage() {
             .then(setTimeline)
             .catch((e: Error) => setTimelineError(e.message))
             .finally(() => setLoadingTimeline(false));
+        publicListProjects(username)
+            .then((projects) => setPublicProjectNames(new Set(projects.map((p) => p.project_name))))
+            .catch(() => {/* keep empty set on error */});
     }, [username]);
+
+    const filteredTimeline = useMemo(() => {
+        if (!timeline || publicProjectNames.size === 0) return timeline;
+        return filterTimelineByProjects(timeline, publicProjectNames);
+    }, [timeline, publicProjectNames]);
 
     const linkStyle = (id: PublicView) => {
         const active = activeView === id;
@@ -115,14 +171,14 @@ export default function PublicInsightsPage() {
 
         if (loadingTimeline) return <div className="py-4 text-center text-slate-600">Loading...</div>;
         if (timelineError) return <div className="py-4 text-center text-red-600">{timelineError}</div>;
-        if (!timeline) return <div className="py-4 text-center text-slate-600">No skill data available.</div>;
+        if (!filteredTimeline) return <div className="py-4 text-center text-slate-600">No skill data available.</div>;
 
-        if (activeView === "skills-overview") return <SkillsOverview timeline={timeline} />;
-        if (activeView === "skills-log") return <SkillsLog timeline={timeline} />;
+        if (activeView === "skills-overview") return <SkillsOverview timeline={filteredTimeline} />;
+        if (activeView === "skills-log") return <SkillsLog timeline={filteredTimeline} />;
         if (activeView === "skills-timeline") return (
             <>
-                <SkillProgressChart timeline={timeline} />
-                <SkillsTimeline timeline={timeline} />
+                <SkillProgressChart timeline={filteredTimeline} />
+                <SkillsTimeline timeline={filteredTimeline} />
             </>
         );
     }
