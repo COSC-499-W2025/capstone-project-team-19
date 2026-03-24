@@ -76,27 +76,27 @@ export default function PublicLayout({ children }: Props) {
             </nav>
 
             {isLoggedIn && loggedInUsername === username && (
-              <>
-                <div className="flex overflow-hidden rounded-full border border-white/30 text-xs font-medium">
-                  <button
-                    className="cursor-pointer px-3 py-1.5 text-white/75 transition-colors hover:bg-white/10 hover:text-white"
-                    onClick={() => nav(getPrivatePath())}
-                  >
-                    Private
-                  </button>
-                  <span className="cursor-default bg-white px-3 py-1.5 text-[#001166]">
-                    Public
-                  </span>
-                </div>
-
-                <Link
-                  to="/profile"
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ECECEC] no-underline hover:no-underline"
-                  aria-label={`Logged in as ${loggedInUsername ?? "user"} — open profile`}
+              <div className="flex overflow-hidden rounded-full border border-white/30 text-xs font-medium">
+                <button
+                  className="cursor-pointer px-3 py-1.5 text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+                  onClick={() => nav(getPrivatePath())}
                 >
-                  <CircleUserRound className="h-[18px] w-[18px] text-[#6C6C6C]" strokeWidth={1.8} />
-                </Link>
-              </>
+                  Private
+                </button>
+                <span className="cursor-default bg-white px-3 py-1.5 text-[#001166]">
+                  Public
+                </span>
+              </div>
+            )}
+
+            {isLoggedIn && (
+              <Link
+                to="/profile"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ECECEC] no-underline hover:no-underline"
+                aria-label={`Logged in as ${loggedInUsername ?? "user"} — open profile`}
+              >
+                <CircleUserRound className="h-[18px] w-[18px] text-[#6C6C6C]" strokeWidth={1.8} />
+              </Link>
             )}
 
             {loggedInUsername !== username && (

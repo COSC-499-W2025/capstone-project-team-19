@@ -222,7 +222,7 @@ export default function PublicInsightsPage() {
                                 Skills
                             </div>
                             <button className={linkStyle("skills-timeline")} onClick={() => setActiveView("skills-timeline")}>
-                                Skills Timeline
+                                Timeline
                             </button>
                             <button className={linkStyle("skills-overview")} onClick={() => setActiveView("skills-overview")}>
                                 Skills Overview
