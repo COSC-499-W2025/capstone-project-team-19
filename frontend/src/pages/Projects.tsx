@@ -62,14 +62,15 @@ export default function ProjectsPage() {
       if (toggling === project.project_summary_id) return;
       setToggling(project.project_summary_id);
       const newValue = !project.is_public;
+
       try {
         await updateProjectVisibility(project.project_summary_id, newValue);
         setProjects((prev) =>
           prev.map((p) =>
             p.project_summary_id === project.project_summary_id
               ? { ...p, is_public: newValue }
-              : p,
-          ),
+              : p
+          )
         );
       } catch {
         // state stays unchanged on error
@@ -77,13 +78,14 @@ export default function ProjectsPage() {
         setToggling(null);
       }
     },
-    [toggling],
+    [toggling]
   );
 
   return (
     <>
       <TopBar showNav username={username} />
-      <PageContainer className="flex flex-col gap-[20px]">
+
+      <PageContainer className="flex min-h-[calc(100vh-56px)] flex-col gap-[20px] bg-background pt-[12px]">
         <PageHeader
           title="Projects"
           breadcrumbs={[
@@ -93,19 +95,19 @@ export default function ProjectsPage() {
         />
 
         {loading && (
-          <SectionCard>
+          <SectionCard className="w-full bg-white">
             <p className="text-[14px] text-[#7f7f7f]">Loading…</p>
           </SectionCard>
         )}
 
         {error && (
-          <SectionCard>
+          <SectionCard className="w-full bg-white">
             <p className="text-[14px] text-[#cc4b4b]">{error}</p>
           </SectionCard>
         )}
 
         {!loading && !error && projects.length === 0 && (
-          <SectionCard>
+          <SectionCard className="w-full bg-white">
             <p className="text-[14px] text-[#7f7f7f]">
               No projects yet. Upload one to get started.
             </p>
@@ -113,7 +115,7 @@ export default function ProjectsPage() {
         )}
 
         {!loading && !error && projects.length > 0 && (
-          <SectionCard>
+          <SectionCard className="w-full bg-white">
             <div className="flex flex-wrap gap-[20px]">
               {projects.map((p) => (
                 <div key={p.project_summary_id} className="relative">
@@ -123,7 +125,11 @@ export default function ProjectsPage() {
                     onClick={() => nav(`/projects/${p.project_summary_id}`)}
                   />
                   <button
-                    className={`absolute right-[8px] top-[8px] z-10 cursor-pointer rounded-full border px-[8px] py-[2px] text-[11px] font-medium leading-none transition disabled:opacity-50 ${p.is_public ? "border-green-600 bg-green-100/95 text-green-700" : "border-gray-300 bg-white/[.92] text-gray-500"}`}
+                    className={`absolute right-[8px] top-[8px] z-10 cursor-pointer rounded-full border px-[8px] py-[2px] text-[11px] font-medium leading-none transition disabled:opacity-50 ${
+                      p.is_public
+                        ? "border-green-600 bg-green-100/95 text-green-700"
+                        : "border-gray-300 bg-white/[.92] text-gray-500"
+                    }`}
                     onClick={(e) => handleToggleVisibility(e, p)}
                     disabled={toggling === p.project_summary_id}
                     title={

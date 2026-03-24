@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import ProfilePage from "../Profile";
 
 vi.mock("../../auth/user", () => ({
@@ -36,14 +37,10 @@ vi.mock("../../api/profile", () => ({
       profile_text: p.profile_text ?? "Existing summary",
     }),
   ),
-  getEducation: vi.fn(() =>
-    Promise.resolve({
-      entries: [],
-    }),
-  ),
+  getEducation: vi.fn(() => Promise.resolve({ entries: [] })),
   replaceEducation: vi.fn((payload: { entries: Array<{ title: string; organization?: string | null; date_text?: string | null; description?: string | null }> }) =>
     Promise.resolve({
-        entries: payload.entries.map((e, idx: number) => ({
+      entries: payload.entries.map((e, idx: number) => ({
         entry_id: idx + 1,
         entry_type: "education",
         title: e.title,
@@ -56,14 +53,10 @@ vi.mock("../../api/profile", () => ({
       })),
     }),
   ),
-  getCertifications: vi.fn(() =>
-    Promise.resolve({
-      entries: [],
-    }),
-  ),
+  getCertifications: vi.fn(() => Promise.resolve({ entries: [] })),
   replaceCertifications: vi.fn((payload: { entries: Array<{ title: string; organization?: string | null; date_text?: string | null; description?: string | null }> }) =>
     Promise.resolve({
-        entries: payload.entries.map((e, idx: number) => ({
+      entries: payload.entries.map((e, idx: number) => ({
         entry_id: idx + 1,
         entry_type: "certificate",
         title: e.title,
@@ -76,14 +69,10 @@ vi.mock("../../api/profile", () => ({
       })),
     }),
   ),
-  getExperience: vi.fn(() =>
-    Promise.resolve({
-      entries: [],
-    }),
-  ),
+  getExperience: vi.fn(() => Promise.resolve({ entries: [] })),
   replaceExperience: vi.fn((payload: { entries: Array<{ role: string; company?: string | null; date_text?: string | null; description?: string | null }> }) =>
     Promise.resolve({
-        entries: payload.entries.map((e, idx: number) => ({
+      entries: payload.entries.map((e, idx: number) => ({
         entry_id: idx + 1,
         role: e.role,
         company: e.company ?? null,
@@ -129,7 +118,11 @@ vi.mock("../../api/outputs", () => ({
 }));
 
 function renderProfile() {
-  return render(<ProfilePage />);
+  return render(
+    <MemoryRouter>
+      <ProfilePage />
+    </MemoryRouter>
+  );
 }
 
 function setup() {
@@ -176,7 +169,6 @@ describe("ProfilePage", () => {
   it("allows editing certifications and shows saved title", async () => {
     const { user } = setup();
 
-    // Wait for certifications section to render
     const certTitle = await screen.findByText("Certifications");
     const certCard = certTitle.closest('[data-slot="card"]') as HTMLElement;
     const editButton = within(certCard).getByRole("button", { name: /Edit/i });
@@ -219,5 +211,3 @@ describe("ProfilePage", () => {
     expect(await screen.findByRole("button", { name: /Public/i })).toBeInTheDocument();
   });
 });
-
-

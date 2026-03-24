@@ -87,6 +87,11 @@ export default function ConsentPage() {
       actionLabel={submitting ? "Saving..." : "Next"}
       onAction={onNext}
       actionDisabled={controlsDisabled}
+      breadcrumbs={[
+        { label: "Home", href: "/" },
+        { label: "Upload", href: "/upload" },
+        { label: "Consent", href: "/upload/consent" },
+      ]}
     >
       <div className="consentContent">
         {loadingStatus && <p className="consentStatusLine">Loading saved consent status...</p>}

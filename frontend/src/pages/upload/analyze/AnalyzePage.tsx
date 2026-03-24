@@ -228,7 +228,17 @@ export default function UploadAnalyzePage() {
   }
 
   return (
-    <UploadWizardShell username={username} steps={steps} actionLabel="Analyze" showAction={false}>
+    <UploadWizardShell 
+      username={username} 
+      steps={steps} 
+      actionLabel="Analyze" 
+      showAction={false}
+      breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Upload", href: "/upload" },
+          { label: "Analyze", href: "/upload/analyze" },
+      ]}
+      >
       <div className="max-w-[1040px] space-y-8 rounded-xl bg-[var(--upload-bg)] p-6 max-[980px]:p-4">
         <header>
           <h2 className="text-[18px] leading-normal font-bold text-zinc-900">Analyzing files....</h2>

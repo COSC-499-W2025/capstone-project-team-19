@@ -4,7 +4,7 @@ type Props = {
 
 export default function OutputsLanding({ onSelect }: Props) {
   return (
-    <div className="outputsLanding">
+    <div className="flex flex-1 flex-wrap items-center justify-center gap-12 px-6 py-16">
       <button className="outputCard" onClick={() => onSelect("resumes")}>
         <div className="outputCardIcon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5">

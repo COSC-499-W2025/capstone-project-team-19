@@ -6,6 +6,7 @@ import ResumeList from "../components/outputs/ResumeList";
 import ResumeDetail from "../components/outputs/ResumeDetail";
 import CreateResumeModal from "../components/outputs/CreateResumeModal";
 import PortfolioView from "../components/outputs/PortfolioView";
+import { PageContainer, PageHeader, SectionCard } from "../components/shared";
 
 type View =
   | { kind: "landing" }
@@ -46,16 +47,61 @@ export default function OutputsPage() {
           />
         );
       case "portfolio":
-        return (
-          <PortfolioView onBack={() => setView({ kind: "landing" })} />
-        );
+        return <PortfolioView onBack={() => setView({ kind: "landing" })} />;
     }
   }
+
+  const goLanding = () => setView({ kind: "landing" });
+  const goResumes = () => setView({ kind: "resumes" });
+
+  const headerConfig =
+    view.kind === "landing"
+      ? {
+          title: "Outputs",
+          breadcrumbs: [
+            { label: "Home", href: "/" },
+            { label: "Outputs" },
+          ],
+        }
+      : view.kind === "resumes"
+      ? {
+          title: "Resume Items",
+          breadcrumbs: [
+            { label: "Home", href: "/" },
+            { label: "Outputs", onClick: goLanding },
+            { label: "Resume Items" },
+          ],
+        }
+      : view.kind === "resume-detail"
+      ? {
+          title: "Resume Detail",
+          breadcrumbs: [
+            { label: "Home", href: "/" },
+            { label: "Outputs", onClick: goLanding },
+            { label: "Resume Items", onClick: goResumes },
+            { label: "Resume Detail" },
+          ],
+        }
+      : {
+          title: "Portfolio Items",
+          breadcrumbs: [
+            { label: "Home", href: "/" },
+            { label: "Outputs", onClick: goLanding },
+            { label: "Portfolio Items" },
+          ],
+        };
 
   return (
     <>
       <TopBar showNav username={username} />
-      {renderView()}
+
+      <PageContainer className="flex min-h-[calc(100vh-56px)] flex-col bg-background pt-[12px]">
+        <PageHeader title={headerConfig.title} breadcrumbs={headerConfig.breadcrumbs} />
+        <SectionCard className="flex w-full flex-1 flex-col bg-white">
+          {renderView()}
+        </SectionCard>
+      </PageContainer>
+
       {showCreate && (
         <CreateResumeModal
           onClose={() => setShowCreate(false)}

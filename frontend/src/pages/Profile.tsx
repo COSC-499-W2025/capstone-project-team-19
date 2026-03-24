@@ -26,6 +26,7 @@ import {
   type PortfolioSettings,
 } from "../api/portfolioSettings";
 import { listResumes, type ResumeListItem } from "../api/outputs";
+import { PageContainer, PageHeader } from "../components/shared";
 
 type EditableEducationEntry = Omit<UserEducationEntry, "entry_id" | "entry_type" | "display_order" | "created_at" | "updated_at">;
 type EditableExperienceEntry = Omit<UserExperienceEntry, "entry_id" | "display_order" | "created_at" | "updated_at">;
@@ -249,6 +250,38 @@ function EntryListDisplay<T extends Record<string, any>>({
   );
 }
 
+function ProfileField({
+  label,
+  value,
+  isLink,
+}: {
+  label: string;
+  value: string | null;
+  isLink?: boolean;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      {value ? (
+        isLink ? (
+          <a
+            href={value}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-0.5 block text-sm text-indigo-600 hover:underline break-all"
+          >
+            {value}
+          </a>
+        ) : (
+          <p className="mt-0.5 text-sm text-slate-800 break-words">{value}</p>
+        )
+      ) : (
+        <p className="mt-0.5 text-sm text-slate-400">Not set</p>
+      )}
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const username = getUsername();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -261,7 +294,6 @@ export default function ProfilePage() {
   const [editingEducation, setEditingEducation] = useState(false);
   const [editingCerts, setEditingCerts] = useState(false);
   const [editingExperience, setEditingExperience] = useState(false);
-
   const [editingSummary, setEditingSummary] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState("");
 
@@ -321,12 +353,7 @@ export default function ProfilePage() {
 
   const educationFields = useMemo<Array<FieldSpec<EditableEducationEntry>>>(
     () => [
-      {
-        key: "title",
-        label: "Title",
-        required: true,
-        placeholder: "BSc in Computer Science",
-      },
+      { key: "title", label: "Title", required: true, placeholder: "BSc in Computer Science" },
       { key: "organization", label: "Organization", placeholder: "University / Provider" },
       { key: "date_text", label: "Dates (display text)", placeholder: "2022 - 2026" },
       { key: "description", label: "Description", kind: "textarea", rows: 2 },
@@ -336,12 +363,7 @@ export default function ProfilePage() {
 
   const experienceFields = useMemo<Array<FieldSpec<EditableExperienceEntry>>>(
     () => [
-      {
-        key: "role",
-        label: "Role",
-        required: true,
-        placeholder: "Full Stack Engineer",
-      },
+      { key: "role", label: "Role", required: true, placeholder: "Full Stack Engineer" },
       { key: "company", label: "Company", placeholder: "Company name" },
       { key: "date_text", label: "Dates (display text)", placeholder: "Sep 2025 - Dec 2025" },
       { key: "description", label: "Description", kind: "textarea", rows: 2 },
@@ -394,8 +416,8 @@ export default function ProfilePage() {
       });
       setProfile(updated);
       setEditingProfile(false);
-    } catch (e) {
-      // error is surfaced via toast in real UI; for now silently ignore
+    } catch {
+      // ignore for now
     }
   }
 
@@ -483,9 +505,7 @@ export default function ProfilePage() {
   async function saveSummary() {
     if (!profile) return;
     try {
-      const updated = await updateProfile({
-        profile_text: summaryDraft,
-      });
+      const updated = await updateProfile({ profile_text: summaryDraft });
       setProfile(updated);
       setEditingSummary(false);
     } catch {
@@ -510,9 +530,7 @@ export default function ProfilePage() {
     setSaving(true);
     try {
       const updated = await updatePortfolioSettings(
-        value === ""
-          ? { clear_active_resume: true }
-          : { active_resume_id: Number(value) },
+        value === "" ? { clear_active_resume: true } : { active_resume_id: Number(value) }
       );
       setSettings(updated);
     } finally {
@@ -525,346 +543,308 @@ export default function ProfilePage() {
   return (
     <>
       <TopBar showNav username={username} />
-      <main className="min-h-[calc(100vh-56px)] bg-gradient-to-b from-slate-50 via-white to-slate-100/40">
-        <div className="mx-auto w-full max-w-6xl px-6 py-10">
-          <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
-            <aside className="lg:self-start">
-              <ProfileSectionCard
-                title={`@${username}`}
-                actionLabel={editingProfile ? "Save" : "Edit"}
-                onAction={editingProfile ? saveProfile : startEditProfile}
-                actionDisabled={loading || (!profile && !editingProfile)}
-              >
-                {loading || !profile ? (
-                  <p className="text-sm text-slate-500">Loading profile…</p>
-                ) : editingProfile ? (
-                  <div className="space-y-3">
-                    <ProfileFormField
-                      label="Full name"
-                      required={false}
-                      value={profileDraft.full_name ?? profile.full_name ?? ""}
-                      onChange={(v) => setProfileDraft((d) => ({ ...d, full_name: v }))}
-                    />
-                    <ProfileFormField
-                      label="Email"
-                      required={false}
-                      value={profileDraft.email ?? profile.email ?? ""}
-                      onChange={(v) => setProfileDraft((d) => ({ ...d, email: v }))}
-                    />
-                    <ProfileFormField
-                      label="Phone"
-                      required={false}
-                      value={profileDraft.phone ?? profile.phone ?? ""}
-                      onChange={(v) => setProfileDraft((d) => ({ ...d, phone: v }))}
-                    />
-                    <ProfileFormField
-                      label="Location"
-                      required={false}
-                      value={profileDraft.location ?? profile.location ?? ""}
-                      onChange={(v) => setProfileDraft((d) => ({ ...d, location: v }))}
-                    />
-                    <ProfileFormField
-                      label="LinkedIn URL"
-                      required={false}
-                      value={profileDraft.linkedin ?? profile.linkedin ?? ""}
-                      onChange={(v) => setProfileDraft((d) => ({ ...d, linkedin: v }))}
-                    />
-                    <ProfileFormField
-                      label="GitHub URL"
-                      required={false}
-                      value={profileDraft.github ?? profile.github ?? ""}
-                      onChange={(v) => setProfileDraft((d) => ({ ...d, github: v }))}
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <ProfileField label="Full name" value={profile.full_name} />
-                    <ProfileField label="Email" value={profile.email} />
-                    <ProfileField label="Phone" value={profile.phone} />
-                    <ProfileField label="Location" value={profile.location} />
-                    <ProfileField label="LinkedIn" value={profile.linkedin} isLink />
-                    <ProfileField label="GitHub" value={profile.github} isLink />
-                  </div>
-                )}
-              </ProfileSectionCard>
-            </aside>
 
-            <section className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight text-slate-900">Profile overview</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Manage the information that appears on your resumes and portfolio, plus your account
-                  security.
+      <PageContainer className="min-h-[calc(100vh-56px)] bg-background pt-[12px]">
+        <PageHeader
+          title="Profile"
+          breadcrumbs={[
+            { label: "Home", href: "/" },
+            { label: "Profile" },
+          ]}
+        />
+
+        <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
+          <aside className="lg:self-start">
+            <ProfileSectionCard
+              title={`@${username}`}
+              actionLabel={editingProfile ? "Save" : "Edit"}
+              onAction={editingProfile ? saveProfile : startEditProfile}
+              actionDisabled={loading || (!profile && !editingProfile)}
+            >
+              {loading || !profile ? (
+                <p className="text-sm text-slate-500">Loading profile…</p>
+              ) : editingProfile ? (
+                <div className="space-y-3">
+                  <ProfileFormField
+                    label="Full name"
+                    value={profileDraft.full_name ?? profile.full_name ?? ""}
+                    onChange={(v) => setProfileDraft((d) => ({ ...d, full_name: v }))}
+                  />
+                  <ProfileFormField
+                    label="Email"
+                    value={profileDraft.email ?? profile.email ?? ""}
+                    onChange={(v) => setProfileDraft((d) => ({ ...d, email: v }))}
+                  />
+                  <ProfileFormField
+                    label="Phone"
+                    value={profileDraft.phone ?? profile.phone ?? ""}
+                    onChange={(v) => setProfileDraft((d) => ({ ...d, phone: v }))}
+                  />
+                  <ProfileFormField
+                    label="Location"
+                    value={profileDraft.location ?? profile.location ?? ""}
+                    onChange={(v) => setProfileDraft((d) => ({ ...d, location: v }))}
+                  />
+                  <ProfileFormField
+                    label="LinkedIn URL"
+                    value={profileDraft.linkedin ?? profile.linkedin ?? ""}
+                    onChange={(v) => setProfileDraft((d) => ({ ...d, linkedin: v }))}
+                  />
+                  <ProfileFormField
+                    label="GitHub URL"
+                    value={profileDraft.github ?? profile.github ?? ""}
+                    onChange={(v) => setProfileDraft((d) => ({ ...d, github: v }))}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <ProfileField label="Full name" value={profile.full_name} />
+                  <ProfileField label="Email" value={profile.email} />
+                  <ProfileField label="Phone" value={profile.phone} />
+                  <ProfileField label="Location" value={profile.location} />
+                  <ProfileField label="LinkedIn" value={profile.linkedin} isLink />
+                  <ProfileField label="GitHub" value={profile.github} isLink />
+                </div>
+              )}
+            </ProfileSectionCard>
+          </aside>
+
+          <section className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight text-slate-900">Profile overview</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Manage the information that appears on your resumes and portfolio, plus your account security.
+              </p>
+            </div>
+
+            <ProfileSectionCard
+              title="Profile summary"
+              description="A short paragraph that appears at the top of your resumes."
+              actionLabel={editingSummary ? "Save" : "Edit"}
+              onAction={editingSummary ? saveSummary : startEditSummary}
+              actionDisabled={loading || (!profile && !editingSummary)}
+            >
+              {loading || !profile ? (
+                <p className="text-sm text-slate-500">Loading profile…</p>
+              ) : editingSummary ? (
+                <Textarea
+                  rows={4}
+                  value={summaryDraft}
+                  onChange={(e) => setSummaryDraft(e.target.value)}
+                />
+              ) : (
+                <p className="text-sm text-slate-700 whitespace-pre-line">
+                  {profile.profile_text || "Not added yet."}
                 </p>
-              </div>
+              )}
+            </ProfileSectionCard>
 
-              <ProfileSectionCard
-                title="Profile summary"
-                description="A short paragraph that appears at the top of your resumes."
-                actionLabel={editingSummary ? "Save" : "Edit"}
-                onAction={editingSummary ? saveSummary : startEditSummary}
-                actionDisabled={loading || (!profile && !editingSummary)}
-              >
-                {loading || !profile ? (
-                  <p className="text-sm text-slate-500">Loading profile…</p>
-                ) : editingSummary ? (
-                  <Textarea
-                    rows={4}
-                    value={summaryDraft}
-                    onChange={(e) => setSummaryDraft(e.target.value)}
-                  />
-                ) : (
-                  <p className="text-sm text-slate-700 whitespace-pre-line">
-                    {profile.profile_text || "Not added yet."}
-                  </p>
-                )}
-              </ProfileSectionCard>
+            <ProfileSectionCard
+              title="Education"
+              description="Degrees and academic programs to include on your resumes."
+              actionLabel={editingEducation ? "Save" : "Edit"}
+              onAction={editingEducation ? saveEducation : startEditEducation}
+              actionDisabled={loading}
+            >
+              {loading ? (
+                <p className="text-sm text-slate-500">Loading education…</p>
+              ) : editingEducation ? (
+                <EditableList
+                  entries={educationDraft}
+                  setEntries={setEducationDraft}
+                  emptyRow={{ title: "", organization: "", date_text: "", description: "" }}
+                  fields={educationFields}
+                  requiredKey="title"
+                />
+              ) : education.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No education added yet. Add entries to show your degrees and programs on exported resumes.
+                </p>
+              ) : (
+                <EntryListDisplay
+                  entries={education}
+                  titleKey="title"
+                  metaKeys={["organization", "date_text"]}
+                  descriptionKey="description"
+                  keyField="entry_id"
+                />
+              )}
+            </ProfileSectionCard>
 
-              <ProfileSectionCard
-                title="Education"
-                description="Degrees and academic programs to include on your resumes."
-                actionLabel={editingEducation ? "Save" : "Edit"}
-                onAction={editingEducation ? saveEducation : startEditEducation}
-                actionDisabled={loading}
-              >
-                {loading ? (
-                  <p className="text-sm text-slate-500">Loading education…</p>
-                ) : editingEducation ? (
-                  <EditableList
-                    entries={educationDraft}
-                    setEntries={setEducationDraft}
-                    emptyRow={{ title: "", organization: "", date_text: "", description: "" }}
-                    fields={educationFields}
-                    requiredKey="title"
-                  />
-                ) : education.length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    No education added yet. Add entries to show your degrees and programs on exported
-                    resumes.
-                  </p>
-                ) : (
-                  <EntryListDisplay
-                    entries={education}
-                    titleKey="title"
-                    metaKeys={["organization", "date_text"]}
-                    descriptionKey="description"
-                    keyField="entry_id"
-                  />
-                )}
-              </ProfileSectionCard>
+            <ProfileSectionCard
+              title="Experience"
+              description="Work experience and internships to include on your resumes."
+              actionLabel={editingExperience ? "Save" : "Edit"}
+              onAction={editingExperience ? saveExperience : startEditExperience}
+              actionDisabled={loading}
+            >
+              {loading ? (
+                <p className="text-sm text-slate-500">Loading experience…</p>
+              ) : editingExperience ? (
+                <EditableList
+                  entries={experienceDraft}
+                  setEntries={setExperienceDraft}
+                  emptyRow={{ role: "", company: "", date_text: "", description: "" }}
+                  fields={experienceFields}
+                  requiredKey="role"
+                />
+              ) : experience.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No experience added yet. Add roles to showcase on exported resumes.
+                </p>
+              ) : (
+                <EntryListDisplay
+                  entries={experience}
+                  titleKey="role"
+                  metaKeys={["company", "date_text"]}
+                  descriptionKey="description"
+                  keyField="entry_id"
+                />
+              )}
+            </ProfileSectionCard>
 
-              <ProfileSectionCard
-                title="Experience"
-                description="Work experience and internships to include on your resumes."
-                actionLabel={editingExperience ? "Save" : "Edit"}
-                onAction={editingExperience ? saveExperience : startEditExperience}
-                actionDisabled={loading}
-              >
-                {loading ? (
-                  <p className="text-sm text-slate-500">Loading experience…</p>
-                ) : editingExperience ? (
-                  <EditableList
-                    entries={experienceDraft}
-                    setEntries={setExperienceDraft}
-                    emptyRow={{ role: "", company: "", date_text: "", description: "" }}
-                    fields={experienceFields}
-                    requiredKey="role"
-                  />
-                ) : experience.length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    No experience added yet. Add roles to showcase on exported resumes.
-                  </p>
-                ) : (
-                  <EntryListDisplay
-                    entries={experience}
-                    titleKey="role"
-                    metaKeys={["company", "date_text"]}
-                    descriptionKey="description"
-                    keyField="entry_id"
-                  />
-                )}
-              </ProfileSectionCard>
+            <ProfileSectionCard
+              title="Certifications"
+              description="Professional certificates to highlight in your resumes."
+              actionLabel={editingCerts ? "Save" : "Edit"}
+              onAction={editingCerts ? saveCerts : startEditCerts}
+              actionDisabled={loading}
+            >
+              {loading ? (
+                <p className="text-sm text-slate-500">Loading certifications…</p>
+              ) : editingCerts ? (
+                <EditableList
+                  entries={certsDraft}
+                  setEntries={setCertsDraft}
+                  emptyRow={{ title: "", organization: "", date_text: "", description: "" }}
+                  fields={educationFields}
+                  requiredKey="title"
+                />
+              ) : certifications.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No certificates added yet. Add some to include them on your resumes.
+                </p>
+              ) : (
+                <EntryListDisplay
+                  entries={certifications}
+                  titleKey="title"
+                  metaKeys={["organization", "date_text"]}
+                  descriptionKey="description"
+                  keyField="entry_id"
+                />
+              )}
+            </ProfileSectionCard>
 
-              <ProfileSectionCard
-                title="Certifications"
-                description="Professional certificates to highlight in your resumes."
-                actionLabel={editingCerts ? "Save" : "Edit"}
-                onAction={editingCerts ? saveCerts : startEditCerts}
-                actionDisabled={loading}
-              >
-                {loading ? (
-                  <p className="text-sm text-slate-500">Loading certifications…</p>
-                ) : editingCerts ? (
-                  <EditableList
-                    entries={certsDraft}
-                    setEntries={setCertsDraft}
-                    emptyRow={{ title: "", organization: "", date_text: "", description: "" }}
-                    fields={educationFields}
-                    requiredKey="title"
-                  />
-                ) : certifications.length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    No certificates added yet. Add some to include them on your resumes.
-                  </p>
-                ) : (
-                  <EntryListDisplay
-                    entries={certifications}
-                    titleKey="title"
-                    metaKeys={["organization", "date_text"]}
-                    descriptionKey="description"
-                    keyField="entry_id"
-                  />
-                )}
-              </ProfileSectionCard>
-
-              <ProfileSectionCard
-                title={
-                  <span className="inline-flex items-center gap-2">
-                    <Globe className="size-4 text-slate-500" />
-                    Public Portfolio
-                  </span>
-                }
-                description="Control what visitors see at your public portfolio URL."
-                contentClassName="space-y-5"
-                headerClassName="items-center"
-              >
-                {settingsLoading ? (
-                  <p className="text-sm text-slate-500">Loading…</p>
-                ) : (
-                  <Fragment>
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-medium text-slate-800">Portfolio visibility</p>
-                          <p className="text-xs text-slate-500">
-                            Make your portfolio accessible to anyone with your link.
-                          </p>
-                        </div>
-                        <Button
-                          variant={settings.portfolio_public ? "default" : "outline"}
-                          size="sm"
-                          onClick={togglePublic}
-                          disabled={saving}
-                          className="shrink-0"
-                        >
-                          {settings.portfolio_public ? "Public" : "Private"}
-                        </Button>
-                      </div>
-
-                      {settings.portfolio_public && (
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 font-mono break-all select-all">
-                          {publicUrl}
-                        </div>
-                      )}
-
-                      <div className="space-y-1.5">
-                        <p className="text-sm font-medium text-slate-800">Active resume</p>
-                        <p className="text-xs text-slate-500">
-                          The resume shown on your public portfolio.
-                        </p>
-                        <select
-                          value={settings.active_resume_id ?? ""}
-                          onChange={handleResumeChange}
-                          disabled={saving}
-                          className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 disabled:opacity-60"
-                        >
-                          <option value="">— None —</option>
-                          {resumes.map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {r.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
+            <ProfileSectionCard
+              title={
+                <span className="inline-flex items-center gap-2">
+                  <Globe className="size-4 text-slate-500" />
+                  Public Portfolio
+                </span>
+              }
+              description="Control what visitors see at your public portfolio URL."
+              contentClassName="space-y-5"
+              headerClassName="items-center"
+            >
+              {settingsLoading ? (
+                <p className="text-sm text-slate-500">Loading…</p>
+              ) : (
+                <Fragment>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">Portfolio visibility</p>
                       <p className="text-xs text-slate-500">
-                        To control which projects appear publicly, use the{" "}
-                        <a href="/projects" className="text-indigo-600 hover:underline">
-                          Projects
-                        </a>{" "}
-                        page — each card has a Public / Private toggle.
+                        Make your portfolio accessible to anyone with your link.
                       </p>
-                  </Fragment>
-                )}
-              </ProfileSectionCard>
+                    </div>
+                    <Button
+                      variant={settings.portfolio_public ? "default" : "outline"}
+                      size="sm"
+                      onClick={togglePublic}
+                      disabled={saving}
+                      className="shrink-0"
+                    >
+                      {settings.portfolio_public ? "Public" : "Private"}
+                    </Button>
+                  </div>
 
-              <ProfileSectionCard
-                title={
-                  <span className="inline-flex items-center gap-2">
-                    <ShieldCheck className="size-4 text-slate-500" />
-                    Security
-                  </span>
-                }
-                description="Password and account controls (placeholder actions for now)."
-                contentClassName="space-y-3"
-                headerClassName="items-center"
+                  {settings.portfolio_public && (
+                    <div className="break-all rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-xs text-slate-600 select-all">
+                      {publicUrl}
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium text-slate-800">Active resume</p>
+                    <p className="text-xs text-slate-500">The resume shown on your public portfolio.</p>
+                    <select
+                      value={settings.active_resume_id ?? ""}
+                      onChange={handleResumeChange}
+                      disabled={saving}
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 disabled:opacity-60"
+                    >
+                      <option value="">— None —</option>
+                      {resumes.map((r) => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    To control which projects appear publicly, use the{" "}
+                    <a href="/projects" className="text-indigo-600 hover:underline">
+                      Projects
+                    </a>{" "}
+                    page — each card has a Public / Private toggle.
+                  </p>
+                </Fragment>
+              )}
+            </ProfileSectionCard>
+
+            <ProfileSectionCard
+              title={
+                <span className="inline-flex items-center gap-2">
+                  <ShieldCheck className="size-4 text-slate-500" />
+                  Security
+                </span>
+              }
+              description="Password and account controls (placeholder actions for now)."
+              contentClassName="space-y-3"
+              headerClassName="items-center"
+            >
+              <Button
+                variant="outline"
+                size="default"
+                className="h-11 w-full justify-start gap-3 border-slate-200 bg-slate-50/60 text-slate-700 hover:bg-slate-100"
+                disabled
               >
-                  <Button
-                    variant="outline"
-                    size="default"
-                    className="h-11 w-full justify-start gap-3 border-slate-200 bg-slate-50/60 text-slate-700 hover:bg-slate-100"
-                    disabled
-                  >
-                    <KeyRound className="size-4 text-slate-500" />
-                    Change password
-                  </Button>
+                <KeyRound className="size-4 text-slate-500" />
+                Change password
+              </Button>
 
-                  <Button
-                    variant="outline"
-                    size="default"
-                    className="h-11 w-full justify-start gap-3 border-slate-200 text-slate-700 hover:bg-slate-50"
-                    type="button"
-                  >
-                    <LogOut className="size-4" />
-                    Sign out
-                  </Button>
+              <Button
+                variant="outline"
+                size="default"
+                className="h-11 w-full justify-start gap-3 border-slate-200 text-slate-700 hover:bg-slate-50"
+                type="button"
+              >
+                <LogOut className="size-4" />
+                Sign out
+              </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="default"
-                    className="h-11 w-full justify-start gap-3 text-red-600 hover:bg-red-50 hover:text-red-700"
-                    type="button"
-                  >
-                    <Trash2 className="size-4" />
-                    Delete account
-                  </Button>
-              </ProfileSectionCard>
-            </section>
-          </div>
+              <Button
+                variant="ghost"
+                size="default"
+                className="h-11 w-full justify-start gap-3 text-red-600 hover:bg-red-50 hover:text-red-700"
+                type="button"
+              >
+                <Trash2 className="size-4" />
+                Delete account
+              </Button>
+            </ProfileSectionCard>
+          </section>
         </div>
-      </main>
+      </PageContainer>
     </>
   );
 }
-
-function ProfileField({
-  label,
-  value,
-  isLink,
-}: {
-  label: string;
-  value: string | null;
-  isLink?: boolean;
-}) {
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      {value ? (
-        isLink ? (
-          <a
-            href={value}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-0.5 block text-sm text-indigo-600 hover:underline break-all"
-          >
-            {value}
-          </a>
-        ) : (
-          <p className="mt-0.5 text-sm text-slate-800 break-words">{value}</p>
-        )
-      ) : (
-        <p className="mt-0.5 text-sm text-slate-400">Not set</p>
-      )}
-    </div>
-  );
-}
-

@@ -127,11 +127,7 @@ export default function ProjectDetailPage() {
     setSavingDates(true);
     setDatesError(null);
     try {
-      const updated = await patchProjectDates(
-        projectId,
-        startDate || null,
-        endDate || null,
-      );
+      const updated = await patchProjectDates(projectId, startDate || null, endDate || null);
       setDates(updated);
       setStartDate(updated.start_date ?? "");
       setEndDate(updated.end_date ?? "");
@@ -191,8 +187,18 @@ export default function ProjectDetailPage() {
     return (
       <>
         <TopBar showNav username={username} />
-        <PageContainer>
-          <p className="text-[14px] text-[#7f7f7f]">Loading…</p>
+        <PageContainer className="min-h-[calc(100vh-56px)] bg-background pt-[12px]">
+          <PageHeader
+            title="Project Detail"
+            breadcrumbs={[
+              { label: "Home", href: "/" },
+              { label: "Projects", href: "/projects" },
+              { label: "Project Detail" },
+            ]}
+          />
+          <SectionCard className="w-full bg-white">
+            <p className="text-[14px] text-[#7f7f7f]">Loading…</p>
+          </SectionCard>
         </PageContainer>
       </>
     );
@@ -202,23 +208,29 @@ export default function ProjectDetailPage() {
     return (
       <>
         <TopBar showNav username={username} />
-        <PageContainer className="flex flex-col gap-[20px]">
-          <p className="text-[14px] text-[#cc4b4b]">
-            {error ?? "Project not found."}
-          </p>
-          <div>
-            <AppButton variant="ghost" onClick={() => nav("/projects")}>
-              ← Back to Projects
-            </AppButton>
-          </div>
+        <PageContainer className="flex min-h-[calc(100vh-56px)] flex-col gap-[20px] bg-background pt-[12px]">
+          <PageHeader
+            title="Project Detail"
+            breadcrumbs={[
+              { label: "Home", href: "/" },
+              { label: "Projects", href: "/projects" },
+              { label: "Project Detail" },
+            ]}
+          />
+          <SectionCard className="w-full bg-white">
+            <p className="text-[14px] text-[#cc4b4b]">{error ?? "Project not found."}</p>
+            <div className="mt-[12px]">
+              <AppButton variant="ghost" onClick={() => nav("/projects")}>
+                ← Back to Projects
+              </AppButton>
+            </div>
+          </SectionCard>
         </PageContainer>
       </>
     );
   }
 
-  const currentIndex = allProjects.findIndex(
-    (p) => p.project_summary_id === projectId,
-  );
+  const currentIndex = allProjects.findIndex((p) => p.project_summary_id === projectId);
   const prevProject = currentIndex > 0 ? allProjects[currentIndex - 1] : null;
   const nextProject =
     currentIndex !== -1 && currentIndex < allProjects.length - 1
@@ -237,7 +249,8 @@ export default function ProjectDetailPage() {
   return (
     <>
       <TopBar showNav username={username} />
-      <PageContainer className="flex flex-col gap-[20px]">
+
+      <PageContainer className="flex min-h-[calc(100vh-56px)] flex-col gap-[20px] bg-background pt-[12px]">
         <PageHeader
           title={project.project_name}
           breadcrumbs={[
@@ -246,26 +259,19 @@ export default function ProjectDetailPage() {
             { label: project.project_name },
           ]}
           actions={
-            <AppButton
-              variant="destructive"
-              onClick={() => setConfirmDelete(true)}
-            >
+            <AppButton variant="destructive" onClick={() => setConfirmDelete(true)}>
               Delete Project
             </AppButton>
           }
         />
 
         {/* Thumbnail + Meta */}
-        <SectionCard>
+        <SectionCard className="w-full bg-white">
           <div className="flex gap-[20px]">
             <div className="shrink-0 space-y-[8px]">
               <div
                 className="relative h-[140px] w-[186px] overflow-hidden rounded-[6px] bg-[#ebebeb] bg-cover bg-center"
-                style={
-                  thumbUrl
-                    ? { backgroundImage: `url(${thumbUrl})` }
-                    : undefined
-                }
+                style={thumbUrl ? { backgroundImage: `url(${thumbUrl})` } : undefined}
               >
                 {!thumbUrl && (
                   <div className="flex h-full items-center justify-center text-[13px] text-[#9f9f9f]">
@@ -298,9 +304,7 @@ export default function ProjectDetailPage() {
                   </AppButton>
                 )}
               </div>
-              {thumbError && (
-                <p className="text-[13px] text-[#cc4b4b]">{thumbError}</p>
-              )}
+              {thumbError && <p className="text-[13px] text-[#cc4b4b]">{thumbError}</p>}
             </div>
 
             <div className="flex flex-wrap gap-[8px] self-start">
@@ -323,17 +327,11 @@ export default function ProjectDetailPage() {
         </SectionCard>
 
         {/* Duration */}
-        <SectionCard className="space-y-[14px]">
+        <SectionCard className="w-full space-y-[14px] bg-white">
           <div className="flex items-center justify-between">
-            <div className="text-[18px] font-medium leading-none text-foreground">
-              Duration
-            </div>
+            <div className="text-[18px] font-medium leading-none text-foreground">Duration</div>
             {!editingDates && (
-              <AppButton
-                variant="outline"
-                size="sm"
-                onClick={() => setEditingDates(true)}
-              >
+              <AppButton variant="outline" size="sm" onClick={() => setEditingDates(true)}>
                 Edit
               </AppButton>
             )}
@@ -366,26 +364,16 @@ export default function ProjectDetailPage() {
                   />
                 </AppField>
               </div>
-              {datesError && (
-                <p className="text-[13px] text-[#cc4b4b]">{datesError}</p>
-              )}
+              {datesError && <p className="text-[13px] text-[#cc4b4b]">{datesError}</p>}
               <div className="flex gap-[8px]">
                 <AppButton onClick={handleSaveDates} disabled={savingDates}>
                   {savingDates ? "Saving…" : "Save"}
                 </AppButton>
-                <AppButton
-                  variant="outline"
-                  onClick={handleCancelDates}
-                  disabled={savingDates}
-                >
+                <AppButton variant="outline" onClick={handleCancelDates} disabled={savingDates}>
                   Cancel
                 </AppButton>
                 {dates?.source === "MANUAL" && (
-                  <AppButton
-                    variant="ghost"
-                    onClick={handleResetDates}
-                    disabled={savingDates}
-                  >
+                  <AppButton variant="ghost" onClick={handleResetDates} disabled={savingDates}>
                     Reset to auto
                   </AppButton>
                 )}
@@ -395,7 +383,7 @@ export default function ProjectDetailPage() {
         </SectionCard>
 
         {/* Summary / Feedback */}
-        <SectionCard className="space-y-[16px]">
+        <SectionCard className="w-full space-y-[16px] bg-white">
           <SectionTabs
             tabs={[
               { key: "summary", label: "Summary" },
@@ -409,9 +397,7 @@ export default function ProjectDetailPage() {
           {activeTab === "summary" && (
             <div className="space-y-[14px]">
               <p className="whitespace-pre-wrap text-[14px] leading-[1.6] text-foreground">
-                {project.summary_text ?? (
-                  <em className="text-[#9f9f9f]">No summary yet.</em>
-                )}
+                {project.summary_text ?? <em className="text-[#9f9f9f]">No summary yet.</em>}
               </p>
               {project.project_mode === "collaborative" && (
                 <>
@@ -420,9 +406,7 @@ export default function ProjectDetailPage() {
                   </div>
                   <p className="whitespace-pre-wrap text-[14px] leading-[1.6] text-foreground">
                     {project.contributions?.manual_contribution_summary ?? (
-                      <em className="text-[#9f9f9f]">
-                        No contribution summary yet.
-                      </em>
+                      <em className="text-[#9f9f9f]">No contribution summary yet.</em>
                     )}
                   </p>
                 </>
@@ -472,9 +456,7 @@ export default function ProjectDetailPage() {
             {prevProject ? (
               <AppButton
                 variant="ghost"
-                onClick={() =>
-                  nav(`/projects/${prevProject.project_summary_id}`)
-                }
+                onClick={() => nav(`/projects/${prevProject.project_summary_id}`)}
               >
                 ← {prevProject.project_name}
               </AppButton>
@@ -484,9 +466,7 @@ export default function ProjectDetailPage() {
             {nextProject && (
               <AppButton
                 variant="ghost"
-                onClick={() =>
-                  nav(`/projects/${nextProject.project_summary_id}`)
-                }
+                onClick={() => nav(`/projects/${nextProject.project_summary_id}`)}
               >
                 {nextProject.project_name} →
               </AppButton>
@@ -506,9 +486,7 @@ export default function ProjectDetailPage() {
 
       <ConfirmDialog
         open={confirmDelete}
-        onOpenChange={(open) => {
-          if (!deleting) setConfirmDelete(open);
-        }}
+        onOpenChange={(open) => { if (!deleting) setConfirmDelete(open); }}
         title="Delete Project"
         description="Are you sure you want to delete this project? This cannot be undone."
         confirmLabel="Delete"
