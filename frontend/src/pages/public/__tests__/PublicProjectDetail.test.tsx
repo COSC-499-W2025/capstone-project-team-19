@@ -8,9 +8,11 @@ const mockNavigate = vi.fn()
 vi.mock('react-router-dom', () => ({
   useParams: vi.fn(() => ({ username: 'johndoe', id: '42' })),
   useNavigate: vi.fn(() => mockNavigate),
-  NavLink: ({ to, children }: { to: string; children: React.ReactNode }) => (
-    <a href={to}>{children}</a>
-  ),
+  useLocation: vi.fn(() => ({ pathname: '/public/johndoe/projects/42' })),
+  NavLink: ({ to, children }: { to: string; children: React.ReactNode | ((props: { isActive: boolean }) => React.ReactNode) }) => {
+    const content = typeof children === 'function' ? children({ isActive: false }) : children
+    return <a href={to}>{content}</a>
+  },
   Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
     <a href={to}>{children}</a>
   ),

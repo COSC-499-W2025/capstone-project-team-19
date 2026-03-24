@@ -5,9 +5,11 @@ import PublicProjectsPage from '../PublicProjects'
 vi.mock('react-router-dom', () => ({
   useParams: vi.fn(() => ({ username: 'johndoe' })),
   useNavigate: vi.fn(() => vi.fn()),
-  NavLink: ({ to, children }: { to: string; children: React.ReactNode }) => (
-    <a href={to}>{children}</a>
-  ),
+  useLocation: vi.fn(() => ({ pathname: '/public/johndoe/projects' })),
+  NavLink: ({ to, children }: { to: string; children: React.ReactNode | ((props: { isActive: boolean }) => React.ReactNode) }) => {
+    const content = typeof children === 'function' ? children({ isActive: false }) : children
+    return <a href={to}>{content}</a>
+  },
   Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
     <a href={to}>{children}</a>
   ),
