@@ -1,4 +1,4 @@
-import { useParams, NavLink, Link } from "react-router-dom";
+import { useParams, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { tokenStore } from "../../auth/token";
 import { getUsername } from "../../auth/user";
@@ -13,6 +13,19 @@ export default function PublicLayout({ children }: Props) {
   const { username } = useParams<{ username: string }>();
   const isLoggedIn = !!tokenStore.get();
   const loggedInUsername = getUsername();
+  const location = useLocation();
+  const nav = useNavigate();
+
+  function getPrivatePath(): string {
+    const match = location.pathname.match(/^\/public\/[^/]+\/(.*)$/);
+    if (!match) return "/projects";
+    const rest = match[1];
+    if (rest.startsWith("projects/")) return `/${rest}`;
+    if (rest === "projects") return "/projects";
+    if (rest === "insights") return "/insights";
+    if (rest === "outputs") return "/outputs";
+    return "/projects";
+  }
 
   const navItems = [
     { to: `/public/${username}/projects`, label: "Projects" },
@@ -62,19 +75,35 @@ export default function PublicLayout({ children }: Props) {
               ))}
             </nav>
 
-            {isLoggedIn && (
-              <Link
-                to="/profile"
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ECECEC] no-underline hover:no-underline"
-                aria-label={`Logged in as ${loggedInUsername ?? "user"} — open profile`}
-              >
-                <CircleUserRound className="h-[18px] w-[18px] text-[#6C6C6C]" strokeWidth={1.8} />
-              </Link>
+            {isLoggedIn && loggedInUsername === username && (
+              <>
+                <div className="flex overflow-hidden rounded-full border border-white/30 text-xs font-medium">
+                  <button
+                    className="cursor-pointer px-3 py-1.5 text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+                    onClick={() => nav(getPrivatePath())}
+                  >
+                    Private
+                  </button>
+                  <span className="cursor-default bg-white px-3 py-1.5 text-[#001166]">
+                    Public
+                  </span>
+                </div>
+
+                <Link
+                  to="/profile"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ECECEC] no-underline hover:no-underline"
+                  aria-label={`Logged in as ${loggedInUsername ?? "user"} — open profile`}
+                >
+                  <CircleUserRound className="h-[18px] w-[18px] text-[#6C6C6C]" strokeWidth={1.8} />
+                </Link>
+              </>
             )}
 
-            <span className="font-['Roboto'] text-sm text-white/60">
-              Viewing {username}&apos;s portfolio
-            </span>
+            {loggedInUsername !== username && (
+              <span className="font-['Roboto'] text-sm text-white/60">
+                Viewing {username}&apos;s portfolio
+              </span>
+            )}
           </div>
         </div>
       </header>

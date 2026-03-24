@@ -1,6 +1,7 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { CircleUserRound } from "../lib/ui-icons";
 import { cn } from "../lib/utils";
+import { getUsername } from "../auth/user";
 
 type Props = {
   showNav?: boolean;
@@ -15,6 +16,20 @@ const navItems = [
 ];
 
 export default function TopBar({ showNav = false }: Props) {
+  const location = useLocation();
+  const nav = useNavigate();
+  const username = getUsername();
+
+  function getPublicPath(): string {
+    const p = location.pathname;
+    if (!username) return "/";
+    if (p.startsWith("/projects/")) return `/public/${username}${p}`;
+    if (p.startsWith("/projects")) return `/public/${username}/projects`;
+    if (p.startsWith("/insights")) return `/public/${username}/insights`;
+    if (p.startsWith("/outputs")) return `/public/${username}/outputs`;
+    return `/public/${username}/projects`;
+  }
+
   return (
     <header className="sticky top-0 z-50 h-16 w-full bg-[#001166] text-white">
       <div className="flex h-16 w-full items-center justify-between px-[40px]">
@@ -56,6 +71,18 @@ export default function TopBar({ showNav = false }: Props) {
                 </NavLink>
               ))}
             </nav>
+
+            <div className="flex overflow-hidden rounded-full border border-white/30 text-xs font-medium">
+              <span className="cursor-default bg-white px-3 py-1.5 text-[#001166]">
+                Private
+              </span>
+              <button
+                className="cursor-pointer px-3 py-1.5 text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+                onClick={() => nav(getPublicPath())}
+              >
+                Public
+              </button>
+            </div>
 
             <Link
               to="/profile"
