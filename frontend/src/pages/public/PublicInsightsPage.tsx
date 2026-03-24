@@ -10,6 +10,7 @@ import SkillsTimeline from "../../components/insights/tabs/Skills/SkillsTimeline
 import SkillsLog from "../../components/insights/tabs/Skills/SkillsLog";
 import PublicActivityHeatmapTab from "../../components/insights/tabs/Projects/PublicActivityHeatmapTab";
 import PublicProjectSkillHeatmapTab from "../../components/insights/tabs/Projects/PublicProjectSkillHeatmapTab";
+import { PageContainer, PageHeader, SectionCard } from "../../components/shared";
 
 type PublicView = "ranked-projects" | "skills-overview" | "skills-timeline" | "skills-log" | "activity-heatmap" | "project-heatmap";
 
@@ -17,8 +18,8 @@ const NAV_ITEMS: { id: PublicView; label: string; indent?: boolean }[] = [
     { id: "ranked-projects", label: "Ranked Projects" },
     { id: "activity-heatmap", label: "Activity Heatmap" },
     { id: "project-heatmap", label: "Project Heatmap" },
-    { id: "skills-overview", label: "Skills Overview", indent: true },
     { id: "skills-timeline", label: "Skills Timeline", indent: true },
+    { id: "skills-overview", label: "Skills Overview", indent: true },
     { id: "skills-log", label: "Skills Log", indent: true },
 ];
 
@@ -130,48 +131,60 @@ export default function PublicInsightsPage() {
 
     return (
         <PublicLayout>
-            <div
-                className="grid grid-cols-[12rem_1fr] grid-rows-[auto_1fr] min-h-0 flex-1 pl-4"
-                style={{ minHeight: "calc(100vh - 3.5rem)" }}
-            >
-                {/* Row 1: aligned headers */}
-                <div className="flex flex-col border-r border-slate-200 pt-10 pb-2 border-b border-slate-200">
-                    <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500 m-0 px-4">Insights</h2>
-                </div>
-                <div className="flex items-baseline gap-3 border-b border-slate-200 pt-10 pb-2 px-6">
-                    <h3 className="text-lg font-semibold m-0">{pageTitle}</h3>
-                </div>
+            <PageContainer className="min-h-[calc(100vh-64px)] bg-background pt-[12px]">
+                <PageHeader
+                    title="Insights"
+                    breadcrumbs={[{ label: "Home", href: "/" }, { label: "Insights" }]}
+                />
 
-                {/* Row 2: sidebar nav + content */}
-                <nav className="flex flex-col flex-1 min-h-0 pt-2 pb-6 border-r border-slate-200 pl-4 pr-2">
-                    <button className={linkStyle("ranked-projects")} onClick={() => setActiveView("ranked-projects")}>
-                        Ranked Projects
-                    </button>
-                    <button className={linkStyle("activity-heatmap")} onClick={() => setActiveView("activity-heatmap")}>
-                        Activity Heatmap
-                    </button>
-                    <button className={linkStyle("project-heatmap")} onClick={() => setActiveView("project-heatmap")}>
-                        Project Heatmap
-                    </button>
-                    <div className="pt-4 mt-2 border-t border-slate-200 text-[11px] font-medium text-slate-500 uppercase tracking-widest px-3 pb-1.5 select-none">
-                        Skills
+                <SectionCard className="w-full overflow-hidden !p-0 bg-white">
+                    <div className="grid min-h-0 flex-1 grid-cols-[180px_minmax(0,1fr)] grid-rows-[auto_1fr]">
+                        {/* Row 1: left header cell */}
+                        <div className="flex flex-col border-b border-r border-slate-200 px-6 pb-3 pt-10">
+                            <h2 className="m-0 text-sm font-semibold uppercase tracking-widest text-slate-500">
+                                Insights
+                            </h2>
+                        </div>
+
+                        {/* Row 1: title */}
+                        <div className="flex items-baseline gap-3 border-b border-slate-200 px-6 pb-3 pt-10">
+                            <h3 className="m-0 text-lg font-semibold text-slate-900">{pageTitle}</h3>
+                        </div>
+
+                        {/* Row 2: sidebar nav */}
+                        <nav className="flex flex-col flex-1 min-h-0 pt-2 pb-6 border-r border-slate-200 pl-4 pr-2">
+                            <button className={linkStyle("ranked-projects")} onClick={() => setActiveView("ranked-projects")}>
+                                Ranked Projects
+                            </button>
+                            <button className={linkStyle("activity-heatmap")} onClick={() => setActiveView("activity-heatmap")}>
+                                Activity Heatmap
+                            </button>
+                            <button className={linkStyle("project-heatmap")} onClick={() => setActiveView("project-heatmap")}>
+                                Project Heatmap
+                            </button>
+                            <div className="pt-4 mt-2 border-t border-slate-200 text-[11px] font-medium text-slate-500 uppercase tracking-widest px-3 pb-1.5 select-none">
+                                Skills
+                            </div>
+                            <button className={linkStyle("skills-timeline")} onClick={() => setActiveView("skills-timeline")}>
+                                Skills Timeline
+                            </button>
+                            <button className={linkStyle("skills-overview")} onClick={() => setActiveView("skills-overview")}>
+                                Skills Overview
+                            </button>
+                            <button className={linkStyle("skills-log")} onClick={() => setActiveView("skills-log")}>
+                                Skills Log
+                            </button>
+                        </nav>
+
+                        {/* Row 2: content */}
+                        <div className="flex flex-col min-w-0 px-6 pb-6 overflow-auto">
+                            <main className="flex-1 min-h-0">
+                                {renderContent()}
+                            </main>
+                        </div>
                     </div>
-                    <button className={linkStyle("skills-overview")} onClick={() => setActiveView("skills-overview")}>
-                        Skills Overview
-                    </button>
-                    <button className={linkStyle("skills-timeline")} onClick={() => setActiveView("skills-timeline")}>
-                        Skills Timeline
-                    </button>
-                    <button className={linkStyle("skills-log")} onClick={() => setActiveView("skills-log")}>
-                        Skills Log
-                    </button>
-                </nav>
-                <div className="flex flex-col min-w-0 px-6 pb-6 overflow-auto">
-                    <main className="flex-1 min-h-0">
-                        {renderContent()}
-                    </main>
-                </div>
-            </div>
+                </SectionCard>
+            </PageContainer>
         </PublicLayout>
     );
 }
