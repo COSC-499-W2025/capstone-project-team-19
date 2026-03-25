@@ -23,7 +23,6 @@ import {
   AppButton,
   AppField,
   AppInput,
-  Breadcrumbs,
   ConfirmDialog,
   PageContainer,
   PageHeader,
@@ -275,72 +274,71 @@ export default function ProjectDetailPage() {
     <>
       <TopBar showNav username={username} />
 
-      <PageContainer className="flex min-h-[calc(100vh-56px)] flex-col gap-8 bg-background pt-[12px]">
-        <header className="flex flex-col gap-2 pt-[10px] pb-[6px]">
-          <Breadcrumbs
-            items={[
-              { label: "Home", href: "/" },
-              { label: "Projects", href: "/projects" },
-              { label: project.project_name },
-            ]}
-          />
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="text-[20px] font-medium leading-none text-foreground">
-              {project.project_name}
-            </h1>
-            {project.project_type && (
-              <TagPill className="capitalize">{project.project_type}</TagPill>
-            )}
-            {project.project_mode && (
-              <TagPill className="capitalize">{project.project_mode}</TagPill>
-            )}
-          </div>
-          <div className="mt-5 w-full">
+      <PageContainer className="flex min-h-[calc(100vh-56px)] flex-col gap-[20px] bg-background pt-[12px]">
+        <PageHeader
+          title={project.project_name}
+          breadcrumbs={[
+            { label: "Home", href: "/" },
+            { label: "Projects", href: "/projects" },
+            { label: project.project_name },
+          ]}
+          actions={
             <AppButton variant="destructive" onClick={() => setConfirmDelete(true)}>
               Delete Project
             </AppButton>
-          </div>
-        </header>
+          }
+        />
 
-        {/* Thumbnail */}
-        <SectionCard className="w-full bg-white px-6 py-6">
-          <div className="shrink-0 space-y-2">
-            <div
-              className="relative h-[140px] w-[186px] overflow-hidden rounded-[6px] bg-[#ebebeb] bg-cover bg-center"
-              style={thumbUrl ? { backgroundImage: `url(${thumbUrl})` } : undefined}
-            >
-              {!thumbUrl && (
-                <div className="flex h-full items-center justify-center text-[13px] text-[#9f9f9f]">
-                  No Image
-                </div>
-              )}
-              {thumbLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-[13px] text-white">
-                  Uploading…
-                </div>
-              )}
-            </div>
-            <div className="flex gap-[6px] pt-1">
-              <AppButton
-                variant="outline"
-                size="sm"
-                disabled={thumbLoading}
-                onClick={() => fileInputRef.current?.click()}
+        {/* Thumbnail + meta tags (aligned with main layout) */}
+        <SectionCard className="w-full bg-white">
+          <div className="flex gap-[20px]">
+            <div className="shrink-0 space-y-[8px]">
+              <div
+                className="relative h-[140px] w-[186px] overflow-hidden rounded-[6px] bg-[#ebebeb] bg-cover bg-center"
+                style={thumbUrl ? { backgroundImage: `url(${thumbUrl})` } : undefined}
               >
-                {thumbUrl ? "Change" : "Upload"} Thumbnail
-              </AppButton>
-              {thumbUrl && (
+                {!thumbUrl && (
+                  <div className="flex h-full items-center justify-center text-[13px] text-[#9f9f9f]">
+                    No Image
+                  </div>
+                )}
+                {thumbLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-[13px] text-white">
+                    Uploading…
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-[6px]">
                 <AppButton
-                  variant="destructive"
+                  variant="outline"
                   size="sm"
                   disabled={thumbLoading}
-                  onClick={() => setConfirmRemoveThumbnail(true)}
+                  onClick={() => fileInputRef.current?.click()}
                 >
-                  Remove Thumbnail
+                  {thumbUrl ? "Change" : "Upload"} Thumbnail
                 </AppButton>
+                {thumbUrl && (
+                  <AppButton
+                    variant="destructive"
+                    size="sm"
+                    disabled={thumbLoading}
+                    onClick={() => setConfirmRemoveThumbnail(true)}
+                  >
+                    Remove Thumbnail
+                  </AppButton>
+                )}
+              </div>
+              {thumbError && <p className="text-[13px] text-[#cc4b4b]">{thumbError}</p>}
+            </div>
+
+            <div className="flex flex-wrap gap-[8px] self-start">
+              {project.project_type && (
+                <TagPill className="capitalize">{project.project_type}</TagPill>
+              )}
+              {project.project_mode && (
+                <TagPill className="capitalize">{project.project_mode}</TagPill>
               )}
             </div>
-            {thumbError && <p className="text-[13px] text-[#cc4b4b]">{thumbError}</p>}
           </div>
 
           <input
