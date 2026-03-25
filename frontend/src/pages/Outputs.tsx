@@ -16,7 +16,7 @@ type View =
 
 export default function OutputsPage() {
   const username = getUsername();
-  const [view, setView] = useState<View>({ kind: "landing" });
+  const [view, setView] = useState<View>({ kind: "resumes" });
   const [showCreate, setShowCreate] = useState(false);
 
   function renderView() {
@@ -32,7 +32,6 @@ export default function OutputsPage() {
       case "resumes":
         return (
           <ResumeList
-            onBack={() => setView({ kind: "landing" })}
             onView={(id) => setView({ kind: "resume-detail", id })}
             onEdit={(id) => setView({ kind: "resume-detail", id, editing: true })}
             onCreateNew={() => setShowCreate(true)}
@@ -51,25 +50,15 @@ export default function OutputsPage() {
     }
   }
 
-  const goLanding = () => setView({ kind: "landing" });
   const goResumes = () => setView({ kind: "resumes" });
 
   const headerConfig =
-    view.kind === "landing"
+    view.kind === "resumes"
       ? {
-          title: "Outputs",
+          title: "Resume",
           breadcrumbs: [
             { label: "Home", href: "/" },
-            { label: "Outputs" },
-          ],
-        }
-      : view.kind === "resumes"
-      ? {
-          title: "Resume Items",
-          breadcrumbs: [
-            { label: "Home", href: "/" },
-            { label: "Outputs", onClick: goLanding },
-            { label: "Resume Items" },
+            { label: "Resume" },
           ],
         }
       : view.kind === "resume-detail"
@@ -77,17 +66,15 @@ export default function OutputsPage() {
           title: "Resume Detail",
           breadcrumbs: [
             { label: "Home", href: "/" },
-            { label: "Outputs", onClick: goLanding },
-            { label: "Resume Items", onClick: goResumes },
+            { label: "Resume", onClick: goResumes },
             { label: "Resume Detail" },
           ],
         }
       : {
-          title: "Portfolio Items",
+          title: "Resume",
           breadcrumbs: [
             { label: "Home", href: "/" },
-            { label: "Outputs", onClick: goLanding },
-            { label: "Portfolio Items" },
+            { label: "Resume" },
           ],
         };
 
