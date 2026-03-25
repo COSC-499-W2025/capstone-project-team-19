@@ -59,7 +59,7 @@
 }
 
 .projectVisibilityTag.public {
-  background: rgba(220, 252, 231, 0.95);
-  border-color: #16a34a;
-  color: #15803d;
+  background: rgba(208, 232, 255, 0.95);
+  border-color: #1a5fa8;
+  color: #001166;
 }

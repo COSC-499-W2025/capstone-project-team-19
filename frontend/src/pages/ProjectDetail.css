@@ -126,7 +126,7 @@
 
 .pdVisibilityToggle {
   display: inline-flex;
-  border: 1px solid #d1d5db;
+  border: 1px solid #bfdbfe;
   border-radius: 6px;
   overflow: hidden;
   background: #fff;
@@ -138,19 +138,25 @@
   font-weight: 500;
   border: none;
   background: transparent;
-  color: #6b7280;
+  color: #64748b;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 
 .pdVisibilityOption:hover:not(:disabled) {
-  background: #f3f4f6;
-  color: #374151;
+  background: #d0e8ff;
+  color: #1a5fa8;
 }
 
 .pdVisibilityOption.selected {
-  background: #16a34a;
-  color: white;
+  background: #001166;
+  color: #fff;
+}
+
+/* Generic :hover wins over .selected alone; keep the active choice visibly blue. */
+.pdVisibilityOption.selected:hover:not(:disabled) {
+  background: #001f8c;
+  color: #fff;
 }
 
 .pdVisibilityOption:disabled {
