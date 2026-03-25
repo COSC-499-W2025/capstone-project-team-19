@@ -2,6 +2,8 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import TopBar from "../components/TopBar";
 import { getUsername } from "../auth/user";
+import { tokenStore } from "../auth/token";
+import { deleteAccount } from "../api/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -538,6 +540,21 @@ export default function ProfilePage() {
     }
   }
 
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      tokenStore.clear();
+      window.location.replace("/login");
+    } catch {
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
+  }
+
   const publicUrl = `${window.location.origin}/public/${username}/projects`;
 
   return (
@@ -832,15 +849,42 @@ export default function ProfilePage() {
                 Sign out
               </Button>
 
-              <Button
-                variant="ghost"
-                size="default"
-                className="h-11 w-full justify-start gap-3 text-red-600 hover:bg-red-50 hover:text-red-700"
-                type="button"
-              >
-                <Trash2 className="size-4" />
-                Delete account
-              </Button>
+              {confirmingDelete ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-3">
+                  <p className="text-sm text-red-700">
+                    Are you sure? This will permanently delete your account and all your data. This action cannot be undone.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDeleteAccount}
+                      disabled={deleting}
+                    >
+                      {deleting ? "Deleting..." : "Yes, delete my account"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setConfirmingDelete(false)}
+                      disabled={deleting}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="default"
+                  className="h-11 w-full justify-start gap-3 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  type="button"
+                  onClick={() => setConfirmingDelete(true)}
+                >
+                  <Trash2 className="size-4" />
+                  Delete account
+                </Button>
+              )}
             </ProfileSectionCard>
           </section>
         </div>
