@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import { fetchThumbnailUrl, listProjects, type Project } from "../api/projects";
-import { updateProjectVisibility } from "../api/portfolioSettings";
 import { getUsername } from "../auth/user";
 import {
   FeatureTile,
   PageContainer,
   PageHeader,
   SectionCard,
+  TagPill,
 } from "../components/shared";
 
 export default function ProjectsPage() {
@@ -18,7 +18,6 @@ export default function ProjectsPage() {
   const [thumbnails, setThumbnails] = useState<Record<number, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toggling, setToggling] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,31 +54,6 @@ export default function ProjectsPage() {
       for (const url of objectUrls) URL.revokeObjectURL(url);
     };
   }, []);
-
-  const handleToggleVisibility = useCallback(
-    async (e: React.MouseEvent, project: Project) => {
-      e.stopPropagation();
-      if (toggling === project.project_summary_id) return;
-      setToggling(project.project_summary_id);
-      const newValue = !project.is_public;
-
-      try {
-        await updateProjectVisibility(project.project_summary_id, newValue);
-        setProjects((prev) =>
-          prev.map((p) =>
-            p.project_summary_id === project.project_summary_id
-              ? { ...p, is_public: newValue }
-              : p
-          )
-        );
-      } catch {
-        // state stays unchanged on error
-      } finally {
-        setToggling(null);
-      }
-    },
-    [toggling]
-  );
 
   return (
     <>
@@ -124,26 +98,20 @@ export default function ProjectsPage() {
                     thumbnailUrl={thumbnails[p.project_summary_id]}
                     onClick={() => nav(`/projects/${p.project_summary_id}`)}
                   />
-                  <button
-                    className={`absolute right-[8px] top-[8px] z-10 cursor-pointer rounded-full border px-[8px] py-[2px] text-[11px] font-medium leading-none transition disabled:opacity-50 ${
+                  <TagPill
+                    className={`pointer-events-none absolute right-[8px] top-[8px] z-10 px-[8px] py-[2px] text-[11px] font-medium ${
                       p.is_public
-                        ? "border-green-600 bg-green-100/95 text-green-700"
-                        : "border-gray-300 bg-white/[.92] text-gray-500"
+                        ? "border-sky-300 bg-sky-100/95 text-sky-900"
+                        : "border-[#d0d0d0] bg-white/[0.92] text-[#6b6b6b]"
                     }`}
-                    onClick={(e) => handleToggleVisibility(e, p)}
-                    disabled={toggling === p.project_summary_id}
-                    title={
+                    aria-label={
                       p.is_public
-                        ? "Visible on public portfolio — click to hide"
-                        : "Hidden from public portfolio — click to show"
+                        ? "This project is visible on your public portfolio"
+                        : "This project is private"
                     }
                   >
-                    {toggling === p.project_summary_id
-                      ? "…"
-                      : p.is_public
-                        ? "Public"
-                        : "Private"}
-                  </button>
+                    {p.is_public ? "Public" : "Private"}
+                  </TagPill>
                 </div>
               ))}
             </div>
