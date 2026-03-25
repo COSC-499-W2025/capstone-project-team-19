@@ -12,14 +12,15 @@ function matchesEvent(e: EventWithDate, search: string, projectFilter: string) {
     return matchesSkill && matchesProject;
 }
 
-export default function SkillsLog() {
-    const [timeline, setTimeline] = useState<SkillTimelineDTO | null>(null);
-    const [loading, setLoading] = useState(true);
+export default function SkillsLog({ timeline: timelineProp }: { timeline?: SkillTimelineDTO } = {}) {
+    const [timeline, setTimeline] = useState<SkillTimelineDTO | null>(timelineProp ?? null);
+    const [loading, setLoading] = useState(!timelineProp);
     const [error, setError] = useState<string>("");
     const [search, setSearch] = useState("");
     const [projectFilter, setProjectFilter] = useState("");
 
     useEffect(() => {
+        if (timelineProp !== undefined) return;
         let cancelled = false;
         async function load() {
             try {
