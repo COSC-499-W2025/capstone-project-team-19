@@ -59,3 +59,34 @@ def create_user_with_password(conn: sqlite3.Connection, username: str, email: Op
     )
     conn.commit()
     return int(cur.lastrowid)
+
+
+def delete_user(conn: sqlite3.Connection, user_id: int) -> bool:
+    """Delete a user and all associated data.
+
+    New databases get ON DELETE CASCADE on every FK, but existing DBs
+    created before the migration still have the old schema (SQLite's
+    CREATE TABLE IF NOT EXISTS won't alter existing tables).  Explicitly
+    delete from tables whose FKs may lack CASCADE in older databases.
+    """
+    conn.execute("PRAGMA foreign_keys = ON")
+
+    # Tables whose FKs may lack CASCADE in pre-migration databases
+    project_keys = [
+        r[0] for r in conn.execute(
+            "SELECT project_key FROM projects WHERE user_id = ?", (user_id,)
+        ).fetchall()
+    ]
+    if project_keys:
+        placeholders = ",".join("?" * len(project_keys))
+        conn.execute(
+            f"DELETE FROM project_versions WHERE project_key IN ({placeholders})",
+            project_keys,
+        )
+    conn.execute("DELETE FROM user_tokens WHERE user_id = ?", (user_id,))
+    conn.execute("DELETE FROM external_consent WHERE user_id = ?", (user_id,))
+    conn.execute("DELETE FROM text_contribution_revisions WHERE user_id = ?", (user_id,))
+
+    cur = conn.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+    conn.commit()
+    return cur.rowcount > 0
