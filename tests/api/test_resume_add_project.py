@@ -66,9 +66,15 @@ def test_add_project_to_resume_success(client, auth_headers, seed_conn):
     body = res.json()
     assert body["success"] is True
     projects = body["data"]["projects"]
+    assert len(projects) == 2
     names = [p["project_name"] for p in projects]
     assert "ProjectA" in names
     assert "ProjectB" in names
+
+    agg = body["data"]["aggregated_skills"]
+    assert agg == recompute_aggregated_skills(projects)
+    # Minimal seed entry has no languages; the added project is hydrated from its summary.
+    assert agg["languages"] == ["JavaScript"]
 
 
 def test_add_project_already_in_resume_returns_400(client, auth_headers, seed_conn):
