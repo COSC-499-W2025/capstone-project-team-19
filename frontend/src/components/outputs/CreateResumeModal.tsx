@@ -71,7 +71,7 @@ export default function CreateResumeModal({ onClose, onCreated }: Props) {
 
         <div className="px-6 pt-6 pb-2">
           {/* Title input */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-1/2">
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
