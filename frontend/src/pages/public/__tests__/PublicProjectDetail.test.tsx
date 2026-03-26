@@ -38,7 +38,6 @@ import {
 
 const baseProject = {
   project_summary_id: 42,
-  project_key: null,
   project_name: 'Test Project',
   project_type: 'personal',
   project_mode: 'solo',
@@ -49,14 +48,13 @@ const baseProject = {
   languages: ['TypeScript'],
   frameworks: ['React'],
   skills: ['frontend_dev'],
-  contributions: {},
 }
 
 function setupDefaultMocks() {
   vi.mocked(publicGetProject).mockResolvedValue(baseProject)
   vi.mocked(publicFetchThumbnailUrl).mockResolvedValue(null)
   vi.mocked(publicListProjects).mockResolvedValue([
-    { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null },
+    { project_summary_id: 42, project_name: 'Test Project', project_type: null, project_mode: null, created_at: null },
   ])
 }
 
@@ -111,7 +109,7 @@ describe('PublicProjectDetailPage', () => {
     it('renders project name after loading', async () => {
       render(<PublicProjectDetailPage />)
       await waitFor(() => {
-        expect(screen.getByText('Test Project')).toBeInTheDocument()
+        expect(screen.getByRole('heading', { name: 'Test Project' })).toBeInTheDocument()
       })
     })
 
@@ -145,39 +143,41 @@ describe('PublicProjectDetailPage', () => {
       })
     })
 
-    it('renders back button', async () => {
+    it('renders breadcrumb link back to projects list', async () => {
       render(<PublicProjectDetailPage />)
       await waitFor(() => {
-        expect(screen.getByText('← Back to Projects')).toBeInTheDocument()
+        const link = screen.getByRole('link', { name: 'Projects' })
+        expect(link).toHaveAttribute('href', '/public/johndoe/projects')
       })
-    })
-
-    it('navigates back when back button is clicked', async () => {
-      const user = userEvent.setup()
-      render(<PublicProjectDetailPage />)
-      await waitFor(() => screen.getByText('← Back to Projects'))
-      await user.click(screen.getByText('← Back to Projects'))
-      expect(mockNavigate).toHaveBeenCalledWith('/public/johndoe/projects')
     })
   })
 
   describe('skills and technologies', () => {
     it('renders languages', async () => {
+      const user = userEvent.setup()
       render(<PublicProjectDetailPage />)
+      await waitFor(() => screen.getByText('Skills & Technologies'))
+      await user.click(screen.getByText('Skills & Technologies'))
       await waitFor(() => {
         expect(screen.getByText(/TypeScript/)).toBeInTheDocument()
       })
     })
 
     it('renders frameworks', async () => {
+      const user = userEvent.setup()
       render(<PublicProjectDetailPage />)
+      await waitFor(() => screen.getByText('Skills & Technologies'))
+      await user.click(screen.getByText('Skills & Technologies'))
       await waitFor(() => {
         expect(screen.getByText(/React/)).toBeInTheDocument()
       })
     })
 
     it('renders skills with formatted names', async () => {
+      const user = userEvent.setup()
       render(<PublicProjectDetailPage />)
+      await waitFor(() => screen.getByText('Skills & Technologies'))
+      await user.click(screen.getByText('Skills & Technologies'))
       await waitFor(() => {
         expect(screen.getByText(/Frontend Dev/)).toBeInTheDocument()
       })
@@ -191,7 +191,7 @@ describe('PublicProjectDetailPage', () => {
         skills: [],
       })
       render(<PublicProjectDetailPage />)
-      await waitFor(() => screen.getByText('Test Project'))
+      await waitFor(() => screen.getByRole('heading', { name: 'Test Project' }))
       expect(screen.queryByText('Skills & Technologies')).not.toBeInTheDocument()
     })
   })
@@ -211,7 +211,7 @@ describe('PublicProjectDetailPage', () => {
 
     it('does not show contribution summary for solo projects', async () => {
       render(<PublicProjectDetailPage />)
-      await waitFor(() => screen.getByText('Test Project'))
+      await waitFor(() => screen.getByRole('heading', { name: 'Test Project' }))
       expect(screen.queryByText('Contribution Summary')).not.toBeInTheDocument()
     })
   })
@@ -219,8 +219,8 @@ describe('PublicProjectDetailPage', () => {
   describe('prev/next navigation', () => {
     it('shows next project button when current is not last', async () => {
       vi.mocked(publicListProjects).mockResolvedValue([
-        { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null },
-        { project_summary_id: 43, project_name: 'Next Project', project_key: null, project_type: null, project_mode: null, created_at: null },
+        { project_summary_id: 42, project_name: 'Test Project', project_type: null, project_mode: null, created_at: null },
+        { project_summary_id: 43, project_name: 'Next Project', project_type: null, project_mode: null, created_at: null },
       ])
       render(<PublicProjectDetailPage />)
       await waitFor(() => {
@@ -230,8 +230,8 @@ describe('PublicProjectDetailPage', () => {
 
     it('shows prev project button when current is not first', async () => {
       vi.mocked(publicListProjects).mockResolvedValue([
-        { project_summary_id: 41, project_name: 'Prev Project', project_key: null, project_type: null, project_mode: null, created_at: null },
-        { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null },
+        { project_summary_id: 41, project_name: 'Prev Project', project_type: null, project_mode: null, created_at: null },
+        { project_summary_id: 42, project_name: 'Test Project', project_type: null, project_mode: null, created_at: null },
       ])
       render(<PublicProjectDetailPage />)
       await waitFor(() => {
@@ -241,8 +241,8 @@ describe('PublicProjectDetailPage', () => {
 
     it('navigates to next project when next button is clicked', async () => {
       vi.mocked(publicListProjects).mockResolvedValue([
-        { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null },
-        { project_summary_id: 43, project_name: 'Next Project', project_key: null, project_type: null, project_mode: null, created_at: null },
+        { project_summary_id: 42, project_name: 'Test Project', project_type: null, project_mode: null, created_at: null },
+        { project_summary_id: 43, project_name: 'Next Project', project_type: null, project_mode: null, created_at: null },
       ])
       const user = userEvent.setup()
       render(<PublicProjectDetailPage />)
@@ -253,8 +253,8 @@ describe('PublicProjectDetailPage', () => {
 
     it('navigates to prev project when prev button is clicked', async () => {
       vi.mocked(publicListProjects).mockResolvedValue([
-        { project_summary_id: 41, project_name: 'Prev Project', project_key: null, project_type: null, project_mode: null, created_at: null },
-        { project_summary_id: 42, project_name: 'Test Project', project_key: null, project_type: null, project_mode: null, created_at: null },
+        { project_summary_id: 41, project_name: 'Prev Project', project_type: null, project_mode: null, created_at: null },
+        { project_summary_id: 42, project_name: 'Test Project', project_type: null, project_mode: null, created_at: null },
       ])
       const user = userEvent.setup()
       render(<PublicProjectDetailPage />)
@@ -264,9 +264,9 @@ describe('PublicProjectDetailPage', () => {
     })
 
     it('hides nav row when project is the only one', async () => {
-      const { container } = render(<PublicProjectDetailPage />)
-      await waitFor(() => screen.getByText('Test Project'))
-      expect(container.querySelector('.pdNavBtn')).toBeNull()
+      render(<PublicProjectDetailPage />)
+      await waitFor(() => screen.getByRole('heading', { name: 'Test Project' }))
+      expect(screen.queryByText(/← /)).not.toBeInTheDocument()
     })
   })
 })
