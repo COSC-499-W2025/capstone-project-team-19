@@ -1,7 +1,9 @@
 import { useParams, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { tokenStore } from "../../auth/token";
 import { getUsername } from "../../auth/user";
+import { getPortfolioSettings } from "../../api/portfolioSettings";
+import { PageContainer, SectionCard, AppButton } from "../../components/shared";
 import { CircleUserRound } from "../../lib/ui-icons";
 import { cn } from "../../lib/utils";
 
@@ -15,6 +17,15 @@ export default function PublicLayout({ children }: Props) {
   const loggedInUsername = getUsername();
   const location = useLocation();
   const nav = useNavigate();
+  const isOwner = isLoggedIn && loggedInUsername === username;
+  const [portfolioPublic, setPortfolioPublic] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!isOwner) return;
+    getPortfolioSettings()
+      .then((s) => setPortfolioPublic(s.portfolio_public))
+      .catch(() => setPortfolioPublic(false));
+  }, [isOwner]);
 
   function getPrivatePath(): string {
     const match = location.pathname.match(/^\/public\/[^/]+\/(.*)$/);
@@ -108,7 +119,18 @@ export default function PublicLayout({ children }: Props) {
         </div>
       </header>
 
-      {children}
+      {isOwner && portfolioPublic === false ? (
+        <PageContainer>
+          <SectionCard className="flex flex-col items-center gap-4 py-10 text-center">
+            <p className="text-[14px] text-[#7f7f7f]">
+              Your portfolio is set to private. Enable public viewing in your profile to share this page.
+            </p>
+            <AppButton variant="primary" onClick={() => nav("/profile")}>
+              Go to Profile
+            </AppButton>
+          </SectionCard>
+        </PageContainer>
+      ) : children}
     </>
   );
 }
