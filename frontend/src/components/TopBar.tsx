@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { getPortfolioSettings } from "../api/portfolioSettings";
+import { getUsername } from "../auth/user";
 import { CircleUserRound } from "../lib/ui-icons";
 import { cn } from "../lib/utils";
-import { getUsername } from "../auth/user";
+import AppButton from "./shared/AppButton";
+import AppDialogShell from "./shared/AppDialogShell";
 
 type Props = {
   showNav?: boolean;
@@ -19,6 +23,7 @@ export default function TopBar({ showNav = false }: Props) {
   const location = useLocation();
   const nav = useNavigate();
   const username = getUsername();
+  const [showPrivateWarning, setShowPrivateWarning] = useState(false);
 
   function getPublicPath(): string {
     const p = location.pathname;
@@ -30,7 +35,20 @@ export default function TopBar({ showNav = false }: Props) {
     return `/public/${username}/projects`;
   }
 
+  function handlePublicClick() {
+    getPortfolioSettings()
+      .then((s) => {
+        if (s.portfolio_public) {
+          nav(getPublicPath());
+        } else {
+          setShowPrivateWarning(true);
+        }
+      })
+      .catch(() => setShowPrivateWarning(true));
+  }
+
   return (
+    <>
     <header className="sticky top-0 z-50 h-16 w-full bg-[#001166] text-white">
       <div className="flex h-16 w-full items-center justify-between px-[40px]">
         <Link
@@ -78,7 +96,7 @@ export default function TopBar({ showNav = false }: Props) {
               </span>
               <button
                 className="cursor-pointer px-3 py-1.5 text-white/75 transition-colors hover:bg-white/10 hover:text-white"
-                onClick={() => nav(getPublicPath())}
+                onClick={handlePublicClick}
               >
                 Public
               </button>
@@ -98,5 +116,36 @@ export default function TopBar({ showNav = false }: Props) {
         )}
       </div>
     </header>
+
+    <AppDialogShell
+      open={showPrivateWarning}
+      onOpenChange={setShowPrivateWarning}
+      title="Dashboard not public"
+      width="sm"
+      footer={
+        <>
+          <AppButton variant="outline" onClick={() => setShowPrivateWarning(false)}>
+            Cancel
+          </AppButton>
+          {location.pathname !== "/profile" && (
+            <AppButton
+              variant="primary"
+              onClick={() => {
+                setShowPrivateWarning(false);
+                nav("/profile");
+              }}
+            >
+              Go to Profile
+            </AppButton>
+          )}
+        </>
+      }
+    >
+      <p className="text-sm text-gray-600">
+        You have not enabled public viewing of your dashboard. Please modify
+        viewing access in the profile page.
+      </p>
+    </AppDialogShell>
+    </>
   );
 }
