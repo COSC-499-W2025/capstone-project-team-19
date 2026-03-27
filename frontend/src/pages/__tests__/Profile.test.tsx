@@ -231,6 +231,77 @@ describe("ProfilePage", () => {
     expect(screen.getByRole("button", { name: /Cancel/i })).toBeInTheDocument();
   });
 
+  it("shows unsaved-changes dialog when leaving with dirty edits", async () => {
+    const { user } = setup();
+
+    const profileTag = await screen.findByText("@testuser");
+    const profileCard = profileTag.closest('[data-slot="card"]') as HTMLElement;
+    await user.click(within(profileCard).getByRole("button", { name: /Edit/i }));
+
+    const nameInput = screen.getByDisplayValue("Test User");
+    await user.clear(nameInput);
+    await user.type(nameInput, "Test User Updated");
+
+    await user.click(screen.getByRole("link", { name: /^Projects$/i }));
+
+    expect(
+      await screen.findByText(/You have unsaved changes on this page\. Leave without saving\?/i)
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Leave page/i })).toBeInTheDocument();
+  });
+
+  it("stays on page when unsaved-changes dialog is canceled", async () => {
+    const { user } = setup();
+
+    const profileTag = await screen.findByText("@testuser");
+    const profileCard = profileTag.closest('[data-slot="card"]') as HTMLElement;
+    await user.click(within(profileCard).getByRole("button", { name: /Edit/i }));
+
+    const nameInput = screen.getByDisplayValue("Test User");
+    await user.clear(nameInput);
+    await user.type(nameInput, "Test User Updated");
+
+    await user.click(screen.getByRole("link", { name: /^Projects$/i }));
+    expect(
+      await screen.findByText(/You have unsaved changes on this page\. Leave without saving\?/i)
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^Cancel$/i }));
+
+    expect(
+      screen.queryByText(/You have unsaved changes on this page\. Leave without saving\?/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it("navigates away when unsaved-changes dialog is confirmed", async () => {
+    const assignFn = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, "location", {
+      value: { ...originalLocation, assign: assignFn },
+      writable: true,
+    });
+
+    const { user } = setup();
+
+    const profileTag = await screen.findByText("@testuser");
+    const profileCard = profileTag.closest('[data-slot="card"]') as HTMLElement;
+    await user.click(within(profileCard).getByRole("button", { name: /Edit/i }));
+
+    const nameInput = screen.getByDisplayValue("Test User");
+    await user.clear(nameInput);
+    await user.type(nameInput, "Test User Updated");
+
+    await user.click(screen.getByRole("link", { name: /^Projects$/i }));
+    await user.click(await screen.findByRole("button", { name: /Leave page/i }));
+
+    expect(assignFn).toHaveBeenCalledWith("/projects");
+
+    Object.defineProperty(window, "location", {
+      value: originalLocation,
+      writable: true,
+    });
+  });
+
   it("cancels delete account confirmation", async () => {
     const { user } = setup();
 
