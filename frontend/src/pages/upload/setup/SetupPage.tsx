@@ -316,6 +316,10 @@ export default function UploadSetupPage() {
         const project = flow.projectCards.find((p) => p.projectName === projectName);
         if (!project || project.projectType !== "text" || project.classification !== "collaborative") return false;
       }
+      if (code === "missing_supporting_files") {
+        const project = flow.projectCards.find((p) => p.projectName === projectName);
+        if (!project || project.projectType !== "text" || project.classification !== "collaborative") return false;
+      }
       const summaryModes = resolvedSummaryModesByProject[projectName];
       if (code === "missing_manual_summary") {
         if (summaryModes?.project === "llm" || summaryModes?.project === null) return false;

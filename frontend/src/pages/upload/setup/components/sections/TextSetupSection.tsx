@@ -118,6 +118,8 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     [driveMapByLocalFile],
   );
   const isDriveConnected = project.driveState === "connected";
+  const showSupportingFilePicker =
+    project.projectType === "text" && project.classification === "collaborative";
   const showContributionSectionPicker =
     project.projectType === "text" && project.classification === "collaborative";
   const showCollaborativeDriveUi = project.projectType === "text" && project.classification === "collaborative";
@@ -375,65 +377,69 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
         </p>
       )}
 
-      <div className="space-y-3">
-        <div className="text-sm font-semibold text-zinc-900">Supporting text files</div>
-        {supportingTextOptions.length === 0 && (
-          <p className="text-sm text-zinc-600">No supporting text candidates found.</p>
-        )}
-        {supportingTextOptions.length > 0 && (
-          <div className="space-y-1">
-            {supportingTextOptions.map((item) => (
-              <label key={item.relpath} className="flex items-center gap-2 text-sm text-zinc-800">
-                <input
-                  type="checkbox"
-                  checked={selectedSupportingText.includes(item.relpath)}
-                  onChange={() => setSelectedSupportingText((prev) => toggleString(prev, item.relpath))}
-                  disabled={isMutating}
-                />
-                <span>{item.file_name}</span>
-              </label>
-            ))}
-            <button
-              type="button"
-              onClick={onSaveSupportingText}
-              disabled={isMutating || project.projectKey === null}
-              className={setupPrimaryActionButtonClass}
-            >
-              Save supporting text files
-            </button>
+      {showSupportingFilePicker && (
+        <>
+          <div className="space-y-3">
+            <div className="text-sm font-semibold text-zinc-900">Supporting text files</div>
+            {supportingTextOptions.length === 0 && (
+              <p className="text-sm text-zinc-600">No supporting text candidates found.</p>
+            )}
+            {supportingTextOptions.length > 0 && (
+              <div className="space-y-1">
+                {supportingTextOptions.map((item) => (
+                  <label key={item.relpath} className="flex items-center gap-2 text-sm text-zinc-800">
+                    <input
+                      type="checkbox"
+                      checked={selectedSupportingText.includes(item.relpath)}
+                      onChange={() => setSelectedSupportingText((prev) => toggleString(prev, item.relpath))}
+                      disabled={isMutating}
+                    />
+                    <span>{item.file_name}</span>
+                  </label>
+                ))}
+                <button
+                  type="button"
+                  onClick={onSaveSupportingText}
+                  disabled={isMutating || project.projectKey === null}
+                  className={setupPrimaryActionButtonClass}
+                >
+                  Save supporting text files
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <div className="space-y-3">
-        <div className="text-sm font-semibold text-zinc-900">Supporting CSV files</div>
-        {supportingCsvOptions.length === 0 && (
-          <p className="text-sm text-zinc-600">No supporting CSV files found.</p>
-        )}
-        {supportingCsvOptions.length > 0 && (
-          <div className="space-y-1">
-            {supportingCsvOptions.map((item) => (
-              <label key={item.relpath} className="flex items-center gap-2 text-sm text-zinc-800">
-                <input
-                  type="checkbox"
-                  checked={selectedSupportingCsv.includes(item.relpath)}
-                  onChange={() => setSelectedSupportingCsv((prev) => toggleString(prev, item.relpath))}
-                  disabled={isMutating}
-                />
-                <span>{item.file_name}</span>
-              </label>
-            ))}
-            <button
-              type="button"
-              onClick={onSaveSupportingCsv}
-              disabled={isMutating || project.projectKey === null}
-              className={setupPrimaryActionButtonClass}
-            >
-              Save supporting CSV files
-            </button>
+          <div className="space-y-3">
+            <div className="text-sm font-semibold text-zinc-900">Supporting CSV files</div>
+            {supportingCsvOptions.length === 0 && (
+              <p className="text-sm text-zinc-600">No supporting CSV files found.</p>
+            )}
+            {supportingCsvOptions.length > 0 && (
+              <div className="space-y-1">
+                {supportingCsvOptions.map((item) => (
+                  <label key={item.relpath} className="flex items-center gap-2 text-sm text-zinc-800">
+                    <input
+                      type="checkbox"
+                      checked={selectedSupportingCsv.includes(item.relpath)}
+                      onChange={() => setSelectedSupportingCsv((prev) => toggleString(prev, item.relpath))}
+                      disabled={isMutating}
+                    />
+                    <span>{item.file_name}</span>
+                  </label>
+                ))}
+                <button
+                  type="button"
+                  onClick={onSaveSupportingCsv}
+                  disabled={isMutating || project.projectKey === null}
+                  className={setupPrimaryActionButtonClass}
+                >
+                  Save supporting CSV files
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {showCollaborativeDriveUi && (
         <div className="space-y-3">
