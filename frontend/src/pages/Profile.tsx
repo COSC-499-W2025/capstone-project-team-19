@@ -399,6 +399,124 @@ export default function ProfilePage() {
       });
   }, []);
 
+  const hasUnsavedChanges = useMemo(() => {
+    if (!profile) return false;
+
+    const profileDirty =
+      editingProfile &&
+      ((profileDraft.full_name ?? profile.full_name ?? "") !== (profile.full_name ?? "") ||
+        (profileDraft.email ?? profile.email ?? "") !== (profile.email ?? "") ||
+        (profileDraft.phone ?? profile.phone ?? "") !== (profile.phone ?? "") ||
+        (profileDraft.linkedin ?? profile.linkedin ?? "") !== (profile.linkedin ?? "") ||
+        (profileDraft.github ?? profile.github ?? "") !== (profile.github ?? "") ||
+        (profileDraft.location ?? profile.location ?? "") !== (profile.location ?? ""));
+
+    const summaryDirty =
+      editingSummary && (summaryDraft ?? "") !== (profile.profile_text ?? "");
+
+    const educationDirty =
+      editingEducation &&
+      JSON.stringify(educationDraft) !==
+        JSON.stringify(
+          education.map((e) => ({
+            title: e.title,
+            organization: e.organization,
+            date_text: e.date_text,
+            description: e.description,
+          }))
+        );
+
+    const certsDirty =
+      editingCerts &&
+      JSON.stringify(certsDraft) !==
+        JSON.stringify(
+          certifications.map((e) => ({
+            title: e.title,
+            organization: e.organization,
+            date_text: e.date_text,
+            description: e.description,
+          }))
+        );
+
+    const experienceDirty =
+      editingExperience &&
+      JSON.stringify(experienceDraft) !==
+        JSON.stringify(
+          experience.map((e) => ({
+            role: e.role,
+            company: e.company,
+            date_text: e.date_text,
+            description: e.description,
+          }))
+        );
+
+    return profileDirty || summaryDirty || educationDirty || certsDirty || experienceDirty;
+  }, [
+    profile,
+    editingProfile,
+    editingSummary,
+    editingEducation,
+    editingCerts,
+    editingExperience,
+    profileDraft,
+    summaryDraft,
+    educationDraft,
+    certsDraft,
+    experienceDraft,
+    education,
+    certifications,
+    experience,
+  ]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    function onDocumentClick(e: MouseEvent) {
+      const target = e.target as HTMLElement | null;
+      const link = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!link) return;
+      if (e.defaultPrevented) return;
+      if (e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (link.target && link.target !== "_self") return;
+      if (link.hasAttribute("download")) return;
+
+      let destination: URL;
+      try {
+        destination = new URL(link.href, window.location.href);
+      } catch {
+        return;
+      }
+
+      if (destination.origin !== window.location.origin) return;
+
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      const next = `${destination.pathname}${destination.search}${destination.hash}`;
+      if (current === next) return;
+
+      const ok = window.confirm("You have unsaved changes. Leave this page without saving?");
+      if (!ok) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+
+    document.addEventListener("click", onDocumentClick, true);
+    return () => document.removeEventListener("click", onDocumentClick, true);
+  }, [hasUnsavedChanges]);
+
   function startEditProfile() {
     if (!profile) return;
     setProfileDraft(profile);
