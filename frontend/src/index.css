@@ -916,6 +916,46 @@ button {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
+}
+
+.addProjectModalFooter {
+  justify-content: center;
+}
+
+.addProjectModalFooter__cancel,
+.addProjectModalFooter__add {
+  min-width: 100px;
+  padding: 11px 20px;
+  height: 40px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.addProjectModalFooter__cancel {
+  background: white;
+  border: 2px solid var(--primary);
+  color: var(--primary);
+}
+
+.addProjectModalFooter__cancel:hover {
+  background: #f8fafc;
+}
+
+.addProjectModalFooter__add {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+}
+
+.addProjectModalFooter__add:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 /* Project picker table */
