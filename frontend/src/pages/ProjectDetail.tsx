@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import "./ProjectDetail.css";
+import { useNavigate, useParams } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import { getUsername } from "../auth/user";
 import {
@@ -73,12 +72,8 @@ export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const projectId = Number(id);
   const nav = useNavigate();
-  const [searchParams] = useSearchParams();
   const username = getUsername();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const openedFromUpload = searchParams.get("openedFromUpload") === "1";
-  const returnToParam = (searchParams.get("returnTo") ?? "").trim();
-  const safeReturnTo = returnToParam.startsWith("/") ? returnToParam : "/upload/upload";
 
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
@@ -221,35 +216,6 @@ export default function ProjectDetailPage() {
     return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
-  function detailRoute(projectSummaryId: number): string {
-    if (!openedFromUpload) return `/projects/${projectSummaryId}`;
-    const query = new URLSearchParams({
-      openedFromUpload: "1",
-      returnTo: safeReturnTo,
-    });
-    return `/projects/${projectSummaryId}?${query.toString()}`;
-  }
-
-  function handleBackToProjects() {
-    if (!openedFromUpload) {
-      nav("/projects");
-      return;
-    }
-
-    if (window.opener && !window.opener.closed) {
-      try {
-        window.opener.location.assign(safeReturnTo);
-        window.opener.focus();
-        window.close();
-        return;
-      } catch {
-        // Fall back to same-tab navigation if opener is unavailable.
-      }
-    }
-
-    nav(safeReturnTo);
-  }
-
   if (loading) {
     return (
       <>
@@ -275,26 +241,6 @@ export default function ProjectDetailPage() {
     return (
       <>
         <TopBar showNav username={username} />
-        <div className="min-h-[calc(100vh-56px)] bg-background">
-          <PageContainer className="pt-[12px]">
-            <PageHeader
-              title="Project Detail"
-              breadcrumbs={[
-                { label: "Home", href: "/" },
-                { label: "Projects", href: "/projects" },
-                { label: "Project Detail" },
-              ]}
-            />
-            <SectionCard className="w-full max-w-[1110px] self-center bg-white">
-              <div className="content">
-                <p className="error">{error ?? "Project not found."}</p>
-                <button className="btn" onClick={handleBackToProjects}>
-                  ← Back to Projects
-                </button>
-              </div>
-            </SectionCard>
-          </PageContainer>
-        </div>
         <PageContainer className="flex min-h-[calc(100vh-56px)] flex-col gap-[20px] bg-background pt-[12px]">
           <PageHeader
             title="Project Detail"
@@ -414,49 +360,6 @@ export default function ProjectDetailPage() {
           />
         </SectionCard>
 
-          <SectionCard className="w-full max-w-[1110px] self-center bg-white">
-            <div className="content">
-              <button className="pdBackBtn" onClick={handleBackToProjects}>
-                ← Back to Projects
-              </button>
-
-              {/* Header */}
-              <div className="pdHeader">
-                {/* Thumbnail */}
-                <div className="pdThumbWrap">
-                  <div
-                    className="pdThumb"
-                    style={thumbUrl ? { backgroundImage: `url(${thumbUrl})` } : undefined}
-                  >
-                    {!thumbUrl && <span className="pdThumbPlaceholder">No Image</span>}
-                    {thumbLoading && <div className="pdThumbOverlay">Uploading…</div>}
-                  </div>
-                  <div className="pdThumbActions">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      style={{ display: "none" }}
-                      onChange={handleThumbnailChange}
-                    />
-                    <button
-                      className="btn pdThumbBtn"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={thumbLoading}
-                    >
-                      {thumbUrl ? "Change" : "Upload"} Thumbnail
-                    </button>
-                    {thumbUrl && (
-                      <button
-                        className="btn pdThumbBtnDanger"
-                        onClick={() => setConfirmRemoveThumbnail(true)}
-                        disabled={thumbLoading}
-                      >
-                        Remove Thumbnail
-                      </button>
-                    )}
-                  </div>
-                  {thumbError && <p className="error">{thumbError}</p>}
         {/* Duration — light panel; view: title + range left, Edit top-right; edit: stacked fields + full-width primary actions */}
         <SectionCard className="w-full rounded-[10px] border-[#e0e0e0] bg-[#f4f4f6] px-[22px] py-[20px]">
           {!editingDates ? (
@@ -583,7 +486,7 @@ export default function ProjectDetailPage() {
                     Contribution Summary
                   </div>
                   <p className="whitespace-pre-wrap text-[14px] leading-[1.6] text-foreground">
-                    {project.contributions?.manual_contribution_summary ?? (
+                    {contributionSummaryText ?? (
                       <em className="text-[#9f9f9f]">No contribution summary yet.</em>
                     )}
                   </p>
@@ -598,71 +501,6 @@ export default function ProjectDetailPage() {
                 <p className="text-[14px] text-[#7f7f7f]">
                   No feedback available for this project.
                 </p>
-                {project.project_mode === "collaborative" && (
-                  <>
-                    <h3 className="pdContribHeading">Contribution Summary</h3>
-                    <p className="pdSummaryText">
-                      {contributionSummaryText ?? (
-                        <em>No contribution summary yet.</em>
-                      )}
-                    </p>
-                  </>
-                )}
-              </div>
-
-              {/* Feedback */}
-              <div className="pdSection">
-                <h3>Feedback</h3>
-                {feedback.length === 0 ? (
-                  <p className="pdEmpty">No feedback available for this project.</p>
-                ) : (
-                  Object.entries(feedbackBySkill).map(([skill, items]) => (
-                    <div key={skill} className="pdFeedbackGroup">
-                      <h4 className="pdFeedbackSkill">{formatSkillName(skill)}</h4>
-                      {items.map((item, i) => (
-                        <div
-                          key={item.feedback_id ?? i}
-                          className="pdFeedbackItem"
-                        >
-                          {item.suggestion && (
-                            <p className="pdFeedbackSuggestion">
-                              {item.suggestion}
-                            </p>
-                          )}
-                          {item.file_name && (
-                            <span className="pdFeedbackFile">
-                              {item.file_name}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Prev/Next navigation */}
-              {(prevProject || nextProject) && (
-                <div className="pdNavRow">
-                  {prevProject ? (
-                    <button
-                      className="pdNavBtn"
-                      onClick={() => nav(detailRoute(prevProject.project_summary_id))}
-                    >
-                      ← {prevProject.project_name}
-                    </button>
-                  ) : (
-                    <span />
-                  )}
-                  {nextProject && (
-                    <button
-                      className="pdNavBtn"
-                      onClick={() => nav(detailRoute(nextProject.project_summary_id))}
-                    >
-                      {nextProject.project_name} →
-                    </button>
-                  )}
-                </div>
               ) : (
                 Object.entries(feedbackBySkill).map(([skill, items]) => (
                   <div key={skill} className="space-y-[8px]">
