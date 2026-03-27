@@ -11,6 +11,10 @@ export function register(username: string, password: string) {
   return api.postJson<RegisterOut>("/auth/register", { username, password });
 }
 
+export function logout() {
+  return api.post<{ success: boolean }>("/auth/logout");
+}
+
 export function deleteAccount() {
   return api.delete<{ success: boolean }>("/auth/delete-account");
 }

@@ -34,6 +34,13 @@ def login(payload: LoginIn, conn: sqlite3.Connection = Depends(get_db)):
     )
     return TokenOut(access_token=token)
 
+@router.post("/logout", response_model=ApiResponse[None])
+def logout(user_id: int = Depends(get_current_user_id)):
+    # JWT auth is stateless; logout is completed client-side by discarding the token.
+    # We still require a valid token here so clients can explicitly call a logout API.
+    _ = user_id
+    return ApiResponse(success=True, data=None, error=None)
+
 @router.delete("/delete-account", response_model=ApiResponse[None])
 def delete_account(
     user_id: int = Depends(get_current_user_id),

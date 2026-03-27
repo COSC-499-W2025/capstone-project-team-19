@@ -119,6 +119,7 @@ vi.mock("../../api/outputs", () => ({
 
 vi.mock("../../api/auth", () => ({
   deleteAccount: vi.fn(() => Promise.resolve({ success: true })),
+  logout: vi.fn(() => Promise.resolve({ success: true })),
 }));
 
 vi.mock("../../auth/token", () => ({
@@ -313,6 +314,32 @@ describe("ProfilePage", () => {
     // Confirmation gone, original button back
     expect(screen.queryByText(/permanently delete your account/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Delete account/i })).toBeInTheDocument();
+  });
+
+  it("calls logout API, clears token, and redirects to login", async () => {
+    const { logout } = await import("../../api/auth");
+    const { tokenStore } = await import("../../auth/token");
+
+    const replaceFn = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, "location", {
+      value: { ...originalLocation, replace: replaceFn },
+      writable: true,
+    });
+
+    const { user } = setup();
+    await user.click(await screen.findByRole("button", { name: /^Sign out$/i }));
+
+    await vi.waitFor(() => {
+      expect(logout).toHaveBeenCalled();
+    });
+    expect(tokenStore.clear).toHaveBeenCalled();
+    expect(replaceFn).toHaveBeenCalledWith("/login");
+
+    Object.defineProperty(window, "location", {
+      value: originalLocation,
+      writable: true,
+    });
   });
 
   it("calls deleteAccount API, clears token, and redirects to login", async () => {

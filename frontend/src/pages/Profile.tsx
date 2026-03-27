@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import TopBar from "../components/TopBar";
 import { getUsername } from "../auth/user";
 import { tokenStore } from "../auth/token";
-import { deleteAccount } from "../api/auth";
+import { deleteAccount, logout } from "../api/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -678,6 +678,19 @@ export default function ProfilePage() {
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      // ignore server-side logout errors and continue local sign-out
+    } finally {
+      tokenStore.clear();
+      window.location.replace("/login");
+    }
+  }
 
   async function handleDeleteAccount() {
     setDeleting(true);
@@ -999,9 +1012,11 @@ export default function ProfilePage() {
                 size="default"
                 className="h-11 w-full justify-start gap-3 border-slate-200 text-slate-700 hover:bg-slate-50"
                 type="button"
+                onClick={handleLogout}
+                disabled={loggingOut}
               >
                 <LogOut className="size-4" />
-                Sign out
+                {loggingOut ? "Signing out..." : "Sign out"}
               </Button>
 
               {confirmingDelete ? (

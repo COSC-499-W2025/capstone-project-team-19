@@ -143,6 +143,20 @@ def test_delete_account_requires_auth(client):
     assert res.status_code in (401, 422)
 
 
+# ── Logout tests ──
+
+def test_logout_success(auth_client):
+    res = auth_client.post("/auth/logout")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+
+
+def test_logout_requires_auth(client):
+    res = client.post("/auth/logout")
+    assert res.status_code in (401, 422)
+
+
 # ── Integration test: real DB cascade ──
 
 def test_delete_user_cascades_all_related_data():
