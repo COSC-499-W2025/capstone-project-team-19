@@ -3,9 +3,12 @@ import { useEffect, useState, type ReactNode } from "react";
 import { tokenStore } from "../../auth/token";
 import { getUsername } from "../../auth/user";
 import { getPortfolioSettings } from "../../api/portfolioSettings";
+import { publicGetPortfolioStatus } from "../../api/public";
 import { PageContainer, SectionCard, AppButton } from "../../components/shared";
 import { CircleUserRound } from "../../lib/ui-icons";
 import { cn } from "../../lib/utils";
+
+type VisitorStatus = "loading" | "public" | "private" | "not_found";
 
 type Props = {
   children: ReactNode;
@@ -19,6 +22,7 @@ export default function PublicLayout({ children }: Props) {
   const nav = useNavigate();
   const isOwner = isLoggedIn && loggedInUsername === username;
   const [portfolioPublic, setPortfolioPublic] = useState<boolean | null>(null);
+  const [visitorStatus, setVisitorStatus] = useState<VisitorStatus>("loading");
 
   useEffect(() => {
     if (!isOwner) return;
@@ -26,6 +30,15 @@ export default function PublicLayout({ children }: Props) {
       .then((s) => setPortfolioPublic(s.portfolio_public))
       .catch(() => setPortfolioPublic(false));
   }, [isOwner]);
+
+  useEffect(() => {
+    if (isOwner || !username) return;
+    publicGetPortfolioStatus(username).then((s) => {
+      if (!s.exists) setVisitorStatus("not_found");
+      else if (!s.is_public) setVisitorStatus("private");
+      else setVisitorStatus("public");
+    }).catch(() => setVisitorStatus("not_found"));
+  }, [isOwner, username]);
 
   function getPrivatePath(): string {
     const match = location.pathname.match(/^\/public\/[^/]+\/(.*)$/);
@@ -130,7 +143,23 @@ export default function PublicLayout({ children }: Props) {
             </AppButton>
           </SectionCard>
         </PageContainer>
-      ) : children}
+      ) : !isOwner && visitorStatus === "not_found" ? (
+        <PageContainer>
+          <SectionCard className="flex flex-col items-center gap-4 py-10 text-center">
+            <p className="text-[14px] text-[#7f7f7f]">
+              This user does not exist.
+            </p>
+          </SectionCard>
+        </PageContainer>
+      ) : !isOwner && visitorStatus === "private" ? (
+        <PageContainer>
+          <SectionCard className="flex flex-col items-center gap-4 py-10 text-center">
+            <p className="text-[14px] text-[#7f7f7f]">
+              <strong>{username}</strong>&apos;s portfolio is not public. Ask them to enable public access in their profile settings.
+            </p>
+          </SectionCard>
+        </PageContainer>
+      ) : !isOwner && visitorStatus === "loading" ? null : children}
     </>
   );
 }
