@@ -183,7 +183,7 @@ describe("ProfilePage", () => {
     const editButton = within(certCard).getByRole("button", { name: /Edit/i });
     await user.click(editButton);
 
-    const titleInput = screen.getByPlaceholderText("BSc in Computer Science");
+    const titleInput = screen.getByPlaceholderText("e.g. BSc in Computer Science");
     await user.clear(titleInput);
     await user.type(titleInput, "AWS Cloud Practitioner");
 
@@ -201,7 +201,7 @@ describe("ProfilePage", () => {
     const editButton = within(expCard).getByRole("button", { name: /Edit/i });
     await user.click(editButton);
 
-    const roleInput = screen.getByPlaceholderText("Full Stack Engineer");
+    const roleInput = screen.getByPlaceholderText("e.g. Full Stack Engineer");
     await user.clear(roleInput);
     await user.type(roleInput, "Backend Developer");
 
