@@ -89,7 +89,8 @@ export default function ProjectSkillHeatmapTab() {
   if (error) return <div className="py-4 text-center text-red-600">{error}</div>;
   if (!data) return null;
 
-  const maxVal = data.matrix.length > 0 ? Math.max(...data.matrix.flat(), 1) : 1;
+  // Use min 4 so that 1 project = light shade, not dark (when max is 1, value/max would be 100%)
+  const maxVal = data.matrix.length > 0 ? Math.max(...data.matrix.flat(), 4) : 4;
   const hasData = data.matrix.length > 0 && data.col_labels.length > 0;
 
   const cellSize = `${cellPx}px`;
