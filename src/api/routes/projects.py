@@ -38,6 +38,7 @@ from src.services.projects_service import (
 )
 from src.services.uploads_service import (
     start_upload,
+    cancel_upload,
     get_upload_status,
     resolve_dedup,
     submit_classifications,
@@ -95,6 +96,16 @@ def get_projects_upload(
     if upload is None:
         raise HTTPException(status_code=404, detail="Upload not found")
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.delete("/upload/{upload_id}", response_model=ApiResponse[None])
+def delete_projects_upload(
+    upload_id: int,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    cancel_upload(conn, user_id, upload_id)
+    return ApiResponse(success=True, data=None, error=None)
 
 
 @router.post("/upload/{upload_id}/run", response_model=ApiResponse[RunAnalysisReadyDTO])
