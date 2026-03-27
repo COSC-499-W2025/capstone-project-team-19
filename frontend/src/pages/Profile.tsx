@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import TopBar from "../components/TopBar";
 import { getUsername } from "../auth/user";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Globe, KeyRound, LogOut, Pencil, ShieldCheck, Trash2 } from "lucide-react";
+import MinimalConfirmDialog from "../components/shared/MinimalConfirmDialog";
 import {
   getProfile,
   updateProfile,
@@ -311,6 +312,9 @@ export default function ProfilePage() {
   const [resumes, setResumes] = useState<ResumeListItem[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [pendingLeaveHref, setPendingLeaveHref] = useState<string | null>(null);
+  const bypassBeforeUnloadRef = useRef(false);
 
   function startEditList<TSource, TDraft>({
     sourceEntries,
@@ -472,6 +476,7 @@ export default function ProfilePage() {
     if (!hasUnsavedChanges) return;
 
     function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (bypassBeforeUnloadRef.current) return;
       e.preventDefault();
       e.returnValue = "";
     }
@@ -506,16 +511,22 @@ export default function ProfilePage() {
       const next = `${destination.pathname}${destination.search}${destination.hash}`;
       if (current === next) return;
 
-      const ok = window.confirm("You have unsaved changes. Leave this page without saving?");
-      if (!ok) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      e.preventDefault();
+      e.stopPropagation();
+      setPendingLeaveHref(next);
+      setShowLeaveDialog(true);
     }
 
     document.addEventListener("click", onDocumentClick, true);
     return () => document.removeEventListener("click", onDocumentClick, true);
   }, [hasUnsavedChanges]);
+
+  function handleConfirmLeave() {
+    if (!pendingLeaveHref) return;
+
+    bypassBeforeUnloadRef.current = true;
+    window.location.assign(pendingLeaveHref);
+  }
 
   function startEditProfile() {
     if (!profile) return;
@@ -678,6 +689,17 @@ export default function ProfilePage() {
   return (
     <>
       <TopBar showNav username={username} />
+      <MinimalConfirmDialog
+        open={showLeaveDialog}
+        onOpenChange={(open) => {
+          setShowLeaveDialog(open);
+          if (!open) setPendingLeaveHref(null);
+        }}
+        message="You have unsaved changes on this page. Leave without saving?"
+        confirmLabel="Leave page"
+        confirmClassName="bg-red-600 hover:bg-red-700"
+        onConfirm={handleConfirmLeave}
+      />
 
       <PageContainer className="min-h-[calc(100vh-56px)] bg-background pt-[12px]">
         <PageHeader
