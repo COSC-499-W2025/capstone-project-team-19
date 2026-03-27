@@ -34,12 +34,12 @@ describe('PublicLayout', () => {
     expect(screen.getByText('resuME')).toBeInTheDocument()
   })
 
-  it('renders nav links for Projects, Insights, and Outputs', () => {
+  it('renders nav links for Projects, Insights, and Resume', () => {
     vi.mocked(tokenStore.get).mockReturnValue(null)
     render(<PublicLayout><div /></PublicLayout>)
     expect(screen.getByText('Projects')).toBeInTheDocument()
     expect(screen.getByText('Insights')).toBeInTheDocument()
-    expect(screen.getByText('Outputs')).toBeInTheDocument()
+    expect(screen.getByText('Resume')).toBeInTheDocument()
   })
 
   it('shows "Viewing {username}\'s portfolio"', () => {
@@ -79,9 +79,9 @@ describe('PublicLayout', () => {
       'href',
       '/public/johndoe/insights',
     )
-    expect(screen.getByText('Outputs').closest('a')).toHaveAttribute(
+    expect(screen.getByText('Resume').closest('a')).toHaveAttribute(
       'href',
-      '/public/johndoe/outputs',
+      '/public/johndoe/resume',
     )
   })
 })
