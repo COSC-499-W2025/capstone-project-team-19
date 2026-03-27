@@ -4,7 +4,6 @@ import PublicProjectsPage from '../PublicProjects'
 
 vi.mock('react-router-dom', () => ({
   useParams: vi.fn(() => ({ username: 'johndoe' })),
-  useNavigate: vi.fn(() => vi.fn()),
   NavLink: ({ to, children }: { to: string; children: React.ReactNode }) => (
     <a href={to}>{children}</a>
   ),
@@ -26,6 +25,10 @@ vi.mock('../../../auth/user', () => ({
   getUsername: vi.fn(() => null),
 }))
 
+vi.mock('../../../components/project-card', () => ({
+  default: ({ name }: { name: string }) => <div data-testid="project-card">{name}</div>,
+}))
+
 import { publicListProjects, publicFetchThumbnailUrl } from '../../../api/public'
 
 describe('PublicProjectsPage', () => {
@@ -45,8 +48,8 @@ describe('PublicProjectsPage', () => {
 
   it('renders project cards after successful load', async () => {
     vi.mocked(publicListProjects).mockResolvedValue([
-      { project_summary_id: 1, project_name: 'Project Alpha', project_type: null, project_mode: null, created_at: null },
-      { project_summary_id: 2, project_name: 'Project Beta', project_type: null, project_mode: null, created_at: null },
+      { project_summary_id: 1, project_name: 'Project Alpha', project_key: null, project_type: null, project_mode: null, created_at: null },
+      { project_summary_id: 2, project_name: 'Project Beta', project_key: null, project_type: null, project_mode: null, created_at: null },
     ])
     render(<PublicProjectsPage />)
     await waitFor(() => {

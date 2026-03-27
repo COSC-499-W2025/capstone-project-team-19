@@ -1,4 +1,3 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ResumeDetail from "../ResumeDetail";
@@ -6,8 +5,6 @@ import ResumeDetail from "../ResumeDetail";
 vi.mock("../../../api/outputs", () => ({
   getResume: vi.fn(),
   editResume: vi.fn(),
-  removeProjectFromResume: vi.fn(),
-  addProjectToResume: vi.fn(),
   downloadResumeDocx: vi.fn(),
   downloadResumePdf: vi.fn(),
 }));
@@ -15,27 +12,8 @@ vi.mock("../../../api/outputs", () => ({
 vi.mock("../ExportDropdown", () => ({
   default: () => <button>Export</button>,
 }));
-vi.mock("../AddProjectModal", () => ({
-  default: (props: { onClose: () => void; onAdded: () => void }) => (
-    <div data-testid="add-project-modal">
-      <button onClick={props.onClose}>Close</button>
-      <button
-        onClick={() => {
-          props.onAdded();
-          props.onClose();
-        }}
-      >
-        Add
-      </button>
-    </div>
-  ),
-}));
 
-import {
-  getResume,
-  editResume,
-  removeProjectFromResume,
-} from "../../../api/outputs";
+import { getResume, editResume } from "../../../api/outputs";
 
 const baseResume = {
   id: 1,
@@ -194,6 +172,7 @@ describe("ResumeDetail", () => {
   describe("editing resume name", () => {
     it("shows name pencil icon only in edit mode", async () => {
       setupMocks();
+      const user = userEvent.setup();
       render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
 
       await waitFor(() => screen.getByText("My Resume"));
@@ -406,178 +385,6 @@ describe("ResumeDetail", () => {
 
         expect(editResume).not.toHaveBeenCalled();
       }
-    });
-  });
-
-  describe("remove project from resume", () => {
-    it("shows remove button on project card in edit mode", async () => {
-      setupMocks();
-      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
-
-      await waitFor(() => screen.getByText("Project Alpha"));
-
-      const removeBtns = screen.getAllByRole("button", { name: "Remove from resume" });
-      expect(removeBtns.length).toBeGreaterThanOrEqual(1);
-    });
-
-    it("opens confirmation dialog when remove button is clicked", async () => {
-      setupMocks({
-        projects: [
-          baseResume.projects[0],
-          {
-            ...baseResume.projects[0],
-            project_summary_id: 11,
-            project_name: "Project Beta",
-          },
-        ],
-      });
-      const user = userEvent.setup();
-      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
-
-      await waitFor(() => screen.getByText("Project Alpha"));
-      const removeBtns = screen.getAllByRole("button", { name: "Remove from resume" });
-      await user.click(removeBtns[0]);
-
-      await waitFor(() => {
-        expect(
-          screen.getByText(/Remove "Project Alpha" from this resume\?/)
-        ).toBeInTheDocument();
-      });
-      expect(screen.getByText("Cancel")).toBeInTheDocument();
-      expect(screen.getByText("Remove")).toBeInTheDocument();
-    });
-
-    it("closes dialog and does not call API when Cancel is clicked", async () => {
-      setupMocks({
-        projects: [
-          baseResume.projects[0],
-          {
-            ...baseResume.projects[0],
-            project_summary_id: 11,
-            project_name: "Project Beta",
-          },
-        ],
-      });
-      const user = userEvent.setup();
-      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
-
-      await waitFor(() => screen.getByText("Project Alpha"));
-      const removeBtns = screen.getAllByRole("button", { name: "Remove from resume" });
-      await user.click(removeBtns[0]);
-      await waitFor(() => screen.getByText(/Remove "Project Alpha"/));
-      await user.click(screen.getByText("Cancel"));
-
-      expect(removeProjectFromResume).not.toHaveBeenCalled();
-      expect(screen.queryByText(/Remove "Project Alpha"/)).not.toBeInTheDocument();
-    });
-
-    it("calls removeProjectFromResume and updates resume on success", async () => {
-      setupMocks();
-      const resumeWithoutProject = {
-        ...baseResume,
-        projects: [],
-        aggregated_skills: { languages: [], frameworks: [], technical_skills: [], writing_skills: [] },
-      };
-      vi.mocked(removeProjectFromResume).mockResolvedValue({
-        success: true,
-        data: resumeWithoutProject,
-        error: null,
-      } as any);
-
-      const user = userEvent.setup();
-      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
-
-      await waitFor(() => screen.getByText("Project Alpha"));
-      const removeBtns = screen.getAllByRole("button", { name: "Remove from resume" });
-      await user.click(removeBtns[0]);
-      const confirmBtn = await screen.findByTestId("minimal-confirm-button");
-      await user.click(confirmBtn);
-
-      await waitFor(() => {
-        expect(removeProjectFromResume).toHaveBeenCalledWith(
-          1,
-          "Project Alpha"
-        );
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Project removed from resume")).toBeInTheDocument();
-      });
-    });
-
-    it("calls onBack when resume is deleted (last project removed)", async () => {
-      setupMocks();
-      vi.mocked(removeProjectFromResume).mockResolvedValue({
-        success: true,
-        data: null,
-        error: null,
-      } as any);
-
-      const onBack = vi.fn();
-      const user = userEvent.setup();
-      render(<ResumeDetail resumeId={1} initialEditing onBack={onBack} />);
-
-      await waitFor(() => screen.getByText("Project Alpha"));
-      const removeBtns = screen.getAllByRole("button", { name: "Remove from resume" });
-      await user.click(removeBtns[0]);
-      const confirmBtn = await screen.findByTestId("minimal-confirm-button");
-      await user.click(confirmBtn);
-
-      await waitFor(() => {
-        expect(removeProjectFromResume).toHaveBeenCalledWith(1, "Project Alpha");
-        expect(onBack).toHaveBeenCalled();
-      });
-    });
-
-    it("hides Export when editing", async () => {
-      setupMocks();
-      const user = userEvent.setup();
-      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
-      await waitFor(() => screen.getByText("Edit"));
-      expect(screen.getByText("Export")).toBeInTheDocument();
-      await user.click(screen.getByText("Edit"));
-      expect(screen.queryByText("Export")).not.toBeInTheDocument();
-    });
-
-    it("shows Add Project button in edit mode and opens modal on click", async () => {
-      setupMocks();
-      const user = userEvent.setup();
-      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
-      await waitFor(() => screen.getByText("Add Project"));
-      expect(screen.queryByTestId("add-project-modal")).not.toBeInTheDocument();
-      await user.click(screen.getByText("Add Project"));
-      expect(screen.getByTestId("add-project-modal")).toBeInTheDocument();
-    });
-
-    it("adds project via modal and shows success message", async () => {
-      setupMocks();
-      const user = userEvent.setup();
-      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
-      await waitFor(() => screen.getByText("Add Project"));
-      await user.click(screen.getByText("Add Project"));
-      await user.click(screen.getByText("Add"));
-      await waitFor(() => {
-        expect(screen.getByText("Project added to resume")).toBeInTheDocument();
-      });
-    });
-
-    it("shows error when remove fails", async () => {
-      vi.mocked(removeProjectFromResume).mockRejectedValue(
-        new Error("Failed to remove project")
-      );
-
-      const user = userEvent.setup();
-      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
-
-      await waitFor(() => screen.getByText("Project Alpha"));
-      const removeBtns = screen.getAllByRole("button", { name: "Remove from resume" });
-      await user.click(removeBtns[0]);
-      const confirmBtn = await screen.findByTestId("minimal-confirm-button");
-      await user.click(confirmBtn);
-
-      await waitFor(() => {
-        expect(screen.getByText("Failed to remove project")).toBeInTheDocument();
-      });
     });
   });
 

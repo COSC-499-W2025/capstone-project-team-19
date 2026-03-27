@@ -17,10 +17,10 @@ const navItems = [
 export default function TopBar({ showNav = false }: Props) {
   return (
     <header className="sticky top-0 z-50 h-16 w-full bg-[#001166] text-white">
-      <div className="flex h-16 w-full items-center justify-between px-[40px]">
+      <div className="mx-auto flex h-16 w-full max-w-[1140px] items-center justify-between">
         <Link
           to="/"
-          className="font-['Open_Sans'] text-4xl font-bold leading-none no-underline hover:no-underline transition-opacity hover:opacity-80 active:opacity-60"
+          className="font-['Open_Sans'] text-4xl font-bold leading-none no-underline"
           aria-label="Go to home"
         >
           resuME
@@ -28,38 +28,26 @@ export default function TopBar({ showNav = false }: Props) {
 
         {showNav && (
           <div className="flex items-center gap-[24px]">
-            <nav className="flex h-16 items-center gap-[32px]">
+            <nav className="flex items-center gap-[32px]">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
                     cn(
-                      "group relative flex h-full items-center font-['Roboto'] text-base font-normal leading-5 no-underline hover:no-underline",
-                      isActive ? "text-white" : "text-white/75 hover:text-white"
+                      "font-['Roboto'] text-base font-normal leading-5 no-underline",
+                      isActive && "underline underline-offset-[6px]"
                     )
                   }
                 >
-                  {({ isActive }) => (
-                    <>
-                      {item.label}
-                      <span
-                        className={cn(
-                          "absolute bottom-0 left-0 right-0 h-[3px] rounded-t-[2px] transition-opacity",
-                          isActive
-                            ? "bg-white opacity-100"
-                            : "bg-white opacity-0 group-hover:opacity-100"
-                        )}
-                      />
-                    </>
-                  )}
+                  {item.label}
                 </NavLink>
               ))}
             </nav>
 
             <Link
               to="/profile"
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ECECEC] no-underline hover:no-underline"
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ECECEC] no-underline"
               aria-label="Open profile"
             >
               <CircleUserRound

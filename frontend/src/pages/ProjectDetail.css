@@ -115,20 +115,7 @@
 
 .pdDateForm input[type="date"] { width: 160px; }
 
-.pdFormActions { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; align-items: center; }
-
-.pdFormActions .btn,
-.pdFormActions .primaryBtn {
-  width: 150px;
-  height: 38px;
-  padding: 0;
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  box-sizing: border-box;
-}
+.pdFormActions { display: flex; gap: 8px; margin-top: 4px; }
 
 .pdContribHeading { margin: 16px 0 8px; font-size: 15px; }
 

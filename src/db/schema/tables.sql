@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS external_consent (
     user_id INTEGER NOT NULL DEFAULT 1,
     status TEXT NOT NULL CHECK(status IN ('accepted','rejected')),
     timestamp TEXT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_external_user_time
@@ -187,7 +187,7 @@ CREATE TABLE IF NOT EXISTS text_contribution_revisions (
     words_added INTEGER NOT NULL DEFAULT 0,
     revision_text TEXT,  -- optional, only exists for Google Doc, NULL otherwise
     revision_timestamp TEXT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
 CREATE TABLE IF NOT EXISTS text_contribution_summary (

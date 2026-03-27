@@ -130,7 +130,7 @@ def get_skill_timeline_data(conn, user_id: int) -> Dict[str, Any]:
     }
 
 
-def get_activity_by_date_grid(conn, user_id: int, year: Optional[int] = None, project_ids=None) -> Dict[str, Any]:
+def get_activity_by_date_grid(conn, user_id: int, year: Optional[int] = None) -> Dict[str, Any]:
     """
     Build a GitHub-style contribution grid: rows = days of week (Sun-Sat),
     cols = weeks, chronological order (oldest left, most recent right).
@@ -142,7 +142,7 @@ def get_activity_by_date_grid(conn, user_id: int, year: Optional[int] = None, pr
     from src.db.activity_by_date import get_activity_counts_by_date
     from datetime import date, datetime, timedelta
 
-    counts, projects_by_date = get_activity_counts_by_date(conn, user_id, project_ids=project_ids)
+    counts, projects_by_date = get_activity_counts_by_date(conn, user_id)
     if not counts:
         return {
             "title": "Activity by Date",

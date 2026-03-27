@@ -2,10 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends, status
 import sqlite3
 
 from .security import hash_password, verify_password, create_access_token
-from ..dependencies import get_jwt_secret, get_db, get_current_user_id
+from ..dependencies import get_jwt_secret, get_db
 from ..schemas.auth import RegisterIn, LoginIn, TokenOut
-from ..schemas.common import ApiResponse
-from ...db.users import get_user_auth_by_username, create_user_with_password, delete_user
+from ...db.users import get_user_auth_by_username, create_user_with_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -33,13 +32,3 @@ def login(payload: LoginIn, conn: sqlite3.Connection = Depends(get_db)):
         expires_minutes=60
     )
     return TokenOut(access_token=token)
-
-@router.delete("/delete-account", response_model=ApiResponse[None])
-def delete_account(
-    user_id: int = Depends(get_current_user_id),
-    conn: sqlite3.Connection = Depends(get_db),
-):
-    deleted = delete_user(conn, user_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="User not found")
-    return ApiResponse(success=True, data=None, error=None)

@@ -14,7 +14,6 @@ from src.api.routes import (
     consent_router,
     export_router,
     thumbnails_router,
-    profile_router,
     activity_heatmap_router,
     public_router,
     portfolio_settings_router,
@@ -63,7 +62,6 @@ app.include_router(google_drive_router)
 app.include_router(portfolio_router)
 app.include_router(export_router)
 app.include_router(thumbnails_router)
-app.include_router(profile_router)
 app.include_router(activity_heatmap_router)
 app.include_router(public_router)
 app.include_router(portfolio_settings_router)

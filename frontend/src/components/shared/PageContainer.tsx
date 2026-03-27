@@ -6,7 +6,7 @@ type Props = HTMLAttributes<HTMLElement>;
 export default function PageContainer({ className, ...props }: Props) {
   return (
     <main
-      className={cn("flex w-full flex-col px-[40px] py-[20px]", className)}
+      className={cn("mx-auto w-full max-w-[1140px] px-[24px] py-[20px]", className)}
       {...props}
     />
   );

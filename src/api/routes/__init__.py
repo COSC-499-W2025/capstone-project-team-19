@@ -18,7 +18,6 @@ from src.api.routes.consent import router as consent_router
 from src.api.routes.portfolio import router as portfolio_router
 from src.api.routes.export import router as export_router
 from src.api.routes.thumbnails import router as thumbnails_router
-from src.api.routes.profile import router as profile_router
 from .activity_heatmap import router as activity_heatmap_router
 from .public import router as public_router
 from .portfolio_settings import router as portfolio_settings_router
@@ -37,7 +36,6 @@ __all__ = [
     "portfolio_router",
     "export_router",
     "thumbnails_router",
-    "profile_router",
     "activity_heatmap_router",
     "public_router",
     "portfolio_settings_router",

@@ -39,7 +39,7 @@ export default function AppButton({
     <button
       type={type}
       className={cn(
-        "ui-button-radius inline-flex cursor-pointer items-center justify-center gap-[6px] font-normal leading-none outline-none transition disabled:pointer-events-none disabled:opacity-50",
+        "ui-button-radius inline-flex items-center justify-center gap-[6px] font-normal leading-none outline-none transition disabled:pointer-events-none disabled:opacity-50",
         variantClasses[variant],
         sizeClasses[size],
         fullWidth && "w-full",

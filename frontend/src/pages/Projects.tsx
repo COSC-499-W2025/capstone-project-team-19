@@ -2,22 +2,17 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import "./Projects.css";
 import TopBar from "../components/TopBar";
-import { fetchThumbnailUrl, listProjects, type Project } from "../api/projects";
+import ProjectCard from "../components/project-card";
+import { listProjects, type Project } from "../api/projects";
 import { updateProjectVisibility } from "../api/portfolioSettings";
 import { getUsername } from "../auth/user";
-import {
-  FeatureTile,
-  PageContainer,
-  PageHeader,
-  SectionCard,
-} from "../components/shared";
+import { PageContainer, PageHeader, SectionCard } from "../components/shared";
 
 export default function ProjectsPage() {
   const username = getUsername();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [thumbnails, setThumbnails] = useState<Record<number, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState<number | null>(null);
@@ -28,39 +23,10 @@ export default function ProjectsPage() {
   const returnTo = (searchParams.get("returnTo") ?? "").trim();
 
   useEffect(() => {
-    let cancelled = false;
-    const objectUrls: string[] = [];
-
     listProjects()
-      .then((list) => {
-        if (cancelled) return;
-        setProjects(list);
-        Promise.all(
-          list.map((p) =>
-            fetchThumbnailUrl(p.project_summary_id).then((url) => ({
-              id: p.project_summary_id,
-              url,
-            })),
-          ),
-        ).then((results) => {
-          if (cancelled) return;
-          const map: Record<number, string | null> = {};
-          for (const { id, url } of results) {
-            map[id] = url;
-            if (url) objectUrls.push(url);
-          }
-          setThumbnails(map);
-        });
-      })
+      .then(setProjects)
       .catch((e: Error) => setError(e.message))
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-      for (const url of objectUrls) URL.revokeObjectURL(url);
-    };
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -114,71 +80,58 @@ export default function ProjectsPage() {
     <>
       <TopBar showNav username={username} />
 
-      <PageContainer className="flex min-h-[calc(100vh-56px)] flex-col gap-[20px] bg-background pt-[12px]">
-        <PageHeader
-          title="Projects"
-          breadcrumbs={[
-            { label: "Home", href: "/" },
-            { label: "Projects" },
-          ]}
-        />
+      <div className="min-h-[calc(100vh-56px)] bg-background">
+        <PageContainer className="pt-[12px]">
+          <PageHeader
+            title="Projects"
+            breadcrumbs={[
+              { label: "Home", href: "/" },
+              { label: "Projects" },
+            ]}
+          />
 
-        {loading && (
-          <SectionCard className="w-full bg-white">
-            <p className="text-[14px] text-[#7f7f7f]">Loading…</p>
-          </SectionCard>
-        )}
+          <SectionCard className="w-full max-w-[1110px] self-center bg-white">
+            <div className="content">
 
-        {error && (
-          <SectionCard className="w-full bg-white">
-            <p className="text-[14px] text-[#cc4b4b]">{error}</p>
-          </SectionCard>
-        )}
+              {loading && <p>Loading…</p>}
+              {error && <p className="error">{error}</p>}
 
-        {!loading && !error && projects.length === 0 && (
-          <SectionCard className="w-full bg-white">
-            <p className="text-[14px] text-[#7f7f7f]">
-              No projects yet. Upload one to get started.
-            </p>
-          </SectionCard>
-        )}
+              {!loading && !error && projects.length === 0 && (
+                <p>No projects yet. Upload one to get started.</p>
+              )}
 
-        {!loading && !error && projects.length > 0 && (
-          <SectionCard className="w-full bg-white">
-            <div className="flex flex-wrap gap-[20px]">
-              {projects.map((p) => (
-                <div key={p.project_summary_id} className="relative">
-                  <FeatureTile
-                    title={p.project_name}
-                    thumbnailUrl={thumbnails[p.project_summary_id]}
-                    onClick={() => nav(`/projects/${p.project_summary_id}`)}
-                  />
-                  <button
-                    className={`absolute right-[8px] top-[8px] z-10 cursor-pointer rounded-full border px-[8px] py-[2px] text-[11px] font-medium leading-none transition disabled:opacity-50 ${
-                      p.is_public
-                        ? "border-green-600 bg-green-100/95 text-green-700"
-                        : "border-gray-300 bg-white/[.92] text-gray-500"
-                    }`}
-                    onClick={(e) => handleToggleVisibility(e, p)}
-                    disabled={toggling === p.project_summary_id}
-                    title={
-                      p.is_public
-                        ? "Visible on public portfolio — click to hide"
-                        : "Hidden from public portfolio — click to show"
-                    }
-                  >
-                    {toggling === p.project_summary_id
-                      ? "…"
-                      : p.is_public
+              <div className="projectGrid">
+                {projects.map((p) => (
+                  <div key={p.project_summary_id} className="projectCardWrapper">
+                    <ProjectCard
+                      projectId={p.project_summary_id}
+                      name={p.project_name}
+                    />
+                    <button
+                      className={`projectVisibilityToggle${
+                        p.is_public ? " public" : ""
+                      }`}
+                      onClick={(e) => handleToggleVisibility(e, p)}
+                      disabled={toggling === p.project_summary_id}
+                      title={
+                        p.is_public
+                          ? "Visible on public portfolio — click to hide"
+                          : "Hidden from public portfolio — click to show"
+                      }
+                    >
+                      {toggling === p.project_summary_id
+                        ? "…"
+                        : p.is_public
                         ? "Public"
                         : "Private"}
-                  </button>
-                </div>
-              ))}
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </SectionCard>
-        )}
-      </PageContainer>
+        </PageContainer>
+      </div>
     </>
   );
 }

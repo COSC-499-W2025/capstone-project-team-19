@@ -1,6 +1,5 @@
 import type { SkillTimelineDTO } from "../../../../api/insights";
 import { formatSkillName, toShortDate } from "./utils/formatHelpers";
-import LevelStars from "./LevelStars";
 
 export default function SkillsTimeline({ timeline }: { timeline: SkillTimelineDTO }) {
     if (timeline.dated.length === 0) {
@@ -36,7 +35,7 @@ export default function SkillsTimeline({ timeline }: { timeline: SkillTimelineDT
                                 {group.events.map((e, j) => (
                                     <li key={`${group.date}-${j}`} className="grid grid-cols-[1fr_8rem_1fr] gap-4 py-2.5 border-b border-slate-200 text-sm items-center">
                                         <span className="font-semibold text-slate-900">{formatSkillName(e.skill_name)}</span>
-                                        <LevelStars level={e.level} />
+                                        <span className="text-slate-600 capitalize">{e.level.toLowerCase()}</span>
                                         <span className="text-slate-600 truncate">{e.project_name}</span>
                                     </li>
                                 ))}

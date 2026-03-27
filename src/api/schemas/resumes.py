@@ -45,9 +45,6 @@ class ResumeGenerateRequestDTO(BaseModel):
     name: str
     project_ids: Optional[List[int]] = None
 
-class AddProjectRequestDTO(BaseModel):
-    project_summary_id: int
-
 class ResumeEditRequestDTO(BaseModel):
     name: Optional[str] = None
     project_summary_id: Optional[int] = None  # Required when editing project fields; use from resume detail response

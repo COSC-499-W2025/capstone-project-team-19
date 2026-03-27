@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { getActivityByDate } from "../../../../api/insights";
 import { getColorForValue } from "./heatmapUtils";
@@ -18,10 +18,10 @@ type TooltipState = {
   y: number;
 } | null;
 
-const LABEL_COL_PX = 20;
-const GAP_PX = 2;
-const MIN_CELL_PX = 8;
-const MAX_CELL_PX = 14;
+const CELL_SIZE = "0.75rem";
+const CELL_MIN = "0.75rem";
+const LABEL_COL = "1.25rem";
+const GRID_GAP = "2px";
 
 export default function ProjectSkillHeatmapTab() {
   const [data, setData] = useState<{
@@ -37,29 +37,6 @@ export default function ProjectSkillHeatmapTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [tooltip, setTooltip] = useState<TooltipState>(null);
-  const [cellPx, setCellPx] = useState(MAX_CELL_PX);
-
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Recalculate cell size whenever container width or data changes
-  useEffect(() => {
-    if (!data) return;
-    const cols = data.col_labels.length;
-    if (cols === 0) return;
-
-    function recalc() {
-      if (!containerRef.current || !data) return;
-      const available = containerRef.current.clientWidth - LABEL_COL_PX - GAP_PX * cols;
-      const computed = Math.floor(available / cols);
-      setCellPx(Math.min(MAX_CELL_PX, Math.max(MIN_CELL_PX, computed)));
-    }
-
-    recalc();
-
-    const ro = new ResizeObserver(recalc);
-    if (containerRef.current) ro.observe(containerRef.current);
-    return () => ro.disconnect();
-  }, [data]);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,20 +59,25 @@ export default function ProjectSkillHeatmapTab() {
     }
 
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedYear]);
 
-  if (loading) return <div className="py-4 text-center text-slate-600">Loading...</div>;
-  if (error) return <div className="py-4 text-center text-red-600">{error}</div>;
+  if (loading) {
+    return <div className="py-4 text-center text-slate-600">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="py-4 text-center text-red-600">{error}</div>;
+  }
+
   if (!data) return null;
 
-  // Use min 4 so that 1 project = light shade, not dark (when max is 1, value/max would be 100%)
-  const maxVal = data.matrix.length > 0 ? Math.max(...data.matrix.flat(), 4) : 4;
+  const maxVal = data.matrix.length > 0 ? Math.max(...data.matrix.flat(), 1) : 1;
   const hasData = data.matrix.length > 0 && data.col_labels.length > 0;
 
-  const cellSize = `${cellPx}px`;
-  const gridTemplate = `${LABEL_COL_PX}px repeat(${data.col_labels.length}, ${cellSize})`;
-  const gridGap = `${GAP_PX}px`;
+  const gridTemplate = `${LABEL_COL} repeat(${data.col_labels.length}, ${CELL_SIZE})`;
 
   const tooltipEl =
     tooltip &&
@@ -108,7 +90,9 @@ export default function ProjectSkillHeatmapTab() {
           transform: "translateY(-50%)",
         }}
       >
-        <div className="font-medium">{tooltip.dateStr} ({tooltip.dow})</div>
+        <div className="font-medium">
+          {tooltip.dateStr} ({tooltip.dow})
+        </div>
         <div className="mt-0.5 text-slate-300">
           {tooltip.count > 0
             ? `${tooltip.count} project${tooltip.count !== 1 ? "s" : ""}`
@@ -124,12 +108,14 @@ export default function ProjectSkillHeatmapTab() {
     );
 
   return (
-    <div className="relative flex min-w-0 flex-col gap-6 pt-4">
+    <div className="relative flex flex-col gap-6 pt-4">
       {tooltipEl}
 
       <div className="flex flex-wrap items-center gap-4">
         <div>
-          <h3 className="m-0 text-lg font-semibold text-slate-800">Activity by Date</h3>
+          <h3 className="m-0 text-lg font-semibold text-slate-800">
+            Activity by Date
+          </h3>
           <p className="m-0 mt-1 text-sm text-slate-500">
             See your activity over time. Select a year or view all data.
           </p>
@@ -139,104 +125,118 @@ export default function ProjectSkillHeatmapTab() {
           <select
             value={selectedYear}
             onChange={(e) =>
-              setSelectedYear(e.target.value === "all" ? "all" : Number(e.target.value))
+              setSelectedYear(
+                e.target.value === "all" ? "all" : Number(e.target.value)
+              )
             }
             className="min-w-[120px] rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
             aria-label="Select year"
           >
             <option value="all">All years</option>
             {data.available_years.map((y) => (
-              <option key={y} value={y}>{y}</option>
+              <option key={y} value={y}>
+                {y}
+              </option>
             ))}
           </select>
         )}
       </div>
 
       {hasData ? (
-        <section
-          ref={containerRef}
-          className="flex w-full flex-col rounded-lg border border-slate-200 bg-white p-5"
-        >
-          {/* week labels */}
-          <div
-            className="mb-3 grid text-[10px]"
-            style={{ gridTemplateColumns: gridTemplate, gap: gridGap }}
-          >
-            <div aria-hidden />
-            {data.col_labels.map((l, j) => (
+        <section className="flex w-full flex-col items-start rounded-lg border border-slate-200 bg-white p-5">
+          <div className="w-full overflow-x-auto">
+            <div className="min-w-fit">
+              {/* week labels */}
               <div
-                key={j}
-                className="flex items-center justify-start overflow-hidden text-slate-400"
-                title={l}
+                className="mb-3 grid text-[10px]"
+                style={{
+                  gridTemplateColumns: gridTemplate,
+                  gap: GRID_GAP,
+                }}
               >
-                {j % 6 === 0 ? formatWeekLabel(l) : ""}
+                <div aria-hidden />
+                {data.col_labels.map((l, j) => (
+                  <div
+                    key={j}
+                    className="flex h-4 items-center justify-start text-slate-400 whitespace-nowrap"
+                    title={l}
+                  >
+                    {j % 6 === 0 ? formatWeekLabel(l) : ""}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* heatmap grid */}
-          <div
-            className="grid text-xs"
-            style={{ gridTemplateColumns: gridTemplate, gap: gridGap }}
-            role="grid"
-            aria-label="Activity heatmap by date"
-          >
-            {data.matrix.map((row, i) => (
-              <div key={i} className="contents">
-                <div
-                  className="flex items-center justify-end pr-1 text-[10px] text-slate-500"
-                  title={data.row_labels[i]}
-                >
-                  {data.row_labels[i][0]}
-                </div>
-
-                {row.map((v, j) => {
-                  const weekStart = new Date(data.col_labels[j] + "T00:00:00");
-                  const dayDate = new Date(weekStart);
-                  dayDate.setDate(dayDate.getDate() + i);
-                  const dateStr = dayDate.toISOString().slice(0, 10);
-                  const dow = data.row_labels[i];
-                  const projects = data.projects_by_date?.[dateStr] ?? [];
-
-                  return (
+              {/* heatmap */}
+              <div
+                className="grid text-xs"
+                style={{
+                  gridTemplateColumns: gridTemplate,
+                  gap: GRID_GAP,
+                }}
+                role="grid"
+                aria-label="Activity heatmap by date"
+              >
+                {data.matrix.map((row, i) => (
+                  <div key={i} className="contents">
                     <div
-                      key={`${i}-${j}`}
-                      className="cursor-pointer rounded-[2px]"
-                      style={{
-                        width: cellSize,
-                        height: cellSize,
-                        backgroundColor: getColorForValue(v, maxVal),
-                      }}
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setTooltip({
-                          dateStr,
-                          dow,
-                          count: v,
-                          projects,
-                          x: rect.left + rect.width / 2,
-                          y: rect.top,
-                        });
-                      }}
-                      onMouseLeave={() => setTooltip(null)}
-                      role="gridcell"
-                      aria-label={
-                        v > 0
-                          ? `${dateStr} (${dow}): ${v} project${v !== 1 ? "s" : ""}`
-                          : `${dateStr} (${dow}): No contributions`
-                      }
-                    />
-                  );
-                })}
+                      className="flex items-center justify-end pr-1 text-[10px] text-slate-500"
+                      title={data.row_labels[i]}
+                    >
+                      {data.row_labels[i][0]}
+                    </div>
+
+                    {row.map((v, j) => {
+                      const weekStart = new Date(data.col_labels[j] + "T00:00:00");
+                      const dayDate = new Date(weekStart);
+                      dayDate.setDate(dayDate.getDate() + i);
+                      const dateStr = dayDate.toISOString().slice(0, 10);
+                      const dow = data.row_labels[i];
+                      const projects = data.projects_by_date?.[dateStr] ?? [];
+
+                      return (
+                        <div
+                          key={`${i}-${j}`}
+                          className="cursor-pointer rounded-[2px]"
+                          style={{
+                            width: CELL_SIZE,
+                            height: CELL_SIZE,
+                            minWidth: CELL_MIN,
+                            minHeight: CELL_MIN,
+                            backgroundColor: getColorForValue(v, maxVal),
+                          }}
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setTooltip({
+                              dateStr,
+                              dow,
+                              count: v,
+                              projects,
+                              x: rect.left + rect.width / 2,
+                              y: rect.top,
+                            });
+                          }}
+                          onMouseLeave={() => setTooltip(null)}
+                          role="gridcell"
+                          aria-label={
+                            v > 0
+                              ? `${dateStr} (${dow}): ${v} project${v !== 1 ? "s" : ""}`
+                              : `${dateStr} (${dow}): No contributions`
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
 
           <HeatmapLegend />
         </section>
       ) : (
         <div className="py-8 text-center text-slate-500">
-          No activity data yet. Upload projects with dates set to see your activity heatmap.
+          No activity data yet. Upload projects with dates set to see your
+          activity heatmap.
         </div>
       )}
     </div>

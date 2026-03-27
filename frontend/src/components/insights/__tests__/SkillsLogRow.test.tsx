@@ -6,9 +6,7 @@ describe("SkillsLogRow", () => {
 	it("renders skill, project, level and score", () => {
 		render(<SkillsLogRow skill_name="testing" project_name="My Proj" level="Advanced" score={0.85} />);
 		expect(screen.getByText("Testing")).toBeInTheDocument();
-		expect(screen.getByText(/My Proj/)).toBeInTheDocument();
-		expect(screen.getByText(/0\.85/)).toBeInTheDocument();
-		expect(screen.getByRole("img", { name: /Advanced/ })).toBeInTheDocument();
+		expect(screen.getByText(/My Proj · advanced · 0\.85/)).toBeInTheDocument();
 	});
 
 	it("renders date when provided", () => {

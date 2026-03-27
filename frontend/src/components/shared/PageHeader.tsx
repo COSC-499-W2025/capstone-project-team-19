@@ -5,7 +5,6 @@ import Breadcrumbs from "./Breadcrumbs";
 type BreadcrumbItem = {
   label: string;
   href?: string;
-  onClick?: () => void;
 };
 
 type Props = {

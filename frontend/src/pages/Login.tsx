@@ -9,13 +9,11 @@ import {
   AppInput,
   AuthPageShell,
 } from "../components/shared";
-import { Eye, EyeOff } from "../lib/ui-icons";
 
 export default function LoginPage() {
   const nav = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -36,7 +34,16 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthPageShell>
+    <AuthPageShell
+      footer={
+        <>
+          Don&apos;t have an account?{" "}
+          <Link to="/register" className="text-[#7f7f7f] underline underline-offset-2">
+            Register here
+          </Link>
+        </>
+      }
+    >
       <form
         className="mx-auto flex w-full max-w-[300px] flex-col gap-[14px]"
         onSubmit={onSubmit}
@@ -51,42 +58,24 @@ export default function LoginPage() {
         </AppField>
 
         <AppField label="Password">
-          <div className="relative">
-            <AppInput
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              aria-label="Password"
-              className="pr-[36px]"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-[10px] top-1/2 -translate-y-1/2 text-[#7f7f7f] hover:text-[#3f3f3f]"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
+          <AppInput
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            aria-label="Password"
+          />
         </AppField>
 
-        {err && (
-          <div className="text-[13px] leading-[1.35] text-[#cc4b4b]">
+        {err ? (
+          <div className="text-[13px] leading-[1.35] text-[#cc4b4b]" style={{ whiteSpace: "pre-line" }}>
             {err}
           </div>
-        )}
+        ) : null}
 
         <AppButton type="submit" disabled={loading} fullWidth className="mt-[4px]">
           {loading ? "Logging in..." : "Login"}
         </AppButton>
-
-        <p className="text-center text-[12px] text-[#7f7f7f]">
-          Don&apos;t have an account?{" "}
-          <Link to="/register" className="underline underline-offset-2">
-            Register here
-          </Link>
-        </p>
       </form>
     </AuthPageShell>
   );

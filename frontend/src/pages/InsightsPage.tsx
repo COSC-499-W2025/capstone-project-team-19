@@ -10,19 +10,21 @@ export default function InsightsPage() {
     <>
       <TopBar showNav username={username} />
 
-      <PageContainer className="min-h-[calc(100vh-56px)] bg-background pt-[12px]">
-        <PageHeader
-          title="Insights"
-          breadcrumbs={[
-            { label: "Home", href: "/" },
-            { label: "Insights" },
-          ]}
-        />
+      <div className="min-h-[calc(100vh-56px)] bg-background">
+        <PageContainer className="pt-[12px]">
+          <PageHeader
+            title="Insights"
+            breadcrumbs={[
+              { label: "Home", href: "/" },
+              { label: "Insights" },
+            ]}
+          />
 
-        <SectionCard className="w-full overflow-hidden !p-0 bg-white">
-          <InsightsLayout />
-        </SectionCard>
-      </PageContainer>
+          <SectionCard className="w-full max-w-[1110px] self-center overflow-hidden !p-0 bg-white">
+            <InsightsLayout />
+          </SectionCard>
+        </PageContainer>
+      </div>
     </>
   );
 }

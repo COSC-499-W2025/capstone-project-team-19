@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 type BreadcrumbItem = {
   label: string;
   href?: string;
-  onClick?: () => void;
 };
 
 type Props = {
@@ -18,30 +17,19 @@ export default function Breadcrumbs({ items }: Props) {
     >
       {items.map((item, index) => {
         const isLast = index === items.length - 1;
-        const isClickable = !isLast && (item.href || item.onClick);
 
         return (
           <div
             key={`${item.label}-${index}`}
             className="flex items-center gap-[6px]"
           >
-            {isClickable ? (
-              item.onClick ? (
-                <button
-                  type="button"
-                  onClick={item.onClick}
-                  className="text-[#7f7f7f] hover:text-foreground"
-                >
-                  {item.label}
-                </button>
-              ) : (
-                <Link
-                  to={item.href!}
-                  className="hover:no-underline hover:text-foreground"
-                >
-                  {item.label}
-                </Link>
-              )
+            {item.href && !isLast ? (
+              <Link
+                to={item.href}
+                className="hover:no-underline hover:text-foreground"
+              >
+                {item.label}
+              </Link>
             ) : (
               <span>{item.label}</span>
             )}

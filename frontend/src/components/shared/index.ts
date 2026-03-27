@@ -8,7 +8,6 @@ export { default as AppTextarea } from "./AppTextArea";
 export { default as AuthPageShell } from "./AuthPageShell";
 export { default as Breadcrumbs } from "./Breadcrumbs";
 export { default as ConfirmDialog } from "./ConfirmDialog";
-export { default as MinimalConfirmDialog } from "./MinimalConfirmDialog";
 export { default as ContactDialog } from "./ContactDialog";
 export { default as ContributionBulletsDialog } from "./ContributionBulletsDialog";
 export { default as CreateResumeDialog } from "./CreateResumeDialog";

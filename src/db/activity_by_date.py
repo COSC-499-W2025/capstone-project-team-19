@@ -7,29 +7,22 @@ range, that project counts toward that day. More projects overlapping a day = da
 """
 
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Set
+from typing import Dict
 from collections import defaultdict
 
 
-def get_activity_counts_by_date(
-    conn,
-    user_id: int,
-    project_ids: Optional[Set[int]] = None,
-) -> tuple[Dict[str, int], Dict[str, list[str]]]:
+def get_activity_counts_by_date(conn, user_id: int) -> tuple[Dict[str, int], Dict[str, list[str]]]:
     """
     Returns (counts, projects_by_date).
     counts: date (YYYY-MM-DD) -> count of projects active that day.
     projects_by_date: date -> list of project names active that day.
     A project is "active" on a day if that day falls between its start_date and end_date.
-    If project_ids is provided, only those projects are included.
     """
     from src.services.project_dates_service import list_project_dates
 
     projects_by_date: Dict[str, set] = defaultdict(set)
 
     items = list_project_dates(conn, user_id)
-    if project_ids is not None:
-        items = [item for item in items if item.project_summary_id in project_ids]
 
     for item in items:
         start = item.start_date

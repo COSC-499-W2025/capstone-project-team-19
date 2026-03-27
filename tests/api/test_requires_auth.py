@@ -67,28 +67,19 @@ class TestAuthRequiredOnGetEndpoints:
     def test_skills_endpoint_requires_auth(self, client):
         res = client.get("/skills")
         assert res.status_code == 401
-    
+
     def test_skills_endpoint_with_valid_token(self, client, consent_user_id_1):
         token = make_valid_token(consent_user_id_1, "test-user")
         res = client.get("/skills", headers={"Authorization": f"Bearer {token}"})
         assert res.status_code == 200
-    
+
     def test_resume_endpoint_requires_auth(self, client):
         res = client.get("/resume")
         assert res.status_code == 401
-    
+
     def test_resume_endpoint_with_valid_token(self, client, consent_user_id_1):
         token = make_valid_token(consent_user_id_1, "test-user")
         res = client.get("/resume", headers={"Authorization": f"Bearer {token}"})
-        assert res.status_code == 200
-
-    def test_profile_endpoint_requires_auth(self, client):
-        res = client.get("/profile")
-        assert res.status_code == 401
-
-    def test_profile_endpoint_with_valid_token(self, client, consent_user_id_1):
-        token = make_valid_token(consent_user_id_1, "test-user")
-        res = client.get("/profile", headers={"Authorization": f"Bearer {token}"})
         assert res.status_code == 200
 
 
@@ -99,7 +90,6 @@ class TestAuthRequiredOnProtectedRoutes:
         ("GET", "/projects"),
         ("GET", "/skills"),
         ("GET", "/resume"),
-        ("GET", "/profile"),
     ])
     def test_protected_endpoints_reject_unauthenticated_requests(self, client, method, path):
         res = client.request(method, path)
@@ -109,7 +99,6 @@ class TestAuthRequiredOnProtectedRoutes:
         ("GET", "/projects"),
         ("GET", "/skills"),
         ("GET", "/resume"),
-        ("GET", "/profile"),
     ])
     def test_protected_endpoints_accept_valid_token(self, client, method, path, consent_user_id_1):
         token = make_valid_token(consent_user_id_1, "test-user")
