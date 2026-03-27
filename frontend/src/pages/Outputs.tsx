@@ -25,15 +25,10 @@ export default function OutputsPage() {
         return (
           <OutputsLanding
             onSelect={(v) =>
-              setView(
-                v === "resumes"
-                  ? { kind: "resumes" }
-                  : { kind: "portfolio" }
-              )
+              setView(v === "resumes" ? { kind: "resumes" } : { kind: "portfolio" })
             }
           />
         );
-
       case "resumes":
         return (
           <ResumeList
@@ -43,7 +38,6 @@ export default function OutputsPage() {
             onCreateNew={() => setShowCreate(true)}
           />
         );
-
       case "resume-detail":
         return (
           <ResumeDetail
@@ -52,13 +46,13 @@ export default function OutputsPage() {
             onBack={() => setView({ kind: "resumes" })}
           />
         );
-
       case "portfolio":
-        return (
-          <PortfolioView onBack={() => setView({ kind: "landing" })} />
-        );
+        return <PortfolioView onBack={() => setView({ kind: "landing" })} />;
     }
   }
+
+  const goLanding = () => setView({ kind: "landing" });
+  const goResumes = () => setView({ kind: "resumes" });
 
   const headerConfig =
     view.kind === "landing"
@@ -74,7 +68,7 @@ export default function OutputsPage() {
           title: "Resume Items",
           breadcrumbs: [
             { label: "Home", href: "/" },
-            { label: "Outputs", href: "/outputs" },
+            { label: "Outputs", onClick: goLanding },
             { label: "Resume Items" },
           ],
         }
@@ -83,8 +77,8 @@ export default function OutputsPage() {
           title: "Resume Detail",
           breadcrumbs: [
             { label: "Home", href: "/" },
-            { label: "Outputs", href: "/outputs" },
-            { label: "Resume Items" },
+            { label: "Outputs", onClick: goLanding },
+            { label: "Resume Items", onClick: goResumes },
             { label: "Resume Detail" },
           ],
         }
@@ -92,7 +86,7 @@ export default function OutputsPage() {
           title: "Portfolio Items",
           breadcrumbs: [
             { label: "Home", href: "/" },
-            { label: "Outputs", href: "/outputs" },
+            { label: "Outputs", onClick: goLanding },
             { label: "Portfolio Items" },
           ],
         };
@@ -101,18 +95,12 @@ export default function OutputsPage() {
     <>
       <TopBar showNav username={username} />
 
-      <div className="min-h-[calc(100vh-56px)] bg-background">
-        <PageContainer className="pt-[12px]">
-          <PageHeader
-            title={headerConfig.title}
-            breadcrumbs={headerConfig.breadcrumbs}
-          />
-
-          <SectionCard className="w-full max-w-[1110px] self-center bg-white">
-            {renderView()}
-          </SectionCard>
-        </PageContainer>
-      </div>
+      <PageContainer className="flex min-h-[calc(100vh-56px)] flex-col bg-background pt-[12px]">
+        <PageHeader title={headerConfig.title} breadcrumbs={headerConfig.breadcrumbs} />
+        <SectionCard className="flex w-full flex-1 flex-col bg-white">
+          {renderView()}
+        </SectionCard>
+      </PageContainer>
 
       {showCreate && (
         <CreateResumeModal

@@ -8,6 +8,10 @@ vi.mock("../../api/projects", () => ({
   fetchThumbnailUrl: vi.fn(),
 }));
 
+vi.mock("../../api/portfolioSettings", () => ({
+  updateProjectVisibility: vi.fn(),
+}));
+
 vi.mock("../../auth/user", () => ({
   getUsername: vi.fn(() => "testuser"),
 }));
@@ -16,10 +20,11 @@ vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>(
     "react-router-dom"
   );
-
   return {
     ...actual,
     useNavigate: vi.fn(() => vi.fn()),
+    Link: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
+    NavLink: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
   };
 });
 
@@ -54,28 +59,10 @@ describe("ProjectsPage", () => {
 
   it("renders project cards after successful load", async () => {
     vi.mocked(listProjects).mockResolvedValue([
-      {
-          project_summary_id: 1,
-          project_name: "Project Alpha",
-          project_key: null,
-          project_type: null,
-          project_mode: null,
-          created_at: null,
-          is_public: false
-      },
-      {
-          project_summary_id: 2,
-          project_name: "Project Beta",
-          project_key: null,
-          project_type: null,
-          project_mode: null,
-          created_at: null,
-          is_public: false
-      },
+      { project_summary_id: 1, project_name: "Project Alpha", project_key: null, project_type: null, project_mode: null, created_at: null, is_public: false },
+      { project_summary_id: 2, project_name: "Project Beta", project_key: null, project_type: null, project_mode: null, created_at: null, is_public: false },
     ]);
-
     renderPage();
-
     await waitFor(() => {
       expect(screen.getByText("Project Alpha")).toBeInTheDocument();
       expect(screen.getByText("Project Beta")).toBeInTheDocument();
@@ -85,7 +72,6 @@ describe("ProjectsPage", () => {
   it("shows empty state when no projects exist", async () => {
     vi.mocked(listProjects).mockResolvedValue([]);
     renderPage();
-
     await waitFor(() => {
       expect(screen.getByText(/No projects yet/)).toBeInTheDocument();
     });
@@ -94,7 +80,6 @@ describe("ProjectsPage", () => {
   it("shows error message when API fails", async () => {
     vi.mocked(listProjects).mockRejectedValue(new Error("Network error"));
     renderPage();
-
     await waitFor(() => {
       expect(screen.getByText("Network error")).toBeInTheDocument();
     });
@@ -109,7 +94,6 @@ describe("ProjectsPage", () => {
   it("renders the page heading", async () => {
     vi.mocked(listProjects).mockResolvedValue([]);
     renderPage();
-
     await waitFor(() => {
       expect(screen.getAllByText("Projects").length).toBeGreaterThan(0);
     });

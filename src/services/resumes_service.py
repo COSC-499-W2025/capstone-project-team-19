@@ -303,3 +303,37 @@ def remove_project_from_resume(
     update_resume_snapshot(conn, user_id, resume_id, updated_json, rendered)
 
     return get_resume_by_id(conn, user_id, resume_id)
+
+
+def add_project_to_resume(
+    conn, user_id: int, resume_id: int, project_summary_id: int
+) -> Optional[Dict[str, Any]]:
+    """Add a project to a resume snapshot. Returns updated resume or None."""
+    record = get_resume_snapshot(conn, user_id, resume_id)
+    if not record:
+        return None
+    try:
+        snapshot = json.loads(record["resume_json"])
+    except json.JSONDecodeError:
+        return None
+    projects = snapshot.get("projects") or []
+    existing_names = {p.get("project_name") for p in projects}
+    summaries = load_project_summaries_by_ids(conn, user_id, [project_summary_id])
+    if not summaries:
+        return None
+    snapshot_data = build_resume_snapshot_data(
+        conn, user_id, summaries, print_output=False, resume_id=resume_id
+    )
+    if not snapshot_data:
+        return None
+    new_project = snapshot_data[0]["projects"][0]
+    if new_project.get("project_name") in existing_names:
+        return None
+    projects.append(new_project)
+    snapshot["projects"] = projects
+    snapshot["aggregated_skills"] = recompute_aggregated_skills(projects)
+    snapshot = enrich_snapshot_with_dates(conn, user_id, snapshot)
+    rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
+    updated_json = json.dumps(snapshot, default=str)
+    update_resume_snapshot(conn, user_id, resume_id, updated_json, rendered)
+    return get_resume_by_id(conn, user_id, resume_id)

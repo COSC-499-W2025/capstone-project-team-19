@@ -37,11 +37,12 @@ http://localhost:8000
 11. [Portfolio Settings](#portfolio-settings)
 12. [Public Portfolio](#public-portfolio)
 13. [Activity Heatmap](#activity-heatmap)
-14. [Path Variables](#path-variables)
-15. [DTO References](#dto-references)
-16. [Best Practices](#best-practices)
-17. [Error Codes](#error-codes)
-18. [Example Error Response](#example-error-response)
+14. [User Profile](#user-profile)
+15. [Path Variables](#path-variables)
+16. [DTO References](#dto-references)
+17. [Best Practices](#best-practices)
+18. [Error Codes](#error-codes)
+19. [Example Error Response](#example-error-response)
 
 ---
 
@@ -1911,74 +1912,291 @@ Manages résumé-specific representations of projects.
         }
         ```
 
-- **Delete Resume by ID**
-  - **Endpoint**: `DELETE /{resume_id}`
-  - **Description**: Permanently deletes a specific résumé snapshot.
-  - **Path Parameters**:
-    - `{resume_id}` (integer, required): The ID of the résumé snapshot to delete
-  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-  - **Response Status**: `200 OK` on success, `404 Not Found` if résumé doesn't exist or belong to user
-  - **Response Body**:
-    ```json
-    {
-      "success": true,
-      "data": null,
-      "error": null
-    }
-    ```
+---
 
-- **Delete All Resumes**
-  - **Endpoint**: `DELETE /`
-  - **Description**: Permanently deletes all résumé snapshots belonging to the current user.
-  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+## **User Profile**
+
+**Base URL:** `/profile`
+
+Manages standalone user profile information used for resume and portfolio exports. This includes full name, email, phone, LinkedIn URL, GitHub URL, location, and a short profile paragraph.
+
+All endpoints require authentication (`Authorization: Bearer <access_token>`).
+
+### **Endpoints**
+
+- **Get Current User Profile**
+  - **Endpoint**: `GET /`
+  - **Description**: Returns the authenticated user's current profile information. If the user has not saved a profile yet, all fields (except `user_id`) will be `null`.
+  - **Auth**: Bearer token required
+  - **Request Body**: None
   - **Response Status**: `200 OK`
-  - **Response DTO**: `DeleteResultDTO`
-  - **Response Body**:
+  - **Response Body**: Uses `UserProfileDTO`
     ```json
     {
       "success": true,
       "data": {
-        "deleted_count": 2
+        "user_id": 1,
+        "email": "user@example.com",
+        "full_name": "Alice Example",
+        "phone": "123-456-7890",
+        "linkedin": "https://linkedin.com/in/alice",
+        "github": "https://github.com/alice",
+        "location": "Kelowna, BC",
+        "profile_text": "Software and data student building practical tools."
       },
-      "error": null
-    }
-    ```
-
-- **Remove Project from Resume**
-  - **Endpoint**: `DELETE /{resume_id}/projects?project_name=<name>`
-  - **Description**: Removes a single project from a résumé snapshot. Recomputes aggregated skills from the remaining projects. If no projects remain after removal, the résumé is deleted entirely.
-  - **Path Parameters**:
-    - `{resume_id}` (integer, required): The ID of the résumé snapshot
-  - **Query Parameters**:
-    - `project_name` (string, required): The name of the project to remove
-  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
-  - **Response Status**: `200 OK` on success, `404 Not Found` if résumé doesn't exist or project isn't in the résumé
-  - **Response Body** (project removed, résumé still has other projects):
-    ```json
-    {
-      "success": true,
-      "data": {
-        "id": 1,
-        "name": "My Resume",
-        "projects": [...],
-        "aggregated_skills": {...},
-        "rendered_text": "..."
-      },
-      "error": null
-    }
-    ```
-  - **Response Body** (last project removed, résumé deleted):
-    ```json
-    {
-      "success": true,
-      "data": null,
       "error": null
     }
     ```
   - **Error Responses**:
     - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **Update Current User Profile**
+  - **Endpoint**: `PUT /`
+  - **Description**: Creates or updates the authenticated user's profile information. All fields are optional; only provided fields are changed. Blank strings are normalized to `null`, which clears those fields.
+  - **Auth**: Bearer token required
+  - **Request Body**: Uses `UserProfileUpdateDTO`
+    ```json
+    {
+      "email": "user@example.com",
+      "full_name": "Alice Example",
+      "phone": "123-456-7890",
+      "linkedin": "https://linkedin.com/in/alice",
+      "github": "https://github.com/alice",
+      "location": "Kelowna, BC",
+      "profile_text": "Software and data student building practical tools."
+    }
+    ```
+    - `email` (string, optional): Contact email address. Also updates `users.email`.
+    - `full_name` (string, optional): Full name used for resume/portfolio exports.
+    - `phone` (string, optional): Phone number to show in contact details.
+    - `linkedin` (string, optional): LinkedIn profile URL.
+    - `github` (string, optional): GitHub profile URL.
+    - `location` (string, optional): Location line (e.g., `"Kelowna, BC"`).
+    - `profile_text` (string, optional): Short profile paragraph. If empty/blank, the profile section is hidden in exports.
+  - **Response Status**: `200 OK`
+  - **Response Body**: Uses `UserProfileDTO` with the updated profile
+    ```json
+    {
+      "success": true,
+      "data": {
+        "user_id": 1,
+        "email": "user@example.com",
+        "full_name": "Alice Example",
+        "phone": "123-456-7890",
+        "linkedin": "https://linkedin.com/in/alice",
+        "github": "https://github.com/alice",
+        "location": "Kelowna, BC",
+        "profile_text": "Software and data student building practical tools."
+      },
+      "error": null
+    }
+    ```
+  - **Error Responses**:
+    - `401 Unauthorized`: Missing or invalid Bearer token
+    
+- **List Education Entries**
+  - **Endpoint**: `GET /education`
+  - **Description**: Returns all education entries for the authenticated user (e.g., degrees, diplomas). Results are ordered by `display_order` and `entry_id`.
+  - **Auth**: Bearer token required
+  - **Request Body**: None
+  - **Response Status**: `200 OK`
+  - **Response Body**: Uses `UserEducationListDTO`
+    ```json
+    {
+      "success": true,
+      "data": {
+        "entries": [
+          {
+            "entry_id": 1,
+            "entry_type": "education",
+            "title": "BSc in Computer Science",
+            "organization": "UBCO",
+            "date_text": "2022 - 2026",
+            "description": "Major in data science.",
+            "display_order": 1,
+            "created_at": "2025-01-15T10:00:00",
+            "updated_at": "2025-01-15T10:00:00"
+          }
+        ]
+      },
+      "error": null
+    }
+    ```
+  - **Error Responses**:
+    - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **Replace Education Entries**
+  - **Endpoint**: `PUT /education`
+  - **Description**: Replaces all of the user's education entries with the provided list. This is a full replace operation: existing `"education"` entries are deleted and re-inserted in the order provided.
+  - **Auth**: Bearer token required
+  - **Request Body**: Uses `UserEducationEntriesUpdateDTO`
+    ```json
+    {
+      "entries": [
+        {
+          "title": "BSc in Computer Science",
+          "organization": "UBCO",
+          "date_text": "2022 - 2026",
+          "description": "Major in data science."
+        },
+        {
+          "title": "MSc in Computer Science",
+          "organization": "UBCO",
+          "date_text": "2026 - 2028",
+          "description": "Graduate program."
+        }
+      ]
+    }
+    ```
+    - `title` (string, required): Degree or program name
+    - `organization` (string, optional): Institution name
+    - `date_text` (string, optional): Free-form date range (e.g., `"2022 - 2026"`)
+    - `description` (string, optional): Short description or notes
+  - **Response Status**: `200 OK` on success, `400 Bad Request` on validation error
+  - **Response Body**: Uses `UserEducationListDTO` with the updated entries
+  - **Error Responses**:
+    - `400 Bad Request`: Validation error (for example, missing `title`)
+    - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **List Certification Entries**
+  - **Endpoint**: `GET /certifications`
+  - **Description**: Returns all certificate-style entries for the authenticated user (e.g., professional certifications). Results are ordered by `display_order` and `entry_id`.
+  - **Auth**: Bearer token required
+  - **Request Body**: None
+  - **Response Status**: `200 OK`
+  - **Response Body**: Uses `UserEducationListDTO`
+    ```json
+    {
+      "success": true,
+      "data": {
+        "entries": [
+          {
+            "entry_id": 2,
+            "entry_type": "certificate",
+            "title": "AWS Cloud Practitioner",
+            "organization": "Amazon Web Services",
+            "date_text": "2025",
+            "description": "Foundational cloud certification.",
+            "display_order": 1,
+            "created_at": "2025-01-15T10:05:00",
+            "updated_at": "2025-01-15T10:05:00"
+          }
+        ]
+      },
+      "error": null
+    }
+    ```
+  - **Error Responses**:
+    - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **Replace Certification Entries**
+  - **Endpoint**: `PUT /certifications`
+  - **Description**: Replaces all of the user's certification entries with the provided list. Existing `"certificate"` entries are deleted and re-inserted in the order provided.
+  - **Auth**: Bearer token required
+  - **Request Body**: Uses `UserEducationEntriesUpdateDTO`
+    ```json
+    {
+      "entries": [
+        {
+          "title": "AWS Cloud Practitioner",
+          "organization": "Amazon Web Services",
+          "date_text": "2025",
+          "description": "Foundational cloud certification."
+        }
+      ]
+    }
+    ```
+    - `title` (string, required): Certificate name
+    - `organization` (string, optional): Issuing organization
+    - `date_text` (string, optional): Free-form date text (e.g., `"2025"`)
+    - `description` (string, optional): Short description or notes
+  - **Response Status**: `200 OK` on success, `400 Bad Request` on validation error
+  - **Response Body**: Uses `UserEducationListDTO` with the updated entries
+  - **Error Responses**:
+    - `400 Bad Request`: Validation error (for example, missing `title` or invalid entry type)
+    - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **List Experience Entries**
+  - **Endpoint**: `GET /experience`
+  - **Description**: Returns all work experience entries for the authenticated user (e.g., jobs, internships). Results are ordered by `display_order` and `entry_id`.
+  - **Auth**: Bearer token required
+  - **Request Body**: None
+  - **Response Status**: `200 OK`
+  - **Response Body**: Uses `UserExperienceListDTO`
+    ```json
+    {
+      "success": true,
+      "data": {
+        "entries": [
+          {
+            "entry_id": 1,
+            "role": "Full Stack Engineer",
+            "company": "Company ABC",
+            "date_text": "Sep 2025 - Dec 2025",
+            "description": "Worked on backend and frontend features.",
+            "display_order": 1,
+            "created_at": "2025-01-15T10:00:00",
+            "updated_at": "2025-01-15T10:00:00"
+          }
+        ]
+      },
+      "error": null
+    }
+    ```
+  - **Error Responses**:
+    - `401 Unauthorized`: Missing or invalid Bearer token
+
+- **Replace Experience Entries**
+  - **Endpoint**: `PUT /experience`
+  - **Description**: Replaces all of the user's work experience entries with the provided list. Existing experience entries are deleted and re-inserted in the order provided.
+  - **Auth**: Bearer token required
+  - **Request Body**: Uses `UserExperienceEntriesUpdateDTO`
+    ```json
+    {
+      "entries": [
+        {
+          "role": "Full Stack Engineer",
+          "company": "Company ABC",
+          "date_text": "Sep 2025 - Dec 2025",
+          "description": "Worked on backend and frontend features."
+        },
+        {
+          "role": "Data Science Intern",
+          "company": "PETRONAS",
+          "date_text": "May 2025 - Aug 2025",
+          "description": "Built analytics workflows and dashboards."
+        }
+      ]
+    }
+    ```
+    - `role` (string, required): Job title or role name
+    - `company` (string, optional): Company or organization name
+    - `date_text` (string, optional): Free-form date text (e.g., `"Sep 2025 - Dec 2025"`)
+    - `description` (string, optional): Short description of responsibilities or impact
+  - **Response Status**: `200 OK` on success, `400 Bad Request` on validation error
+  - **Response Body**: Uses `UserExperienceListDTO` with the updated entries
+  - **Error Responses**:
+    - `400 Bad Request`: Validation error (for example, missing `role`)
+    - `401 Unauthorized`: Missing or invalid Bearer token
+  - **Error Responses**:
+    - `401 Unauthorized`: Missing or invalid Bearer token
     - `404 Not Found`: `"Resume not found"` or `"Project not found in resume"` (distinct messages)
     - `422 Unprocessable Entity`: Missing `project_name` query parameter
+
+- **Add Project to Resume**
+  - **Endpoint**: `POST /{resume_id}/projects`
+  - **Description**: Adds a project to an existing résumé snapshot. The project must exist (from `project_summaries`) and must not already be in the résumé.
+  - **Path Parameters**:
+    - `{resume_id}` (integer, required): The ID of the résumé snapshot
+  - **Request Body**: `AddProjectRequestDTO`
+    - `project_summary_id` (integer, required): The `project_summary_id` from `project_summaries` (get from `GET /projects/ranking`)
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Response Status**: `200 OK` on success
+  - **Response Body**: `ResumeDetailDTO` with the updated résumé including the new project
+  - **Error Responses**:
+    - `400 Bad Request`: Project not found or already in resume
+    - `401 Unauthorized`: Missing or invalid Bearer token
+    - `404 Not Found`: Resume not found
 
 - **Export Resume to DOCX**
     - **Endpoint**: `GET /{resume_id}/export/docx`
@@ -2828,6 +3046,9 @@ Example:
   - `name` (string, required): Name for the new résumé snapshot
   - `project_ids` (List[int], optional): List of `project_summary_id` values from `project_summaries` table. Get these from `GET /projects`. If omitted, uses top 5 ranked projects.
 
+- **AddProjectRequestDTO**
+  - `project_summary_id` (integer, required): `project_summary_id` from `project_summaries` (get from `GET /projects/ranking`)
+
 - **ResumeEditRequestDTO**
     - `name` (string, optional): New name for the résumé
     - `project_name` (string, optional): Text name of the project to edit. If omitted, only résumé-level updates are applied.
@@ -2904,6 +3125,72 @@ Example:
   - `user_id` (int, required): User identifier
   - `internal_consent` (string, optional): Latest internal consent status, or null if not set
   - `external_consent` (string, optional): Latest external consent status, or null if not set
+
+### **User Profile DTOs**
+
+- **UserProfileDTO**
+  - `user_id` (int, required): Authenticated user's ID
+  - `email` (string, optional): Contact email address (also stored on `users.email`)
+  - `full_name` (string, optional): Full name used for resume/portfolio exports
+  - `phone` (string, optional): Phone number shown in contact details
+  - `linkedin` (string, optional): LinkedIn profile URL
+  - `github` (string, optional): GitHub profile URL
+  - `location` (string, optional): Location line (e.g. `"Kelowna, BC"`)
+  - `profile_text` (string, optional): Short profile paragraph (max 600 characters)
+
+- **UserProfileUpdateDTO**
+  - `email` (string, optional): New email; blank or whitespace-only strings clear the email
+  - `full_name` (string, optional): New full name; blank or whitespace-only strings clear the name
+  - `phone` (string, optional): New phone; blank or whitespace-only strings clear the phone
+  - `linkedin` (string, optional): New LinkedIn URL; blank or whitespace-only strings clear the URL
+  - `github` (string, optional): New GitHub URL; blank or whitespace-only strings clear the URL
+  - `location` (string, optional): New location; blank or whitespace-only strings clear the location
+  - `profile_text` (string, optional): New profile paragraph; blank/whitespace-only strings clear the profile section
+  
+- **UserEducationEntryDTO**
+  - `entry_id` (int, required): Unique identifier for the education/certification entry
+  - `entry_type` (string, required): Either `"education"` or `"certificate"`
+  - `title` (string, required): Degree, program, or certificate name
+  - `organization` (string, optional): Institution or issuing organization
+  - `date_text` (string, optional): Free-form date string (e.g. `"2022 - 2026"` or `"2025"`)
+  - `description` (string, optional): Short description or notes
+  - `display_order` (int, required): Order in which entries should appear on the resume
+  - `created_at` (string, optional): ISO timestamp when the entry was created
+  - `updated_at` (string, optional): ISO timestamp when the entry was last updated
+
+- **UserEducationListDTO**
+  - `entries` (List[UserEducationEntryDTO], required): Ordered list of education or certification entries
+
+- **UserEducationEntryInputDTO**
+  - `title` (string, required): Degree, program, or certificate name
+  - `organization` (string, optional): Institution or issuing organization
+  - `date_text` (string, optional): Free-form date string to show on the resume
+  - `description` (string, optional): Short description or notes
+
+- **UserEducationEntriesUpdateDTO**
+  - `entries` (List[UserEducationEntryInputDTO], required): New list of entries to replace existing ones
+
+- **UserExperienceEntryDTO**
+  - `entry_id` (int, required): Unique identifier for the experience entry
+  - `role` (string, required): Job title or role name
+  - `company` (string, optional): Company or organization name
+  - `date_text` (string, optional): Free-form date string (e.g. `"Sep 2025 - Dec 2025"`)
+  - `description` (string, optional): Short description or notes
+  - `display_order` (int, required): Order in which entries should appear on the resume
+  - `created_at` (string, optional): ISO timestamp when the entry was created
+  - `updated_at` (string, optional): ISO timestamp when the entry was last updated
+
+- **UserExperienceListDTO**
+  - `entries` (List[UserExperienceEntryDTO], required): Ordered list of experience entries
+
+- **UserExperienceEntryInputDTO**
+  - `role` (string, required): Job title or role name
+  - `company` (string, optional): Company or organization name
+  - `date_text` (string, optional): Free-form date text shown on the resume
+  - `description` (string, optional): Short description or notes
+
+- **UserExperienceEntriesUpdateDTO**
+  - `entries` (List[UserExperienceEntryInputDTO], required): New list of entries to replace existing ones
 
 ### **GitHub Integration DTOs**
 

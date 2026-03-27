@@ -1,5 +1,6 @@
 import type { TimelineEventDTO } from "../../../../api/insights";
 import { formatSkillName, toShortDate } from "./utils/formatHelpers";
+import LevelStars from "./LevelStars";
 
 export type EventWithDate = TimelineEventDTO & { date?: string };
 
@@ -9,7 +10,7 @@ export default function SkillsLogRow({ skill_name, project_name, level, score, d
             <div>
                 <div className="font-semibold text-slate-900">{formatSkillName(skill_name)}</div>
                 <div className="text-sm text-slate-500">
-                    {project_name} · {level.toLowerCase()} · {score.toFixed(2)}
+                    {project_name} · <LevelStars level={level} size="sm" /> · {score.toFixed(2)}
                 </div>
             </div>
             {date && (
