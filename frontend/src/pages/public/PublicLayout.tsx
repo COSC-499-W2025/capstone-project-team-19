@@ -123,7 +123,7 @@ export default function PublicLayout({ children }: Props) {
               </Link>
             )}
 
-            {loggedInUsername !== username && (
+            {loggedInUsername !== username && visitorStatus === "public" && (
               <span className="font-['Roboto'] text-sm text-white/60">
                 Viewing {username}&apos;s portfolio
               </span>
