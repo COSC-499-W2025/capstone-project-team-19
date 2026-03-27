@@ -103,6 +103,26 @@ export function editResume(resumeId: number, payload: ResumeEditRequest) {
   );
 }
 
+export function removeProjectFromResume(
+  resumeId: number,
+  projectName: string
+): Promise<ApiResponse<ResumeDetail | null>> {
+  const qs = new URLSearchParams({ project_name: projectName });
+  return api.delete<ApiResponse<ResumeDetail | null>>(
+    `/resume/${resumeId}/projects?${qs}`
+  );
+}
+
+export function addProjectToResume(
+  resumeId: number,
+  projectSummaryId: number
+): Promise<ApiResponse<ResumeDetail>> {
+  return api.postJson<ApiResponse<ResumeDetail>>(
+    `/resume/${resumeId}/projects`,
+    { project_summary_id: projectSummaryId }
+  );
+}
+
 /* ── Export helpers ── */
 
 export async function downloadResumeDocx(id: number) {

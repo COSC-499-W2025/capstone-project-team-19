@@ -24,47 +24,50 @@ export default function HomePage() {
           </p>
         </div>
 
-        <SectionCard className="mt-[48px] w-full max-w-[1110px] px-[42px] pb-[40px] pt-[21px]">
+        {/* max-w-[748px] = grid max-w-[664px] + px-[42px] on each side */}
+        <SectionCard className="mt-[48px] w-full max-w-[748px] px-[42px] pb-[40px] pt-[21px]">
           <div className="text-[20px] font-light leading-7 text-[#2F2F2F]">
             Shortcuts
           </div>
 
-          <div className="mt-[13px] flex flex-col gap-y-[22px] md:grid md:grid-cols-[320px_320px] md:gap-x-[224px] md:gap-y-[22px]">
-            <ShortcutCard
-              title="Analyze project"
-              description="Upload a project folder or ZIP to generate summaries, skills, feedback, and other insights."
-              icon={Upload}
-              iconBoxClassName="bg-[#60A5FA40]"
-              iconClassName="text-[#60A5FA]"
-              onClick={() => nav("/upload/consent")}
-            />
+          <div className="mt-[13px] flex justify-center">
+            <div className="grid w-full grid-cols-1 gap-x-[24px] gap-y-[22px] sm:grid-cols-2 sm:max-w-[664px]">
+              <ShortcutCard
+                title="Analyze project"
+                description="Upload a project folder or ZIP to generate summaries, skills, feedback, and other insights."
+                icon={Upload}
+                iconBoxClassName="bg-[#60A5FA40]"
+                iconClassName="text-[#60A5FA]"
+                onClick={() => nav("/upload/consent")}
+              />
 
-            <ShortcutCard
-              title="Explore insights"
-              description="See rankings, skill timelines, heatmaps, and other insights generated from your projects."
-              icon={Search}
-              iconBoxClassName="bg-[#FDBA7440]"
-              iconClassName="text-[#854D0E]"
-              onClick={() => nav("/insights")}
-            />
+              <ShortcutCard
+                title="Explore insights"
+                description="See rankings, skill timelines, heatmaps, and other insights generated from your projects."
+                icon={Search}
+                iconBoxClassName="bg-[#FDBA7440]"
+                iconClassName="text-[#854D0E]"
+                onClick={() => nav("/insights")}
+              />
 
-            <ShortcutCard
-              title="Review projects"
-              description="Browse your analyzed projects, revisit details, and manage the projects already in your library."
-              icon={FolderOpen}
-              iconBoxClassName="bg-[#D1FAE5]"
-              iconClassName="text-[#15803D]"
-              onClick={() => nav("/projects")}
-            />
+              <ShortcutCard
+                title="Review projects"
+                description="Browse your analyzed projects, revisit details, and manage the projects already in your library."
+                icon={FolderOpen}
+                iconBoxClassName="bg-[#D1FAE5]"
+                iconClassName="text-[#15803D]"
+                onClick={() => nav("/projects")}
+              />
 
-            <ShortcutCard
-              title="Create outputs"
-              description="Create and export resumes, portfolios, and other polished outputs from your project data."
-              icon={FileText}
-              iconBoxClassName="bg-[#0011661A]"
-              iconClassName="text-[#001166]"
-              onClick={() => nav("/outputs")}
-            />
+              <ShortcutCard
+                title="Create outputs"
+                description="Create and export resumes, portfolios, and other polished outputs from your project data."
+                icon={FileText}
+                iconBoxClassName="bg-[#0011661A]"
+                iconClassName="text-[#001166]"
+                onClick={() => nav("/outputs")}
+              />
+            </div>
           </div>
         </SectionCard>
       </PageContainer>

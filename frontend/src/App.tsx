@@ -22,6 +22,8 @@ import ProfilePage from "./pages/Profile";
 import UIPlaygroundPage from "./pages/UIPlayground";
 import PublicProjectsPage from "./pages/public/PublicProjects";
 import PublicProjectDetailPage from "./pages/public/PublicProjectDetail";
+import PublicInsightsPage from "./pages/public/PublicInsightsPage";
+import PublicOutputsPage from "./pages/public/PublicOutputsPage";
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const token = tokenStore.get();
@@ -144,6 +146,8 @@ export default function App() {
         <Route path="/public/:username" element={<PublicHomeRedirect />} />
         <Route path="/public/:username/projects" element={<PublicProjectsPage />} />
         <Route path="/public/:username/projects/:id" element={<PublicProjectDetailPage />} />
+        <Route path="/public/:username/insights" element={<PublicInsightsPage />} />
+        <Route path="/public/:username/outputs" element={<PublicOutputsPage />} />
 
         <Route
           path="/ui-preview"

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import "../ProjectDetail.css";
 import PublicLayout from "./PublicLayout";
 import {
   publicGetProject,
@@ -8,6 +7,15 @@ import {
   publicListProjects,
 } from "../../api/public";
 import type { PublicProjectDetail, PublicProject } from "../../api/public";
+import { toShortDate } from "../../components/insights/tabs/Skills/utils/formatHelpers";
+import {
+  AppButton,
+  PageContainer,
+  PageHeader,
+  SectionCard,
+  SectionTabs,
+  TagPill,
+} from "../../components/shared";
 
 export default function PublicProjectDetailPage() {
   const { username, id } = useParams<{ username: string; id: string }>();
@@ -19,6 +27,7 @@ export default function PublicProjectDetailPage() {
   const [allProjects, setAllProjects] = useState<PublicProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("summary");
 
   useEffect(() => {
     if (!username) return;
@@ -43,21 +52,24 @@ export default function PublicProjectDetailPage() {
     };
   }, [username, projectId]);
 
-  function formatDate(d: string | null | undefined) {
-    if (!d) return "—";
-    return d;
-  }
-
   function formatSkillName(s: string) {
     return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   const basePath = `/public/${username}/projects`;
 
+  const hasSkills =
+    project &&
+    (project.languages?.length > 0 ||
+      project.frameworks?.length > 0 ||
+      project.skills?.length > 0);
+
   if (loading) {
     return (
       <PublicLayout>
-        <div className="content"><p>Loading…</p></div>
+        <PageContainer>
+          <p className="text-[14px] text-[#7f7f7f]">Loading…</p>
+        </PageContainer>
       </PublicLayout>
     );
   }
@@ -65,123 +77,192 @@ export default function PublicProjectDetailPage() {
   if (error || !project) {
     return (
       <PublicLayout>
-        <div className="content">
-          <p className="error">{error ?? "Project not found."}</p>
-          <button className="btn" onClick={() => nav(basePath)}>← Back to Projects</button>
-        </div>
+        <PageContainer className="flex flex-col gap-[20px]">
+          <p className="text-[14px] text-[#cc4b4b]">
+            {error ?? "Project not found."}
+          </p>
+          <div>
+            <AppButton variant="ghost" onClick={() => nav(basePath)}>
+              ← Back to Projects
+            </AppButton>
+          </div>
+        </PageContainer>
       </PublicLayout>
     );
   }
 
-  const currentIndex = allProjects.findIndex((p) => p.project_summary_id === projectId);
+  const currentIndex = allProjects.findIndex(
+    (p) => p.project_summary_id === projectId,
+  );
   const prevProject = currentIndex > 0 ? allProjects[currentIndex - 1] : null;
   const nextProject =
     currentIndex !== -1 && currentIndex < allProjects.length - 1
       ? allProjects[currentIndex + 1]
       : null;
 
+  const tabs = [
+    { key: "summary", label: "Summary" },
+    ...(hasSkills ? [{ key: "skills", label: "Skills & Technologies" }] : []),
+  ];
+
   return (
     <PublicLayout>
-      <div className="content">
-        <button className="pdBackBtn" onClick={() => nav(basePath)}>← Back to Projects</button>
+      <PageContainer className="flex flex-col gap-[20px]">
+        <PageHeader
+          title={project.project_name}
+          breadcrumbs={[
+            { label: "Home", href: "/" },
+            { label: "Projects", href: basePath },
+            { label: project.project_name },
+          ]}
+        />
 
-        {/* Header */}
-        <div className="pdHeader">
-          {/* Thumbnail — read-only */}
-          <div className="pdThumbWrap">
-            <div
-              className="pdThumb"
-              style={thumbUrl ? { backgroundImage: `url(${thumbUrl})` } : undefined}
-            >
-              {!thumbUrl && <span className="pdThumbPlaceholder">No Image</span>}
+        {/* Thumbnail + Meta */}
+        <SectionCard>
+          <div className="flex gap-[20px]">
+            <div className="shrink-0">
+              <div
+                className="h-[140px] w-[186px] overflow-hidden rounded-[6px] bg-[#ebebeb] bg-cover bg-center"
+                style={
+                  thumbUrl
+                    ? { backgroundImage: `url(${thumbUrl})` }
+                    : undefined
+                }
+              >
+                {!thumbUrl && (
+                  <div className="flex h-full items-center justify-center text-[13px] text-[#9f9f9f]">
+                    No Image
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-[8px] self-start">
+              {project.project_type && (
+                <TagPill className="capitalize">{project.project_type}</TagPill>
+              )}
+              {project.project_mode && (
+                <TagPill className="capitalize">{project.project_mode}</TagPill>
+              )}
             </div>
           </div>
+        </SectionCard>
 
-          {/* Project name + meta */}
-          <div className="pdHeaderInfo">
-            <h2 className="pdTitle">{project.project_name}</h2>
-            {project.project_type && <span className="pdMeta">{project.project_type}</span>}
-            {project.project_mode && <span className="pdMeta">{project.project_mode}</span>}
-            </div>
-        </div>
-
-        {/* Duration */}
+        {/* Duration — only when at least one bound exists (matches private project detail) */}
         {(project.start_date || project.end_date) && (
-          <div className="pdSection">
-            <div className="pdSectionHeader">
-              <h3>Duration</h3>
+          <SectionCard className="space-y-[14px]">
+            <div className="text-[18px] font-medium leading-none text-foreground">
+              Duration
             </div>
-            <p className="pdDateDisplay">
-              {formatDate(project.start_date)} → {formatDate(project.end_date)}
+            <p className="text-[14px] leading-[1.6] text-foreground">
+              {!project.start_date
+                ? `Unknown start – ${toShortDate(project.end_date)}`
+                : !project.end_date
+                  ? `${toShortDate(project.start_date)} – Present`
+                  : `${toShortDate(project.start_date)} – ${toShortDate(project.end_date)}`}
             </p>
-          </div>
+          </SectionCard>
         )}
 
-        {/* Summary */}
-        <div className="pdSection">
-          <h3>Summary</h3>
-          <p className="pdSummaryText">
-            {project.summary_text ?? <em>No summary available.</em>}
-          </p>
-          {project.project_mode === "collaborative" && (
-            <>
-              <h3 className="pdContribHeading">Contribution Summary</h3>
-              <p className="pdSummaryText">
-                <em>No contribution summary available.</em>
+        {/* Summary / Skills tabs */}
+        <SectionCard className="space-y-[16px]">
+          <SectionTabs
+            tabs={tabs}
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            align="left"
+          />
+
+          {activeTab === "summary" && (
+            <div className="space-y-[14px]">
+              <p className="whitespace-pre-wrap text-[14px] leading-[1.6] text-foreground">
+                {project.summary_text ?? (
+                  <em className="text-[#9f9f9f]">No summary available.</em>
+                )}
               </p>
-            </>
+              {project.project_mode === "collaborative" && (
+                <>
+                  <div className="text-[16px] font-medium text-foreground">
+                    Contribution Summary
+                  </div>
+                  <p className="text-[14px] leading-[1.6] text-[#9f9f9f]">
+                    <em>No contribution summary available.</em>
+                  </p>
+                </>
+              )}
+            </div>
           )}
-        </div>
 
-        {/* Skills */}
-        {(project.languages?.length > 0 ||
-          project.frameworks?.length > 0 ||
-          project.skills?.length > 0) && (
-          <div className="pdSection">
-            <h3>Skills &amp; Technologies</h3>
-            {project.languages?.length > 0 && (
-              <p className="pdSummaryText">
-                <strong>Languages:</strong> {project.languages.join(", ")}
-              </p>
-            )}
-            {project.frameworks?.length > 0 && (
-              <p className="pdSummaryText">
-                <strong>Frameworks:</strong> {project.frameworks.join(", ")}
-              </p>
-            )}
-            {project.skills?.length > 0 && (
-              <p className="pdSummaryText">
-                <strong>Skills:</strong>{" "}
-                {project.skills.map(formatSkillName).join(", ")}
-              </p>
-            )}
-          </div>
-        )}
+          {activeTab === "skills" && hasSkills && (
+            <div className="space-y-[12px]">
+              {project.languages?.length > 0 && (
+                <div className="space-y-[6px]">
+                  <div className="text-[14px] font-medium text-foreground">
+                    Languages
+                  </div>
+                  <div className="flex flex-wrap gap-[8px]">
+                    {project.languages.map((l) => (
+                      <TagPill key={l}>{l}</TagPill>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {project.frameworks?.length > 0 && (
+                <div className="space-y-[6px]">
+                  <div className="text-[14px] font-medium text-foreground">
+                    Frameworks
+                  </div>
+                  <div className="flex flex-wrap gap-[8px]">
+                    {project.frameworks.map((f) => (
+                      <TagPill key={f}>{f}</TagPill>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {project.skills?.length > 0 && (
+                <div className="space-y-[6px]">
+                  <div className="text-[14px] font-medium text-foreground">
+                    Skills
+                  </div>
+                  <div className="flex flex-wrap gap-[8px]">
+                    {project.skills.map((s) => (
+                      <TagPill key={s}>{formatSkillName(s)}</TagPill>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </SectionCard>
 
         {/* Prev/Next navigation */}
         {(prevProject || nextProject) && (
-          <div className="pdNavRow">
+          <div className="flex justify-between">
             {prevProject ? (
-              <button
-                className="pdNavBtn"
-                onClick={() => nav(`${basePath}/${prevProject.project_summary_id}`)}
+              <AppButton
+                variant="ghost"
+                onClick={() =>
+                  nav(`${basePath}/${prevProject.project_summary_id}`)
+                }
               >
                 ← {prevProject.project_name}
-              </button>
+              </AppButton>
             ) : (
               <span />
             )}
             {nextProject && (
-              <button
-                className="pdNavBtn"
-                onClick={() => nav(`${basePath}/${nextProject.project_summary_id}`)}
+              <AppButton
+                variant="ghost"
+                onClick={() =>
+                  nav(`${basePath}/${nextProject.project_summary_id}`)
+                }
               >
                 {nextProject.project_name} →
-              </button>
+              </AppButton>
             )}
           </div>
         )}
-      </div>
+      </PageContainer>
     </PublicLayout>
   );
 }
