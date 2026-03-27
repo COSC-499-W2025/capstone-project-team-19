@@ -328,17 +328,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
 
       {showContributionSectionPicker ? (
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-sm font-semibold text-zinc-900">Contributed sections</div>
-            <button
-              type="button"
-              onClick={onLoadSections}
-              disabled={isMutating || sectionsLoading || project.projectKey === null}
-              className={setupSecondaryActionButtonClass}
-            >
-              {sectionsLoading ? "Loading..." : "Load sections"}
-            </button>
-          </div>
+          <div className="text-sm font-semibold text-zinc-900">Contributed sections</div>
 
           {sections.length === 0 && (
             <p className="text-sm text-zinc-600">No sections loaded yet. Load sections after saving a main file.</p>
@@ -360,16 +350,21 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                   </span>
                 </label>
               ))}
-              <button
-                type="button"
-                onClick={onSaveSections}
-                disabled={isMutating || project.projectKey === null}
-                className={setupPrimaryActionButtonClass}
-              >
-                Save section selection
-              </button>
             </div>
           )}
+
+          {sections.length > 0 && selectedSectionIds.length === 0 && (
+            <p className="text-sm font-medium text-rose-700">Missing contributed section selection.</p>
+          )}
+
+          <button
+            type="button"
+            onClick={sections.length > 0 ? onSaveSections : onLoadSections}
+            disabled={isMutating || sectionsLoading || project.projectKey === null || (!mainFile && sections.length === 0)}
+            className={setupPrimaryActionButtonClass}
+          >
+            {sectionsLoading ? "Loading..." : sections.length > 0 ? "Save section selection" : "Load sections"}
+          </button>
         </div>
       ) : (
         <p className="text-sm text-zinc-600">
