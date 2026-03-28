@@ -17,13 +17,10 @@ class ProjectDetailDTO(BaseModel):
     project_summary_id: int
     project_key: Optional[int] = None
     project_name: str
-    display_name: Optional[str] = None
     project_type: Optional[str] = None
     project_mode: Optional[str] = None
     created_at: Optional[str] = None
     summary_text: Optional[str] = None
-    key_role: Optional[str] = None
-    contribution_bullets: Optional[List[str]] = None
     languages: List[str] = []
     frameworks: List[str] = []
     skills: List[str] = []

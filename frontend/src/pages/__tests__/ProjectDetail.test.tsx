@@ -354,9 +354,6 @@ describe("ProjectDetailPage", () => {
       vi.mocked(patchProjectSummary).mockResolvedValue({
         ...baseProject,
         summary_text: "Updated summary",
-        display_name: null,
-        key_role: null,
-        contribution_bullets: null,
       });
       const user = userEvent.setup();
       renderPage();
@@ -387,9 +384,6 @@ describe("ProjectDetailPage", () => {
         ...baseProject,
         project_mode: "collaborative",
         contributions: { manual_contribution_summary: "My contribution." },
-        display_name: null,
-        key_role: null,
-        contribution_bullets: null,
       });
       const user = userEvent.setup();
       renderPage();

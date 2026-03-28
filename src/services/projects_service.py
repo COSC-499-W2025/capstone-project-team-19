@@ -30,10 +30,9 @@ def get_project_by_id(conn, user_id: int, project_summary_id: int) -> Optional[D
 
     result = {**row_without_json, **summary_dict}
 
-    # Apply manual overrides so the detail view reflects edited values
-    for field in ("summary_text", "display_name", "key_role", "contribution_bullets"):
-        if manual_overrides.get(field) is not None:
-            result[field] = manual_overrides[field]
+    # Apply summary_text override so the detail view reflects the edited value
+    if manual_overrides.get("summary_text") is not None:
+        result["summary_text"] = manual_overrides["summary_text"]
 
     return result
 
