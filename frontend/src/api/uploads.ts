@@ -176,6 +176,10 @@ export async function getUploadStatus(uploadId: number) {
   return api.get<ApiResponse<UploadRecord>>(`/projects/upload/${uploadId}`);
 }
 
+export async function deleteUpload(uploadId: number) {
+  return api.delete<ApiResponse<null>>(`/projects/upload/${uploadId}`);
+}
+
 export async function getUploadProjectFiles(uploadId: number, projectKey: number) {
   return api.get<ApiResponse<UploadProjectFilesRecord>>(`/projects/upload/${uploadId}/projects/${projectKey}/files`);
 }

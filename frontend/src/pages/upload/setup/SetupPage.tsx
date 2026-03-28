@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { deleteUpload } from "../../../api/uploads";
 import type { RunPreflightRecord, RunWarning } from "../../../api/uploads";
 import { getUsername } from "../../../auth/user";
 import UploadWizardShell from "../../../components/UploadWizardShell";
@@ -50,6 +51,8 @@ export default function UploadSetupPage() {
   const [checkingReadiness, setCheckingReadiness] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [summaryModesByProject, setSummaryModesByProject] = useState<Record<string, ProjectSummaryModes>>({});
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const uploadIdParam = searchParams.get("uploadId") ?? "";
   const flow = useSetupFlow(uploadIdParam);
@@ -168,6 +171,30 @@ export default function UploadSetupPage() {
   function onConfirmContinueToAnalyze() {
     setConfirmOpen(false);
     nav(`/upload/analyze?uploadId=${uploadIdParam}`);
+  }
+
+  async function onExitSetup() {
+    if (isCancelling) return;
+    const confirmed = window.confirm(
+      "Exit upload setup? Your unfinished upload will be deleted.",
+    );
+    if (!confirmed) return;
+
+    setCancelError(null);
+    setIsCancelling(true);
+    try {
+      if (!hasAnalysisStarted && flow.uploadId) {
+        const res = await deleteUpload(flow.uploadId);
+        if (!res.success) {
+          throw new Error(res.error?.message ?? "Failed to cancel upload.");
+        }
+      }
+      nav("/projects");
+    } catch (error: unknown) {
+      setCancelError(error instanceof Error ? error.message : "Failed to cancel upload.");
+    } finally {
+      setIsCancelling(false);
+    }
   }
 
   const summaryMissingByProject = useMemo(() => {
@@ -365,6 +392,7 @@ export default function UploadSetupPage() {
           )}
           {flow.loadError && <p className="error mb-3 text-sm">{flow.loadError}</p>}
           {flow.actionError && <p className="error mb-3 text-sm">{flow.actionError}</p>}
+          {cancelError && <p className="error mb-3 text-sm">{cancelError}</p>}
           {!flow.loading && !flow.loadError && (
             <div className="mb-8 rounded-md border border-zinc-300 bg-white px-4 py-3">
               <p className="mb-2 text-sm text-zinc-700">
@@ -428,20 +456,30 @@ export default function UploadSetupPage() {
           )}
 
           <div className="mt-10 flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => nav(`/upload/upload?uploadId=${uploadIdParam}&stage=classification`)}
-              className="h-10 min-w-[96px] rounded-md border border-zinc-400 bg-white px-5 text-sm font-semibold text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={flow.isMutating}
-            >
-              Back
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onExitSetup}
+                className="h-10 min-w-[96px] rounded-md border border-rose-300 bg-rose-50 px-5 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={flow.isMutating || isCancelling}
+              >
+                {isCancelling ? "Exiting..." : "Exit"}
+              </button>
+              <button
+                type="button"
+                onClick={() => nav(`/upload/upload?uploadId=${uploadIdParam}&stage=classification`)}
+                className="h-10 min-w-[96px] rounded-md border border-zinc-400 bg-white px-5 text-sm font-semibold text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={flow.isMutating || isCancelling}
+              >
+                Back
+              </button>
+            </div>
 
             <button
               type="button"
               onClick={onAnalyzeAction}
               className="h-10 min-w-[160px] rounded-md bg-[var(--upload-accent)] px-5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-70"
-              disabled={analyzeButtonDisabled}
+              disabled={analyzeButtonDisabled || isCancelling}
             >
               {hasAnalysisStarted ? "Open Analyze" : "Analyze"}
             </button>

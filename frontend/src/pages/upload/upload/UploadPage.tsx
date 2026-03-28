@@ -1,5 +1,6 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { deleteUpload } from "../../../api/uploads";
 import { getUsername } from "../../../auth/user";
 import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
@@ -20,6 +21,8 @@ export default function UploadPage() {
   const stageParam = searchParams.get("stage");
   const classificationResumeUploadId = stageParam === "classification" ? uploadIdParam : null;
   const flow = useUploadFlow(classificationResumeUploadId);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const steps = [
     { label: "1. Consent", status: "inactive" as const, to: "/upload/consent" },
@@ -98,6 +101,30 @@ export default function UploadPage() {
     }
   }
 
+  async function onExitUploadWizard() {
+    if (isCancelling) return;
+    const confirmed = window.confirm(
+      "Exit upload flow? Your unfinished upload will be deleted.",
+    );
+    if (!confirmed) return;
+
+    setCancelError(null);
+    setIsCancelling(true);
+    try {
+      if (flow.uploadId) {
+        const res = await deleteUpload(flow.uploadId);
+        if (!res.success) {
+          throw new Error(res.error?.message ?? "Failed to cancel upload.");
+        }
+      }
+      nav("/projects");
+    } catch (error: unknown) {
+      setCancelError(error instanceof Error ? error.message : "Failed to cancel upload.");
+    } finally {
+      setIsCancelling(false);
+    }
+  }
+
   return (
     <UploadWizardShell
       username={username}
@@ -140,23 +167,34 @@ export default function UploadPage() {
         </div>
 
         {flow.submitError && <p className="error uploadStatusLine">{flow.submitError}</p>}
+        {cancelError && <p className="error uploadStatusLine">{cancelError}</p>}
         {renderStageBody()}
 
         <div className="uploadStageActionRow">
-          <button
-            type="button"
-            className="uploadStageBackBtn"
-            onClick={flow.onBack}
-            disabled={!flow.canGoBack || flow.isSubmitting}
-          >
-            Back
-          </button>
+          <div className="uploadStageActionRowLeft">
+            <button
+              type="button"
+              className="uploadStageExitBtn"
+              onClick={onExitUploadWizard}
+              disabled={isCancelling || flow.isSubmitting}
+            >
+              {isCancelling ? "Exiting..." : "Exit"}
+            </button>
+            <button
+              type="button"
+              className="uploadStageBackBtn"
+              onClick={flow.onBack}
+              disabled={!flow.canGoBack || flow.isSubmitting || isCancelling}
+            >
+              Back
+            </button>
+          </div>
 
           <button
             type="button"
             className={`uploadStagePrimaryBtn${flow.classificationStageCompleted ? " uploadStagePrimaryBtn--completed" : ""}`}
             onClick={onPrimaryClick}
-            disabled={flow.primaryDisabled}
+            disabled={flow.primaryDisabled || isCancelling}
           >
             {flow.primaryLabel}
           </button>
