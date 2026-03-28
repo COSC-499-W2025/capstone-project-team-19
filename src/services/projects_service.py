@@ -26,12 +26,16 @@ def get_project_by_id(conn, user_id: int, project_summary_id: int) -> Optional[D
         summary_dict = {}
 
     row_without_json = {k: v for k, v in row.items() if k != "summary_json"}
+    manual_overrides = summary_dict.get("manual_overrides") or {}
 
-    # Flatten it
-    return {
-        **row_without_json,
-        **summary_dict
-    }
+    result = {**row_without_json, **summary_dict}
+
+    # Apply manual overrides so the detail view reflects edited values
+    for field in ("summary_text", "display_name", "key_role", "contribution_bullets"):
+        if manual_overrides.get(field) is not None:
+            result[field] = manual_overrides[field]
+
+    return result
 
 
 def delete_project(conn, user_id: int, project_id: int, refresh_resumes: bool = False) -> bool:
@@ -52,6 +56,55 @@ def delete_project(conn, user_id: int, project_id: int, refresh_resumes: bool = 
         refresh_saved_resumes_after_project_delete(conn, user_id, project_name)
 
     return True
+
+
+def edit_project_summary(
+    conn,
+    user_id: int,
+    project_summary_id: int,
+    summary_text: Optional[str] = None,
+    contribution_summary: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    row = get_project_summary_by_id(conn, user_id, project_summary_id)
+    if not row:
+        return None
+
+    project_name = row["project_name"]
+    nothing_to_do = summary_text is None and contribution_summary is None
+
+    if nothing_to_do:
+        return get_project_by_id(conn, user_id, project_summary_id)
+
+    # Update summary_text via manual_overrides (fans out to resumes)
+    if summary_text is not None:
+        from src.services.resume_overrides import update_project_manual_overrides, apply_manual_overrides_to_resumes
+        manual_overrides = update_project_manual_overrides(
+            conn, user_id, project_name, {"summary_text": summary_text or None}
+        )
+        if manual_overrides is not None:
+            apply_manual_overrides_to_resumes(
+                conn, user_id, project_name, manual_overrides, {"summary_text"}
+            )
+
+    # Update contribution_summary directly in summary_json.contributions
+    if contribution_summary is not None:
+        from src.db.project_summaries import get_project_summary_by_name
+        from src.db import update_project_summary_json
+        summary_row = get_project_summary_by_name(conn, user_id, project_name)
+        if summary_row:
+            try:
+                summary_dict = json.loads(summary_row["summary_json"])
+            except Exception:
+                summary_dict = {}
+            contributions = dict(summary_dict.get("contributions") or {})
+            if contribution_summary:
+                contributions["manual_contribution_summary"] = contribution_summary
+            else:
+                contributions.pop("manual_contribution_summary", None)
+            summary_dict["contributions"] = contributions
+            update_project_summary_json(conn, user_id, project_name, json.dumps(summary_dict))
+
+    return get_project_by_id(conn, user_id, project_summary_id)
 
 
 def delete_all_projects(conn, user_id: int, refresh_resumes: bool = False) -> int:
