@@ -3,9 +3,15 @@ import sqlite3
 
 from .security import hash_password, verify_password, create_access_token
 from ..dependencies import get_jwt_secret, get_db, get_current_user_id
-from ..schemas.auth import RegisterIn, LoginIn, TokenOut
+from ..schemas.auth import RegisterIn, LoginIn, TokenOut, ChangePasswordIn
 from ..schemas.common import ApiResponse
-from ...db.users import get_user_auth_by_username, create_user_with_password, delete_user
+from ...db.users import (
+    get_user_auth_by_username,
+    get_user_auth_by_id,
+    create_user_with_password,
+    update_user_password,
+    delete_user,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -42,4 +48,24 @@ def delete_account(
     deleted = delete_user(conn, user_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="User not found")
+    return ApiResponse(success=True, data=None, error=None)
+
+@router.post("/change-password", response_model=ApiResponse[None])
+def change_password(
+    payload: ChangePasswordIn,
+    user_id: int = Depends(get_current_user_id),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    user = get_user_auth_by_id(conn, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not user["hashed_password"] or not verify_password(payload.current_password, user["hashed_password"]):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
+
+    password_hash = hash_password(payload.new_password)
+    updated = update_user_password(conn, user_id, password_hash)
+    if not updated:
+        raise HTTPException(status_code=404, detail="User not found")
+
     return ApiResponse(success=True, data=None, error=None)
