@@ -2,11 +2,13 @@
 
 ## Test Strategy
 
-The system was tested using a combination of:
+We use automated tests for the backend and frontend, plus **manual runs** through the CLI when we want to walk through a full upload with real ZIP files.
 
-- **Unit Testing**: Individual modules were tested using `pytest`
-- **Integration Testing**: End-to-end flows were tested across modules (e.g., upload --> analysis --> storage)
-- **Manual Testing (CLI)**: Realistic project ZIP files were uploaded and processed to validate system behavior.
+- **Backend - `pytest`**: Python tests live in `tests/`. Most files test one piece of the pipeline (parsing, analysis, storage, etc.). The `tests/api/` folder tests HTTP routes so the API matches what the app expects.
+
+- **Frontend - Vitest**: React components and pages are tested in `frontend/` with Vitest and React Testing Library. These run in a simulated browser (jsdom), not a real Chrome window.
+
+- **Manual - CLI**: We run `python -m src.main` with sample ZIPs from [Test Data](#test-data) and follow the steps in [Manual Test Scenarios](#manual-test-scenarios). That checks things like project classification, versions, and the text menus (summaries, resume, portfolio) in a realistic way.
 
 ## Running Tests
 
