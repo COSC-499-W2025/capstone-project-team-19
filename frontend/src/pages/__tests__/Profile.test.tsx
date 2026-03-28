@@ -118,6 +118,7 @@ vi.mock("../../api/outputs", () => ({
 }));
 
 vi.mock("../../api/auth", () => ({
+  changePassword: vi.fn(() => Promise.resolve({ success: true, data: null, error: null })),
   deleteAccount: vi.fn(() => Promise.resolve({ success: true })),
 }));
 
