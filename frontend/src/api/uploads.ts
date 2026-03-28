@@ -30,6 +30,17 @@ export type UploadRecord = {
   state: Record<string, unknown>;
 };
 
+export type UploadListItem = {
+  upload_id: number;
+  status: UploadStatus;
+  zip_name: string | null;
+  created_at: string | null;
+};
+
+export type UploadListRecord = {
+  uploads: UploadListItem[];
+};
+
 export type DedupDecision = "skip" | "new_project" | "new_version";
 export type ProjectClassification = "individual" | "collaborative";
 export type ProjectType = "code" | "text";
@@ -158,6 +169,10 @@ export async function postProjectsUpload(file: File | Blob, filename = "upload.z
   const formData = new FormData();
   formData.append("file", file, filename);
   return api.postForm<ApiResponse<UploadRecord>>("/projects/upload", formData);
+}
+
+export async function getUploads(limit = 20, offset = 0) {
+  return api.get<ApiResponse<UploadListRecord>>(`/projects/uploads?limit=${limit}&offset=${offset}`);
 }
 
 export async function postUploadDedupResolve(uploadId: number, decisions: Record<string, DedupDecision>) {
