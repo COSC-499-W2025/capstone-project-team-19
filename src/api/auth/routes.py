@@ -61,7 +61,7 @@ def change_password(
         raise HTTPException(status_code=404, detail="User not found")
 
     if not user["hashed_password"] or not verify_password(payload.current_password, user["hashed_password"]):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
 
     password_hash = hash_password(payload.new_password)
     updated = update_user_password(conn, user_id, password_hash)

@@ -161,7 +161,7 @@ def test_change_password_success(auth_client, monkeypatch):
     assert body["success"] is True
 
 
-def test_change_password_wrong_current_password_401(auth_client, monkeypatch):
+def test_change_password_wrong_current_password_400(auth_client, monkeypatch):
     fake_user = {"user_id": 7, "username": "alice", "hashed_password": "hashed"}
     monkeypatch.setattr(auth_routes, "get_user_auth_by_id", lambda conn, user_id: fake_user)
     monkeypatch.setattr(auth_routes, "verify_password", lambda password, hashed: False)
@@ -170,7 +170,7 @@ def test_change_password_wrong_current_password_401(auth_client, monkeypatch):
         "/auth/change-password",
         json={"current_password": "WrongPass123", "new_password": "NewPass123"},
     )
-    assert res.status_code == 401
+    assert res.status_code == 400
     assert res.json()["detail"] == "Current password is incorrect"
 
 

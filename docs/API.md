@@ -156,7 +156,7 @@ Handles authentication and security for the endpoints.
     - `Authorization: Bearer <access_token>`
   - **Response Status**:
     - `200 OK` on success
-    - `401 Unauthorized` if current password is incorrect
+    - `400 Bad Request` if current password is incorrect
     - `404 Not Found` if authenticated user does not exist
     - `422 Unprocessable Entity` if payload is invalid or new password does not meet strength requirements
   - **Request Body**:
@@ -259,7 +259,7 @@ Handles authentication and security for the endpoints.
         - `Authorization: Bearer <access_token>`
     - **Response Status**:
         - `200 OK` on success
-        - `401 Unauthorized` if current password is incorrect
+        - `400 Bad Request` if current password is incorrect
         - `404 Not Found` if authenticated user does not exist
         - `422 Unprocessable Entity` if payload is invalid or new password does not meet strength requirements
     - **Request Body**:
