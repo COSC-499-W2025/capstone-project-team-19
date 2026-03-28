@@ -1,3 +1,4 @@
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ResumeDetail from "../ResumeDetail";
@@ -242,7 +243,7 @@ describe("ResumeDetail", () => {
         await waitFor(() => {
           expect(screen.getByLabelText("Display Name")).toBeInTheDocument();
           expect(screen.getByLabelText("Key Role")).toBeInTheDocument();
-          expect(screen.getByLabelText("Summary")).toBeInTheDocument();
+          expect(screen.queryByLabelText("Summary")).not.toBeInTheDocument();
           expect(screen.getByText("Save changes")).toBeInTheDocument();
           expect(screen.getByText("Cancel")).toBeInTheDocument();
         });
