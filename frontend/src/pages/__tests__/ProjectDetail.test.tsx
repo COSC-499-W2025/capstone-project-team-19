@@ -44,6 +44,15 @@ vi.mock("../../components/TopBar", () => ({
   default: () => <div data-testid="topbar" />,
 }));
 
+vi.mock("../../components/insights/tabs/Skills/utils/formatHelpers", () => ({
+  toShortDate: (iso: string | null | undefined) => {
+    if (!iso) return "";
+    if (iso.startsWith("2024-01")) return "Jan 1, 2024";
+    if (iso.startsWith("2024-06")) return "Jun 1, 2024";
+    return iso;
+  },
+}));
+
 import {
   getProject,
   fetchThumbnailUrl,
@@ -155,8 +164,8 @@ describe("ProjectDetailPage", () => {
     it("renders date range", async () => {
       renderPage();
       await waitFor(() => {
-        expect(screen.getByText(/2024-01-01/)).toBeInTheDocument();
-        expect(screen.getByText(/2024-06-01/)).toBeInTheDocument();
+        expect(screen.getByText(/Jan 1, 2024/)).toBeInTheDocument();
+        expect(screen.getByText(/Jun 1, 2024/)).toBeInTheDocument();
       });
     });
 

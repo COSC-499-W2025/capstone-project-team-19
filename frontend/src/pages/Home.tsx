@@ -60,12 +60,12 @@ export default function HomePage() {
               />
 
               <ShortcutCard
-                title="Create outputs"
-                description="Create and export resumes, portfolios, and other polished outputs from your project data."
+                title="Create resume"
+                description="Create and export resumes from your project data."
                 icon={FileText}
                 iconBoxClassName="bg-[#0011661A]"
                 iconClassName="text-[#001166]"
-                onClick={() => nav("/outputs")}
+                onClick={() => nav("/resume")}
               />
             </div>
           </div>

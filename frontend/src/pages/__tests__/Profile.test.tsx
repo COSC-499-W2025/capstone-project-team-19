@@ -117,6 +117,15 @@ vi.mock("../../api/outputs", () => ({
   ),
 }));
 
+vi.mock("../../api/auth", () => ({
+  deleteAccount: vi.fn(() => Promise.resolve({ success: true })),
+}));
+
+vi.mock("../../auth/token", () => ({
+  tokenStore: { get: vi.fn(), set: vi.fn(), clear: vi.fn() },
+}));
+
+
 function renderProfile() {
   return render(
     <MemoryRouter>
@@ -209,5 +218,59 @@ describe("ProfilePage", () => {
     await user.click(visibilityButton);
 
     expect(await screen.findByRole("button", { name: /Public/i })).toBeInTheDocument();
+  });
+
+  it("shows confirmation when Delete account is clicked", async () => {
+    const { user } = setup();
+
+    const deleteBtn = await screen.findByRole("button", { name: /Delete account/i });
+    await user.click(deleteBtn);
+
+    expect(screen.getByText(/permanently delete your account/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Yes, delete my account/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Cancel/i })).toBeInTheDocument();
+  });
+
+  it("cancels delete account confirmation", async () => {
+    const { user } = setup();
+
+    const deleteBtn = await screen.findByRole("button", { name: /Delete account/i });
+    await user.click(deleteBtn);
+
+    await user.click(screen.getByRole("button", { name: /Cancel/i }));
+
+    // Confirmation gone, original button back
+    expect(screen.queryByText(/permanently delete your account/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Delete account/i })).toBeInTheDocument();
+  });
+
+  it("calls deleteAccount API, clears token, and redirects to login", async () => {
+    const { deleteAccount } = await import("../../api/auth");
+    const { tokenStore } = await import("../../auth/token");
+
+    const replaceFn = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, "location", {
+      value: { ...originalLocation, replace: replaceFn },
+      writable: true,
+    });
+
+    const { user } = setup();
+
+    const deleteBtn = await screen.findByRole("button", { name: /Delete account/i });
+    await user.click(deleteBtn);
+
+    await user.click(screen.getByRole("button", { name: /Yes, delete my account/i }));
+
+    await vi.waitFor(() => {
+      expect(deleteAccount).toHaveBeenCalled();
+    });
+    expect(tokenStore.clear).toHaveBeenCalled();
+    expect(replaceFn).toHaveBeenCalledWith("/login");
+
+    Object.defineProperty(window, "location", {
+      value: originalLocation,
+      writable: true,
+    });
   });
 });

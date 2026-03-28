@@ -3,7 +3,7 @@ from sqlite3 import Connection
 
 from src.api.dependencies import get_db, get_current_user_id
 from src.api.schemas.common import ApiResponse, DeleteResultDTO
-from src.api.schemas.resumes import ResumeListDTO, ResumeListItemDTO, ResumeDetailDTO, ResumeGenerateRequestDTO, ResumeEditRequestDTO
+from src.api.schemas.resumes import ResumeListDTO, ResumeListItemDTO, ResumeDetailDTO, ResumeGenerateRequestDTO, ResumeEditRequestDTO, AddProjectRequestDTO
 from src.api.helpers import resolve_project_name_for_edit
 from src.services.resumes_service import (
     list_user_resumes,
@@ -13,6 +13,7 @@ from src.services.resumes_service import (
     delete_resume,
     delete_all_resumes,
     remove_project_from_resume,
+    add_project_to_resume,
 )
 
 router = APIRouter(prefix="/resume", tags=["resume"])
@@ -84,6 +85,28 @@ def remove_project_from_resume_endpoint(
         return ApiResponse(success=True, data=None, error=None)
     dto = ResumeDetailDTO(**result)
     return ApiResponse(success=True, data=dto, error=None)
+
+
+@router.post("/{resume_id}/projects", response_model=ApiResponse[ResumeDetailDTO])
+def add_project_to_resume_endpoint(
+    resume_id: int,
+    request: AddProjectRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    """Add a project to a resume."""
+    resume = get_resume_by_id(conn, user_id, resume_id)
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    result = add_project_to_resume(
+        conn, user_id, resume_id, request.project_summary_id
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Project not found or already in resume",
+        )
+    return ApiResponse(success=True, data=ResumeDetailDTO(**result), error=None)
 
 
 @router.post("/generate", response_model=ApiResponse[ResumeDetailDTO], status_code=201)

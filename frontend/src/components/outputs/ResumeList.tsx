@@ -9,13 +9,12 @@ import {
 import ExportDropdown from "./ExportDropdown";
 
 type Props = {
-  onBack: () => void;
   onView: (id: number) => void;
   onEdit: (id: number) => void;
   onCreateNew: () => void;
 };
 
-export default function ResumeList({ onBack, onView, onEdit, onCreateNew }: Props) {
+export default function ResumeList({ onView, onEdit, onCreateNew }: Props) {
   const [resumes, setResumes] = useState<ResumeListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -69,23 +68,17 @@ export default function ResumeList({ onBack, onView, onEdit, onCreateNew }: Prop
 
   return (
     <div className="content">
-      <div className="outputsHeader">
-        <button className="backBtn" onClick={onBack}>
-          &larr;
-        </button>
-        <h2>Resume Items</h2>
+      <div className="outputsHeader" style={{ justifyContent: "flex-end", marginBottom: "1rem" }}>
         <button className="primaryBtn" onClick={onCreateNew}>
           Create New Resume
         </button>
       </div>
 
-      <hr className="divider" />
-
       {loading && <p>Loading...</p>}
       {err && <p className="error">{err}</p>}
 
       {!loading && resumes.length === 0 && (
-        <p className="hint">No resumes yet. Create one to get started.</p>
+        <p className="hint" style={{ fontSize: "1.1rem" }}>No resumes yet. Create one to get started.</p>
       )}
 
       <div className="resumeCards">
