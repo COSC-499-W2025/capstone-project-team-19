@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DriveFile, MainFileSection, UploadProjectFilesRecord } from "../../../../../api/uploads";
 import type { SetupFlowResult, SetupProjectCard } from "../../types";
 import { setupPrimaryActionButtonClass, setupSecondaryActionButtonClass } from "./buttonStyles";
@@ -58,6 +58,8 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
   const [driveMapByLocalFile, setDriveMapByLocalFile] = useState<Record<string, DriveFile>>({});
   const [driveMessage, setDriveMessage] = useState<string | null>(null);
   const [awaitingDriveOauthReturn, setAwaitingDriveOauthReturn] = useState(false);
+  const [drivePagerButtonsWidth, setDrivePagerButtonsWidth] = useState<number | null>(null);
+  const drivePagerButtonsRef = useRef<HTMLDivElement | null>(null);
   const [localPage, setLocalPage] = useState(1);
   const [drivePage, setDrivePage] = useState(1);
   const [mainFileSaveMessage, setMainFileSaveMessage] = useState<string | null>(null);
@@ -223,6 +225,31 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [awaitingDriveOauthReturn, isDriveConnected, refreshUpload]);
+
+  useEffect(() => {
+    const node = drivePagerButtonsRef.current;
+    if (!node) {
+      setDrivePagerButtonsWidth(null);
+      return;
+    }
+
+    const updateWidth = () => {
+      setDrivePagerButtonsWidth(Math.ceil(node.getBoundingClientRect().width));
+    };
+
+    updateWidth();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(updateWidth);
+      observer.observe(node);
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener("resize", updateWidth);
+    return () => {
+      window.removeEventListener("resize", updateWidth);
+    };
+  }, [filteredDriveResults.length]);
 
   useEffect(() => {
     function onDriveOauthMessage(event: MessageEvent) {
@@ -574,7 +601,7 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
                 {driveLocalFiles.length > DRIVE_PAGE_SIZE && (
                   <div className="flex items-center justify-between pt-1 text-xs text-zinc-600">
                     <span>Page {safeLocalPage} of {localPageCount}</span>
-                    <div className="flex gap-2">
+                    <div ref={drivePagerButtonsRef} className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => setLocalPage((page) => Math.max(1, page - 1))}
@@ -644,7 +671,7 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
                 {filteredDriveResults.length > DRIVE_PAGE_SIZE && (
                   <div className="flex items-center justify-between pt-1 text-xs text-zinc-600">
                     <span>Page {safeDrivePage} of {drivePageCount}</span>
-                    <div className="flex gap-2">
+                    <div ref={drivePagerButtonsRef} className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => setDrivePage((page) => Math.max(1, page - 1))}
@@ -672,6 +699,7 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
                   onClick={onMapSelectedFile}
                   disabled={!isDriveConnected || !selectedLocalFile || !selectedDriveFileId}
                   className={setupSecondaryActionButtonClass}
+                  style={drivePagerButtonsWidth ? { width: `${drivePagerButtonsWidth}px` } : undefined}
                 >
                   Select
                 </button>
