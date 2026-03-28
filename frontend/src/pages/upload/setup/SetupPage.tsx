@@ -64,7 +64,6 @@ export default function UploadSetupPage() {
   useUnfinishedUploadExitGuard({
     enabled: Boolean(flow.uploadId) && !hasAnalysisStarted,
     uploadId: flow.uploadId,
-    message: "Leave upload setup? Your unfinished upload will be deleted.",
     onRequestConfirmLeave: (confirmNavigation) => {
       pendingLeaveNavigationRef.current = confirmNavigation;
       setLeaveSetupDialogOpen(true);

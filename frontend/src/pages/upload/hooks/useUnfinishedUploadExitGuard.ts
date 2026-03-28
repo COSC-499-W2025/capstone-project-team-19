@@ -6,8 +6,7 @@ import { clearUploadRecoveryStage } from "../upload/recoveryStage";
 type Params = {
   enabled: boolean;
   uploadId: number | null;
-  message: string;
-  onRequestConfirmLeave?: (confirmNavigation: () => Promise<void>) => void;
+  onRequestConfirmLeave: (confirmNavigation: () => Promise<void>) => void;
   onCleanupError?: (message: string) => void;
 };
 
@@ -18,7 +17,6 @@ function isUploadWizardPath(pathname: string): boolean {
 export function useUnfinishedUploadExitGuard({
   enabled,
   uploadId,
-  message,
   onRequestConfirmLeave,
   onCleanupError,
 }: Params) {
@@ -75,19 +73,12 @@ export function useUnfinishedUploadExitGuard({
         navigate(nextPath);
       };
 
-      if (onRequestConfirmLeave) {
-        onRequestConfirmLeave(confirmNavigation);
-        return;
-      }
-
-      const confirmed = window.confirm(message);
-      if (!confirmed) return;
-      void confirmNavigation();
+      onRequestConfirmLeave(confirmNavigation);
     }
 
     document.addEventListener("click", onDocumentClick, true);
     return () => {
       document.removeEventListener("click", onDocumentClick, true);
     };
-  }, [enabled, message, navigate, onCleanupError, onRequestConfirmLeave, uploadId]);
+  }, [enabled, navigate, onCleanupError, onRequestConfirmLeave, uploadId]);
 }

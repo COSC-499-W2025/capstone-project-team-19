@@ -51,7 +51,6 @@ export default function UploadPage() {
   useUnfinishedUploadExitGuard({
     enabled: Boolean(flow.uploadId),
     uploadId: flow.uploadId,
-    message: "Leave upload flow? Your unfinished upload will be deleted.",
     onRequestConfirmLeave: (confirmNavigation) => {
       pendingLeaveNavigationRef.current = confirmNavigation;
       setLeaveUploadDialogOpen(true);
@@ -237,6 +236,14 @@ export default function UploadPage() {
     if (confirmNavigation) void confirmNavigation();
   }
 
+  function onBackClick() {
+    if (flow.canGoBack) {
+      flow.onBack();
+      return;
+    }
+    nav("/upload/consent");
+  }
+
   return (
     <UploadWizardShell
       username={username}
@@ -286,8 +293,8 @@ export default function UploadPage() {
           <button
             type="button"
             className="uploadStageBackBtn"
-            onClick={flow.onBack}
-            disabled={!flow.canGoBack || flow.isSubmitting || isResolvingRecovery}
+            onClick={onBackClick}
+            disabled={flow.isSubmitting || isResolvingRecovery}
           >
             Back
           </button>
