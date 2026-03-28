@@ -93,6 +93,10 @@ OAuth scope required:
 
 The token is stored locally in the application's database and reused until revoked.
 
+### Token Validation (Web Flow)
+
+When the web API receives a request to start the GitHub connection (`POST /projects/upload/{id}/projects/{name}/github/start`), it validates any existing stored token before trusting it. A quick `GET https://api.github.com/user` request verifies the token is still valid. If the token is invalid (expired, revoked, or "Bad credentials"), it is revoked locally and the user is given a new authorization URL so they can re-authenticate. This prevents the "No repositories found" error when a stored token has gone stale.
+
 ---
 
 ## Data Retrieved
