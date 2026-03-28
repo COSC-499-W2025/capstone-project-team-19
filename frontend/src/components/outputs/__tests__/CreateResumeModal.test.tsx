@@ -111,9 +111,8 @@ describe("CreateResumeModal", () => {
 
     await waitFor(() => screen.getByText("Project Alpha"));
 
-    // Select first project
-    const checkboxes = screen.getAllByRole("checkbox");
-    await user.click(checkboxes[0]);
+    // Click the row to select (row onClick toggles)
+    await user.click(screen.getByText("Project Alpha"));
 
     await user.click(screen.getByText("Create Resume"));
 
@@ -137,9 +136,9 @@ describe("CreateResumeModal", () => {
 
     await waitFor(() => screen.getByText("Project Alpha"));
 
-    const checkboxes = screen.getAllByRole("checkbox");
-    await user.click(checkboxes[0]);
-    await user.click(checkboxes[1]);
+    // Click rows to select
+    await user.click(screen.getByText("Project Alpha"));
+    await user.click(screen.getByText("Project Beta"));
 
     await user.click(screen.getByText("Create Resume"));
 
@@ -148,16 +147,15 @@ describe("CreateResumeModal", () => {
     });
   });
 
-  it("can deselect a project by clicking checkbox again", async () => {
+  it("can deselect a project by clicking row again", async () => {
     mockProjects();
     const user = userEvent.setup();
     render(<CreateResumeModal onClose={vi.fn()} onCreated={vi.fn()} />);
 
     await waitFor(() => screen.getByText("Project Alpha"));
 
-    const checkboxes = screen.getAllByRole("checkbox");
-    await user.click(checkboxes[0]); // select
-    await user.click(checkboxes[0]); // deselect
+    await user.click(screen.getByText("Project Alpha")); // select
+    await user.click(screen.getByText("Project Alpha")); // deselect
 
     await user.click(screen.getByText("Create Resume"));
     expect(screen.getByText("Select at least one project.")).toBeInTheDocument();
@@ -172,7 +170,7 @@ describe("CreateResumeModal", () => {
 
     await waitFor(() => screen.getByText("Project Alpha"));
 
-    await user.click(screen.getAllByRole("checkbox")[0]);
+    await user.click(screen.getByText("Project Alpha"));
     await user.click(screen.getByText("Create Resume"));
 
     await waitFor(() => {
@@ -186,7 +184,14 @@ describe("CreateResumeModal", () => {
     const user = userEvent.setup();
     render(<CreateResumeModal onClose={onClose} onCreated={vi.fn()} />);
 
-    await user.click(screen.getByText("×"));
+    await waitFor(() => screen.getByText("Project Alpha"));
+    // Close button is now an icon button with X SVG
+    const buttons = screen.getAllByRole("button");
+    const closeBtn = buttons.find(
+      (b) => b.querySelector("svg") && b.className.includes("absolute")
+    );
+    expect(closeBtn).toBeDefined();
+    await user.click(closeBtn!);
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -200,7 +205,7 @@ describe("CreateResumeModal", () => {
 
     await waitFor(() => screen.getByText("Project Alpha"));
 
-    await user.click(screen.getAllByRole("checkbox")[0]);
+    await user.click(screen.getByText("Project Alpha"));
     await user.click(screen.getByText("Create Resume"));
 
     expect(screen.getByText("Creating...")).toBeInTheDocument();
