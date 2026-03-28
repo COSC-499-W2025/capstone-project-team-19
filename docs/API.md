@@ -1216,7 +1216,7 @@ Handles GitHub OAuth authentication and repository linking for projects during t
 
 - **Start GitHub Connection**
   - **Endpoint**: `POST /start`
-  - **Description**: Initiates GitHub OAuth connection flow for a project. If `connect_now` is `true` and user is not already connected, returns an authorization URL. If `connect_now` is `false`, records that GitHub connection was skipped.
+  - **Description**: Initiates GitHub OAuth connection flow for a project. If `connect_now` is `true` and user is not already connected, returns an authorization URL. If a stored token exists, it is validated first; if validation fails (expired or revoked), the token is cleared and an auth URL is returned so the user can re-authorize. If `connect_now` is `false`, records that GitHub connection was skipped.
   - **Path Parameters**:
     - `{upload_id}` (integer, required): The upload session ID
     - `{project}` (string, required): The project name
@@ -2183,6 +2183,21 @@ All endpoints require authentication (`Authorization: Bearer <access_token>`).
     - `404 Not Found`: `"Resume not found"` or `"Project not found in resume"` (distinct messages)
     - `422 Unprocessable Entity`: Missing `project_name` query parameter
 
+- **Add Project to Resume**
+  - **Endpoint**: `POST /{resume_id}/projects`
+  - **Description**: Adds a project to an existing résumé snapshot. The project must exist (from `project_summaries`) and must not already be in the résumé.
+  - **Path Parameters**:
+    - `{resume_id}` (integer, required): The ID of the résumé snapshot
+  - **Request Body**: `AddProjectRequestDTO`
+    - `project_summary_id` (integer, required): The `project_summary_id` from `project_summaries` (get from `GET /projects/ranking`)
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Response Status**: `200 OK` on success
+  - **Response Body**: `ResumeDetailDTO` with the updated résumé including the new project
+  - **Error Responses**:
+    - `400 Bad Request`: Project not found or already in resume
+    - `401 Unauthorized`: Missing or invalid Bearer token
+    - `404 Not Found`: Resume not found
+
 - **Export Resume to DOCX**
     - **Endpoint**: `GET /{resume_id}/export/docx`
     - **Description**: Exports a résumé snapshot to a Word document (.docx) file.
@@ -3030,6 +3045,9 @@ Example:
 - **ResumeGenerateRequestDTO**
   - `name` (string, required): Name for the new résumé snapshot
   - `project_ids` (List[int], optional): List of `project_summary_id` values from `project_summaries` table. Get these from `GET /projects`. If omitted, uses top 5 ranked projects.
+
+- **AddProjectRequestDTO**
+  - `project_summary_id` (integer, required): `project_summary_id` from `project_summaries` (get from `GET /projects/ranking`)
 
 - **ResumeEditRequestDTO**
     - `name` (string, optional): New name for the résumé

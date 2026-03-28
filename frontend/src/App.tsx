@@ -125,7 +125,7 @@ export default function App() {
         />
 
         <Route
-          path="/outputs"
+          path="/resume"
           element={
             <RequireAuth>
               <OutputsPage />
@@ -147,7 +147,7 @@ export default function App() {
         <Route path="/public/:username/projects" element={<PublicProjectsPage />} />
         <Route path="/public/:username/projects/:id" element={<PublicProjectDetailPage />} />
         <Route path="/public/:username/insights" element={<PublicInsightsPage />} />
-        <Route path="/public/:username/outputs" element={<PublicOutputsPage />} />
+        <Route path="/public/:username/resume" element={<PublicOutputsPage />} />
 
         <Route
           path="/ui-preview"
