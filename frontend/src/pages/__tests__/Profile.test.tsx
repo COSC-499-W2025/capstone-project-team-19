@@ -167,8 +167,65 @@ describe("ProfilePage", () => {
     renderProfile();
     expect(await screen.findByText("Security")).toBeInTheDocument();
     expect(screen.getByText(/Password and account controls/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Change password/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Sign out/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Delete account/i })).toBeInTheDocument();
+  });
+
+  it("blocks submit when new password and confirm do not match", async () => {
+    const { changePassword } = await import("../../api/auth");
+    const { user } = setup();
+
+    await screen.findByText("Security");
+    await user.click(screen.getByRole("button", { name: /Change password/i }));
+    await user.type(screen.getByLabelText("Current password"), "OldPass123");
+    await user.type(screen.getByLabelText("New password"), "NewPass123");
+    await user.type(screen.getByLabelText("Confirm new password"), "Mismatch123");
+    await user.click(screen.getByRole("button", { name: /Save password/i }));
+
+    expect(await screen.findByText("New passwords do not match.")).toBeInTheDocument();
+    expect(changePassword).not.toHaveBeenCalled();
+  });
+
+  it("submits change password and shows success message", async () => {
+    const { changePassword } = await import("../../api/auth");
+    (changePassword as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      success: true,
+      data: null,
+      error: null,
+    });
+
+    const { user } = setup();
+
+    await screen.findByText("Security");
+    await user.click(screen.getByRole("button", { name: /Change password/i }));
+    await user.type(screen.getByLabelText("Current password"), "OldPass123");
+    await user.type(screen.getByLabelText("New password"), "NewPass123");
+    await user.type(screen.getByLabelText("Confirm new password"), "NewPass123");
+    await user.click(screen.getByRole("button", { name: /Save password/i }));
+
+    await vi.waitFor(() => {
+      expect(changePassword).toHaveBeenCalledWith("OldPass123", "NewPass123");
+    });
+    expect(await screen.findByText("Password updated successfully.")).toBeInTheDocument();
+  });
+
+  it("shows API error when change password fails", async () => {
+    const { changePassword } = await import("../../api/auth");
+    (changePassword as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("Current password is incorrect"),
+    );
+
+    const { user } = setup();
+
+    await screen.findByText("Security");
+    await user.click(screen.getByRole("button", { name: /Change password/i }));
+    await user.type(screen.getByLabelText("Current password"), "WrongPass123");
+    await user.type(screen.getByLabelText("New password"), "NewPass123");
+    await user.type(screen.getByLabelText("Confirm new password"), "NewPass123");
+    await user.click(screen.getByRole("button", { name: /Save password/i }));
+
+    expect(await screen.findByText("Current password is incorrect")).toBeInTheDocument();
   });
 
   it("renders existing profile summary text", async () => {

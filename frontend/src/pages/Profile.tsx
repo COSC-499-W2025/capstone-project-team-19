@@ -882,8 +882,11 @@ export default function ProfilePage() {
                   className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3"
                 >
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">Current password</label>
+                    <label htmlFor="current-password" className="mb-1 block text-xs font-medium text-slate-600">
+                      Current password
+                    </label>
                     <Input
+                      id="current-password"
                       type="password"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
@@ -892,8 +895,11 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">New password</label>
+                    <label htmlFor="new-password" className="mb-1 block text-xs font-medium text-slate-600">
+                      New password
+                    </label>
                     <Input
+                      id="new-password"
                       type="password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
@@ -902,8 +908,11 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">Confirm new password</label>
+                    <label htmlFor="confirm-new-password" className="mb-1 block text-xs font-medium text-slate-600">
+                      Confirm new password
+                    </label>
                     <Input
+                      id="confirm-new-password"
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
