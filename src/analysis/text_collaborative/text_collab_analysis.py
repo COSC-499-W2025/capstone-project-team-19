@@ -234,8 +234,9 @@ def analyze_collaborative_text_project(
             supporting_text_files[i - 1] for i in text_support_indices
         ]
     else:
-        selected_text_support_files = []
-        if not supporting_text_files:
+        if supporting_text_files:
+            selected_text_support_files = []
+        else:
             print("\n(No supporting text files detected.)")
 
 
