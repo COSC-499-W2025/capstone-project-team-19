@@ -549,12 +549,6 @@ function ProjectReadView({ project: p }: { project: ResumeProject }) {
           {p.frameworks.join(", ")}
         </p>
       )}
-      {p.summary_text && (
-        <p>
-          <span className="font-medium text-slate-900">Summary:</span>{" "}
-          {p.summary_text}
-        </p>
-      )}
       {p.contribution_bullets.length > 0 && (
         <div>
           <p className="font-medium text-slate-900">Contributions:</p>
