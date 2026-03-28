@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import PublicLayout from "./PublicLayout";
 import { publicGetRanking, publicGetSkillsTimeline } from "../../api/public";
 import type { PublicRankingItem } from "../../api/public";
@@ -12,6 +12,19 @@ import PublicActivityHeatmapTab from "../../components/insights/tabs/Projects/Pu
 import PublicProjectSkillHeatmapTab from "../../components/insights/tabs/Projects/PublicProjectSkillHeatmapTab";
 
 type PublicView = "ranked-projects" | "skills-overview" | "skills-timeline" | "skills-log" | "activity-heatmap" | "project-heatmap";
+
+const PUBLIC_VIEW_SET = new Set<PublicView>([
+    "ranked-projects",
+    "skills-overview",
+    "skills-timeline",
+    "skills-log",
+    "activity-heatmap",
+    "project-heatmap",
+]);
+
+function isPublicView(v: string | null): v is PublicView {
+    return v != null && PUBLIC_VIEW_SET.has(v as PublicView);
+}
 
 const NAV_ITEMS: { id: PublicView; label: string; indent?: boolean }[] = [
     { id: "ranked-projects", label: "Ranked Projects" },
@@ -71,7 +84,37 @@ function RankedProjectsView({ rankings }: { rankings: PublicRankingItem[] }) {
 
 export default function PublicInsightsPage() {
     const { username } = useParams<{ username: string }>();
-    const [activeView, setActiveView] = useState<PublicView>("ranked-projects");
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const [activeView, setActiveView] = useState<PublicView>(() => {
+        const v = searchParams.get("view");
+        return isPublicView(v) ? v : "ranked-projects";
+    });
+
+    const projectIdFromUrl = useMemo(() => {
+        const raw = searchParams.get("project");
+        if (!raw) return undefined;
+        const n = Number(raw);
+        return Number.isFinite(n) ? n : undefined;
+    }, [searchParams]);
+
+    useEffect(() => {
+        const v = searchParams.get("view");
+        if (isPublicView(v)) setActiveView(v);
+    }, [searchParams]);
+
+    const selectView = useCallback(
+        (id: PublicView) => {
+            setActiveView(id);
+            setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.set("view", id);
+                if (id !== "activity-heatmap") next.delete("project");
+                return next;
+            });
+        },
+        [setSearchParams],
+    );
 
     const [rankings, setRankings] = useState<PublicRankingItem[]>([]);
     const [timeline, setTimeline] = useState<SkillTimelineDTO | null>(null);
@@ -109,7 +152,13 @@ export default function PublicInsightsPage() {
             if (rankingsError) return <div className="py-4 text-center text-red-600">{rankingsError}</div>;
             return <RankedProjectsView rankings={rankings} />;
         }
-        if (activeView === "activity-heatmap") return <PublicActivityHeatmapTab username={username!} />;
+        if (activeView === "activity-heatmap")
+            return (
+                <PublicActivityHeatmapTab
+                    username={username!}
+                    initialProjectId={projectIdFromUrl}
+                />
+            );
         if (activeView === "project-heatmap") return <PublicProjectSkillHeatmapTab username={username!} />;
 
         if (loadingTimeline) return <div className="py-4 text-center text-slate-600">Loading...</div>;
@@ -144,25 +193,25 @@ export default function PublicInsightsPage() {
 
                 {/* Row 2: sidebar nav + content */}
                 <nav className="flex flex-col flex-1 min-h-0 pt-2 pb-6 border-r border-slate-200 pl-4 pr-2">
-                    <button className={linkStyle("ranked-projects")} onClick={() => setActiveView("ranked-projects")}>
+                    <button className={linkStyle("ranked-projects")} onClick={() => selectView("ranked-projects")}>
                         Ranked Projects
                     </button>
-                    <button className={linkStyle("activity-heatmap")} onClick={() => setActiveView("activity-heatmap")}>
+                    <button className={linkStyle("activity-heatmap")} onClick={() => selectView("activity-heatmap")}>
                         Activity Heatmap
                     </button>
-                    <button className={linkStyle("project-heatmap")} onClick={() => setActiveView("project-heatmap")}>
+                    <button className={linkStyle("project-heatmap")} onClick={() => selectView("project-heatmap")}>
                         Project Heatmap
                     </button>
                     <div className="pt-4 mt-2 border-t border-slate-200 text-[11px] font-medium text-slate-500 uppercase tracking-widest px-3 pb-1.5 select-none">
                         Skills
                     </div>
-                    <button className={linkStyle("skills-overview")} onClick={() => setActiveView("skills-overview")}>
+                    <button className={linkStyle("skills-overview")} onClick={() => selectView("skills-overview")}>
                         Skills Overview
                     </button>
-                    <button className={linkStyle("skills-timeline")} onClick={() => setActiveView("skills-timeline")}>
+                    <button className={linkStyle("skills-timeline")} onClick={() => selectView("skills-timeline")}>
                         Skills Timeline
                     </button>
-                    <button className={linkStyle("skills-log")} onClick={() => setActiveView("skills-log")}>
+                    <button className={linkStyle("skills-log")} onClick={() => selectView("skills-log")}>
                         Skills Log
                     </button>
                 </nav>

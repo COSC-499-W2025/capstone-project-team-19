@@ -135,16 +135,26 @@ export default function PublicProjectsPage() {
                 </p>
                 <div className="flex flex-wrap gap-[20px]">
                   {topFeatured.map((r) => (
-                    <FeatureTile
+                    <div
                       key={r.project_summary_id}
-                      title={r.project_name}
-                      thumbnailUrl={thumbnails[r.project_summary_id]}
-                      featuredRank={r.rank as 1 | 2 | 3}
-                      aria-label={`Top ${r.rank}: ${r.project_name}`}
-                      onClick={() =>
-                        nav(`/public/${username}/projects/${r.project_summary_id}`)
-                      }
-                    />
+                      className="flex w-[220px] flex-col gap-2"
+                    >
+                      <FeatureTile
+                        title={r.project_name}
+                        thumbnailUrl={thumbnails[r.project_summary_id]}
+                        featuredRank={r.rank as 1 | 2 | 3}
+                        aria-label={`Top ${r.rank}: ${r.project_name}`}
+                        onClick={() =>
+                          nav(`/public/${username}/projects/${r.project_summary_id}`)
+                        }
+                      />
+                      <Link
+                        to={`/public/${username}/insights?view=activity-heatmap&project=${r.project_summary_id}`}
+                        className="text-[13px] font-medium leading-tight text-[#001166] underline underline-offset-2 hover:text-[#001a8c]"
+                      >
+                        Activity insights
+                      </Link>
+                    </div>
                   ))}
                 </div>
               </SectionCard>
