@@ -18,6 +18,7 @@ import {
   type ProjectDatesItem,
   type ProjectDetail,
 } from "../api/projects";
+import { updateProjectVisibility } from "../api/portfolioSettings";
 import { toShortDate } from "../components/insights/tabs/Skills/utils/formatHelpers";
 import {
   AppButton,
@@ -68,6 +69,9 @@ export default function ProjectDetailPage() {
   // Delete
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Visibility (public dashboard)
+  const [savingVisibility, setSavingVisibility] = useState(false);
 
   // Tabs
   const [activeTab, setActiveTab] = useState("summary");
@@ -182,6 +186,26 @@ export default function ProjectDetailPage() {
     }
   }
 
+  const isPublic =
+    allProjects.find((p) => p.project_summary_id === projectId)?.is_public ?? false;
+
+  async function handleVisibilityChange(newIsPublic: boolean) {
+    if (newIsPublic === isPublic || savingVisibility) return;
+    setSavingVisibility(true);
+    try {
+      await updateProjectVisibility(projectId, newIsPublic);
+      setAllProjects((prev) =>
+        prev.map((p) =>
+          p.project_summary_id === projectId ? { ...p, is_public: newIsPublic } : p,
+        ),
+      );
+    } catch {
+      // state stays unchanged on error
+    } finally {
+      setSavingVisibility(false);
+    }
+  }
+
   function formatSkillName(s: string) {
     return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }
@@ -268,7 +292,7 @@ export default function ProjectDetailPage() {
           }
         />
 
-        {/* Thumbnail + Meta */}
+        {/* Thumbnail + meta tags (aligned with main layout) */}
         <SectionCard className="w-full bg-white">
           <div className="flex gap-[20px]">
             <div className="shrink-0 space-y-[8px]">
@@ -329,6 +353,56 @@ export default function ProjectDetailPage() {
           />
         </SectionCard>
 
+        {/* Public dashboard visibility */}
+        <SectionCard className="w-full bg-white px-6 py-6">
+          <div className="flex flex-col gap-2">
+            <div className="text-[18px] font-medium leading-snug text-foreground">
+              Public dashboard visibility
+            </div>
+            <p className="m-0 max-w-[640px] text-[13px] leading-[1.5] text-[#555]">
+              This controls whether this project is shown on your public dashboard. Private projects
+              are only visible to you.
+            </p>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div
+              className="inline-flex overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm"
+              role="group"
+              aria-label="Project visibility"
+            >
+              <button
+                type="button"
+                className={`border-0 border-r border-slate-300 px-4 py-2 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
+                  !isPublic
+                    ? "bg-[#001166] text-white hover:bg-[#001f8c]"
+                    : "cursor-pointer bg-white text-slate-600 hover:bg-sky-50 hover:text-[#1a5fa8]"
+                }`}
+                onClick={() => handleVisibilityChange(false)}
+                disabled={savingVisibility}
+                aria-pressed={!isPublic}
+              >
+                Private
+              </button>
+              <button
+                type="button"
+                className={`border-0 px-4 py-2 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
+                  isPublic
+                    ? "bg-[#001166] text-white hover:bg-[#001f8c]"
+                    : "cursor-pointer bg-white text-slate-600 hover:bg-sky-50 hover:text-[#1a5fa8]"
+                }`}
+                onClick={() => handleVisibilityChange(true)}
+                disabled={savingVisibility}
+                aria-pressed={isPublic}
+              >
+                Public
+              </button>
+            </div>
+            {savingVisibility && (
+              <span className="text-[12px] italic text-[#6b7280]">Saving…</span>
+            )}
+          </div>
+        </SectionCard>
+
         {/* Duration — light panel; view: title + range left, Edit top-right; edit: stacked fields + full-width primary actions */}
         <SectionCard className="w-full rounded-[10px] border-[#e0e0e0] bg-[#f4f4f6] px-[22px] py-[20px]">
           {!editingDates ? (
@@ -378,15 +452,15 @@ export default function ProjectDetailPage() {
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                    className="h-[40px] w-full rounded-[8px] border-[#cfd5df] bg-white"
-                  />
-                </AppField>
-                <AppField label="End date">
-                  <AppInput
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="h-[40px] w-full rounded-[8px] border-[#cfd5df] bg-white"
+                      className="h-[40px] w-full rounded-[8px] border-[#cfd5df] bg-white"
+                    />
+                  </AppField>
+                  <AppField label="End date">
+                    <AppInput
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="h-[40px] w-full rounded-[8px] border-[#cfd5df] bg-white"
                     />
                   </AppField>
                 </div>
@@ -433,7 +507,7 @@ export default function ProjectDetailPage() {
         </SectionCard>
 
         {/* Summary / Feedback */}
-        <SectionCard className="w-full space-y-[16px] bg-white">
+        <SectionCard className="w-full space-y-4 bg-white px-6 py-6">
           <SectionTabs
             tabs={[
               { key: "summary", label: "Summary" },
