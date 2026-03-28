@@ -832,6 +832,32 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
     - `file` (file, required): ZIP file
   - **Response Status**: `200 OK`
 
+- **List Upload Sessions (Resume Session Helper)**
+  - **Endpoint**: `GET /projects/uploads`
+  - **Description**: Returns recent upload sessions for the authenticated user. Frontend uses this to detect unfinished uploads and offer resume/start-new options.
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Query Params**:
+    - `limit` (integer, optional, default: `20`, range: `1..100`)
+    - `offset` (integer, optional, default: `0`)
+  - **Response Status**: `200 OK`
+  - **Response Body**:
+    ```json
+    {
+      "success": true,
+      "data": {
+        "uploads": [
+          {
+            "upload_id": 12,
+            "status": "needs_file_roles",
+            "zip_name": "paper3.zip",
+            "created_at": "2026-03-27T19:10:20Z"
+          }
+        ]
+      },
+      "error": null
+    }
+    ```
+
 - **Get Upload Status (Resume / Poll)**
     - **Endpoint**: `GET /{upload_id}`
     - **Description**: Returns the current upload wizard state for the given `upload_id`. Use this to resume a wizard flow or refresh the UI.
@@ -864,6 +890,25 @@ Use `project_key` from `state.dedup_project_keys` (keyed by project name) for ea
             "error": null
         }
         ```
+
+- **Cancel Upload (Unfinished Upload Cleanup)**
+  - **Endpoint**: `DELETE /{upload_id}`
+  - **Description**: Cancels an unfinished upload and removes its artifacts (upload row, upload-linked version rows, and ZIP/extracted files on disk).
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Path Params**:
+    - `{upload_id}` (integer, required): The ID of the upload session
+  - **Response Status**: `200 OK`
+  - **Response Body**:
+    ```json
+    {
+      "success": true,
+      "data": null,
+      "error": null
+    }
+    ```
+  - **Error Responses**:
+    - `404 Not Found` if upload does not exist or does not belong to the user
+    - `409 Conflict` if upload is not cancelable (e.g. `analyzing` or `done`)
 
 - **Resolve Dedup (Optional, New)**
   - **Endpoint**: `POST /{upload_id}/dedup/resolve`
