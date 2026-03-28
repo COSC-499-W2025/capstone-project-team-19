@@ -3,6 +3,8 @@
 This project optionally supports Google Drive analysis through the Google Drive API.
 All access is strictly consent-based and is not required for a project to be analyzed.
 
+---
+
 ### For Course Evaluators (TAs) and Team Members
 
 Google Drive integration **can be tested by course evaluators**.
@@ -58,6 +60,8 @@ Placing the Credentials file within the project
 1. Place the file so its path is: `src/integrations/google_drive/google_drive_auth/credentials.json`
 2. Verify the path is correct before running the application.
 
+---
+
 Create OAuth Credentials (Web — for API endpoints)
 1. Go to APIs & Services -> Credentials
 2. Click "+ Create Credentials" -> OAuth client ID
@@ -72,6 +76,8 @@ Create OAuth Credentials (Web — for API endpoints)
    GOOGLE_CLIENT_SECRET=<your-client-secret>
    GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
    ```
+
+---
 
 If credentials are not provided, the system will fall back to local-only analysis,
 and all core functionality will remain available.

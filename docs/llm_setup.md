@@ -4,6 +4,8 @@ Advanced analysis features (e.g., project summaries using an LLM) use the **Groq
 
 If no Groq API key is provided, the system will fall back to local-only analysis.
 
+---
+
 #### How to Set Up a Groq API Key
 
 1. Log in or create a Groq account:

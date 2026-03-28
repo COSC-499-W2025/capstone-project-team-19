@@ -2,6 +2,8 @@
 
 This guide explains how to set up and run the system locally for development and testing.
 
+---
+
 ## Backend Setup
 
 ### 0. Environment Variables and OAuth Setup
@@ -145,6 +147,8 @@ GitHub OAuth is used to analyze collaboration metrics such as commits, pull requ
 ### 7. LLM Services (optional)
 
 LLM setup is option for this system. To set it up, see [here](/docs/llm_setup.md).
+
+---
 
 ## Frontend Setup
 The frontend is located in the `frontend/` directory.

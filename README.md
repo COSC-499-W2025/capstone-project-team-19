@@ -8,21 +8,31 @@ Our team contract outlining roles, responsibilities, communication expectations,
 
 [View Team Contract](docs/team/COSC%20499%20-%20Team%20Contract.pdf)
 
+---
+
 ## System Architecture
 
 [System Architecture Diagrams](/docs/architecture.md).
+
+---
 
 ## Installation Guide
 
 [Installation Guide](/docs/installation.md)    
 
-## Testing
+---
 
-[Testing Guide](/docs/testing.md)
+## Test Report
+
+[Test report](/docs/testing.md) — test strategies, suites, how to run tests, and how to list test modules.
+
+---
 
 ## Known Bugs
 
 [Known Bugs](/docs/known_bugs.md)
+
+---
 
 ## Work Breakdown Structure
 

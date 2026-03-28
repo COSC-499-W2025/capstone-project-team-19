@@ -1,4 +1,4 @@
-# GitHub Integration Documentation
+# GitHub Integration
 
 This document explains how the system currently interacts with the GitHub REST API to supplement collaborative code analysis with GitHub contribution data.
 

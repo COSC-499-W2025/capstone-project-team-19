@@ -1,4 +1,4 @@
-# Testing
+# Test Report
 
 ## Test Strategy
 
@@ -10,6 +10,8 @@ We use automated tests for the backend and frontend, plus **manual runs** throug
 
 - **Manual - CLI**: We run `python -m src.main` with sample ZIPs from [Test Data](#test-data) and follow the steps in [Manual Test Scenarios](#manual-test-scenarios). That checks things like project classification, versions, and the text menus (summaries, resume, portfolio) in a realistic way.
 
+---
+
 ## Test report (what we document)
 
 The **test report** for this project is this document taken together with:
@@ -18,7 +20,60 @@ The **test report** for this project is this document taken together with:
 2. **Sample inputs** - ZIPs and scenarios under `test-data/` and [Test Data](#test-data) / [Manual Test Scenarios](#manual-test-scenarios) (manual validation of full flows).
 3. **Automated suites** - backend `tests/` + `tests/api/`, frontend `frontend/src/**/__tests__/` (run with the commands below).
 
-Listing every test file by name would be long and stale; instead, **code coverage** (below) shows which **application** code under `src/` is exercised when those suites run. Coverage is optional to generate but useful for reviewers.
+**Code coverage** (below) shows which **application** code under `src/` and `frontend/src/` is exercised when those suites run. Coverage is optional to generate but useful for reviewers.
+
+## Test suite layout and inventory
+
+Automated tests are **not** listed verbatim in this document: the set changes as features grow. Use the layout below and the **commands** to produce a full, up-to-date list on demand.
+
+### Layout
+
+| Area | Location | Role |
+|------|----------|------|
+| **Backend (unit & integration)** | `tests/` | One module per concern (`test_parsing_zip.py`, `test_deduplication.py`, …). Shared fixtures live in `tests/conftest.py`. |
+| **Backend (HTTP / API)** | `tests/api/` | FastAPI routes, auth, uploads wizard, exports, etc. Uses `tests/api/conftest.py` where needed. |
+| **Frontend (Vitest)** | `frontend/src/**/__tests__/**` | Files named `*.test.ts` or `*.test.tsx` next to the code they exercise (pages, components, API client). |
+| **Sample ZIPs / datasets** | `test-data/` | Inputs for manual CLI runs and some tests—not test code. See [Test Data](#test-data). |
+
+**Naming:** Python modules that pytest collects are `test_*.py`. Vitest discovers `*.test.ts` and `*.test.tsx` under `frontend/src/`.
+
+### Listing every test file (regenerate anytime)
+
+From the **repository root** (with the venv activated for Python):
+
+**Backend — list test modules**
+
+```bash
+# Git Bash / macOS / Linux
+find tests -name "test_*.py" | sort
+```
+
+```powershell
+# Windows PowerShell
+Get-ChildItem -Path tests -Recurse -Filter "test_*.py" | Sort-Object FullName | ForEach-Object { $_.FullName }
+```
+
+**Backend — list collected test cases (functions/classes)**
+
+```bash
+python -m pytest tests --collect-only -q
+```
+
+The last lines of the output summarize how many tests were collected.
+
+**Frontend — list Vitest test files**
+
+```bash
+# Git Bash / macOS / Linux
+find frontend/src -name "*.test.ts" -o -name "*.test.tsx" | sort
+```
+
+```powershell
+# Windows PowerShell
+Get-ChildItem -Path frontend\src -Recurse -Include *.test.ts,*.test.tsx | Sort-Object FullName | ForEach-Object { $_.FullName }
+```
+
+---
 
 ## Running Tests
 
@@ -71,6 +126,8 @@ Open `frontend/coverage/index.html` for the HTML report. The terminal summary li
 - **Backend (~73% lines):** Most of the Python pipeline and API is covered. What is not covered is mostly the **CLI menus** (`src/menu/`, `src/main.py`), a few **very large analysis files**, and small helpers. That is expected: those paths are hit when you run the app in the terminal, not always in `pytest`.
 - **Frontend (~37% statements):** **Insights** (skills, heatmaps, projects tabs) has solid tests. **Upload / setup / API client** code scores lower because those flows need a real backend or a browser; we rely on **manual testing** and the **CLI + `test-data/`** runs for full end-to-end checks instead of trying to fake everything in Vitest.
 
+---
+
 ## Test Data
 
 Test data is located in the `test-data/` directory and includes:
@@ -79,6 +136,8 @@ Test data is located in the `test-data/` directory and includes:
 - **Multi-project dataset**: Includes individual and collaborative, code and text projects
 
 These datasets are used in manual CLI testing to validate system behavior across different scenarios.
+
+---
 
 ## Manual Testing (CLI)
 
@@ -156,6 +215,8 @@ The system supports multiple versions of the same project (e.g., re-uploads). Wh
 - **Re-upload with changes** – You can choose: **skip**, **new project** (treat as separate), or **new version** (add as a new run of the same project).
 - Each version gets a `version_key`; files and metrics are stored per version.
 - In the API, use `project_key` and `version_key` from `state.dedup_project_keys` and `state.dedup_version_keys` when working with upload flow.
+
+---
 
 ## Manual Test Scenarios
 ### Versioned Project (Two Snapshots of the Same Project)
