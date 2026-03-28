@@ -3,6 +3,7 @@ from sqlite3 import Connection
 from typing import Any, Dict, List, Optional
 
 from src.insights.rank_projects.rank_project_importance import collect_project_ranking_rows
+from src.services.project_dates_service import compute_project_dates
 from src.services.resumes_service import get_resume_by_id
 
 
@@ -142,6 +143,14 @@ def get_public_project_detail(
 
     manual_overrides = summary_dict.get("manual_overrides") or {}
     contributions = summary_dict.get("contributions") or {}
+    dates = compute_project_dates(
+        conn=conn,
+        user_id=user_id,
+        project_summary_id=row["project_summary_id"],
+        project_name=row["project_name"],
+        project_type=row["project_type"],
+        project_mode=row["project_mode"],
+    )
 
     return {
         "project_summary_id": row["project_summary_id"],
@@ -149,8 +158,8 @@ def get_public_project_detail(
         "project_type": row["project_type"],
         "project_mode": row["project_mode"],
         "created_at": row["created_at"],
-        "start_date": row["manual_start_date"],
-        "end_date": row["manual_end_date"],
+        "start_date": dates.start_date,
+        "end_date": dates.end_date,
         "summary_text": manual_overrides.get("summary_text") or summary_dict.get("summary_text"),
         "contribution_summary": contributions.get("manual_contribution_summary"),
         "languages": summary_dict.get("languages", []),

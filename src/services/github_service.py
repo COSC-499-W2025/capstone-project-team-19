@@ -4,8 +4,8 @@ from typing import Optional, Dict, Any
 from fastapi import HTTPException
 
 from src.integrations.github.github_web_oauth import generate_github_auth_url, exchange_code_for_token
-from src.integrations.github.token_store import get_github_token, save_github_token
-from src.integrations.github.github_api import list_user_repos
+from src.integrations.github.token_store import get_github_token, save_github_token, revoke_github_token
+from src.integrations.github.github_api import list_user_repos, gh_get
 from src.integrations.github.link_repo import get_github_repo_metadata
 from src.db.github_repositories import save_project_repo
 from src.db.uploads import get_upload_by_id, patch_upload_state
@@ -32,17 +32,23 @@ def github_start_connection(
         )
         return {"auth_url": None, "connected": False}
     
-    if get_github_token(conn, user_id):
-        patch_upload_state(conn, upload_id, {
-            f"github_{project_name}": {"connected": True}
-        })
-        merge_project_run_inputs(
-            conn,
-            upload_id,
-            project_name,
-            {"integrations": {"github": {"state": "connected"}}},
-        )
-        return {"auth_url": None, "connected": True}
+    token = get_github_token(conn, user_id)
+    if token:
+        # Verify the token is still valid before trusting it
+        check = gh_get(token, "https://api.github.com/user", retries=1, delay=0)
+        if isinstance(check, dict) and check.get("login"):
+            patch_upload_state(conn, upload_id, {
+                f"github_{project_name}": {"connected": True}
+            })
+            merge_project_run_inputs(
+                conn,
+                upload_id,
+                project_name,
+                {"integrations": {"github": {"state": "connected"}}},
+            )
+            return {"auth_url": None, "connected": True}
+        # Token is stale — clear it and fall through to new auth
+        revoke_github_token(conn, user_id)
     
     oauth_state = secrets.token_urlsafe(32)
     

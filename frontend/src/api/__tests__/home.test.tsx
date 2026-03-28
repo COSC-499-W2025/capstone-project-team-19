@@ -52,7 +52,7 @@ describe("Home and navigation", () => {
       screen.getByRole("button", { name: /Review projects/i })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Create outputs/i })
+      screen.getByRole("button", { name: /Create resume/i })
     ).toBeInTheDocument();
   });
 
@@ -116,7 +116,7 @@ describe("Home and navigation", () => {
     expect(await screen.findByTestId("projects")).toBeInTheDocument();
   });
 
-  it("Create outputs shortcut navigates to /outputs", async () => {
+  it("Create resume shortcut navigates to /resume", async () => {
     const user = userEvent.setup();
     tokenStore.set(makeJwt({ sub: "1", username: "testuser" }));
 
@@ -125,15 +125,15 @@ describe("Home and navigation", () => {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route
-            path="/outputs"
-            element={<div data-testid="outputs">outputs</div>}
+            path="/resume"
+            element={<div data-testid="resume">resume</div>}
           />
         </Routes>
       </MemoryRouter>
     );
 
-    await user.click(screen.getByRole("button", { name: /Create outputs/i }));
-    expect(await screen.findByTestId("outputs")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Create resume/i }));
+    expect(await screen.findByTestId("resume")).toBeInTheDocument();
   });
 
   it("Clicking resuMe logo navigates back to home", async () => {

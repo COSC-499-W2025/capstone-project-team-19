@@ -7,6 +7,7 @@ import {
   publicListProjects,
 } from "../../api/public";
 import type { PublicProjectDetail, PublicProject } from "../../api/public";
+import { toShortDate } from "../../components/insights/tabs/Skills/utils/formatHelpers";
 import {
   AppButton,
   PageContainer,
@@ -50,11 +51,6 @@ export default function PublicProjectDetailPage() {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [username, projectId]);
-
-  function formatDate(d: string | null | undefined) {
-    if (!d) return "—";
-    return d;
-  }
 
   function formatSkillName(s: string) {
     return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -152,15 +148,19 @@ export default function PublicProjectDetailPage() {
           </div>
         </SectionCard>
 
-        {/* Duration */}
+        {/* Duration — only when at least one bound exists (matches private project detail) */}
         {(project.start_date || project.end_date) && (
           <SectionCard className="space-y-[14px]">
             <div className="text-[18px] font-medium leading-none text-foreground">
               Duration
             </div>
-            <span className="text-[14px] text-foreground">
-              {formatDate(project.start_date)} → {formatDate(project.end_date)}
-            </span>
+            <p className="text-[14px] leading-[1.6] text-foreground">
+              {!project.start_date
+                ? `Unknown start – ${toShortDate(project.end_date)}`
+                : !project.end_date
+                  ? `${toShortDate(project.start_date)} – Present`
+                  : `${toShortDate(project.start_date)} – ${toShortDate(project.end_date)}`}
+            </p>
           </SectionCard>
         )}
 

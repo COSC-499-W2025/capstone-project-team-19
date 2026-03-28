@@ -11,7 +11,7 @@ const navItems = [
   { to: "/upload", label: "Upload" },
   { to: "/projects", label: "Projects" },
   { to: "/insights", label: "Insights" },
-  { to: "/outputs", label: "Outputs" },
+  { to: "/resume", label: "Resume" },
 ];
 
 export default function TopBar({ showNav = false }: Props) {

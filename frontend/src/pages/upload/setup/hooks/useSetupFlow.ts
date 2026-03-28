@@ -389,6 +389,7 @@ export function useSetupFlow(uploadIdParam: string): SetupFlowResult {
     expandedProjectNames,
     onToggleProject,
     clearActionError,
+    setActionError,
     refreshUpload,
     actions,
   };

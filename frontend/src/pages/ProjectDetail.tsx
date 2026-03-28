@@ -19,6 +19,7 @@ import {
   type ProjectDatesItem,
   type ProjectDetail,
 } from "../api/projects";
+import { toShortDate } from "../components/insights/tabs/Skills/utils/formatHelpers";
 import {
   AppButton,
   AppField,
@@ -30,6 +31,13 @@ import {
   SectionTabs,
   TagPill,
 } from "../components/shared";
+
+/** Normalize a date string to YYYY-MM-DD for use in <input type="date">. */
+function toDateInputValue(iso?: string | null): string {
+  if (!iso) return "";
+  const match = iso.match(/^\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : "";
+}
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -88,8 +96,8 @@ export default function ProjectDetailPage() {
         setDates(dateItem);
         setFeedback(fb);
         setAllProjects(projects);
-        setStartDate(dateItem?.start_date ?? "");
-        setEndDate(dateItem?.end_date ?? "");
+        setStartDate(toDateInputValue(dateItem?.start_date));
+        setEndDate(toDateInputValue(dateItem?.end_date));
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
@@ -137,8 +145,8 @@ export default function ProjectDetailPage() {
     try {
       const updated = await patchProjectDates(projectId, startDate || null, endDate || null);
       setDates(updated);
-      setStartDate(updated.start_date ?? "");
-      setEndDate(updated.end_date ?? "");
+      setStartDate(toDateInputValue(updated.start_date));
+      setEndDate(toDateInputValue(updated.end_date));
       setEditingDates(false);
     } catch (e: unknown) {
       setDatesError(e instanceof Error ? e.message : "Save failed");
@@ -148,8 +156,8 @@ export default function ProjectDetailPage() {
   }
 
   function handleCancelDates() {
-    setStartDate(dates?.start_date ?? "");
-    setEndDate(dates?.end_date ?? "");
+    setStartDate(toDateInputValue(dates?.start_date));
+    setEndDate(toDateInputValue(dates?.end_date));
     setDatesError(null);
     setEditingDates(false);
   }
@@ -160,8 +168,8 @@ export default function ProjectDetailPage() {
     try {
       const updated = await resetProjectDates(projectId);
       setDates(updated);
-      setStartDate(updated.start_date ?? "");
-      setEndDate(updated.end_date ?? "");
+      setStartDate(toDateInputValue(updated.start_date));
+      setEndDate(toDateInputValue(updated.end_date));
       setEditingDates(false);
     } catch (e: unknown) {
       setDatesError(e instanceof Error ? e.message : "Reset failed");
@@ -209,11 +217,6 @@ export default function ProjectDetailPage() {
       setDeleting(false);
       setConfirmDelete(false);
     }
-  }
-
-  function formatDate(d: string | null | undefined) {
-    if (!d) return "—";
-    return d;
   }
 
   function formatSkillName(s: string) {
@@ -363,34 +366,56 @@ export default function ProjectDetailPage() {
           />
         </SectionCard>
 
-        {/* Duration */}
-        <SectionCard className="w-full space-y-[14px] bg-white">
-          <div className="flex items-center justify-between">
-            <div className="text-[18px] font-medium leading-none text-foreground">Duration</div>
-            {!editingDates && (
-              <AppButton variant="outline" size="sm" onClick={() => setEditingDates(true)}>
+        {/* Duration — light panel; view: title + range left, Edit top-right; edit: stacked fields + full-width primary actions */}
+        <SectionCard className="w-full rounded-[10px] border-[#e0e0e0] bg-[#f4f4f6] px-[22px] py-[20px]">
+          {!editingDates ? (
+            <div className="flex items-start justify-between gap-[16px]">
+              <div className="min-w-0 flex-1 space-y-[10px]">
+                <div className="text-[18px] font-medium leading-none text-foreground">
+                  Duration
+                </div>
+                <div className="flex flex-wrap items-center gap-[8px]">
+                  <span className="text-[14px] leading-[1.5] text-[#4a4a4a]">
+                    {!dates?.start_date && !dates?.end_date
+                      ? "No dates available"
+                      : !dates?.start_date
+                        ? `Unknown start – ${toShortDate(dates?.end_date)}`
+                        : !dates?.end_date
+                          ? `${toShortDate(dates?.start_date)} – Present`
+                          : `${toShortDate(dates?.start_date)} – ${toShortDate(dates?.end_date)}`}
+                  </span>
+                  {dates?.source === "MANUAL" && (
+                    <TagPill className="text-[12px]">manual</TagPill>
+                  )}
+                </div>
+              </div>
+              <AppButton
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={() => {
+                  setStartDate(toDateInputValue(dates?.start_date));
+                  setEndDate(toDateInputValue(dates?.end_date));
+                  setEditingDates(true);
+                }}
+              >
                 Edit
               </AppButton>
-            )}
-          </div>
-
-          {!editingDates ? (
-            <div className="flex items-center gap-[8px]">
-              <span className="text-[14px] text-foreground">
-                {formatDate(dates?.start_date)} → {formatDate(dates?.end_date)}
-              </span>
-              {dates?.source === "MANUAL" && (
-                <TagPill className="text-[12px]">manual</TagPill>
-              )}
             </div>
           ) : (
-            <div className="space-y-[14px]">
-              <div className="grid gap-[14px] md:grid-cols-2">
-                <AppField label="Start date">
-                  <AppInput
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+            <div className="space-y-[18px]">
+              <div className="text-[18px] font-medium leading-none text-foreground">
+                Duration
+              </div>
+              {/* Narrow column — matches compact date + action layout */}
+              <div className="w-full max-w-[248px] space-y-[16px]">
+                <div className="flex flex-col gap-[16px]">
+                  <AppField label="Start date">
+                    <AppInput
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    className="h-[40px] w-full rounded-[8px] border-[#cfd5df] bg-white"
                   />
                 </AppField>
                 <AppField label="End date">
@@ -398,21 +423,46 @@ export default function ProjectDetailPage() {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </AppField>
-              </div>
-              {datesError && <p className="text-[13px] text-[#cc4b4b]">{datesError}</p>}
-              <div className="flex gap-[8px]">
-                <AppButton onClick={handleSaveDates} disabled={savingDates}>
-                  {savingDates ? "Saving…" : "Save"}
-                </AppButton>
-                <AppButton variant="outline" onClick={handleCancelDates} disabled={savingDates}>
-                  Cancel
-                </AppButton>
-                {dates?.source === "MANUAL" && (
-                  <AppButton variant="ghost" onClick={handleResetDates} disabled={savingDates}>
-                    Reset to auto
+                    className="h-[40px] w-full rounded-[8px] border-[#cfd5df] bg-white"
+                    />
+                  </AppField>
+                </div>
+                {datesError && (
+                  <p className="text-[13px] leading-[1.3] text-[#cc4b4b]">{datesError}</p>
+                )}
+                <div className="flex max-w-[248px] gap-[10px]">
+                  <AppButton
+                    type="button"
+                    variant="primary"
+                    className="h-[40px] min-h-0 flex-1 rounded-[8px] px-[12px] text-[14px] font-medium"
+                    onClick={handleSaveDates}
+                    disabled={savingDates}
+                  >
+                    {savingDates ? "Saving…" : "Save"}
                   </AppButton>
+                  <AppButton
+                    type="button"
+                    variant="primary"
+                    className="h-[40px] min-h-0 flex-1 rounded-[8px] px-[12px] text-[14px] font-medium"
+                    onClick={handleCancelDates}
+                    disabled={savingDates}
+                  >
+                    Cancel
+                  </AppButton>
+                </div>
+                {dates?.source === "MANUAL" && (
+                  <div className="max-w-[248px] pt-[2px]">
+                    <AppButton
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-[13px] text-primary"
+                      onClick={handleResetDates}
+                      disabled={savingDates}
+                    >
+                      Reset to auto
+                    </AppButton>
+                  </div>
                 )}
               </div>
             </div>
