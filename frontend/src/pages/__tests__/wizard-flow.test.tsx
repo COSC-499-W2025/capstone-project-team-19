@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import App from "../../App";
 import * as consentApi from "../../api/consent";
-import { tokenStore } from "../../auth/token";
+import { buildConsentSuccessResponses, setAuthenticatedTestUser, setRoute } from "./uploadTestUtils";
 
 vi.mock("../../api/consent", () => ({
   getConsentStatus: vi.fn(),
@@ -16,66 +16,16 @@ const mockedGetConsentStatus = vi.mocked(consentApi.getConsentStatus);
 const mockedPostInternalConsent = vi.mocked(consentApi.postInternalConsent);
 const mockedPostExternalConsent = vi.mocked(consentApi.postExternalConsent);
 
-function setRoute(path: string) {
-  window.history.pushState({}, "", path);
-}
-
-function makeJwt(payload: Record<string, unknown>) {
-  const header = { alg: "HS256", typ: "JWT" };
-
-  const b64url = (obj: unknown) =>
-    btoa(JSON.stringify(obj))
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/g, "");
-
-  return `${b64url(header)}.${b64url(payload)}.sig`;
-}
-
 describe("upload wizard flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    setAuthenticatedTestUser();
 
-    tokenStore.set(
-      makeJwt({
-        sub: "1",
-        username: "testuser",
-        exp: Math.floor(Date.now() / 1000) + 60 * 60,
-      })
-    );
-
-    mockedGetConsentStatus.mockResolvedValue({
-      success: true,
-      data: {
-        user_id: 1,
-        internal_consent: null,
-        external_consent: null,
-      },
-      error: null,
-    });
-
-    mockedPostInternalConsent.mockResolvedValue({
-      success: true,
-      data: {
-        consent_id: 1,
-        user_id: 1,
-        status: "accepted",
-        timestamp: "2026-03-08T00:00:00",
-      },
-      error: null,
-    });
-
-    mockedPostExternalConsent.mockResolvedValue({
-      success: true,
-      data: {
-        consent_id: 2,
-        user_id: 1,
-        status: "accepted",
-        timestamp: "2026-03-08T00:00:01",
-      },
-      error: null,
-    });
+    const defaultResponses = buildConsentSuccessResponses();
+    mockedGetConsentStatus.mockResolvedValue(defaultResponses.status);
+    mockedPostInternalConsent.mockResolvedValue(defaultResponses.internalSave);
+    mockedPostExternalConsent.mockResolvedValue(defaultResponses.externalSave);
   });
 
   it("/upload/consent renders with active step 1", async () => {
