@@ -16,6 +16,7 @@ vi.mock('react-router-dom', () => ({
 vi.mock('../../../api/public', () => ({
   publicListProjects: vi.fn(),
   publicFetchThumbnailUrl: vi.fn(),
+  publicGetRanking: vi.fn(),
 }))
 
 vi.mock('../../../auth/token', () => ({
@@ -26,11 +27,12 @@ vi.mock('../../../auth/user', () => ({
   getUsername: vi.fn(() => null),
 }))
 
-import { publicListProjects, publicFetchThumbnailUrl } from '../../../api/public'
+import { publicListProjects, publicFetchThumbnailUrl, publicGetRanking } from '../../../api/public'
 
 describe('PublicProjectsPage', () => {
   beforeEach(() => {
     vi.mocked(publicFetchThumbnailUrl).mockResolvedValue(null)
+    vi.mocked(publicGetRanking).mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -89,5 +91,33 @@ describe('PublicProjectsPage', () => {
     await waitFor(() => {
       expect(publicListProjects).toHaveBeenCalledWith('johndoe')
     })
+  })
+
+  it('calls publicGetRanking with the username from params', async () => {
+    vi.mocked(publicListProjects).mockResolvedValue([])
+    render(<PublicProjectsPage />)
+    await waitFor(() => {
+      expect(publicGetRanking).toHaveBeenCalledWith('johndoe')
+    })
+  })
+
+  it('shows Top projects and Insights link when ranking data exists', async () => {
+    vi.mocked(publicListProjects).mockResolvedValue([
+      { project_summary_id: 1, project_name: 'Project Alpha', project_type: null, project_mode: null, created_at: null },
+      { project_summary_id: 2, project_name: 'Project Beta', project_type: null, project_mode: null, created_at: null },
+    ])
+    vi.mocked(publicGetRanking).mockResolvedValue([
+      { rank: 1, project_summary_id: 1, project_name: 'Project Alpha' },
+      { rank: 2, project_summary_id: 2, project_name: 'Project Beta' },
+    ])
+    render(<PublicProjectsPage />)
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Top projects' })).toBeInTheDocument()
+    })
+    const insightsLinks = screen
+      .getAllByText('Insights')
+      .map((el) => el.closest('a'))
+      .filter((a): a is HTMLAnchorElement => !!a && a.getAttribute('href') === '/public/johndoe/insights')
+    expect(insightsLinks.length).toBeGreaterThan(0)
   })
 })
