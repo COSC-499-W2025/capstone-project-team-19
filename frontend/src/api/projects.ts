@@ -14,10 +14,13 @@ export type ProjectDetail = {
   project_summary_id: number;
   project_key: number | null;
   project_name: string;
+  display_name: string | null;
   project_type: string | null;
   project_mode: string | null;
   created_at: string | null;
   summary_text: string | null;
+  key_role: string | null;
+  contribution_bullets: string[] | null;
   languages: string[];
   frameworks: string[];
   skills: string[];
@@ -97,6 +100,15 @@ export function patchProjectDates(
 export function resetProjectDates(projectId: number): Promise<ProjectDatesItem> {
   return api
     .delete<{ success: boolean; data: ProjectDatesItem }>(`/projects/${projectId}/dates`)
+    .then((r) => r.data);
+}
+
+export function patchProjectSummary(
+  projectId: number,
+  body: { summary_text?: string | null; contribution_summary?: string | null },
+): Promise<ProjectDetail> {
+  return api
+    .patchJson<{ success: boolean; data: ProjectDetail }>(`/projects/${projectId}/summary`, body)
     .then((r) => r.data);
 }
 

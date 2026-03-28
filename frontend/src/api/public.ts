@@ -27,6 +27,7 @@ export interface PublicProjectDetail {
   start_date: string | null;
   end_date: string | null;
   summary_text: string | null;
+  contribution_summary: string | null;
   languages: string[];
   frameworks: string[];
   skills: string[];
