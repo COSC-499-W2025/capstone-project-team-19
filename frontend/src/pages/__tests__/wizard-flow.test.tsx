@@ -56,6 +56,68 @@ describe("upload wizard flow", () => {
     expect(window.location.pathname).toBe("/upload/upload");
   });
 
+  it("shows validation when internal consent is not accepted", async () => {
+    const user = userEvent.setup();
+    setRoute("/upload/consent");
+    render(<App />);
+
+    await screen.findByText("USER CONSENT NOTICE");
+
+    const yesButtons = screen.getAllByLabelText("Yes, I consent.");
+    await user.click(yesButtons[1]);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(
+      await screen.findByText('Please select "Yes, I consent." for user consent to continue.')
+    ).toBeInTheDocument();
+    expect(mockedPostInternalConsent).not.toHaveBeenCalled();
+    expect(mockedPostExternalConsent).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/upload/consent");
+  });
+
+  it("shows validation when external consent option is missing", async () => {
+    const user = userEvent.setup();
+    setRoute("/upload/consent");
+    render(<App />);
+
+    await screen.findByText("USER CONSENT NOTICE");
+
+    const yesButtons = screen.getAllByLabelText("Yes, I consent.");
+    await user.click(yesButtons[0]);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(
+      await screen.findByText("Please select an external service consent option to continue.")
+    ).toBeInTheDocument();
+    expect(mockedPostInternalConsent).not.toHaveBeenCalled();
+    expect(mockedPostExternalConsent).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/upload/consent");
+  });
+
+  it("shows save error and stays on consent page when API save fails", async () => {
+    const user = userEvent.setup();
+    mockedPostExternalConsent.mockResolvedValueOnce({
+      success: false,
+      data: null,
+      error: { message: "Failed external consent save.", code: 500 },
+    });
+
+    setRoute("/upload/consent");
+    render(<App />);
+
+    await screen.findByText("USER CONSENT NOTICE");
+
+    const yesButtons = screen.getAllByLabelText("Yes, I consent.");
+    await user.click(yesButtons[0]);
+    await user.click(yesButtons[1]);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(await screen.findByText("Failed external consent save.")).toBeInTheDocument();
+    expect(mockedPostInternalConsent).toHaveBeenCalledWith("accepted");
+    expect(mockedPostExternalConsent).toHaveBeenCalledWith("accepted");
+    expect(window.location.pathname).toBe("/upload/consent");
+  });
+
   it("/upload/upload renders step 2 with active sidebar state", async () => {
     setRoute("/upload/upload");
     render(<App />);
