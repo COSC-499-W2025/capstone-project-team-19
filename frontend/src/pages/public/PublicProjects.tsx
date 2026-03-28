@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { ChevronRight } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import PublicLayout from "./PublicLayout";
 import {
@@ -137,7 +138,7 @@ export default function PublicProjectsPage() {
                   {topFeatured.map((r) => (
                     <div
                       key={r.project_summary_id}
-                      className="flex w-[220px] flex-col gap-2"
+                      className="flex w-[220px] flex-col items-stretch gap-2"
                     >
                       <FeatureTile
                         title={r.project_name}
@@ -150,9 +151,14 @@ export default function PublicProjectsPage() {
                       />
                       <Link
                         to={`/public/${username}/insights?view=activity-heatmap&project=${r.project_summary_id}`}
-                        className="text-[13px] font-medium leading-tight text-[#001166] underline underline-offset-2 hover:text-[#001a8c]"
+                        className="group flex w-full items-center justify-between gap-2 rounded-md border border-[#001166]/20 bg-[#f5f7fb] px-[14px] py-2.5 text-left text-[13px] font-semibold leading-tight text-[#001166] shadow-sm outline-none ring-[#001166]/15 transition hover:border-[#001166]/40 hover:bg-[#e8ecf7] hover:shadow-md focus-visible:ring-2 active:translate-y-px"
                       >
-                        Activity insights
+                        <span className="min-w-0 text-left">Activity insights</span>
+                        <ChevronRight
+                          className="h-4 w-4 shrink-0 text-[#001166] opacity-70 transition group-hover:translate-x-0.5 group-hover:opacity-100"
+                          aria-hidden
+                          strokeWidth={2.25}
+                        />
                       </Link>
                     </div>
                   ))}
