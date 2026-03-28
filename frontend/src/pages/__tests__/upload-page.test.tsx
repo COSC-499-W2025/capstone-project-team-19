@@ -84,6 +84,7 @@ describe("UploadPage recovery and validation flows", () => {
     mockedRecoveryRouteForUpload.mockReturnValue("/upload/upload?uploadId=42&stage=projects");
   });
 
+  // Scenario: reject unsupported files and keep progression blocked.
   it("shows a validation error when a non-zip file is selected", async () => {
     setRoute("/upload/upload");
     const { container } = render(<App />);
@@ -99,6 +100,7 @@ describe("UploadPage recovery and validation flows", () => {
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
   });
 
+  // Scenario: offer resume/start-new choices when unfinished work exists.
   it("shows unfinished upload recovery dialog when a recoverable upload exists", async () => {
     mockedGetUploads.mockResolvedValueOnce(makeUploadsResponse([makeUnfinishedUpload()]));
 
@@ -110,6 +112,7 @@ describe("UploadPage recovery and validation flows", () => {
     expect(mockedGetUploads).toHaveBeenCalledWith(10, 0);
   });
 
+  // Scenario: resume should honor remembered stage and route helper output.
   it("resumes unfinished upload using recovery route", async () => {
     const user = userEvent.setup();
     mockedGetUploads.mockResolvedValueOnce(makeUploadsResponse([makeUnfinishedUpload()]));
@@ -131,6 +134,7 @@ describe("UploadPage recovery and validation flows", () => {
     expect(mockedRecoveryRouteForUpload).toHaveBeenCalled();
   });
 
+  // Scenario: starting new upload cleans up stale unfinished upload state.
   it("deletes unfinished upload when Start New is selected", async () => {
     const user = userEvent.setup();
     mockedGetUploads.mockResolvedValueOnce(makeUploadsResponse([makeUnfinishedUpload()]));
@@ -150,6 +154,7 @@ describe("UploadPage recovery and validation flows", () => {
     });
   });
 
+  // Scenario: cleanup failure is visible and keeps user in recovery decision state.
   it("shows recovery error when deleting unfinished upload fails", async () => {
     const user = userEvent.setup();
     mockedGetUploads.mockResolvedValueOnce(makeUploadsResponse([makeUnfinishedUpload()]));

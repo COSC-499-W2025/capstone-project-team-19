@@ -36,6 +36,7 @@ describe("AnalyzePage run sequence", () => {
     setAuthenticatedTestUser();
   });
 
+  // Scenario: prevent accidental run attempts when URL is missing uploadId.
   it("shows missing uploadId guard and does not call run API", async () => {
     setRoute("/upload/analyze");
     render(<App />);
@@ -46,6 +47,7 @@ describe("AnalyzePage run sequence", () => {
     });
   });
 
+  // Scenario: happy-path sequence should execute both scopes and finish cleanly.
   it("runs individual then collaborative scopes and finishes sequence", async () => {
     mockedPostUploadRun
       .mockResolvedValueOnce(runResponse("individual", { ready: true }))
@@ -82,6 +84,7 @@ describe("AnalyzePage run sequence", () => {
     });
   });
 
+  // Scenario: failure in first scope should short-circuit the remaining sequence.
   it("stops sequence when individual scope fails and does not run collaborative scope", async () => {
     mockedPostUploadRun
       .mockResolvedValueOnce(runResponse("individual", { ready: true }))

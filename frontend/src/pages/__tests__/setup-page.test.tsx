@@ -126,6 +126,7 @@ describe("SetupPage routing and analyze entry", () => {
     setAuthenticatedTestUser();
   });
 
+  // Scenario: setup route should guard against invalid or missing upload context.
   it("redirects to /upload/upload when uploadId is missing or invalid", async () => {
     mockedUseSetupFlow.mockReturnValue(
       makeFlow({
@@ -146,6 +147,7 @@ describe("SetupPage routing and analyze entry", () => {
     });
   });
 
+  // Scenario: setup should fall back to upload page when server says upload is missing.
   it("redirects to /upload/upload when upload context is not found", async () => {
     mockedUseSetupFlow.mockReturnValue(
       makeFlow({
@@ -161,6 +163,7 @@ describe("SetupPage routing and analyze entry", () => {
     });
   });
 
+  // Scenario: Analyze action checks readiness and requires confirmation before navigation.
   it("opens confirm dialog on Analyze when readiness is ready, then navigates on continue", async () => {
     const user = userEvent.setup();
     const flow = makeFlow();
@@ -184,6 +187,7 @@ describe("SetupPage routing and analyze entry", () => {
     });
   });
 
+  // Scenario: once analysis has started, button should go straight to Analyze page.
   it("uses Open Analyze fast-path when analysis has already started", async () => {
     const user = userEvent.setup();
     mockedUseSetupFlow.mockReturnValue(
