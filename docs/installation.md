@@ -146,7 +146,7 @@ GitHub OAuth is used to analyze collaboration metrics such as commits, pull requ
 
 ### 7. LLM Services (optional)
 
-LLM setup is option for this system. To set it up, see [here](/docs/llm_setup.md).
+LLM setup is optional for this system. To set it up, see [here](/docs/llm_setup.md).
 
 ---
 

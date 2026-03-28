@@ -12,7 +12,7 @@ Our team contract outlining roles, responsibilities, communication expectations,
 
 ## System Architecture
 
-[System Architecture Diagrams](/docs/architecture.md).
+[System Architecture Diagrams](/docs/architecture.md)
 
 ---
 
@@ -24,7 +24,7 @@ Our team contract outlining roles, responsibilities, communication expectations,
 
 ## Test Report
 
-[Test report](/docs/testing.md) — test strategies, suites, how to run tests, how to list test modules, and how to generate **code coverage** reports (backend and frontend).
+[Test report](/docs/testing.md) - test strategies, suites, how to run tests, how to list test modules, and how to generate **code coverage** reports (backend and frontend).
 
 ---
 
