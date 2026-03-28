@@ -6,11 +6,14 @@ import { setupPrimaryActionButtonClass, setupSecondaryActionButtonClass } from "
 type Props = {
   project: SetupProjectCard;
   actions: SetupFlowResult["actions"];
+  refreshUpload: SetupFlowResult["refreshUpload"];
   isMutating: boolean;
 };
 
 const DRIVE_PAGE_SIZE = 5;
 const DRIVE_OAUTH_MESSAGE_SOURCE = "capstone-google-drive-oauth";
+const DRIVE_OAUTH_POLL_INTERVAL_MS = 1500;
+const DRIVE_OAUTH_MAX_POLL_ATTEMPTS = 40;
 
 function toggleString(values: string[], value: string): string[] {
   if (values.includes(value)) return values.filter((item) => item !== value);
@@ -37,7 +40,7 @@ function asDriveOauthMessage(value: unknown): DriveOauthMessage | null {
   return value as DriveOauthMessage;
 }
 
-export default function TextSetupSection({ project, actions, isMutating }: Props) {
+export default function TextSetupSection({ project, actions, refreshUpload, isMutating }: Props) {
   const [filesPayload, setFilesPayload] = useState<UploadProjectFilesRecord | null>(null);
   const [filesLoading, setFilesLoading] = useState(false);
   const [mainFile, setMainFile] = useState(project.mainFileRelpath ?? "");
@@ -54,6 +57,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   const [selectedDriveFileId, setSelectedDriveFileId] = useState("");
   const [driveMapByLocalFile, setDriveMapByLocalFile] = useState<Record<string, DriveFile>>({});
   const [driveMessage, setDriveMessage] = useState<string | null>(null);
+  const [awaitingDriveOauthReturn, setAwaitingDriveOauthReturn] = useState(false);
   const [localPage, setLocalPage] = useState(1);
   const [drivePage, setDrivePage] = useState(1);
   const [mainFileSaveMessage, setMainFileSaveMessage] = useState<string | null>(null);
@@ -154,6 +158,13 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   }, [driveLocalFiles, selectedLocalFile]);
 
   useEffect(() => {
+    if (!isDriveConnected) return;
+    setAwaitingDriveOauthReturn(false);
+    setDriveMessage((prev) => (prev === "Google Drive authorization opened in a new tab." ? "Google Drive is connected." : prev));
+  }, [isDriveConnected]);
+
+  useEffect(() => {
+    if (awaitingDriveOauthReturn) return;
     if (isDriveConnected) return;
     setDriveFiles([]);
     setDriveFilesLoaded(false);
@@ -161,7 +172,57 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     setSelectedDriveFileId("");
     setDriveSearch("");
     setDrivePage(1);
-  }, [isDriveConnected]);
+  }, [awaitingDriveOauthReturn, isDriveConnected]);
+
+  useEffect(() => {
+    if (!awaitingDriveOauthReturn || isDriveConnected) return;
+    let active = true;
+    let refreshing = false;
+    let pollAttempts = 0;
+
+    async function refreshOnReturn() {
+      if (!active || refreshing) return;
+      refreshing = true;
+      await refreshUpload();
+      refreshing = false;
+    }
+
+    function onFocus() {
+      void refreshOnReturn();
+    }
+
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void refreshOnReturn();
+      }
+    }
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    const pollId = window.setInterval(() => {
+      if (!active || isDriveConnected) return;
+      pollAttempts += 1;
+      if (pollAttempts > DRIVE_OAUTH_MAX_POLL_ATTEMPTS) {
+        setAwaitingDriveOauthReturn(false);
+        return;
+      }
+      if (document.visibilityState === "visible") {
+        void refreshOnReturn();
+      }
+    }, DRIVE_OAUTH_POLL_INTERVAL_MS);
+
+    if (document.visibilityState === "visible") {
+      void refreshOnReturn();
+    }
+
+    return () => {
+      active = false;
+      window.clearInterval(pollId);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [awaitingDriveOauthReturn, isDriveConnected, refreshUpload]);
 
   useEffect(() => {
     function onDriveOauthMessage(event: MessageEvent) {
@@ -171,10 +232,12 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
 
       if (data.status === "connected") {
         setDriveMessage("Google Drive is connected.");
-        void actions.driveStart(project.projectName, true);
+        setAwaitingDriveOauthReturn(false);
+        void refreshUpload();
         return;
       }
       if (data.status === "error") {
+        setAwaitingDriveOauthReturn(false);
         setDriveMessage("Google Drive authorization failed. Please try connecting again.");
       }
     }
@@ -183,7 +246,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     return () => {
       window.removeEventListener("message", onDriveOauthMessage);
     };
-  }, [actions, project.projectName]);
+  }, [project.projectName, refreshUpload]);
 
   async function onSaveMainFile() {
     if (project.projectKey === null || !mainFile) return;
@@ -246,6 +309,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   }
 
   async function onConnectDrive() {
+    setAwaitingDriveOauthReturn(false);
     setDriveMessage(null);
     const data = await actions.driveStart(project.projectName, true);
     if (!data) return;
@@ -255,6 +319,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
         setDriveMessage("Pop-up blocked. Please allow pop-ups, then click Connect Google Drive again.");
         return;
       }
+      setAwaitingDriveOauthReturn(true);
       setDriveMessage("Google Drive authorization opened in a new tab.");
       return;
     }
@@ -470,7 +535,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 type="button"
                 onClick={onLoadDriveFiles}
                 disabled={isMutating || driveLoading}
-                className={setupSecondaryActionButtonClass}
+                className={driveFilesLoaded ? setupSecondaryActionButtonClass : setupPrimaryActionButtonClass}
               >
                 {driveLoading ? "Loading..." : driveFilesLoaded ? "Reload Drive Files" : "Load Drive Files"}
               </button>

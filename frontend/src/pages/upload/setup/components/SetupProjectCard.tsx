@@ -21,6 +21,7 @@ type Props = {
   expanded: boolean;
   onToggle: (projectName: string) => void;
   actions: SetupFlowResult["actions"];
+  refreshUpload: SetupFlowResult["refreshUpload"];
   isMutating: boolean;
   manualOnlySummaries: boolean;
 };
@@ -36,6 +37,7 @@ export default function SetupProjectCard({
   expanded,
   onToggle,
   actions,
+  refreshUpload,
   isMutating,
   manualOnlySummaries,
 }: Props) {
@@ -119,7 +121,7 @@ export default function SetupProjectCard({
           {project.projectType === "code" ? (
             <CodeSetupSection project={project} actions={actions} isMutating={isMutating} />
           ) : project.projectType === "text" ? (
-            <TextSetupSection project={project} actions={actions} isMutating={isMutating} />
+            <TextSetupSection project={project} actions={actions} refreshUpload={refreshUpload} isMutating={isMutating} />
           ) : (
             <ProjectSetupInputsSection collaborative={project.classification === "collaborative"} />
           )}

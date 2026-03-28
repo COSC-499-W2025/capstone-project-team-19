@@ -13,6 +13,7 @@ type Props = {
   expandedProjectNames: string[];
   onToggleProject: (projectName: string) => void;
   actions: SetupFlowResult["actions"];
+  refreshUpload: SetupFlowResult["refreshUpload"];
   isMutating: boolean;
   manualOnlySummaries: boolean;
 };
@@ -29,6 +30,7 @@ export default function SetupProjectGroup({
   expandedProjectNames,
   onToggleProject,
   actions,
+  refreshUpload,
   isMutating,
   manualOnlySummaries,
 }: Props) {
@@ -54,6 +56,7 @@ export default function SetupProjectGroup({
             expanded={expandedProjectNames.includes(project.projectName)}
             onToggle={onToggleProject}
             actions={actions}
+            refreshUpload={refreshUpload}
             isMutating={isMutating}
             manualOnlySummaries={manualOnlySummaries}
           />

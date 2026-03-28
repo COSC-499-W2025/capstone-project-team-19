@@ -405,6 +405,7 @@ export default function UploadSetupPage() {
                 expandedProjectNames={flow.expandedProjectNames}
                 onToggleProject={flow.onToggleProject}
                 actions={flow.actions}
+                refreshUpload={flow.refreshUpload}
                 isMutating={flow.isMutating}
                 manualOnlySummaries={flow.manualOnlySummaries}
               />
@@ -421,6 +422,7 @@ export default function UploadSetupPage() {
                 expandedProjectNames={flow.expandedProjectNames}
                 onToggleProject={flow.onToggleProject}
                 actions={flow.actions}
+                refreshUpload={flow.refreshUpload}
                 isMutating={flow.isMutating}
                 manualOnlySummaries={flow.manualOnlySummaries}
               />
