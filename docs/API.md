@@ -149,6 +149,35 @@ Handles authentication and security for the endpoints.
   }
   ```
 
+- **Change Password**
+  - **Endpoint**: `POST /change-password`
+  - **Description**: Changes the authenticated user's password after verifying the current password.
+  - **Headers**:
+    - `Authorization: Bearer <access_token>`
+  - **Response Status**:
+    - `200 OK` on success
+    - `401 Unauthorized` if current password is incorrect
+    - `404 Not Found` if authenticated user does not exist
+    - `422 Unprocessable Entity` if payload is invalid or new password does not meet strength requirements
+  - **Request Body**:
+
+  ```json
+  {
+    "current_password": "OldPassword123",
+    "new_password": "NewPassword123"
+  }
+  ```
+
+  - **Response Body**:
+
+  ```json
+  {
+    "success": true,
+    "data": null,
+    "error": null
+  }
+  ```
+
 ---
 
 ## **Authentication** (Required)
@@ -220,6 +249,32 @@ Handles authentication and security for the endpoints.
         {
             "access_token": "token",
             "token_type": "bearer"
+        }
+    ```
+
+- **Change Password**
+    - **Endpoint**: `POST /change-password`
+    - **Description**: Changes the authenticated user's password after verifying the current password.
+    - **Headers**:
+        - `Authorization: Bearer <access_token>`
+    - **Response Status**:
+        - `200 OK` on success
+        - `401 Unauthorized` if current password is incorrect
+        - `404 Not Found` if authenticated user does not exist
+        - `422 Unprocessable Entity` if payload is invalid or new password does not meet strength requirements
+    - **Request Body**:
+    ```json
+        {
+            "current_password": "OldPassword123",
+            "new_password": "NewPassword123"
+        }
+    ```
+    - **Response Body**:
+    ```json
+        {
+            "success": true,
+            "data": null,
+            "error": null
         }
     ```
 
