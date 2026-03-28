@@ -206,11 +206,11 @@ describe("ResumeList", () => {
     });
   });
 
-  it("renders a single Resume heading", async () => {
+  it("does not render a duplicate Resume heading", async () => {
     mockList();
     render(<ResumeList onView={vi.fn()} onEdit={vi.fn()} onCreateNew={vi.fn()} />);
 
     await waitFor(() => screen.getByText("Resume A"));
-    expect(screen.getAllByRole("heading", { name: "Resume" })).toHaveLength(1);
+    expect(screen.queryByRole("heading", { name: "Resume" })).not.toBeInTheDocument();
   });
 });

@@ -70,8 +70,7 @@ export default function ResumeList({ onView, onEdit, onCreateNew }: Props) {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Resume</h2>
+      <div className="flex justify-end">
         <Button size="sm" onClick={onCreateNew} className="gap-1.5">
           <Plus className="size-3.5" />
           Create New Resume
