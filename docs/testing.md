@@ -10,6 +10,16 @@ We use automated tests for the backend and frontend, plus **manual runs** throug
 
 - **Manual - CLI**: We run `python -m src.main` with sample ZIPs from [Test Data](#test-data) and follow the steps in [Manual Test Scenarios](#manual-test-scenarios). That checks things like project classification, versions, and the text menus (summaries, resume, portfolio) in a realistic way.
 
+## Test report (what we document)
+
+The **test report** for this project is this document taken together with:
+
+1. **Strategies** - how we test (above).
+2. **Sample inputs** - ZIPs and scenarios under `test-data/` and [Test Data](#test-data) / [Manual Test Scenarios](#manual-test-scenarios) (manual validation of full flows).
+3. **Automated suites** - backend `tests/` + `tests/api/`, frontend `frontend/src/**/__tests__/` (run with the commands below).
+
+Listing every test file by name would be long and stale; instead, **code coverage** (below) shows which **application** code under `src/` is exercised when those suites run. Coverage is optional to generate but useful for reviewers.
+
 ## Running Tests
 
 ### Backend
@@ -32,6 +42,34 @@ npm run test:run
 ```
 
 More information can be found [here](../frontend/README.md).
+
+### Code coverage reports
+
+Coverage answers “what part of the app code did the tests touch?” - not “what are all the filenames in the repo.” Reports are generated locally; HTML output is gitignored (`htmlcov/`, `frontend/coverage/`).
+
+**Backend** (from the repo root, venv active):
+
+```bash
+pip install -r requirements.txt
+pytest tests --cov=src --cov-report=term-missing --cov-report=html
+```
+
+Open `htmlcov/index.html` in a browser for the HTML report.
+
+**Frontend** (from `frontend/`):
+
+```bash
+cd frontend
+npm install
+npm run test:coverage
+```
+
+Open `frontend/coverage/index.html` for the HTML report. The terminal summary lists line coverage for `src/`.
+
+**What the numbers mean (typical local run):**
+
+- **Backend (~73% lines):** Most of the Python pipeline and API is covered. What is not covered is mostly the **CLI menus** (`src/menu/`, `src/main.py`), a few **very large analysis files**, and small helpers. That is expected: those paths are hit when you run the app in the terminal, not always in `pytest`.
+- **Frontend (~37% statements):** **Insights** (skills, heatmaps, projects tabs) has solid tests. **Upload / setup / API client** code scores lower because those flows need a real backend or a browser; we rely on **manual testing** and the **CLI + `test-data/`** runs for full end-to-end checks instead of trying to fake everything in Vitest.
 
 ## Test Data
 

@@ -20,6 +20,10 @@ Our team contract outlining roles, responsibilities, communication expectations,
 
 [Testing Guide](/docs/testing.md)
 
+## Known Bugs
+
+[Known Bugs](/docs/known_bugs.md)
+
 ## Work Breakdown Structure
 
 Work breakdown structure is tracked in [this google sheets](https://docs.google.com/spreadsheets/d/1yeHoVlBvooq_YpePy--oXryqxtmau8V4wUhEGfgpzfs/edit?usp=sharing). The table below reflects progress through Milestone 2.
