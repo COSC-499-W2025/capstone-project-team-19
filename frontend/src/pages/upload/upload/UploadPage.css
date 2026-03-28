@@ -94,29 +94,6 @@
   gap: 12px;
 }
 
-.uploadStageActionRowLeft {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.uploadStageExitBtn {
-  height: 36px;
-  min-width: 96px;
-  border: 1px solid #c63f3f;
-  border-radius: 8px;
-  background: #fff6f6;
-  color: #a31616;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.uploadStageExitBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .uploadStagePrimaryBtn {
   height: 36px;
   min-width: 168px;
