@@ -5,8 +5,10 @@ import {
   removeProjectFromResume,
   downloadResumeDocx,
   downloadResumePdf,
+  getResumeSkills,
   type ResumeDetail as ResumeDetailType,
   type ResumeProject,
+  type SkillWithStatus,
 } from "../../api/outputs";
 import { MinimalConfirmDialog } from "../shared";
 import ExportDropdown from "./ExportDropdown";
@@ -77,6 +79,12 @@ export default function ResumeDetail({
   const [removingProject, setRemovingProject] = useState(false);
   const [showAddProject, setShowAddProject] = useState(false);
 
+  // Skill preferences
+  const [skillsOpen, setSkillsOpen] = useState(false);
+  const [availableSkills, setAvailableSkills] = useState<SkillWithStatus[]>([]);
+  const [pendingSkills, setPendingSkills] = useState<Map<string, boolean>>(new Map());
+  const [savingSkills, setSavingSkills] = useState(false);
+
   function loadResume() {
     setLoading(true);
     setErr(null);
@@ -105,8 +113,64 @@ export default function ResumeDetail({
       setProjectEdits(null);
       setEditingName(false);
       setNameVal(resume?.name ?? "");
+      setSkillsOpen(false);
+      setPendingSkills(new Map());
     }
     setEditing(!editing);
+  }
+
+  /* ── Skill preferences ── */
+  function openSkillEditor() {
+    getResumeSkills(resumeId)
+      .then((r) => {
+        const skills = r.data?.skills ?? [];
+        setAvailableSkills(skills);
+        setPendingSkills(new Map(skills.map((s) => [s.skill_name, s.is_highlighted])));
+        setSkillsOpen(true);
+      })
+      .catch((e) => setErr(e.message));
+  }
+
+  function toggleSkill(skillName: string) {
+    setPendingSkills((prev) => {
+      const next = new Map(prev);
+      next.set(skillName, !next.get(skillName));
+      return next;
+    });
+  }
+
+  async function handleSaveSkills() {
+    setSavingSkills(true);
+    setErr(null);
+    try {
+      const preferences = availableSkills.map((s) => ({
+        skill_name: s.skill_name,
+        is_highlighted: pendingSkills.get(s.skill_name) ?? s.is_highlighted,
+      }));
+      const updated = await editResume(resumeId, { skill_preferences: preferences });
+      setResume(updated.data);
+      setSkillsOpen(false);
+      setSuccessMsg("Skill preferences saved");
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setSavingSkills(false);
+    }
+  }
+
+  async function handleResetSkills() {
+    setSavingSkills(true);
+    setErr(null);
+    try {
+      const updated = await editResume(resumeId, { skill_preferences_reset: true });
+      setResume(updated.data);
+      setSkillsOpen(false);
+      setSuccessMsg("Skill preferences reset to defaults");
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setSavingSkills(false);
+    }
   }
 
   /* ── Export ── */
@@ -390,12 +454,33 @@ export default function ResumeDetail({
       <Card className="mb-6 rounded-2xl border-slate-200/80 bg-white shadow-sm">
         <CardHeader>
           <CardTitle className="text-base text-slate-900">Skills</CardTitle>
+          {editing && !skillsOpen && (
+            <CardAction>
+              <Button variant="ghost" size="sm" onClick={openSkillEditor} className="text-xs">
+                <Pencil className="size-3.5 mr-1" />
+                Manage
+              </Button>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent className="space-y-2">
-          <SkillRow label="Languages" items={agg.languages} />
-          <SkillRow label="Frameworks" items={agg.frameworks} />
-          <SkillRow label="Technical" items={agg.technical_skills} />
-          <SkillRow label="Writing" items={agg.writing_skills} />
+          {skillsOpen ? (
+            <SkillPreferencesPanel
+              skills={availableSkills}
+              pending={pendingSkills}
+              onToggle={toggleSkill}
+              onSave={handleSaveSkills}
+              onReset={handleResetSkills}
+              onCancel={() => setSkillsOpen(false)}
+              saving={savingSkills}
+            />
+          ) : (
+            <>
+              <SkillRow label="Languages" items={agg.languages} />
+              <SkillRow label="Technical" items={agg.technical_skills} />
+              <SkillRow label="Writing" items={agg.writing_skills} />
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -650,6 +735,80 @@ function ProjectReadView({ project: p }: { project: ResumeProject }) {
     </div>
   );
 }
+
+/** Inline skill preference toggle panel */
+function SkillPreferencesPanel({
+  skills,
+  pending,
+  onToggle,
+  onSave,
+  onReset,
+  onCancel,
+  saving,
+}: {
+  skills: SkillWithStatus[];
+  pending: Map<string, boolean>;
+  onToggle: (skillName: string) => void;
+  onSave: () => void;
+  onReset: () => void;
+  onCancel: () => void;
+  saving: boolean;
+}) {
+  if (skills.length === 0) {
+    return (
+      <p className="text-sm text-slate-500">No skills found for this resume.</p>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-slate-500">
+        Toggle which skills appear on this resume.
+      </p>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+        {skills.map((s) => {
+          const checked = pending.get(s.skill_name) ?? s.is_highlighted;
+          return (
+            <label
+              key={s.skill_name}
+              className="flex items-center gap-2 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggle(s.skill_name)}
+                disabled={saving}
+                className="h-4 w-4 rounded border-slate-300 accent-slate-800"
+              />
+              <span className={`text-sm ${checked ? "text-slate-800" : "text-slate-400 line-through"}`}>
+                {s.display_name}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+      <Separator />
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button onClick={onSave} disabled={saving} size="sm" className="gap-1.5">
+          <Check className="size-3.5" />
+          {saving ? "Saving..." : "Save"}
+        </Button>
+        <Button variant="ghost" onClick={onCancel} disabled={saving} size="sm">
+          Cancel
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onReset}
+          disabled={saving}
+          className="ml-auto text-xs text-slate-500"
+        >
+          Reset to defaults
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 
 /** Edit form for a single project */
 function ProjectEditForm({
