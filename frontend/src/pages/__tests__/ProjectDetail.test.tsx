@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import ProjectDetailPage from "../ProjectDetail";
 
 const mockNavigate = vi.fn();
@@ -98,11 +98,11 @@ function setupDefaultMocks() {
 }
 
 function renderPage() {
-  return render(
-    <MemoryRouter>
-      <ProjectDetailPage />
-    </MemoryRouter>
+  const router = createMemoryRouter(
+    [{ path: "/projects/:id", element: <ProjectDetailPage /> }],
+    { initialEntries: ["/projects/42"] }
   );
+  return render(<RouterProvider router={router} />);
 }
 
 describe("ProjectDetailPage", () => {
