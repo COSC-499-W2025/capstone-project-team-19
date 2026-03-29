@@ -387,8 +387,13 @@ def analyze_collaborative_text_project(
     contribution_desc = summary_obj.contributions.get("manual_contribution_summary", "")
     if isinstance(key_role_override, str) and key_role_override.strip():
         key_role = key_role_override.strip()
-    elif external_consent == "accepted" and contribution_desc and contribution_desc != "[No manual contribution summary provided]":
-        key_role = extract_key_role_llm(contribution_desc)
+    elif external_consent == "accepted":
+        text_for_key_role = (
+            (contribution_desc if contribution_desc and contribution_desc != "[No manual contribution summary provided]" else "")
+            or contribution_summary
+            or ""
+        )
+        key_role = extract_key_role_llm(text_for_key_role) if text_for_key_role.strip() else None
     elif allow_prompts:
         key_role = prompt_key_role(project_name)
     else:
