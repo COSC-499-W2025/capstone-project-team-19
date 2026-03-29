@@ -1,21 +1,70 @@
-import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { deleteUpload, getUploads, type UploadListItem, type UploadStatus } from "../../../api/uploads";
 import { getUsername } from "../../../auth/user";
 import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
 import "./UploadPage.css";
+import UploadConfirmDialog from "./components/UploadConfirmDialog";
 import UploadStage from "./stages/UploadStage";
 import ProjectsStage from "./stages/ProjectsStage";
 import DedupStage from "./stages/DedupStage";
 import ClassificationStage from "./stages/ClassificationStage";
+import {
+  clearUploadRecoveryStage,
+  readUploadRecoveryStage,
+  recoveryRouteForUpload,
+  saveUploadRecoveryStage,
+} from "./recoveryStage";
 import { STAGES } from "./uploadTypes";
 import { useUploadFlow } from "./useUploadFlow";
+import { useUnfinishedUploadExitGuard } from "../hooks/useUnfinishedUploadExitGuard";
+
+const RECOVERABLE_UPLOAD_STATUSES = new Set<UploadStatus>([
+  "started",
+  "parsed",
+  "needs_dedup",
+  "needs_classification",
+  "needs_project_types",
+  "needs_file_roles",
+  "needs_summaries",
+  "failed",
+]);
 
 export default function UploadPage() {
   const username = getUsername();
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
-  const flow = useUploadFlow();
+  const uploadIdParam = searchParams.get("uploadId");
+  const stageParam = searchParams.get("stage");
+  const flow = useUploadFlow(uploadIdParam, stageParam);
+  const pendingLeaveNavigationRef = useRef<(() => Promise<void>) | null>(null);
+  const [checkedRecovery, setCheckedRecovery] = useState(false);
+  const [recoveryCandidate, setRecoveryCandidate] = useState<UploadListItem | null>(null);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [isResolvingRecovery, setIsResolvingRecovery] = useState(false);
+  const [continueAfterStartFresh, setContinueAfterStartFresh] = useState(false);
+  const [replaceUnfinishedDialogOpen, setReplaceUnfinishedDialogOpen] = useState(false);
+  const [leaveUploadDialogOpen, setLeaveUploadDialogOpen] = useState(false);
+  const [isLeavingUploadFlow, setIsLeavingUploadFlow] = useState(false);
+
+  useUnfinishedUploadExitGuard({
+    enabled: Boolean(flow.uploadId),
+    uploadId: flow.uploadId,
+    onRequestConfirmLeave: (confirmNavigation) => {
+      pendingLeaveNavigationRef.current = confirmNavigation;
+      setLeaveUploadDialogOpen(true);
+    },
+    onCleanupError: (message) => {
+      setRecoveryError(message);
+    },
+  });
+
+  useEffect(() => {
+    if (!flow.uploadId) return;
+    saveUploadRecoveryStage(flow.uploadId, flow.currentStage.key);
+  }, [flow.currentStage.key, flow.uploadId]);
 
   const steps = [
     { label: "1. Consent", status: "inactive" as const, to: "/upload/consent" },
@@ -23,12 +72,6 @@ export default function UploadPage() {
     { label: "3. Setup", status: "disabled" as const, disabled: true },
     { label: "4. Analyze", status: "disabled" as const, disabled: true },
   ];
-
-  function onSidebarNext() {
-    if (flow.sidebarNextDisabled) return;
-    if (!flow.uploadId) return;
-    nav(`/upload/setup?uploadId=${flow.uploadId}`);
-  }
 
   function renderStageBody() {
     if (flow.currentStage.key === "upload") {
@@ -53,6 +96,7 @@ export default function UploadPage() {
           discoveredProjects={flow.discoveredProjects}
           projectNotes={flow.projectNotes}
           allProjectsPreviouslySkipped={flow.allProjectsPreviouslySkipped}
+          onOpenProjectDetailsInNewTab={flow.onOpenProjectDetailsInNewTab}
         />
       );
     }
@@ -90,14 +134,134 @@ export default function UploadPage() {
     );
   }
 
+  async function runPrimaryAction() {
+    const succeeded = await flow.onPrimaryAction();
+    if (!succeeded) return;
+
+    if (flow.currentStage.key === "classification" && flow.uploadId) {
+      nav(`/upload/setup?uploadId=${flow.uploadId}`);
+    }
+  }
+
+  async function onPrimaryClick() {
+    const requiresReplaceConfirmation =
+      flow.currentStage.key === "upload" &&
+      !flow.uploadId &&
+      Boolean(recoveryCandidate);
+    if (requiresReplaceConfirmation) {
+      setContinueAfterStartFresh(true);
+      setReplaceUnfinishedDialogOpen(true);
+      return;
+    }
+    await runPrimaryAction();
+  }
+
+  useEffect(() => {
+    if (checkedRecovery) return;
+    if (uploadIdParam) {
+      setCheckedRecovery(true);
+      return;
+    }
+
+    let active = true;
+    async function loadRecoveryCandidate() {
+      try {
+        const res = await getUploads(10, 0);
+        const uploads = res.data?.uploads ?? [];
+        if (!active) return;
+        const latestUnfinished = uploads.find((item) => RECOVERABLE_UPLOAD_STATUSES.has(item.status)) ?? null;
+        setRecoveryCandidate(latestUnfinished);
+      } catch (error: unknown) {
+        if (!active) return;
+        setRecoveryError(error instanceof Error ? error.message : "Failed to check unfinished uploads.");
+      } finally {
+        if (active) setCheckedRecovery(true);
+      }
+    }
+
+    void loadRecoveryCandidate();
+    return () => {
+      active = false;
+    };
+  }, [checkedRecovery, uploadIdParam]);
+
+  useEffect(() => {
+    if (!checkedRecovery) return;
+    if (uploadIdParam) return;
+    if (flow.currentStage.key !== "upload") return;
+    if (flow.selectedFile) return;
+    if (!recoveryCandidate) return;
+    setReplaceUnfinishedDialogOpen(true);
+  }, [checkedRecovery, flow.currentStage.key, flow.selectedFile, recoveryCandidate, uploadIdParam]);
+
+  async function onStartFreshFromRecoveryDialog() {
+    if (!recoveryCandidate) return;
+    setRecoveryError(null);
+    setIsResolvingRecovery(true);
+    try {
+      const res = await deleteUpload(recoveryCandidate.upload_id);
+      if (!res.success) {
+        throw new Error(res.error?.message ?? "Failed to remove previous unfinished upload.");
+      }
+      clearUploadRecoveryStage(recoveryCandidate.upload_id);
+      setRecoveryCandidate(null);
+      setReplaceUnfinishedDialogOpen(false);
+      if (continueAfterStartFresh) {
+        await runPrimaryAction();
+      }
+    } catch (error: unknown) {
+      setRecoveryError(error instanceof Error ? error.message : "Failed to remove previous unfinished upload.");
+    } finally {
+      setContinueAfterStartFresh(false);
+      setIsResolvingRecovery(false);
+    }
+  }
+
+  function onResumeRecoveryUpload() {
+    if (!recoveryCandidate) return;
+    setReplaceUnfinishedDialogOpen(false);
+    setContinueAfterStartFresh(false);
+    const rememberedStage = readUploadRecoveryStage(recoveryCandidate.upload_id);
+    nav(recoveryRouteForUpload(recoveryCandidate, rememberedStage));
+  }
+
+  function onCancelLeaveUploadFlow() {
+    if (isLeavingUploadFlow) return;
+    pendingLeaveNavigationRef.current = null;
+    setLeaveUploadDialogOpen(false);
+  }
+
+  async function onConfirmLeaveUploadFlow() {
+    if (isLeavingUploadFlow) return;
+    const confirmNavigation = pendingLeaveNavigationRef.current;
+    if (!confirmNavigation) {
+      setLeaveUploadDialogOpen(false);
+      return;
+    }
+
+    setRecoveryError(null);
+    setIsLeavingUploadFlow(true);
+    try {
+      await confirmNavigation();
+    } finally {
+      setIsLeavingUploadFlow(false);
+    }
+  }
+
+  function onBackClick() {
+    if (flow.canGoBack) {
+      flow.onBack();
+      return;
+    }
+    nav("/upload/consent");
+  }
+
   return (
     <UploadWizardShell
       username={username}
       steps={steps}
       actionLabel="Next"
-      onAction={onSidebarNext}
-      actionDisabled={flow.sidebarNextDisabled}
-      showAction
+      showAction={false}
       breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Upload", href: "/upload" },
@@ -134,14 +298,15 @@ export default function UploadPage() {
         </div>
 
         {flow.submitError && <p className="error uploadStatusLine">{flow.submitError}</p>}
+        {recoveryError && <p className="error uploadStatusLine">{recoveryError}</p>}
         {renderStageBody()}
 
         <div className="uploadStageActionRow">
           <button
             type="button"
             className="uploadStageBackBtn"
-            onClick={flow.onBack}
-            disabled={!flow.canGoBack || flow.isSubmitting}
+            onClick={onBackClick}
+            disabled={flow.isSubmitting || isResolvingRecovery}
           >
             Back
           </button>
@@ -149,13 +314,48 @@ export default function UploadPage() {
           <button
             type="button"
             className={`uploadStagePrimaryBtn${flow.classificationStageCompleted ? " uploadStagePrimaryBtn--completed" : ""}`}
-            onClick={flow.onPrimaryAction}
-            disabled={flow.primaryDisabled}
+            onClick={onPrimaryClick}
+            disabled={flow.primaryDisabled || isResolvingRecovery}
           >
             {flow.primaryLabel}
           </button>
         </div>
       </div>
+      <UploadConfirmDialog
+        open={leaveUploadDialogOpen}
+        title="Leave Upload Flow?"
+        description="Your unfinished upload will be deleted if you leave now."
+        confirmLabel="Leave"
+        confirmDisabled={isLeavingUploadFlow}
+        busy={isLeavingUploadFlow}
+        busyMessage="Deleting unfinished upload..."
+        onCancel={onCancelLeaveUploadFlow}
+        onConfirm={() => {
+          void onConfirmLeaveUploadFlow();
+        }}
+      />
+      <UploadConfirmDialog
+        open={replaceUnfinishedDialogOpen}
+        title="Unfinished Upload Found"
+        description={
+          recoveryCandidate?.zip_name
+            ? `You still have an unfinished upload (${recoveryCandidate.zip_name}). Resume where you left off, or start a new upload.`
+            : "You still have an unfinished upload. Resume where you left off, or start a new upload."
+        }
+        cancelLabel="Start New"
+        confirmLabel="Resume"
+        confirmDisabled={isResolvingRecovery}
+        busy={isResolvingRecovery}
+        busyMessage="Deleting unfinished upload..."
+        onCancel={() => {
+          if (isResolvingRecovery) return;
+          void onStartFreshFromRecoveryDialog();
+        }}
+        onConfirm={() => {
+          if (isResolvingRecovery) return;
+          onResumeRecoveryUpload();
+        }}
+      />
     </UploadWizardShell>
   );
 }

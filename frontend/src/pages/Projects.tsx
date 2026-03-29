@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import "./Projects.css";
 import TopBar from "../components/TopBar";
 import { fetchThumbnailUrl, listProjects, type Project } from "../api/projects";
 import { getUsername } from "../auth/user";
@@ -14,10 +15,17 @@ import {
 export default function ProjectsPage() {
   const username = getUsername();
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [thumbnails, setThumbnails] = useState<Record<number, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toggling, setToggling] = useState<number | null>(null);
+  const [autoOpenAttempted, setAutoOpenAttempted] = useState(false);
+
+  const requestedProjectName = (searchParams.get("openProject") ?? "").trim();
+  const openedFromUpload = searchParams.get("openedFromUpload") === "1";
+  const returnTo = (searchParams.get("returnTo") ?? "").trim();
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +62,53 @@ export default function ProjectsPage() {
       for (const url of objectUrls) URL.revokeObjectURL(url);
     };
   }, []);
+
+  useEffect(() => {
+    if (autoOpenAttempted) return;
+    if (!requestedProjectName) {
+      setAutoOpenAttempted(true);
+      return;
+    }
+    if (loading) return;
+
+    setAutoOpenAttempted(true);
+    const target = projects.find(
+      (project) => project.project_name.trim().toLowerCase() === requestedProjectName.toLowerCase(),
+    );
+    if (!target) return;
+
+    const detailQuery = new URLSearchParams();
+    if (openedFromUpload) detailQuery.set("openedFromUpload", "1");
+    if (returnTo) detailQuery.set("returnTo", returnTo);
+
+    const suffix = detailQuery.toString();
+    nav(`/projects/${target.project_summary_id}${suffix ? `?${suffix}` : ""}`, { replace: true });
+  }, [autoOpenAttempted, loading, nav, openedFromUpload, projects, requestedProjectName, returnTo]);
+
+  const handleToggleVisibility = useCallback(
+    async (e: React.MouseEvent, project: Project) => {
+      e.stopPropagation();
+      if (toggling === project.project_summary_id) return;
+      setToggling(project.project_summary_id);
+      const newValue = !project.is_public;
+
+      try {
+        await updateProjectVisibility(project.project_summary_id, newValue);
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.project_summary_id === project.project_summary_id
+              ? { ...p, is_public: newValue }
+              : p
+          )
+        );
+      } catch {
+        // state stays unchanged on error
+      } finally {
+        setToggling(null);
+      }
+    },
+    [toggling]
+  );
 
   return (
     <>

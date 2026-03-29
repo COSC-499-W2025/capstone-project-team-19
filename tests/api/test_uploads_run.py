@@ -483,6 +483,42 @@ def test_run_preflight_returns_missing_drive_links_warning_for_collab_text(clien
     assert {"code": "missing_drive_links", "project": "paper"} in warnings
 
 
+def test_run_preflight_does_not_require_contributed_sections_for_individual_text(client, auth_headers, seed_conn):
+    upload_id = _create_upload(
+        seed_conn,
+        user_id=1,
+        status="needs_file_roles",
+        state={
+            "dedup_project_keys": {"journal": 1},
+            "dedup_version_keys": {"journal": 11},
+            "classifications": {"journal": "individual"},
+            "project_types_auto": {"journal": "text"},
+            "project_types_mixed": [],
+            "project_types_unknown": [],
+            "file_roles": {"journal": {"main_file": "real_test/journal/main.txt"}},
+            "run_inputs": {
+                "projects": {
+                    "journal": {
+                        "manual_inputs": {
+                            "manual_project_summary_set": True,
+                            "key_role_set": True,
+                        },
+                    }
+                }
+            },
+        },
+    )
+
+    res = client.post(
+        f"/projects/upload/{upload_id}/run",
+        headers=auth_headers,
+        json={"scope": "individual", "force_rerun": False},
+    )
+    assert res.status_code == 200
+    warnings = res.json()["data"]["warnings"]
+    assert {"code": "missing_contribution_sections", "project": "journal"} not in warnings
+
+
 def test_run_tracks_completion_by_scope_and_sets_done_only_after_all_scopes(client, auth_headers, seed_conn, monkeypatch, tmp_path):
     zip_path = tmp_path / "ready.zip"
     zip_path.write_bytes(b"placeholder")

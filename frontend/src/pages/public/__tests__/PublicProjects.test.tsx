@@ -5,9 +5,11 @@ import PublicProjectsPage from '../PublicProjects'
 vi.mock('react-router-dom', () => ({
   useParams: vi.fn(() => ({ username: 'johndoe' })),
   useNavigate: vi.fn(() => vi.fn()),
-  NavLink: ({ to, children }: { to: string; children: React.ReactNode }) => (
-    <a href={to}>{children}</a>
-  ),
+  useLocation: vi.fn(() => ({ pathname: '/public/johndoe/projects' })),
+  NavLink: ({ to, children }: { to: string; children: React.ReactNode | ((props: { isActive: boolean }) => React.ReactNode) }) => {
+    const content = typeof children === 'function' ? children({ isActive: false }) : children
+    return <a href={to}>{content}</a>
+  },
   Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
     <a href={to}>{children}</a>
   ),
@@ -16,6 +18,7 @@ vi.mock('react-router-dom', () => ({
 vi.mock('../../../api/public', () => ({
   publicListProjects: vi.fn(),
   publicFetchThumbnailUrl: vi.fn(),
+  publicGetPortfolioStatus: vi.fn(),
 }))
 
 vi.mock('../../../auth/token', () => ({
@@ -26,21 +29,24 @@ vi.mock('../../../auth/user', () => ({
   getUsername: vi.fn(() => null),
 }))
 
-import { publicListProjects, publicFetchThumbnailUrl } from '../../../api/public'
+import { publicListProjects, publicFetchThumbnailUrl, publicGetPortfolioStatus } from '../../../api/public'
 
 describe('PublicProjectsPage', () => {
   beforeEach(() => {
     vi.mocked(publicFetchThumbnailUrl).mockResolvedValue(null)
+    vi.mocked(publicGetPortfolioStatus).mockResolvedValue({ exists: true, is_public: true })
   })
 
   afterEach(() => {
     vi.clearAllMocks()
   })
 
-  it('shows loading state initially', () => {
+  it('shows loading state initially', async () => {
     vi.mocked(publicListProjects).mockReturnValue(new Promise(() => {}))
     render(<PublicProjectsPage />)
-    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Loading…')).toBeInTheDocument()
+    })
   })
 
   it('renders project cards after successful load', async () => {
@@ -77,10 +83,12 @@ describe('PublicProjectsPage', () => {
     expect(screen.queryByText(/No projects yet/)).not.toBeInTheDocument()
   })
 
-  it('renders the page heading', () => {
+  it('renders the page heading', async () => {
     vi.mocked(publicListProjects).mockReturnValue(new Promise(() => {}))
     render(<PublicProjectsPage />)
-    expect(screen.getByRole('heading', { name: 'Projects' })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Projects' })).toBeInTheDocument()
+    })
   })
 
   it('calls publicListProjects with the username from params', async () => {

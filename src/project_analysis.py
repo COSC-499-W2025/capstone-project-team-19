@@ -614,6 +614,7 @@ def analyze_text_contributions(
             manual_summary_fallback="[No manual contribution summary provided]"
             if not manual_inputs.get("manual_contribution_summary_set")
             else None,
+            cached_sections=(api_inputs or {}).get("cached_sections") or [],
         )
         return
 

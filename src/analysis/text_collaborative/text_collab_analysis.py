@@ -33,6 +33,7 @@ def analyze_collaborative_text_project(
     main_file_relpath: str | None = None,
     manual_project_summary: str | None = None,
     manual_summary_fallback: str | None = None,
+    cached_sections: list[dict] | None = None,
 ):
     """
     Collaborative TEXT project analysis flow.
@@ -116,7 +117,10 @@ def analyze_collaborative_text_project(
     # ---------------------------------------------------------
     # STEP 2 — Extract sections or paragraphs for user selection
     # ---------------------------------------------------------
-    sections = extract_document_sections(full_main_text)
+    if cached_sections:
+        sections = cached_sections
+    else:
+        sections = extract_document_sections(full_main_text)
 
     indices: list[int] = []
     if selected_section_ids is not None:
@@ -234,9 +238,8 @@ def analyze_collaborative_text_project(
             supporting_text_files[i - 1] for i in text_support_indices
         ]
     else:
-        if supporting_text_files:
-            selected_text_support_files = []
-        else:
+        selected_text_support_files = []
+        if not supporting_text_files:
             print("\n(No supporting text files detected.)")
 
 

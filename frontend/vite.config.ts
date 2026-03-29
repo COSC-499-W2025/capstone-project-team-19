@@ -17,5 +17,16 @@ export default defineConfig({
         environment: 'jsdom',
         setupFiles: ['./src/setupTests.ts'],
         env: { VITE_API_BASE_URL: 'https://api.test' },
+        coverage: {
+            provider: 'v8',
+            reporter: ['text', 'html'],
+            reportsDirectory: './coverage',
+            include: ['src/**/*.{ts,tsx}'],
+            exclude: [
+                'src/**/*.test.{ts,tsx}',
+                'src/**/__tests__/**',
+                'src/setupTests.ts',
+            ],
+        },
     },
 })

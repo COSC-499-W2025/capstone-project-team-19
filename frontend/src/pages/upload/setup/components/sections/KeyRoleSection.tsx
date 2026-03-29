@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { SetupFlowResult, SetupProjectCard } from "../../types";
+import { setupPrimaryActionButtonClass } from "./buttonStyles";
 
 const CODE_ROLES = [
   "Backend Developer",
@@ -88,7 +89,7 @@ export default function KeyRoleSection({
           type="button"
           onClick={onSave}
           disabled={isMutating || project.projectKey === null || !selectedRole}
-          className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+          className={setupPrimaryActionButtonClass}
         >
           Save key role
         </button>

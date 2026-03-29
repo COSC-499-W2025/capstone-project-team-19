@@ -61,4 +61,10 @@ cd frontend
 npm run test
 ```
 
+**Coverage report** (HTML under `frontend/coverage/`):
+
+```bash
+npm run test:coverage
+```
+
 Tests are co-located with the code they test (e.g. `src/api/__tests__/client.test.ts` next to `client.ts`). Vitest discovers all `*.test.ts` and `*.test.tsx` files automatically. The test environment uses jsdom to simulate a browser for component tests.

@@ -54,6 +54,16 @@ def _resolve_user(conn: Connection, username: str) -> int:
     return user_id
 
 
+@router.get("/{username}/status")
+def public_portfolio_status(username: str, conn: Connection = Depends(get_db)):
+    """Returns whether a user exists and whether their portfolio is public."""
+    row = get_user_by_username(conn, username)
+    if not row:
+        return {"exists": False, "is_public": False}
+    user_id = row[0]
+    return {"exists": True, "is_public": bool(is_portfolio_public(conn, user_id))}
+
+
 @router.get("/{username}/projects", response_model=ApiResponse[PublicProjectListDTO])
 def public_list_projects(username: str, conn: Connection = Depends(get_db)):
     user_id = _resolve_user(conn, username)
