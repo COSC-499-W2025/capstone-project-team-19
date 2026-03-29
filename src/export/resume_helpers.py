@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from docx import Document
+from docx.shared import Inches, Pt
 
 from .shared_helpers import (
     parse_date,
@@ -94,6 +95,11 @@ def add_role_date_line(doc: Document, role: str, date_line: str) -> None:
         p = doc.add_paragraph(line)
         if p.runs:
             p.runs[0].italic = True
+            p.runs[0].font.name = "Arial"
+            p.runs[0].font.size = Pt(10.5)
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(6)
+        p.paragraph_format.line_spacing = Pt(13)
 
 
 def _project_sort_key(p: dict) -> datetime:
@@ -116,7 +122,14 @@ def _project_sort_key(p: dict) -> datetime:
 
 
 def add_section_heading(doc: Document, title: str) -> None:
-    doc.add_heading((title or "").upper(), level=1)
+    p = doc.add_paragraph(style="Heading 1")
+    run = p.add_run((title or "").upper())
+    run.font.name = "Arial"
+    run.font.size = Pt(14)
+    run.bold = True
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(6)
+    p.paragraph_format.line_spacing = Pt(18)
 
 
 def add_placeholder(doc: Document, text: str) -> None:
@@ -127,7 +140,10 @@ def add_placeholder(doc: Document, text: str) -> None:
 
 def add_bullet(doc: Document, text: str) -> None:
     p = doc.add_paragraph(text, style="List Bullet")
+    p.paragraph_format.left_indent = Inches(0.25)
     p.paragraph_format.space_after = 0
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.line_spacing = Pt(14)
 
 
 __all__ = [
