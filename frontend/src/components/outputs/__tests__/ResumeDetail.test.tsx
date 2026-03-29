@@ -10,10 +10,13 @@ vi.mock("../../../api/outputs", () => ({
   addProjectToResume: vi.fn(),
   downloadResumeDocx: vi.fn(),
   downloadResumePdf: vi.fn(),
+  getResumePdfPreviewBlob: vi.fn(),
 }));
 
 vi.mock("../ExportDropdown", () => ({
-  default: () => <button>Export</button>,
+  default: (props: { disabled?: boolean }) => (
+    <button disabled={props.disabled}>Export</button>
+  ),
 }));
 vi.mock("../AddProjectModal", () => ({
   default: (props: { onClose: () => void; onAdded: () => void }) => (
@@ -35,6 +38,7 @@ import {
   getResume,
   editResume,
   removeProjectFromResume,
+  getResumePdfPreviewBlob,
 } from "../../../api/outputs";
 
 const baseResume = {
@@ -67,6 +71,28 @@ const baseResume = {
     writing_skills: [],
   },
   rendered_text: null,
+  one_page_status: {
+    fits_one_page: true,
+    page_count: 1,
+    overflow_detected: false,
+    overflow_mode: "none" as const,
+    overflow_reason: null,
+    has_manual_project_edits: false,
+  },
+  preview: {
+    display_name: "Jane Doe",
+    contact: {
+      phone: "1234567890",
+      email: "jane@example.com",
+      linkedin: null,
+      github: null,
+      location: "Kelowna, BC",
+    },
+    profile_text: "A focused software student.",
+    education_entries: [],
+    experience_entries: [],
+    certificate_entries: [],
+  },
 };
 
 function setupMocks(overrides: Partial<typeof baseResume> = {}) {
@@ -76,12 +102,22 @@ function setupMocks(overrides: Partial<typeof baseResume> = {}) {
     data: resume,
     error: null,
   } as any);
+  vi.mocked(getResumePdfPreviewBlob).mockResolvedValue(
+    new Blob(["pdf"], { type: "application/pdf" })
+  );
   return resume;
 }
 
 afterEach(() => {
   vi.clearAllMocks();
 });
+
+if (!URL.createObjectURL) {
+  URL.createObjectURL = vi.fn(() => "blob:preview");
+}
+if (!URL.revokeObjectURL) {
+  URL.revokeObjectURL = vi.fn();
+}
 
 describe("ResumeDetail", () => {
   describe("view mode (default)", () => {
@@ -92,9 +128,9 @@ describe("ResumeDetail", () => {
       await waitFor(() => {
         expect(screen.getByText("My Resume")).toBeInTheDocument();
       });
-      expect(screen.getByText("Project Alpha")).toBeInTheDocument();
-      expect(screen.getByText(/Backend Developer/)).toBeInTheDocument();
-      expect(screen.getByText(/Built REST API/)).toBeInTheDocument();
+      expect(
+        screen.getByTitle("Resume PDF preview")
+      ).toBeInTheDocument();
     });
 
     it("shows Edit button in header", async () => {
@@ -152,6 +188,63 @@ describe("ResumeDetail", () => {
       });
       // Python appears in both project and skills summary
       expect(screen.getAllByText(/Python/).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("shows the one-page success banner when resume fits", async () => {
+      setupMocks();
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("This resume fits on 1 page.")).toBeInTheDocument();
+      });
+    });
+
+    it("blocks export when backend says the resume exceeds one page", async () => {
+      setupMocks({
+        one_page_status: {
+          fits_one_page: false,
+          page_count: 2,
+          overflow_detected: true,
+          overflow_mode: "block",
+          overflow_reason:
+            "This resume exceeds one page and must be shortened before export.",
+          has_manual_project_edits: false,
+        },
+      });
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            "This resume exceeds one page and must be shortened before export."
+          )
+        ).toBeInTheDocument();
+      });
+      expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
+    });
+
+    it("shows a warning and keeps export enabled after manual project edits", async () => {
+      setupMocks({
+        one_page_status: {
+          fits_one_page: false,
+          page_count: 2,
+          overflow_detected: true,
+          overflow_mode: "warn",
+          overflow_reason:
+            "This resume exceeds one page because of manual project edits. Export is still allowed.",
+          has_manual_project_edits: true,
+        },
+      });
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            "This resume exceeds one page because of manual project edits. Export is still allowed."
+          )
+        ).toBeInTheDocument();
+      });
+      expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
     });
   });
 

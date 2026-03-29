@@ -5,6 +5,7 @@ import {
   removeProjectFromResume,
   downloadResumeDocx,
   downloadResumePdf,
+  getResumePdfPreviewBlob,
   type ResumeDetail as ResumeDetailType,
   type ResumeProject,
 } from "../../api/outputs";
@@ -75,6 +76,8 @@ export default function ResumeDetail({
   );
   const [removingProject, setRemovingProject] = useState(false);
   const [showAddProject, setShowAddProject] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   function loadResume() {
     setLoading(true);
@@ -89,6 +92,36 @@ export default function ResumeDetail({
   }
 
   useEffect(loadResume, [resumeId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+
+    if (editing) {
+      setPdfPreviewUrl(null);
+      setPreviewLoading(false);
+      return;
+    }
+
+    setPreviewLoading(true);
+    getResumePdfPreviewBlob(resumeId)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPdfPreviewUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setPdfPreviewUrl(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [resumeId, editing, successMsg]);
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -287,6 +320,8 @@ export default function ResumeDetail({
 
   const sortedProjects = sortProjectsByDate(resume.projects);
   const agg = resume.aggregated_skills;
+  const onePageStatus = resume.one_page_status;
+  const exportBlocked = onePageStatus.overflow_mode === "block";
 
   return (
     <div className="content">
@@ -363,11 +398,17 @@ export default function ResumeDetail({
           {editing ? "Done Editing" : "Edit"}
         </button>
         {!editing && (
-          <ExportDropdown onDocx={handleExportDocx} onPdf={handleExportPdf} />
+          <ExportDropdown
+            onDocx={handleExportDocx}
+            onPdf={handleExportPdf}
+            disabled={exportBlocked}
+          />
         )}
       </div>
 
       <hr className="divider" />
+
+      {!editing && <OnePageStatusBanner status={onePageStatus} />}
 
       {/* Success / Error banners */}
       {successMsg && (
@@ -505,15 +546,11 @@ export default function ResumeDetail({
           })}
         </div>
       ) : (
-        /* ── View mode: flat list matching export structure ── */
-        <div className="resumeProjectsList">
-          <h3 className="groupHeader">Projects</h3>
-          {sortedProjects.map((p, i) => (
-            <div key={i} className="resumeProjectBlock">
-              <ProjectBlockView project={p} />
-            </div>
-          ))}
-        </div>
+        <ResumePreview
+          resume={resume}
+          pdfPreviewUrl={pdfPreviewUrl}
+          previewLoading={previewLoading}
+        />
       )}
 
       {showAddProject && resume && (
@@ -588,30 +625,72 @@ function SkillRow({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-/** View-mode project block matching export structure: name, role | dates, bullets */
-function ProjectBlockView({ project: p }: { project: ResumeProject }) {
-  const dateLine = formatDateRange(p.start_date, p.end_date);
-  const role = p.key_role || "";
-  const subtitle = role && dateLine
-    ? `${role} | ${dateLine}`
-    : role || dateLine;
+function OnePageStatusBanner({
+  status,
+}: {
+  status: ResumeDetailType["one_page_status"];
+}) {
+  if (status.fits_one_page) {
+    return (
+      <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+        This resume fits on 1 page.
+      </div>
+    );
+  }
+
+  if (status.overflow_mode === "warn") {
+    return (
+      <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+        {status.overflow_reason ?? "This resume exceeds 1 page, but export is still allowed."}
+      </div>
+    );
+  }
 
   return (
-    <div className="projectBlockContent">
-      <h4 className="projectBlockName">{p.project_name}</h4>
+    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
+      {status.overflow_reason ?? "This resume exceeds 1 page and must be shortened before export."}
+    </div>
+  );
+}
 
-      {subtitle && (
-        <p className="projectField" style={{ fontStyle: "italic" }}>
-          {subtitle}
-        </p>
+function ResumePreview({
+  resume,
+  pdfPreviewUrl,
+  previewLoading,
+}: {
+  resume: ResumeDetailType;
+  pdfPreviewUrl: string | null;
+  previewLoading: boolean;
+}) {
+  return (
+    <div className="resumePreviewShell">
+      <div className="resumePreviewMeta">
+        <span>Letter-size preview</span>
+        <span>Estimated pages: {resume.one_page_status.page_count}</span>
+      </div>
+
+      {previewLoading && (
+        <div className="resumePdfPreviewStatus">Loading PDF preview...</div>
       )}
 
-      {p.contribution_bullets.length > 0 && (
-        <ul className="bulletList">
-          {p.contribution_bullets.map((b, j) => (
-            <li key={j}>{b}</li>
-          ))}
-        </ul>
+      {!previewLoading && pdfPreviewUrl && (
+        <iframe
+          title="Resume PDF preview"
+          className="resumePdfPreviewFrame"
+          src={`${pdfPreviewUrl}#view=FitH&toolbar=0&navpanes=0`}
+        />
+      )}
+
+      {!previewLoading && !pdfPreviewUrl && (
+        <div className="resumePdfPreviewStatus">
+          PDF preview could not be loaded right now.
+        </div>
+      )}
+
+      {resume.one_page_status.overflow_detected && (
+        <p className="resumePreviewOverflowNote">
+          Content below the visible page boundary would spill onto another page in export.
+        </p>
       )}
     </div>
   );

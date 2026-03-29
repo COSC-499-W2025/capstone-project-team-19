@@ -3,9 +3,10 @@ import { useState, useRef, useEffect } from "react";
 type Props = {
   onDocx: () => void;
   onPdf: () => void;
+  disabled?: boolean;
 };
 
-export default function ExportDropdown({ onDocx, onPdf }: Props) {
+export default function ExportDropdown({ onDocx, onPdf, disabled = false }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -21,7 +22,12 @@ export default function ExportDropdown({ onDocx, onPdf }: Props) {
 
   return (
     <div className="exportDropdown" ref={ref}>
-      <button className="actionBtn dark" onClick={() => setOpen(!open)}>
+      <button
+        className="actionBtn dark"
+        onClick={() => !disabled && setOpen(!open)}
+        disabled={disabled}
+        title={disabled ? "Resume must fit on one page before export" : undefined}
+      >
         Export
       </button>
       {open && (
@@ -29,12 +35,14 @@ export default function ExportDropdown({ onDocx, onPdf }: Props) {
           <button
             className="exportMenuItem"
             onClick={() => { onDocx(); setOpen(false); }}
+            disabled={disabled}
           >
             Export as DOCX
           </button>
           <button
             className="exportMenuItem"
             onClick={() => { onPdf(); setOpen(false); }}
+            disabled={disabled}
           >
             Export as PDF
           </button>
