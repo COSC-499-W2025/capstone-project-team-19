@@ -1,14 +1,14 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
 import type { ReactNode } from "react";
 import TopBar from "../components/TopBar";
 import { getUsername } from "../auth/user";
 import { tokenStore } from "../auth/token";
-import { deleteAccount } from "../api/auth";
+import { changePassword, deleteAccount } from "../api/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Globe, KeyRound, LogOut, Pencil, ShieldCheck, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Globe, KeyRound, LogOut, Pencil, ShieldCheck, Trash2 } from "lucide-react";
 import {
   getProfile,
   updateProfile,
@@ -542,6 +542,45 @@ export default function ProfilePage() {
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  async function handleChangePasswordSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setPasswordError("New password must be different from current password.");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setPasswordSuccess("Password updated successfully.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowPasswordForm(false);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : "Unable to change password.");
+    } finally {
+      setChangingPassword(false);
+    }
+  }
 
   async function handleDeleteAccount() {
     setDeleting(true);
@@ -825,7 +864,7 @@ export default function ProfilePage() {
                   Security
                 </span>
               }
-              description="Password and account controls (placeholder actions for now)."
+              description="Password and account controls."
               contentClassName="space-y-3"
               headerClassName="items-center"
             >
@@ -833,11 +872,107 @@ export default function ProfilePage() {
                 variant="outline"
                 size="default"
                 className="h-11 w-full justify-start gap-3 border-slate-200 bg-slate-50/60 text-slate-700 hover:bg-slate-100"
-                disabled
+                type="button"
+                onClick={() => {
+                  setShowPasswordForm((prev) => !prev);
+                  setPasswordError("");
+                  setPasswordSuccess("");
+                }}
               >
                 <KeyRound className="size-4 text-slate-500" />
-                Change password
+                {showPasswordForm ? "Cancel password change" : "Change password"}
               </Button>
+
+              {showPasswordForm ? (
+                <form
+                  onSubmit={handleChangePasswordSubmit}
+                  className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3"
+                >
+                  <div>
+                    <label htmlFor="current-password" className="mb-1 block text-xs font-medium text-slate-600">
+                      Current password
+                    </label>
+                    <div className="relative">
+                      <Input
+                        id="current-password"
+                        type={showCurrentPassword ? "text" : "password"}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        autoComplete="current-password"
+                        className="pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                        aria-label={showCurrentPassword ? "Hide current password" : "Show current password"}
+                      >
+                        {showCurrentPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="new-password" className="mb-1 block text-xs font-medium text-slate-600">
+                      New password
+                    </label>
+                    <div className="relative">
+                      <Input
+                        id="new-password"
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        autoComplete="new-password"
+                        className="pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                        aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                      >
+                        {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="confirm-new-password" className="mb-1 block text-xs font-medium text-slate-600">
+                      Confirm new password
+                    </label>
+                    <div className="relative">
+                      <Input
+                        id="confirm-new-password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        autoComplete="new-password"
+                        className="pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                        aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                      >
+                        {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button type="submit" size="sm" disabled={changingPassword}>
+                    {changingPassword ? "Saving..." : "Save password"}
+                  </Button>
+                </form>
+              ) : null}
+
+              {passwordError ? (
+                <p className="text-sm text-red-600">{passwordError}</p>
+              ) : null}
+              {passwordSuccess ? (
+                <p className="text-sm text-emerald-700">{passwordSuccess}</p>
+              ) : null}
 
               <Button
                 variant="outline"
