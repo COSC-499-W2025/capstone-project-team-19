@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import { getUsername } from "../auth/user";
 import {
@@ -79,6 +79,31 @@ export default function ProjectDetailPage() {
 
   // Tabs
   const [activeTab, setActiveTab] = useState("summary");
+
+  // Reset editing state when navigating to a different project
+  useEffect(() => {
+    setEditingSummary(false);
+    setEditSummaryText("");
+    setEditContributionSummary("");
+    setSummaryError(null);
+    setEditingDates(false);
+    setDatesError(null);
+  }, [projectId]);
+
+  // Warn on browser refresh/close while editing
+  useEffect(() => {
+    if (!editingSummary && !editingDates) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [editingSummary, editingDates]);
+
+  // Block all in-app navigation while editing (requires data router via createBrowserRouter)
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      (editingSummary || editingDates) &&
+      currentLocation.pathname !== nextLocation.pathname
+  );
 
   useEffect(() => {
     let objectUrl: string | null = null;
@@ -643,6 +668,15 @@ export default function ProjectDetailPage() {
         description="Are you sure you want to delete this project? This cannot be undone."
         confirmLabel="Delete"
         onConfirm={handleDeleteProject}
+      />
+
+      <ConfirmDialog
+        open={blocker.state === "blocked"}
+        onOpenChange={(open) => { if (!open && blocker.state === "blocked") blocker.reset?.(); }}
+        title="Unsaved Changes"
+        description="You have unsaved changes. Leave anyway?"
+        confirmLabel="Leave"
+        onConfirm={() => blocker.proceed?.()}
       />
     </>
   );

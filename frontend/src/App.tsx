@@ -1,9 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
-
-function PublicHomeRedirect() {
-  const { username } = useParams<{ username: string }>();
-  return <Navigate to={`/public/${username}/projects`} replace />;
-}
+import { createBrowserRouter, Navigate, RouterProvider, useParams } from "react-router-dom";
 import type { ReactNode } from "react";
 
 import LoginPage from "./pages/Login";
@@ -25,6 +20,11 @@ import PublicProjectDetailPage from "./pages/public/PublicProjectDetail";
 import PublicInsightsPage from "./pages/public/PublicInsightsPage";
 import PublicOutputsPage from "./pages/public/PublicOutputsPage";
 
+function PublicHomeRedirect() {
+  const { username } = useParams<{ username: string }>();
+  return <Navigate to={`/public/${username}/projects`} replace />;
+}
+
 function RequireAuth({ children }: { children: ReactNode }) {
   const token = tokenStore.get();
 
@@ -36,130 +36,29 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+const router = createBrowserRouter([
+  { path: "/login", element: <LoginPage /> },
+  { path: "/register", element: <RegisterPage /> },
+  { path: "/", element: <RequireAuth><HomePage /></RequireAuth> },
+  { path: "/upload", element: <RequireAuth><Navigate to="/upload/consent" replace /></RequireAuth> },
+  { path: "/upload/consent", element: <RequireAuth><ConsentPage /></RequireAuth> },
+  { path: "/upload/upload", element: <RequireAuth><UploadPage /></RequireAuth> },
+  { path: "/upload/setup", element: <RequireAuth><UploadSetupPage /></RequireAuth> },
+  { path: "/upload/analyze", element: <RequireAuth><UploadAnalyzePage /></RequireAuth> },
+  { path: "/projects", element: <RequireAuth><ProjectsPage /></RequireAuth> },
+  { path: "/projects/:id", element: <RequireAuth><ProjectDetailPage /></RequireAuth> },
+  { path: "/insights", element: <RequireAuth><InsightsPage /></RequireAuth> },
+  { path: "/resume", element: <RequireAuth><OutputsPage /></RequireAuth> },
+  { path: "/profile", element: <RequireAuth><ProfilePage /></RequireAuth> },
+  { path: "/public/:username", element: <PublicHomeRedirect /> },
+  { path: "/public/:username/projects", element: <PublicProjectsPage /> },
+  { path: "/public/:username/projects/:id", element: <PublicProjectDetailPage /> },
+  { path: "/public/:username/insights", element: <PublicInsightsPage /> },
+  { path: "/public/:username/resume", element: <PublicOutputsPage /> },
+  { path: "/ui-preview", element: <RequireAuth><UIPlaygroundPage /></RequireAuth> },
+  { path: "*", element: <Navigate to="/" replace /> },
+]);
+
 export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-
-        <Route
-          path="/"
-          element={
-            <RequireAuth>
-              <HomePage />
-            </RequireAuth>
-          }
-        />
-
-        <Route
-          path="/upload"
-          element={
-            <RequireAuth>
-              <Navigate to="/upload/consent" replace />
-            </RequireAuth>
-          }
-        />
-
-        <Route
-          path="/upload/consent"
-          element={
-            <RequireAuth>
-              <ConsentPage />
-            </RequireAuth>
-          }
-        />
-
-        <Route
-          path="/upload/upload"
-          element={
-            <RequireAuth>
-              <UploadPage />
-            </RequireAuth>
-          }
-        />
-
-        <Route
-          path="/upload/setup"
-          element={
-            <RequireAuth>
-              <UploadSetupPage />
-            </RequireAuth>
-          }
-        />
-
-        <Route
-          path="/upload/analyze"
-          element={
-            <RequireAuth>
-              <UploadAnalyzePage />
-            </RequireAuth>
-          }
-        />
-
-        <Route
-          path="/projects"
-          element={
-            <RequireAuth>
-              <ProjectsPage />
-            </RequireAuth>
-          }
-        />
-
-        <Route
-          path="/projects/:id"
-          element={
-            <RequireAuth>
-              <ProjectDetailPage />
-            </RequireAuth>
-          }
-        />
-
-        <Route
-          path="/insights"
-          element={
-            <RequireAuth>
-              <InsightsPage />
-            </RequireAuth>
-          }
-        />
-
-        <Route
-          path="/resume"
-          element={
-            <RequireAuth>
-              <OutputsPage />
-            </RequireAuth>
-          }
-        />
-
-        <Route
-          path="/profile"
-          element={
-            <RequireAuth>
-              <ProfilePage />
-            </RequireAuth>
-          }
-        />
-
-        {/* Public routes — no auth required */}
-        <Route path="/public/:username" element={<PublicHomeRedirect />} />
-        <Route path="/public/:username/projects" element={<PublicProjectsPage />} />
-        <Route path="/public/:username/projects/:id" element={<PublicProjectDetailPage />} />
-        <Route path="/public/:username/insights" element={<PublicInsightsPage />} />
-        <Route path="/public/:username/resume" element={<PublicOutputsPage />} />
-
-        <Route
-          path="/ui-preview"
-          element={
-            <RequireAuth>
-              <UIPlaygroundPage />
-            </RequireAuth>
-          }
-        />
-
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  );
+  return <RouterProvider router={router} />;
 }
