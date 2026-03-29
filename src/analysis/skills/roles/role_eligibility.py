@@ -38,7 +38,7 @@ def get_eligible_roles(
     If bucket_scores is None or empty, returns all roles for the type (no analysis yet).
     Otherwise filters by threshold requirements.
     """
-    role_map = CODE_ROLES if project_type == "code" else TEXT_ROLES
+    role_map = TEXT_ROLES if project_type == "text" else CODE_ROLES
 
     if not bucket_scores:
         return sorted(role_map.keys())
