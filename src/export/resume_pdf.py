@@ -327,9 +327,6 @@ def export_resume_record_to_pdf(
         story.append(Paragraph("EDUCATION", SectionStyle))
         _render_education_block(story, education_only, ProjectTitleStyle, MetaItalic, Body)
 
-    story.append(section_gap())
-    story.append(Paragraph("SKILLS", SectionStyle))
-
     def add_skill_line(label: str, items: Any) -> None:
         clean = sorted(set(_clean_list(items)))
         if not clean:
@@ -340,9 +337,6 @@ def export_resume_record_to_pdf(
         agg.get("languages") or [],
         min_pct=10,
     )
-
-    add_skill_line("Languages", languages)
-    add_skill_line("Frameworks", agg.get("frameworks") or [])
 
     effective_highlighted = highlighted_skills
     if highlighted_skills_by_project is not None:
@@ -360,8 +354,11 @@ def export_resume_record_to_pdf(
         effective_highlighted,
     )
 
-    add_skill_line("Technical skills", tech_skills)
-    add_skill_line("Writing skills", writing_skills)
+    story.append(section_gap())
+    story.append(Paragraph("TECHNICAL SKILLS", SectionStyle))
+    add_skill_line("Languages", languages)
+    add_skill_line("Technical", tech_skills)
+    add_skill_line("Writing", writing_skills)
 
     if experience_entries:
         story.append(section_gap())

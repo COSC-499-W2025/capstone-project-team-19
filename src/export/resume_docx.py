@@ -275,8 +275,6 @@ def export_resume_record_to_docx(
         add_section_heading(doc, "Education")
         _render_education_entries(doc, education_only)
 
-    add_section_heading(doc, "Skills")
-
     def add_skill_line(label: str, items: List[str]) -> None:
         clean = [str(x).strip() for x in items if str(x).strip()]
         if not clean:
@@ -287,9 +285,6 @@ def export_resume_record_to_docx(
         agg.get("languages") or [],
         min_pct=10,
     )
-
-    add_skill_line("Languages", languages)
-    add_skill_line("Frameworks", agg.get("frameworks") or [])
 
     effective_highlighted = highlighted_skills
     if highlighted_skills_by_project is not None:
@@ -307,8 +302,10 @@ def export_resume_record_to_docx(
         effective_highlighted,
     )
 
-    add_skill_line("Technical skills", tech_skills)
-    add_skill_line("Writing skills", writing_skills)
+    add_section_heading(doc, "Skills")
+    add_skill_line("Languages", languages)
+    add_skill_line("Technical Skills", tech_skills)
+    add_skill_line("Writing Skills", writing_skills)
 
     if experience_entries:
         add_section_heading(doc, "Experience")
