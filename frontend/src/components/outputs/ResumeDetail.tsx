@@ -477,6 +477,7 @@ export default function ResumeDetail({
           ) : (
             <>
               <SkillRow label="Languages" items={agg.languages} />
+              <SkillRow label="Frameworks" items={agg.frameworks} />
               <SkillRow label="Technical" items={agg.technical_skills} />
               <SkillRow label="Writing" items={agg.writing_skills} />
             </>

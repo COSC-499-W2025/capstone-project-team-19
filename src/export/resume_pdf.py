@@ -355,8 +355,9 @@ def export_resume_record_to_pdf(
     )
 
     story.append(section_gap())
-    story.append(Paragraph("TECHNICAL SKILLS", SectionStyle))
+    story.append(Paragraph("SKILLS", SectionStyle))
     add_skill_line("Languages", languages)
+    add_skill_line("Frameworks", agg.get("frameworks") or [])
     add_skill_line("Technical", tech_skills)
     add_skill_line("Writing", writing_skills)
 
