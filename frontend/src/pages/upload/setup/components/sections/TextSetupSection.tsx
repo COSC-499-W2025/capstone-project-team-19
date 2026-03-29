@@ -12,8 +12,7 @@ type Props = {
 
 const DRIVE_PAGE_SIZE = 5;
 const DRIVE_OAUTH_MESSAGE_SOURCE = "capstone-google-drive-oauth";
-const DRIVE_OAUTH_POLL_INTERVAL_MS = 1500;
-const DRIVE_OAUTH_MAX_POLL_ATTEMPTS = 40;
+const DRIVE_OAUTH_REFRESH_RETRY_DELAY_MS = 1500;
 
 function toggleString(values: string[], value: string): string[] {
   if (values.includes(value)) return values.filter((item) => item !== value);
@@ -183,7 +182,7 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
     if (!awaitingDriveOauthReturn || isDriveConnected) return;
     let active = true;
     let refreshing = false;
-    let pollAttempts = 0;
+    let retryTimeoutId: number | null = null;
 
     async function refreshOnReturn() {
       if (!active || refreshing) return;
@@ -192,38 +191,41 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
       refreshing = false;
     }
 
-    function onFocus() {
+    function refreshWithRetry() {
       void refreshOnReturn();
+
+      if (retryTimeoutId !== null) {
+        window.clearTimeout(retryTimeoutId);
+      }
+
+      retryTimeoutId = window.setTimeout(() => {
+        if (!active || document.visibilityState !== "visible") return;
+        void refreshOnReturn();
+      }, DRIVE_OAUTH_REFRESH_RETRY_DELAY_MS);
+    }
+
+    function onFocus() {
+      refreshWithRetry();
     }
 
     function onVisibilityChange() {
       if (document.visibilityState === "visible") {
-        void refreshOnReturn();
+        refreshWithRetry();
       }
     }
 
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibilityChange);
 
-    const pollId = window.setInterval(() => {
-      if (!active || isDriveConnected) return;
-      pollAttempts += 1;
-      if (pollAttempts > DRIVE_OAUTH_MAX_POLL_ATTEMPTS) {
-        setAwaitingDriveOauthReturn(false);
-        return;
-      }
-      if (document.visibilityState === "visible") {
-        void refreshOnReturn();
-      }
-    }, DRIVE_OAUTH_POLL_INTERVAL_MS);
-
     if (document.visibilityState === "visible") {
-      void refreshOnReturn();
+      refreshWithRetry();
     }
 
     return () => {
       active = false;
-      window.clearInterval(pollId);
+      if (retryTimeoutId !== null) {
+        window.clearTimeout(retryTimeoutId);
+      }
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
@@ -357,6 +359,7 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
   }
 
   async function onLoadDriveFiles() {
+    setAwaitingDriveOauthReturn(false);
     setDriveMessage(null);
     setDriveLoading(true);
     const data = await actions.driveFiles(project.projectName);
@@ -613,7 +616,7 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
                 {driveLocalFiles.length > DRIVE_PAGE_SIZE && (
                   <div className="flex items-center justify-between pt-1 text-xs text-zinc-600">
                     <span>Page {safeLocalPage} of {localPageCount}</span>
-                    <div ref={drivePagerButtonsRef} className="flex gap-2">
+                    <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => setLocalPage((page) => Math.max(1, page - 1))}
