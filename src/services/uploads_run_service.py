@@ -451,7 +451,7 @@ def _populate_project_warnings(
                 _add_warning(warnings, "missing_key_role", project_name)
 
         elif project_type == "text":
-            if not bool(manual.get("contribution_sections_set")):
+            if classification == "collaborative" and not bool(manual.get("contribution_sections_set")):
                 _add_warning(warnings, "missing_contribution_sections", project_name)
 
             has_supporting = bool(manual.get("supporting_text_files_set")) or bool(manual.get("supporting_csv_files_set"))

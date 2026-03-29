@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getUsername } from "../../../auth/user";
 import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
@@ -14,8 +14,12 @@ import { useUploadFlow } from "./useUploadFlow";
 export default function UploadPage() {
   const username = getUsername();
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
-  const flow = useUploadFlow();
+  const uploadIdParam = searchParams.get("uploadId");
+  const stageParam = searchParams.get("stage");
+  const classificationResumeUploadId = stageParam === "classification" ? uploadIdParam : null;
+  const flow = useUploadFlow(classificationResumeUploadId);
 
   const steps = [
     { label: "1. Consent", status: "inactive" as const, to: "/upload/consent" },
@@ -23,12 +27,6 @@ export default function UploadPage() {
     { label: "3. Setup", status: "disabled" as const, disabled: true },
     { label: "4. Analyze", status: "disabled" as const, disabled: true },
   ];
-
-  function onSidebarNext() {
-    if (flow.sidebarNextDisabled) return;
-    if (!flow.uploadId) return;
-    nav(`/upload/setup?uploadId=${flow.uploadId}`);
-  }
 
   function renderStageBody() {
     if (flow.currentStage.key === "upload") {
@@ -53,6 +51,7 @@ export default function UploadPage() {
           discoveredProjects={flow.discoveredProjects}
           projectNotes={flow.projectNotes}
           allProjectsPreviouslySkipped={flow.allProjectsPreviouslySkipped}
+          onOpenProjectDetailsInNewTab={flow.onOpenProjectDetailsInNewTab}
         />
       );
     }
@@ -90,14 +89,21 @@ export default function UploadPage() {
     );
   }
 
+  async function onPrimaryClick() {
+    const succeeded = await flow.onPrimaryAction();
+    if (!succeeded) return;
+
+    if (flow.currentStage.key === "classification" && flow.uploadId) {
+      nav(`/upload/setup?uploadId=${flow.uploadId}`);
+    }
+  }
+
   return (
     <UploadWizardShell
       username={username}
       steps={steps}
       actionLabel="Next"
-      onAction={onSidebarNext}
-      actionDisabled={flow.sidebarNextDisabled}
-      showAction
+      showAction={false}
       breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Upload", href: "/upload" },
@@ -149,7 +155,7 @@ export default function UploadPage() {
           <button
             type="button"
             className={`uploadStagePrimaryBtn${flow.classificationStageCompleted ? " uploadStagePrimaryBtn--completed" : ""}`}
-            onClick={flow.onPrimaryAction}
+            onClick={onPrimaryClick}
             disabled={flow.primaryDisabled}
           >
             {flow.primaryLabel}

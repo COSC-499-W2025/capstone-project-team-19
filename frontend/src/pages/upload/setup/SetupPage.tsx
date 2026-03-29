@@ -239,7 +239,12 @@ export default function UploadSetupPage() {
           source: "local",
         });
       }
-      if (project.projectType === "text" && project.mainFileRelpath && project.mainSectionIds.length === 0) {
+      if (
+        project.projectType === "text" &&
+        project.classification === "collaborative" &&
+        project.mainFileRelpath &&
+        project.mainSectionIds.length === 0
+      ) {
         out.push({
           code: "missing_contribution_sections",
           project: project.projectName,
@@ -316,6 +321,14 @@ export default function UploadSetupPage() {
         const project = flow.projectCards.find((p) => p.projectName === projectName);
         if (!project || project.projectType !== "text" || project.classification !== "collaborative") return false;
       }
+      if (code === "missing_contribution_sections") {
+        const project = flow.projectCards.find((p) => p.projectName === projectName);
+        if (!project || project.projectType !== "text" || project.classification !== "collaborative") return false;
+      }
+      if (code === "missing_supporting_files") {
+        const project = flow.projectCards.find((p) => p.projectName === projectName);
+        if (!project || project.projectType !== "text" || project.classification !== "collaborative") return false;
+      }
       const summaryModes = resolvedSummaryModesByProject[projectName];
       if (code === "missing_manual_summary") {
         if (summaryModes?.project === "llm" || summaryModes?.project === null) return false;
@@ -346,9 +359,7 @@ export default function UploadSetupPage() {
         username={username}
         steps={steps}
         actionLabel={hasAnalysisStarted ? "Open Analyze" : "Analyze"}
-        onAction={onAnalyzeAction}
-        actionDisabled={analyzeButtonDisabled}
-        showAction
+        showAction={false}
         breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Upload", href: "/upload" },
@@ -365,6 +376,9 @@ export default function UploadSetupPage() {
           {flow.actionError && <p className="error mb-3 text-sm">{flow.actionError}</p>}
           {!flow.loading && !flow.loadError && (
             <div className="mb-8 rounded-md border border-zinc-300 bg-white px-4 py-3">
+              <p className="mb-2 text-sm text-zinc-700">
+                Expand each project card below to complete setup details before moving to Analyze. We recommend resolving any yellow warnings first for a more complete analysis.
+              </p>
               <p className="text-sm font-semibold text-zinc-900">Status Guide</p>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 font-medium text-rose-700">
@@ -400,6 +414,7 @@ export default function UploadSetupPage() {
                 expandedProjectNames={flow.expandedProjectNames}
                 onToggleProject={flow.onToggleProject}
                 actions={flow.actions}
+                refreshUpload={flow.refreshUpload}
                 isMutating={flow.isMutating}
                 manualOnlySummaries={flow.manualOnlySummaries}
               />
@@ -416,11 +431,32 @@ export default function UploadSetupPage() {
                 expandedProjectNames={flow.expandedProjectNames}
                 onToggleProject={flow.onToggleProject}
                 actions={flow.actions}
+                refreshUpload={flow.refreshUpload}
                 isMutating={flow.isMutating}
                 manualOnlySummaries={flow.manualOnlySummaries}
               />
             </div>
           )}
+
+          <div className="mt-10 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => nav(`/upload/upload?uploadId=${uploadIdParam}&stage=classification`)}
+              className="h-10 min-w-[96px] rounded-md border border-zinc-400 bg-white px-5 text-sm font-semibold text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={flow.isMutating}
+            >
+              Back
+            </button>
+
+            <button
+              type="button"
+              onClick={onAnalyzeAction}
+              className="h-10 min-w-[160px] rounded-md bg-[var(--upload-accent)] px-5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={analyzeButtonDisabled}
+            >
+              {hasAnalysisStarted ? "Open Analyze" : "Analyze"}
+            </button>
+          </div>
         </div>
       </UploadWizardShell>
       <SetupAnalyzeConfirmDialog

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { GitIdentityOption } from "../../../../../api/uploads";
 import type { SetupFlowResult, SetupProjectCard } from "../../types";
+import { setupPrimaryActionButtonClass, setupSecondaryActionButtonClass } from "./buttonStyles";
 import GitHubIntegrationSection from "./GitHubIntegrationSection";
 
 type Props = {
@@ -155,7 +156,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             type="button"
             onClick={onSaveIdentities}
             disabled={isMutating || project.projectKey === null}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+            className={setupPrimaryActionButtonClass}
           >
             Save identity selection
           </button>
@@ -163,6 +164,83 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
         </div>
       )}
 
+      <div className="space-y-3">
+        <h4 className="text-lg leading-tight font-semibold text-zinc-900">GitHub Integration</h4>
+        <p className="text-sm text-zinc-700">
+          State: <span className="font-medium">{project.githubState}</span>
+          {project.githubRepoLinked && project.githubRepoFullName ? ` | Linked repo: ${project.githubRepoFullName}` : ""}
+        </p>
+        {!localGitDetected && project.classification === "collaborative" && (
+          <p className="text-sm text-zinc-700">
+            With no local .git history, collaborative identity is inferred from the connected GitHub account during analysis.
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onGithubStart(true)}
+            disabled={isMutating}
+            className={setupPrimaryActionButtonClass}
+          >
+            Connect GitHub
+          </button>
+          <button
+            type="button"
+            onClick={() => onGithubStart(false)}
+            disabled={isMutating}
+            className={setupSecondaryActionButtonClass}
+          >
+            Skip for now
+          </button>
+          <button
+            type="button"
+            onClick={onLoadRepos}
+            disabled={isMutating || reposLoading}
+            className={setupSecondaryActionButtonClass}
+          >
+            {reposLoading ? "Loading..." : "Load repositories"}
+          </button>
+        </div>
+
+        {authUrl && (
+          <a
+            href={authUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={setupSecondaryActionButtonClass}
+          >
+            Open GitHub Authorization
+          </a>
+        )}
+
+        {repos.length > 0 && (
+          <div className="space-y-2">
+            <select
+              value={selectedRepo}
+              onChange={(event) => setSelectedRepo(event.target.value)}
+              className="h-12 w-full rounded border border-zinc-300 bg-zinc-50 px-4 py-3 text-sm text-zinc-700"
+              disabled={isMutating}
+            >
+              {repos.map((repo) => (
+                <option key={repo.full_name} value={repo.full_name}>
+                  {repo.full_name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={onLinkRepo}
+              disabled={isMutating || !selectedRepo}
+              className={setupPrimaryActionButtonClass}
+            >
+              Link selected repository
+            </button>
+          </div>
+        )}
+
+        {githubMessage && <p className="text-sm text-zinc-700">{githubMessage}</p>}
+      </div>
       {/* --- GitHub Integration (connect, load repos, link) --- */}
       <GitHubIntegrationSection
         project={project}
