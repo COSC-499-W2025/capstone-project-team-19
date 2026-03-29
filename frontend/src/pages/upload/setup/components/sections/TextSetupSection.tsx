@@ -63,7 +63,9 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
   const [localPage, setLocalPage] = useState(1);
   const [drivePage, setDrivePage] = useState(1);
   const [mainFileSaveMessage, setMainFileSaveMessage] = useState<string | null>(null);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [sectionSaveMessage, setSectionSaveMessage] = useState<string | null>(null);
+  const [supportingTextSaveMessage, setSupportingTextSaveMessage] = useState<string | null>(null);
+  const [supportingCsvSaveMessage, setSupportingCsvSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setMainFile(project.mainFileRelpath ?? "");
@@ -111,6 +113,7 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
     return filesPayload.csv_files;
   }, [filesPayload]);
   const mainFileStatusMessage = mainFileSaveMessage ?? (project.mainFileRelpath ? "Main file saved." : null);
+  const hasSavedMainFile = Boolean(project.mainFileRelpath);
   const driveLocalFiles = useMemo(() => filesPayload?.all_files ?? [], [filesPayload]);
   const filteredDriveResults = useMemo(
     () =>
@@ -280,13 +283,13 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
     const data = await actions.setMainFile(project.projectKey, mainFile);
     if (!data) return;
     setMainFileSaveMessage("Main file saved.");
-    setSaveMessage(null);
+    setSectionSaveMessage(null);
   }
 
   async function onLoadSections() {
     if (project.projectKey === null) return;
     if (!mainFile) {
-      setSaveMessage("Select and save a main file first.");
+      setSectionSaveMessage("Select and save a main file first.");
       return;
     }
     setSectionsLoading(true);
@@ -300,7 +303,7 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
     if (project.projectKey === null) return;
     const data = await actions.setContributedSections(project.projectKey, selectedSectionIds);
     if (!data) return;
-    setSaveMessage("Contributed sections saved.");
+    setSectionSaveMessage("Contributed sections saved.");
   }
 
   async function onSaveSupportingText() {
@@ -309,14 +312,14 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
     const data = await actions.setSupportingTextFiles(project.projectKey, nonCsvRelpaths);
     if (!data) return;
     setSelectedSupportingText(nonCsvRelpaths);
-    setSaveMessage("Supporting text files saved.");
+    setSupportingTextSaveMessage("Supporting text files saved.");
   }
 
   async function onSaveSupportingCsv() {
     if (project.projectKey === null) return;
     const data = await actions.setSupportingCsvFiles(project.projectKey, selectedSupportingCsv);
     if (!data) return;
-    setSaveMessage("Supporting CSV files saved.");
+    setSupportingCsvSaveMessage("Supporting CSV files saved.");
   }
 
   function onSelectDriveResult(id: string) {
@@ -457,6 +460,7 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
           >
             {sectionsLoading ? "Loading..." : sections.length > 0 ? "Save section selection" : "Load sections"}
           </button>
+          {sectionSaveMessage && <p className="text-sm text-zinc-700">{sectionSaveMessage}</p>}
         </div>
       ) : (
         <p className="text-sm text-zinc-600">
@@ -468,6 +472,9 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
         <>
           <div className="space-y-3">
             <div className="text-sm font-semibold text-zinc-900">Supporting text files</div>
+            {!hasSavedMainFile && (
+              <p className="text-sm text-zinc-600">Save a main file first to enable supporting text files.</p>
+            )}
             {supportingTextOptions.length === 0 && (
               <p className="text-sm text-zinc-600">No supporting text candidates found.</p>
             )}
@@ -479,7 +486,7 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
                       type="checkbox"
                       checked={selectedSupportingText.includes(item.relpath)}
                       onChange={() => setSelectedSupportingText((prev) => toggleString(prev, item.relpath))}
-                      disabled={isMutating}
+                      disabled={isMutating || !hasSavedMainFile}
                     />
                     <span>{item.file_name}</span>
                   </label>
@@ -487,17 +494,21 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
                 <button
                   type="button"
                   onClick={onSaveSupportingText}
-                  disabled={isMutating || project.projectKey === null}
+                  disabled={isMutating || project.projectKey === null || !hasSavedMainFile}
                   className={setupPrimaryActionButtonClass}
                 >
                   Save supporting text files
                 </button>
+                {supportingTextSaveMessage && <p className="text-sm text-zinc-700">{supportingTextSaveMessage}</p>}
               </div>
             )}
           </div>
 
           <div className="space-y-3">
             <div className="text-sm font-semibold text-zinc-900">Supporting CSV files</div>
+            {!hasSavedMainFile && (
+              <p className="text-sm text-zinc-600">Save a main file first to enable supporting CSV files.</p>
+            )}
             {supportingCsvOptions.length === 0 && (
               <p className="text-sm text-zinc-600">No supporting CSV files found.</p>
             )}
@@ -509,7 +520,7 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
                       type="checkbox"
                       checked={selectedSupportingCsv.includes(item.relpath)}
                       onChange={() => setSelectedSupportingCsv((prev) => toggleString(prev, item.relpath))}
-                      disabled={isMutating}
+                      disabled={isMutating || !hasSavedMainFile}
                     />
                     <span>{item.file_name}</span>
                   </label>
@@ -517,11 +528,12 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
                 <button
                   type="button"
                   onClick={onSaveSupportingCsv}
-                  disabled={isMutating || project.projectKey === null}
+                  disabled={isMutating || project.projectKey === null || !hasSavedMainFile}
                   className={setupPrimaryActionButtonClass}
                 >
                   Save supporting CSV files
                 </button>
+                {supportingCsvSaveMessage && <p className="text-sm text-zinc-700">{supportingCsvSaveMessage}</p>}
               </div>
             )}
           </div>
@@ -733,7 +745,6 @@ export default function TextSetupSection({ project, actions, refreshUpload, isMu
         </div>
       )}
 
-      {saveMessage && <p className="text-sm text-zinc-700">{saveMessage}</p>}
     </div>
   );
 }
