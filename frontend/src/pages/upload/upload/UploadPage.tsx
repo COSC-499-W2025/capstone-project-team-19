@@ -47,6 +47,7 @@ export default function UploadPage() {
   const [continueAfterStartFresh, setContinueAfterStartFresh] = useState(false);
   const [replaceUnfinishedDialogOpen, setReplaceUnfinishedDialogOpen] = useState(false);
   const [leaveUploadDialogOpen, setLeaveUploadDialogOpen] = useState(false);
+  const [isLeavingUploadFlow, setIsLeavingUploadFlow] = useState(false);
 
   useUnfinishedUploadExitGuard({
     enabled: Boolean(flow.uploadId),
@@ -225,15 +226,26 @@ export default function UploadPage() {
   }
 
   function onCancelLeaveUploadFlow() {
+    if (isLeavingUploadFlow) return;
     pendingLeaveNavigationRef.current = null;
     setLeaveUploadDialogOpen(false);
   }
 
-  function onConfirmLeaveUploadFlow() {
+  async function onConfirmLeaveUploadFlow() {
+    if (isLeavingUploadFlow) return;
     const confirmNavigation = pendingLeaveNavigationRef.current;
-    pendingLeaveNavigationRef.current = null;
-    setLeaveUploadDialogOpen(false);
-    if (confirmNavigation) void confirmNavigation();
+    if (!confirmNavigation) {
+      setLeaveUploadDialogOpen(false);
+      return;
+    }
+
+    setRecoveryError(null);
+    setIsLeavingUploadFlow(true);
+    try {
+      await confirmNavigation();
+    } finally {
+      setIsLeavingUploadFlow(false);
+    }
   }
 
   function onBackClick() {
@@ -314,8 +326,13 @@ export default function UploadPage() {
         title="Leave Upload Flow?"
         description="Your unfinished upload will be deleted if you leave now."
         confirmLabel="Leave"
+        confirmDisabled={isLeavingUploadFlow}
+        busy={isLeavingUploadFlow}
+        busyMessage="Deleting unfinished upload..."
         onCancel={onCancelLeaveUploadFlow}
-        onConfirm={onConfirmLeaveUploadFlow}
+        onConfirm={() => {
+          void onConfirmLeaveUploadFlow();
+        }}
       />
       <UploadConfirmDialog
         open={replaceUnfinishedDialogOpen}
@@ -325,9 +342,11 @@ export default function UploadPage() {
             ? `You still have an unfinished upload (${recoveryCandidate.zip_name}). Resume where you left off, or start a new upload.`
             : "You still have an unfinished upload. Resume where you left off, or start a new upload."
         }
-        cancelLabel={isResolvingRecovery ? "Deleting..." : "Start New"}
+        cancelLabel="Start New"
         confirmLabel="Resume"
         confirmDisabled={isResolvingRecovery}
+        busy={isResolvingRecovery}
+        busyMessage="Deleting unfinished upload..."
         onCancel={() => {
           if (isResolvingRecovery) return;
           void onStartFreshFromRecoveryDialog();

@@ -53,6 +53,7 @@ export default function UploadSetupPage() {
   const [checkingReadiness, setCheckingReadiness] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [leaveSetupDialogOpen, setLeaveSetupDialogOpen] = useState(false);
+  const [isLeavingSetupFlow, setIsLeavingSetupFlow] = useState(false);
   const [summaryModesByProject, setSummaryModesByProject] = useState<Record<string, ProjectSummaryModes>>({});
   const pendingLeaveNavigationRef = useRef<(() => Promise<void>) | null>(null);
   const [leaveCleanupError, setLeaveCleanupError] = useState<string | null>(null);
@@ -194,15 +195,26 @@ export default function UploadSetupPage() {
   }
 
   function onCancelLeaveSetupFlow() {
+    if (isLeavingSetupFlow) return;
     pendingLeaveNavigationRef.current = null;
     setLeaveSetupDialogOpen(false);
   }
 
-  function onConfirmLeaveSetupFlow() {
+  async function onConfirmLeaveSetupFlow() {
+    if (isLeavingSetupFlow) return;
     const confirmNavigation = pendingLeaveNavigationRef.current;
-    pendingLeaveNavigationRef.current = null;
-    setLeaveSetupDialogOpen(false);
-    if (confirmNavigation) void confirmNavigation();
+    if (!confirmNavigation) {
+      setLeaveSetupDialogOpen(false);
+      return;
+    }
+
+    setLeaveCleanupError(null);
+    setIsLeavingSetupFlow(true);
+    try {
+      await confirmNavigation();
+    } finally {
+      setIsLeavingSetupFlow(false);
+    }
   }
 
   const summaryMissingByProject = useMemo(() => {
@@ -494,8 +506,13 @@ export default function UploadSetupPage() {
         title="Leave Upload Setup?"
         description="Your unfinished upload will be deleted if you leave now."
         confirmLabel="Leave"
+        confirmDisabled={isLeavingSetupFlow}
+        busy={isLeavingSetupFlow}
+        busyMessage="Deleting unfinished upload..."
         onCancel={onCancelLeaveSetupFlow}
-        onConfirm={onConfirmLeaveSetupFlow}
+        onConfirm={() => {
+          void onConfirmLeaveSetupFlow();
+        }}
       />
     </>
   );
