@@ -62,7 +62,6 @@ from src.services.uploads_manual_summaries_service import (
     set_manual_contribution_summary,
 )
 from src.api.schemas.uploads import EligibleRolesResponseDTO
-from src.services.uploads_eligible_roles_service import get_eligible_roles_for_project
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
