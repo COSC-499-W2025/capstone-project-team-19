@@ -41,7 +41,8 @@ import {
 } from "./uploadHelpers";
 
 export function useUploadFlow(
-  classificationResumeUploadIdParam: string | null = null,
+  resumeUploadIdParam: string | null = null,
+  resumeStageParam: string | null = null,
 ) {
   const [stageIndex, setStageIndex] = useState(0);
 
@@ -340,12 +341,19 @@ export function useUploadFlow(
 
   const sizeLabel = selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB` : null;
   const requestedUploadId = useMemo(() => {
-    const raw = (classificationResumeUploadIdParam ?? "").trim();
+    const raw = (resumeUploadIdParam ?? "").trim();
     if (!raw) return null;
     const parsed = Number.parseInt(raw, 10);
     if (!Number.isInteger(parsed) || parsed <= 0) return null;
     return parsed;
-  }, [classificationResumeUploadIdParam]);
+  }, [resumeUploadIdParam]);
+
+  const requestedStageIndex = useMemo(() => {
+    const key = (resumeStageParam ?? "").trim();
+    if (!key) return null;
+    const idx = STAGES.findIndex((stage) => stage.key === key);
+    return idx >= 0 ? idx : null;
+  }, [resumeStageParam]);
 
   useEffect(() => {
     if (requestedUploadId === null) return;
@@ -362,8 +370,22 @@ export function useUploadFlow(
         if (!active) return;
 
         setUploadData(response.data);
-        const classificationStage = STAGES.findIndex((stage) => stage.key === "classification");
-        setStageIndex(classificationStage);
+
+        if (requestedStageIndex !== null) {
+          setStageIndex(requestedStageIndex);
+          return;
+        }
+
+        const status = response.data.status;
+        if (status === "needs_dedup") {
+          setStageIndex(STAGES.findIndex((stage) => stage.key === "deduplication"));
+          return;
+        }
+        if (status === "parsed" || status === "started") {
+          setStageIndex(STAGES.findIndex((stage) => stage.key === "projects"));
+          return;
+        }
+        setStageIndex(STAGES.findIndex((stage) => stage.key === "classification"));
       } catch (e: unknown) {
         if (!active) return;
         setSubmitError(e instanceof Error ? e.message : "Failed to load upload context.");
@@ -374,7 +396,7 @@ export function useUploadFlow(
     return () => {
       active = false;
     };
-  }, [requestedUploadId]);
+  }, [requestedStageIndex, requestedUploadId]);
 
   useEffect(() => {
     if (dedupCases.length > 0) {

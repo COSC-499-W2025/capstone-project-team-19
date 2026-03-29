@@ -45,6 +45,16 @@ from src.services.uploads_file_roles_util import (
 )
 
 UPLOAD_DIR = Path(ZIP_DATA_DIR) / "_uploads"
+CANCELABLE_UPLOAD_STATUSES = {
+    "started",
+    "parsed",
+    "needs_dedup",
+    "needs_classification",
+    "needs_project_types",
+    "needs_file_roles",
+    "needs_summaries",
+    "failed",
+}
 
 
 def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> dict:
@@ -197,6 +207,80 @@ def start_upload(conn: sqlite3.Connection, user_id: int, file: UploadFile) -> di
 
     set_upload_state(conn, upload_id, state=state, status="needs_classification")
     return {"upload_id": upload_id, "status": "needs_classification", "zip_name": zip_name, "state": state}
+
+
+def cancel_upload(conn: sqlite3.Connection, user_id: int, upload_id: int) -> None:
+    upload = get_upload_by_id(conn, upload_id)
+    if not upload or upload["user_id"] != user_id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+
+    status = upload.get("status")
+    if status not in CANCELABLE_UPLOAD_STATUSES:
+        raise HTTPException(status_code=409, detail=f"Upload cannot be cancelled (status={status})")
+
+    zip_path = upload.get("zip_path")
+    impacted_project_rows = conn.execute(
+        """
+        SELECT DISTINCT pv.project_key
+        FROM project_versions pv
+        JOIN projects p ON p.project_key = pv.project_key
+        WHERE p.user_id = ? AND pv.upload_id = ?
+        """,
+        (user_id, upload_id),
+    ).fetchall()
+    impacted_project_keys = [int(row[0]) for row in impacted_project_rows if row and row[0] is not None]
+
+    with conn:
+        conn.execute(
+            """
+            DELETE FROM project_versions
+            WHERE upload_id = ?
+              AND project_key IN (SELECT project_key FROM projects WHERE user_id = ?)
+            """,
+            (upload_id, user_id),
+        )
+
+        if impacted_project_keys:
+            placeholders = ",".join("?" * len(impacted_project_keys))
+            conn.execute(
+                f"""
+                DELETE FROM projects
+                WHERE user_id = ?
+                  AND project_key IN ({placeholders})
+                  AND NOT EXISTS (
+                    SELECT 1 FROM project_versions pv
+                    WHERE pv.project_key = projects.project_key
+                  )
+                """,
+                (user_id, *impacted_project_keys),
+            )
+
+        conn.execute(
+            "DELETE FROM uploads WHERE upload_id = ? AND user_id = ?",
+            (upload_id, user_id),
+        )
+
+    _cleanup_upload_artifacts(zip_path)
+
+
+def _cleanup_upload_artifacts(zip_path: str | None) -> None:
+    if not zip_path:
+        return
+
+    zip_file_path = Path(zip_path)
+    extract_dir = extract_dir_from_upload_zip(ZIP_DATA_DIR, zip_path)
+
+    if zip_file_path.is_file():
+        try:
+            zip_file_path.unlink()
+        except OSError:
+            pass
+
+    if extract_dir.is_dir():
+        try:
+            shutil.rmtree(extract_dir)
+        except OSError:
+            pass
 
 
 def get_upload_status(conn: sqlite3.Connection, user_id: int, upload_id: int) -> dict | None:

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { RunPreflightRecord, RunWarning } from "../../../api/uploads";
 import { getUsername } from "../../../auth/user";
@@ -6,9 +6,12 @@ import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
 import SetupAnalyzeConfirmDialog from "./components/SetupAnalyzeConfirmDialog";
 import SetupProjectGroup from "./components/SetupProjectGroup";
+import { useUnfinishedUploadExitGuard } from "../hooks/useUnfinishedUploadExitGuard";
+import { saveUploadRecoveryStage } from "../upload/recoveryStage";
 import { useGitHubOAuthCallback } from "./hooks/useGitHubOAuthCallback";
 import { useSetupFlow } from "./hooks/useSetupFlow";
 import type { SummaryMode } from "./types";
+import UploadConfirmDialog from "../upload/components/UploadConfirmDialog";
 
 function toOptionalBadgeLabel(item: RunWarning): string | null {
   const code = String(item.code || "");
@@ -50,11 +53,32 @@ export default function UploadSetupPage() {
   const [readiness, setReadiness] = useState<RunPreflightRecord | null>(null);
   const [checkingReadiness, setCheckingReadiness] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [leaveSetupDialogOpen, setLeaveSetupDialogOpen] = useState(false);
+  const [isLeavingSetupFlow, setIsLeavingSetupFlow] = useState(false);
   const [summaryModesByProject, setSummaryModesByProject] = useState<Record<string, ProjectSummaryModes>>({});
+  const pendingLeaveNavigationRef = useRef<(() => Promise<void>) | null>(null);
+  const [leaveCleanupError, setLeaveCleanupError] = useState<string | null>(null);
 
   const uploadIdParam = searchParams.get("uploadId") ?? "";
   const flow = useSetupFlow(uploadIdParam);
   const hasAnalysisStarted = flow.uploadStatus === "analyzing" || flow.uploadStatus === "done";
+
+  useUnfinishedUploadExitGuard({
+    enabled: Boolean(flow.uploadId) && !hasAnalysisStarted,
+    uploadId: flow.uploadId,
+    onRequestConfirmLeave: (confirmNavigation) => {
+      pendingLeaveNavigationRef.current = confirmNavigation;
+      setLeaveSetupDialogOpen(true);
+    },
+    onCleanupError: (message) => {
+      setLeaveCleanupError(message);
+    },
+  });
+
+  useEffect(() => {
+    if (!flow.uploadId || hasAnalysisStarted) return;
+    saveUploadRecoveryStage(flow.uploadId, "setup");
+  }, [flow.uploadId, hasAnalysisStarted]);
 
   useEffect(() => {
     if (flow.hasValidUploadId) return;
@@ -177,6 +201,29 @@ export default function UploadSetupPage() {
   function onConfirmContinueToAnalyze() {
     setConfirmOpen(false);
     nav(`/upload/analyze?uploadId=${uploadIdParam}`);
+  }
+
+  function onCancelLeaveSetupFlow() {
+    if (isLeavingSetupFlow) return;
+    pendingLeaveNavigationRef.current = null;
+    setLeaveSetupDialogOpen(false);
+  }
+
+  async function onConfirmLeaveSetupFlow() {
+    if (isLeavingSetupFlow) return;
+    const confirmNavigation = pendingLeaveNavigationRef.current;
+    if (!confirmNavigation) {
+      setLeaveSetupDialogOpen(false);
+      return;
+    }
+
+    setLeaveCleanupError(null);
+    setIsLeavingSetupFlow(true);
+    try {
+      await confirmNavigation();
+    } finally {
+      setIsLeavingSetupFlow(false);
+    }
   }
 
   const summaryMissingByProject = useMemo(() => {
@@ -374,6 +421,7 @@ export default function UploadSetupPage() {
           )}
           {flow.loadError && <p className="error mb-3 text-sm">{flow.loadError}</p>}
           {flow.actionError && <p className="error mb-3 text-sm">{flow.actionError}</p>}
+          {leaveCleanupError && <p className="error mb-3 text-sm">{leaveCleanupError}</p>}
           {!flow.loading && !flow.loadError && (
             <div className="mb-8 rounded-md border border-zinc-300 bg-white px-4 py-3">
               <p className="mb-2 text-sm text-zinc-700">
@@ -463,6 +511,19 @@ export default function UploadSetupPage() {
         open={confirmOpen}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={onConfirmContinueToAnalyze}
+      />
+      <UploadConfirmDialog
+        open={leaveSetupDialogOpen}
+        title="Leave Upload Setup?"
+        description="Your unfinished upload will be deleted if you leave now."
+        confirmLabel="Leave"
+        confirmDisabled={isLeavingSetupFlow}
+        busy={isLeavingSetupFlow}
+        busyMessage="Deleting unfinished upload..."
+        onCancel={onCancelLeaveSetupFlow}
+        onConfirm={() => {
+          void onConfirmLeaveSetupFlow();
+        }}
       />
     </>
   );
