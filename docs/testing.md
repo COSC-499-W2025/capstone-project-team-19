@@ -22,57 +22,6 @@ The **test report** for this project is this document taken together with:
 
 **Code coverage** (below) shows which **application** code under `src/` and `frontend/src/` is exercised when those suites run. Coverage is optional to generate but useful for reviewers.
 
-## Test suite layout and inventory
-
-Automated tests are **not** listed verbatim in this document: the set changes as features grow. Use the layout below and the commands to produce a full, up-to-date list on demand.
-
-### Layout
-
-| Area | Location | Role |
-|------|----------|------|
-| **Backend (unit & integration)** | `tests/` | One module per concern (`test_parsing_zip.py`, `test_deduplication.py`, …). Shared fixtures live in `tests/conftest.py`. |
-| **Backend (HTTP / API)** | `tests/api/` | FastAPI routes, auth, uploads wizard, exports, etc. Uses `tests/api/conftest.py` where needed. |
-| **Frontend (Vitest)** | `frontend/src/**/__tests__/**` | Files named `*.test.ts` or `*.test.tsx` next to the code they exercise (pages, components, API client). |
-| **Sample ZIPs / datasets** | `test-data/` | Inputs for manual CLI runs and some tests-not test code. See [Test Data](#test-data). |
-
-**Naming:** Python modules that pytest collects are `test_*.py`. Vitest discovers `*.test.ts` and `*.test.tsx` under `frontend/src/`.
-
-### Listing every test file (regenerate anytime)
-
-From the **repository root** (with the venv activated for Python):
-
-**Backend - list test modules**
-
-```bash
-# Git Bash / macOS / Linux
-find tests -name "test_*.py" | sort
-```
-
-```powershell
-# Windows PowerShell
-Get-ChildItem -Path tests -Recurse -Filter "test_*.py" | Sort-Object FullName | ForEach-Object { $_.FullName }
-```
-
-**Backend - list collected test cases (functions/classes)**
-
-```bash
-python -m pytest tests --collect-only -q
-```
-
-The last lines of the output summarize how many tests were collected.
-
-**Frontend - list Vitest test files**
-
-```bash
-# Git Bash / macOS / Linux
-find frontend/src -name "*.test.ts" -o -name "*.test.tsx" | sort
-```
-
-```powershell
-# Windows PowerShell
-Get-ChildItem -Path frontend\src -Recurse -Include *.test.ts,*.test.tsx | Sort-Object FullName | ForEach-Object { $_.FullName }
-```
-
 ---
 
 ## Running Tests

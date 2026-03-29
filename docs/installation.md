@@ -151,9 +151,8 @@ LLM setup is optional for this system. To set it up, see [here](/docs/llm_setup.
 ---
 
 ## Frontend Setup
-The frontend is located in the `frontend/` directory.
 
-[Frontend README](../frontend/README.md)
+The frontend is located in the `frontend/` directory. For frontend setup (installation, running it, possible issues, and running frontend tests), see the [Frontend README](../frontend/README.md).
 
 Quick start:
 

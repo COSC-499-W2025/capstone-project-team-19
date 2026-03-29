@@ -10,7 +10,7 @@ Our team contract outlining roles, responsibilities, communication expectations,
 
 ---
 
-## System Architecture
+## System Architecture and DFD
 
 [System Architecture Diagrams](/docs/architecture.md)
 

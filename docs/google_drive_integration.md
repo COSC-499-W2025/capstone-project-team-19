@@ -20,7 +20,7 @@ Create a Google Cloud Project
 
 Enable the Google Drive API
 1. Check you are in the project just created ( will say "you are working in [project_name] " )
-   if project is a different one click and select apporpriate project
+   if project is a different one click and select appropriate project
 2. Go to navigation menu - > APIs & Services -> Enable APIs & services
 3. Click " + Enable APIs and services"
 4. Search for Google Drive API 
