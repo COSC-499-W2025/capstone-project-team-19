@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import PublicLayout from '../PublicLayout'
 
 vi.mock('react-router-dom', () => ({
@@ -23,10 +23,19 @@ vi.mock('../../../auth/user', () => ({
   getUsername: vi.fn(),
 }))
 
+vi.mock('../../../api/public', () => ({
+  publicGetPortfolioStatus: vi.fn(),
+}))
+
 import { tokenStore } from '../../../auth/token'
 import { getUsername } from '../../../auth/user'
+import { publicGetPortfolioStatus } from '../../../api/public'
 
 describe('PublicLayout', () => {
+  beforeEach(() => {
+    vi.mocked(publicGetPortfolioStatus).mockResolvedValue({ exists: true, is_public: true })
+  })
+
   afterEach(() => {
     vi.clearAllMocks()
   })
@@ -45,16 +54,20 @@ describe('PublicLayout', () => {
     expect(screen.getByText('Outputs')).toBeInTheDocument()
   })
 
-  it('shows "Viewing {username}\'s portfolio"', () => {
+  it('shows "Viewing {username}\'s portfolio"', async () => {
     vi.mocked(tokenStore.get).mockReturnValue(null)
     render(<PublicLayout><div /></PublicLayout>)
-    expect(screen.getByText(/Viewing johndoe's portfolio/)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText(/Viewing johndoe's portfolio/)).toBeInTheDocument()
+    })
   })
 
-  it('renders children', () => {
+  it('renders children', async () => {
     vi.mocked(tokenStore.get).mockReturnValue(null)
     render(<PublicLayout><div data-testid="child-content" /></PublicLayout>)
-    expect(screen.getByTestId('child-content')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByTestId('child-content')).toBeInTheDocument()
+    })
   })
 
   it('shows profile link when user is logged in', () => {
