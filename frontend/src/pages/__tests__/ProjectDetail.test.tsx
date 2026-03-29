@@ -330,10 +330,9 @@ describe("ProjectDetailPage", () => {
   });
 
   describe("summary editing", () => {
-    // The Summary "Edit" button is the second Edit button in the DOM.
     async function clickSummaryEdit(user: ReturnType<typeof userEvent.setup>) {
-      await waitFor(() => expect(screen.getAllByRole("button", { name: "Edit" }).length).toBeGreaterThanOrEqual(2));
-      await user.click(screen.getAllByRole("button", { name: "Edit" })[1]);
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit summary" })).toBeInTheDocument());
+      await user.click(screen.getByRole("button", { name: "Edit summary" }));
     }
 
     it("shows summary edit form after clicking Edit", async () => {

@@ -515,7 +515,7 @@ export default function ProjectDetailPage() {
         Project Summary
       </div>
 
-      <AppButton variant="outline" size="sm" onClick={handleStartEditSummary}>
+      <AppButton variant="outline" size="sm" aria-label="Edit summary" onClick={handleStartEditSummary}>
         Edit
       </AppButton>
     </div>
