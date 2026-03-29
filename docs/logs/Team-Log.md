@@ -902,13 +902,72 @@ Next week, the team plans to continue stabilizing these newly connected flows so
 
 ### Coding tasks
 
+
+[PR 613](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/613) - Authentication flows were refactored to use the shared UI baseline while introducing stronger route protection, ensuring users with invalid or missing tokens are redirected appropriately and cannot access protected pages. The Home page was also redesigned with a new shortcut-based layout aligned with the updated UI system, alongside test updates to reflect the new auth structure, route guards, and homepage navigation.
+
+[PR #616](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/616) - A shared page-level layout system was implemented across authenticated pages, introducing a consistent container, breadcrumb header navigation, and content card structure to align the application with the redesigned UI. This established a unified visual baseline across major pages while allowing deeper page-specific refinements to be completed incrementally.
+
+[PR #617](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/617) - Public-facing insights and outputs pages were implemented, allowing selected projects to display skill timelines, rankings, heatmaps, and publicly shared resumes. This extended the platform’s functionality to support external viewing of user data, with testing planned in a follow-up PR.
+
+[PR #618](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/618) - The Projects and Project Details pages, including their public counterparts, were refactored to align with the updated UI design. A reusable FeatureTile component was enhanced to support thumbnails, enabling consistent project card presentation across both private and public views.
+
+[PR #619](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/619) - A frontend Profile page was implemented, allowing users to view and edit personal details, certifications, education, experience, and profile summaries. Security-related functionality was deferred to a later PR, with this work building on prior changes to integrate profile management into the UI.
+
+[PR #621](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/621) - Skill level indicators were redesigned from text labels to a star-based visual system, improving clarity and aligning with UI feedback. This included introducing a reusable LevelStars component, updating related views and tooltips, and modifying tests to validate the new visual representation.
+
+[PR #633](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/633) - Several issues in the upload flow were resolved, including incorrect duplicate analysis flags, deduplication bugs, and missing LLM summaries in the Projects view. The upload experience was also improved through clearer Google Drive connection UI, added instructions, refined navigation behavior, and better button visibility.
+
+[PR #635](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/635) - Project date handling was improved by introducing human-readable formatting, clearer date range conventions, and better handling of missing or partial date data. Public project pages were also fixed to correctly fall back on auto-inferred dates, ensuring more accurate and complete timeline information is displayed.
+
+[PR #636](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/636) - Project visibility controls were redesigned to improve clarity and usability, moving edit functionality from project cards to a dedicated section on the project detail page. This change simplified the projects list to read-only visibility indicators while providing a clearer, more intentional interface for managing public and private settings.
+
+[PR #637](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/637) - Resume editing functionality was expanded to allow users to both remove and add projects, improving flexibility and overall user experience. This included introducing new UI components, modal-based project selection, and corresponding backend support to maintain consistency between resume structure and available projects.
+
+[PR #656](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/656) - Public page functionality was enhanced by introducing a toggle that allows users to seamlessly switch between their private and public views for easier verification of shared content. Public pages were also refactored to align with the new UI baseline and updated to display only skills derived from projects marked as public, improving consistency and data accuracy.
+
+[PR #660](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/660) - The “Outputs” page was renamed to “Resume” across the application, simplifying navigation by removing the unused landing view and routing users directly to the resume list. This change included updating navigation, routes, and references throughout the frontend, along with comprehensive test additions to ensure correct behavior across resume management features.
+
+[PR #661](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/661) - The Resume page and its related components were refactored to align with the updated Tailwind and shared UI styling system, replacing legacy CSS for improved consistency across the application. Global button behavior was also enhanced to provide consistent interaction feedback through updated cursor styling.
+
+[PR #662](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/662) - Account deletion functionality was added to the Profile page, allowing users to permanently remove their account and associated data with confirmation safeguards. Backend support ensures proper cascading deletion and cleanup across related data to maintain system integrity.
+
+[PR #666](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/666) - The Profile page was refined based on peer-testing feedback, including improved input placeholders and warnings for unsaved changes to enhance usability. Logout functionality was also implemented, completing a key part of account management within the UI.
+
+[PR #671](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/671) - End-to-end change-password functionality was implemented, including a new authenticated backend endpoint, database support, and a frontend security form within the Profile page. This was complemented by validation, test coverage, and documentation updates to ensure secure and reliable password management.
+
+[PR #672](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/672) - Summary editing functionality was moved from the Resume section to the Project Details page to better align with updated design decisions. This included introducing a new backend endpoint, updating both private and public views to reflect changes, and removing outdated resume-based editing with corresponding test updates.
+
+[PR #674](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/674) - A Top Projects showcase was implemented on the public projects page, highlighting up to three ranked projects with visual badges and direct links to project-specific activity insights. This also introduced query-based navigation for public insights and added unit tests to validate ranking behavior, navigation, and public view interactions.
+
+[PR #675](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/675) - Resume export behavior was enhanced to enforce a one-page constraint, introducing backend validation to block overly long auto-generated resumes and warn users when manual edits exceed the limit. The preview system was also improved by switching to PDF-based rendering and refining DOCX formatting to better match final export output.
+
 ### Testing or debugging tasks
+
+[PR #634](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/634) - The GitHub integration flow in the upload setup was improved and stabilized by fixing OAuth handling, token validation, and repository loading issues that previously caused broken or inconsistent behavior. The flow was also refactored into clearer step-based interactions with improved UI feedback, ensuring a more reliable and intuitive connection process.
+
+[PR #644](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/644) - A bug in the Project Heatmap visualization was fixed where low-activity cells were incorrectly displayed with maximum intensity due to improper scaling. The color normalization logic was updated to enforce a minimum scale, ensuring more accurate and visually meaningful representations of project activity.
+
+[PR #667](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/667) - Unfinished upload handling was improved by adding recovery and cleanup mechanisms to prevent stale file-path and re-upload issues during the upload workflow. This included new API endpoints, frontend recovery flows, and test coverage to ensure reliable behavior when users exit and resume uploads mid-process.
+
+[PR #669](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/669) - Comprehensive frontend test coverage was added for the upload wizard flow, including consent validation, recovery handling, setup navigation, and analysis execution paths. Shared test utilities were introduced to support consistent testing across upload-related pages and edge cases.
+
+
+
+### Documentation Tasks
+
+[PR #664](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/664) - Milestone 3 documentation was organized and expanded, centralizing key artifacts such as system architecture, DFD diagrams, installation guides, testing reports, and known bugs into structured docs linked from the main README. Updates also enabled easier generation of test coverage reports, improving clarity and accessibility for reviewers and future developers.
 
 ### Reviewing or collaboration tasks
 
+The team collaboratively prepared for the Milestone 3 presentation by organizing slide content, practicing delivery, and refining the overall structure, with an initial presentation plan guiding individual contributions. Work was distributed across deliverables, including demo video creation and documentation, while the team also coordinated around branching strategies, resolving merge conflicts, and managing PR dependencies to ensure a smooth integration process.
+
 ### Issues or blockers
 
+No major blockers were encountered during this period, as the team was able to make steady progress across features and deliverables. Minor challenges included managing merge conflicts and coordinating work across dependent branches, which were resolved through communication and careful PR sequencing.
+
 ### Plan / goals for next week
+
+With development complete, the team’s focus will shift to final course deliverables, including project voting and any remaining administrative tasks. No further feature development is planned as the project has reached completion.
 
 ### Burnup chart
 
