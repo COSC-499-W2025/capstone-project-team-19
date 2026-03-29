@@ -5,6 +5,7 @@ import {
   removeProjectFromResume,
   downloadResumeDocx,
   downloadResumePdf,
+  getResumeProjectEligibleRoles,
   type ResumeDetail as ResumeDetailType,
   type ResumeProject,
 } from "../../api/outputs";
@@ -64,6 +65,9 @@ export default function ResumeDetail({
   const [editingName, setEditingName] = useState(false);
   const [nameVal, setNameVal] = useState("");
   const [savingName, setSavingName] = useState(false);
+
+  // Key role editing
+  const [eligibleRoles, setEligibleRoles] = useState<string[]>([]);
 
   // Per-project editing
   const [editingProjectId, setEditingProjectId] = useState<number | null>(null);
@@ -158,11 +162,17 @@ export default function ResumeDetail({
       scope: "resume_only",
     });
     setErr(null);
+    // fetch eligible roles for this project
+    setEligibleRoles([]);
+    getResumeProjectEligibleRoles(resumeId, p.project_summary_id)
+      .then((res) => { if (res.data?.roles) setEligibleRoles(res.data.roles); })
+      .catch(() => setEligibleRoles([]));
   }
 
   function cancelEditingProject() {
     setEditingProjectId(null);
     setProjectEdits(null);
+    setEligibleRoles([]);
   }
 
   /* ── Save project edits ── */
@@ -471,6 +481,7 @@ export default function ResumeDetail({
                       updateBullet={updateBullet}
                       removeBullet={removeBullet}
                       addBullet={addBullet}
+                      eligibleRoles={eligibleRoles}
                     />
                   ) : (
                     <ProjectReadView project={p} />
@@ -661,6 +672,7 @@ function ProjectEditForm({
   updateBullet,
   removeBullet,
   addBullet,
+  eligibleRoles,
 }: {
   edits: ProjectEdits;
   setEdits: (e: ProjectEdits) => void;
@@ -670,6 +682,7 @@ function ProjectEditForm({
   updateBullet: (i: number, v: string) => void;
   removeBullet: (i: number) => void;
   addBullet: () => void;
+  eligibleRoles: string[];
 }) {
   return (
     <div className="space-y-5">
@@ -686,12 +699,20 @@ function ProjectEditForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="edit-key-role">Key Role</Label>
-        <Input
+        <select
           id="edit-key-role"
-          placeholder="e.g. Backend Developer"
           value={edits.key_role}
           onChange={(e) => setEdits({ ...edits, key_role: e.target.value })}
-        />
+          disabled={eligibleRoles.length === 0}
+          className="h-10 w-full rounded border border-zinc-300 bg-zinc-50 px-3 text-sm text-zinc-700 disabled:opacity-60"
+        >
+          <option value="">
+            {eligibleRoles.length === 0 ? "Loading roles..." : "Select a role..."}
+          </option>
+          {eligibleRoles.map((role) => (
+            <option key={role} value={role}>{role}</option>
+          ))}
+        </select>
       </div>
 
       <div className="space-y-1.5">
