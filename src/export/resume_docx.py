@@ -305,8 +305,8 @@ def export_resume_record_to_docx(
     add_section_heading(doc, "Skills")
     add_skill_line("Languages", languages)
     add_skill_line("Frameworks", agg.get("frameworks") or [])
-    add_skill_line("Technical Skills", tech_skills)
-    add_skill_line("Writing Skills", writing_skills)
+    add_skill_line("Technical skills", tech_skills)
+    add_skill_line("Writing skills", writing_skills)
 
     if experience_entries:
         add_section_heading(doc, "Experience")
