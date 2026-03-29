@@ -1,4 +1,8 @@
+import os
+from urllib.parse import urlencode
+
 from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi.responses import RedirectResponse
 from sqlite3 import Connection
 
 from src.api.dependencies import get_current_user_id, get_db
@@ -14,27 +18,32 @@ from src.services.uploads_service import get_upload_status
 router = APIRouter(tags=["github"])
 
 
+_FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
+
+
 @router.get("/auth/github/callback")
 def get_github_callback(
     code: str = Query(...),
     state: str = Query(None),
     conn: Connection = Depends(get_db),
 ):
-    """OAuth callback endpoint for GitHub."""
+    """OAuth callback endpoint for GitHub. Redirects to frontend setup page on success."""
     try:
         result = github_handle_callback(conn, code, state)
-        return {
-            "success": True,
-            "message": "GitHub connected successfully",
-            "data": result
-        }
-    except HTTPException:
-        raise
+        upload_id = result.get("upload_id")
+        params = {"github": "success"}
+        if upload_id is not None:
+            params["uploadId"] = str(upload_id)
+        redirect_url = f"{_FRONTEND_BASE_URL}/upload/setup?{urlencode(params)}"
+        return RedirectResponse(url=redirect_url, status_code=302)
+    except HTTPException as exc:
+        params = {"github": "error", "message": str(exc.detail)}
+        redirect_url = f"{_FRONTEND_BASE_URL}/upload/setup?{urlencode(params)}"
+        return RedirectResponse(url=redirect_url, status_code=302)
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to complete GitHub authorization: {str(e)}"
-        )
+        params = {"github": "error", "message": str(e)}
+        redirect_url = f"{_FRONTEND_BASE_URL}/upload/setup?{urlencode(params)}"
+        return RedirectResponse(url=redirect_url, status_code=302)
 
 
 @router.post("/projects/upload/{upload_id}/projects/{project}/github/start", response_model=ApiResponse[GitHubStartResponse])

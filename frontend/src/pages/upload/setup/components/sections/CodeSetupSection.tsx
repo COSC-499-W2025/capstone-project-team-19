@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import type { GitHubRepo, GitIdentityOption } from "../../../../../api/uploads";
+import type { GitIdentityOption } from "../../../../../api/uploads";
 import type { SetupFlowResult, SetupProjectCard } from "../../types";
 import { setupPrimaryActionButtonClass, setupSecondaryActionButtonClass } from "./buttonStyles";
+import GitHubIntegrationSection from "./GitHubIntegrationSection";
 
 type Props = {
   project: SetupProjectCard;
@@ -30,12 +31,6 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
   const [identityMessage, setIdentityMessage] = useState<string | null>(null);
   const [localGitDetected, setLocalGitDetected] = useState<boolean | null>(null);
 
-  const [repos, setRepos] = useState<GitHubRepo[]>([]);
-  const [selectedRepo, setSelectedRepo] = useState(project.githubRepoFullName ?? "");
-  const [reposLoading, setReposLoading] = useState(false);
-  const [authUrl, setAuthUrl] = useState<string | null>(null);
-  const [githubMessage, setGithubMessage] = useState<string | null>(null);
-
   const canPickIdentities =
     project.classification === "collaborative" &&
     localGitDetected === true &&
@@ -50,10 +45,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
     setSelectedIndices(project.gitSelectedIdentityIndices);
   }, [project.gitSelectedIdentityIndices]);
 
-  useEffect(() => {
-    setSelectedRepo(project.githubRepoFullName ?? "");
-  }, [project.githubRepoFullName]);
-
+  // Detect local .git and load contributor identities
   useEffect(() => {
     if (project.projectKey === null) {
       setLocalGitDetected(null);
@@ -74,13 +66,11 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
         setLocalGitDetected(true);
         setIdentities(gitData.options);
         setSelectedIndices(gitData.selected_indices);
-        setIdentitiesLoading(false);
-        return;
+      } else {
+        setLocalGitDetected(false);
+        setIdentities([]);
+        setSelectedIndices([]);
       }
-
-      setLocalGitDetected(false);
-      setIdentities([]);
-      setSelectedIndices([]);
       setIdentitiesLoading(false);
     }
 
@@ -115,48 +105,9 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
     setIdentityMessage("Identity selection saved.");
   }
 
-  async function onGithubStart(connectNow: boolean) {
-    setGithubMessage(null);
-    const data = await actions.githubStart(project.projectName, connectNow);
-    if (!data) return;
-
-    setAuthUrl(data.auth_url ?? null);
-    if (!connectNow) {
-      setGithubMessage("GitHub integration skipped for now.");
-      return;
-    }
-
-    if (data.auth_url) {
-      setGithubMessage("Continue with GitHub OAuth using the link below.");
-      return;
-    }
-
-    setGithubMessage("GitHub is connected.");
-  }
-
-  async function onLoadRepos() {
-    setReposLoading(true);
-    setGithubMessage(null);
-    const data = await actions.githubRepos(project.projectName);
-    setReposLoading(false);
-    if (!data) return;
-
-    setRepos(data.repos);
-    if (!selectedRepo && data.repos.length > 0) {
-      setSelectedRepo(data.repos[0].full_name);
-    }
-    setGithubMessage(data.repos.length > 0 ? "Repositories loaded." : "No repositories found.");
-  }
-
-  async function onLinkRepo() {
-    if (!selectedRepo) return;
-    const data = await actions.githubLink(project.projectName, selectedRepo);
-    if (!data) return;
-    setGithubMessage("Repository linked.");
-  }
-
   return (
     <div className="space-y-4">
+      {/* --- Git Detection --- */}
       <div className="space-y-2">
         <h4 className="text-lg leading-tight font-semibold text-zinc-900">Git Detection</h4>
         <p className="text-sm leading-relaxed text-zinc-700">{identitySummary}</p>
@@ -168,6 +119,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
         </p>
       )}
 
+      {/* --- Identity picker (collaborative projects with a .git repo) --- */}
       {canPickIdentities && (
         <div className="space-y-3">
           <div className="text-sm font-semibold text-zinc-900">Select your identity (collaborative code)</div>
@@ -289,6 +241,13 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
 
         {githubMessage && <p className="text-sm text-zinc-700">{githubMessage}</p>}
       </div>
+      {/* --- GitHub Integration (connect, load repos, link) --- */}
+      <GitHubIntegrationSection
+        project={project}
+        actions={actions}
+        isMutating={isMutating}
+        localGitDetected={localGitDetected}
+      />
     </div>
   );
 }

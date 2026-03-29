@@ -46,14 +46,37 @@ def test_github_start_connect_now_true_generates_url(mock_auth_url, mock_get_tok
     assert res.json()["data"]["auth_url"] == "https://github.com/login/oauth/authorize?state=abc123"
     mock_auth_url.assert_called_once()
 
+@patch("src.services.github_service.gh_get")
 @patch("src.services.github_service.get_github_token")
-def test_github_start_already_connected(mock_get_token, client, auth_headers, seed_conn):
+def test_github_start_already_connected(mock_get_token, mock_gh_get, client, auth_headers, seed_conn):
     upload_id = _create_test_upload(seed_conn, 1)
     mock_get_token.return_value = "existing_token"
+    mock_gh_get.return_value = {"login": "testuser"}
     res = client.post(f"/projects/upload/{upload_id}/projects/TestProject/github/start", headers=auth_headers, json={"connect_now": True})
     assert res.status_code == 200
     assert res.json()["success"] is True
     assert res.json()["data"]["auth_url"] is None
+    mock_gh_get.assert_called_once()
+
+
+@patch("src.services.github_service.revoke_github_token")
+@patch("src.services.github_service.generate_github_auth_url")
+@patch("src.services.github_service.gh_get")
+@patch("src.services.github_service.get_github_token")
+def test_github_start_stale_token_revokes_and_returns_auth_url(
+    mock_get_token, mock_gh_get, mock_auth_url, mock_revoke, client, auth_headers, seed_conn
+):
+    """When the stored token fails validation (bad/expired), revoke it and return auth_url."""
+    upload_id = _create_test_upload(seed_conn, 1)
+    mock_get_token.return_value = "stale_token"
+    mock_gh_get.return_value = {}  # Invalid response (e.g. Bad credentials)
+    mock_auth_url.return_value = "https://github.com/login/oauth/authorize?state=xyz"
+    res = client.post(f"/projects/upload/{upload_id}/projects/TestProject/github/start", headers=auth_headers, json={"connect_now": True})
+    assert res.status_code == 200
+    assert res.json()["success"] is True
+    assert res.json()["data"]["auth_url"] == "https://github.com/login/oauth/authorize?state=xyz"
+    mock_revoke.assert_called_once()
+    mock_auth_url.assert_called_once()
 
 def test_github_start_upload_not_found(client, auth_headers):
     res = client.post("/projects/upload/999/projects/TestProject/github/start", headers=auth_headers, json={"connect_now": True})
@@ -65,9 +88,10 @@ def test_github_callback_success(mock_save_token, mock_exchange, client, seed_co
     upload_id = _create_test_upload(seed_conn, 1)
     _setup_oauth_state(seed_conn, upload_id, "test_state_123")
     mock_exchange.return_value = {"access_token": "token123"}
-    res = client.get("/auth/github/callback?code=abc123&state=test_state_123")
-    assert res.status_code == 200
-    assert res.json()["success"] is True
+    res = client.get("/auth/github/callback?code=abc123&state=test_state_123", follow_redirects=False)
+    assert res.status_code == 302
+    assert "github=success" in res.headers["location"]
+    assert "uploadId" in res.headers["location"]
     mock_save_token.assert_called_once()
     call_args = mock_save_token.call_args[0]
     assert call_args[1] == 1
@@ -81,9 +105,10 @@ def test_github_callback_invalid_state(client, seed_conn):
     _create_test_upload(seed_conn, 1)
     with patch("src.services.github_service._find_upload_by_oauth_state") as mock_find:
         mock_find.return_value = None
-        res = client.get("/auth/github/callback?code=abc123&state=invalid")
-        assert res.status_code == 400
-        assert "Invalid OAuth state" in res.json()["detail"]
+        res = client.get("/auth/github/callback?code=abc123&state=invalid", follow_redirects=False)
+    assert res.status_code == 302
+    assert "github=error" in res.headers["location"]
+    assert "Invalid OAuth state" in res.headers["location"] or "message=" in res.headers["location"]
 
 @patch("src.services.github_service.get_github_token")
 @patch("src.services.github_service.list_user_repos")

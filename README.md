@@ -269,6 +269,7 @@ A template file (`.env.example`) is provided and should be copied directly.
     - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` — GitHub OAuth (leave empty to skip GitHub analysis)
     - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — Google Drive (leave empty to skip Drive analysis)
     - `DEVICE_CODE_URL`, `TOKEN_URL`, `GITHUB_REDIRECT_URI`, `GOOGLE_REDIRECT_URI` — URL constants, do not modify
+    - `FRONTEND_BASE_URL` — Base URL of the frontend (e.g. `http://localhost:5173`). Used by the GitHub OAuth callback to redirect users back to the setup page after authorization.
 
 > **Security Note**
 > The `.env` file may contain sensitive information and is ignored by Git via `.gitignore`.
@@ -292,7 +293,10 @@ To enable GitHub analysis:
 4. Add the following to your `.env` file (as shown in `.env.example`):
     ```env
     GITHUB_CLIENT_ID=<your-client-id>
+    GITHUB_CLIENT_SECRET=<your-client-secret>
+    FRONTEND_BASE_URL=http://localhost:5173
     ```
+   The OAuth callback redirects to `FRONTEND_BASE_URL/upload/setup?uploadId=...&github=success` so the setup page can refresh and load repositories. Ensure your frontend dev server matches this URL when testing.
 
 ### LLM Services (optional)
 

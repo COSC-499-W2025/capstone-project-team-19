@@ -6,6 +6,7 @@ import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
 import SetupAnalyzeConfirmDialog from "./components/SetupAnalyzeConfirmDialog";
 import SetupProjectGroup from "./components/SetupProjectGroup";
+import { useGitHubOAuthCallback } from "./hooks/useGitHubOAuthCallback";
 import { useSetupFlow } from "./hooks/useSetupFlow";
 import type { SummaryMode } from "./types";
 
@@ -45,7 +46,7 @@ function deriveInitialSummaryModes(manualOnlySummaries: boolean): ProjectSummary
 export default function UploadSetupPage() {
   const username = getUsername();
   const nav = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [readiness, setReadiness] = useState<RunPreflightRecord | null>(null);
   const [checkingReadiness, setCheckingReadiness] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -59,6 +60,14 @@ export default function UploadSetupPage() {
     if (flow.hasValidUploadId) return;
     nav("/upload/upload", { replace: true });
   }, [flow.hasValidUploadId, nav]);
+
+  useGitHubOAuthCallback({
+    searchParams,
+    setSearchParams,
+    hasValidUploadId: flow.hasValidUploadId,
+    refreshUpload: flow.refreshUpload,
+    setActionError: flow.setActionError,
+  });
 
   useEffect(() => {
     if (!flow.uploadNotFound) return;
