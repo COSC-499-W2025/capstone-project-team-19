@@ -18,6 +18,7 @@ Sections are only shown when they have content.
 
 from __future__ import annotations
 
+import io
 import json
 import re
 from datetime import datetime
@@ -26,6 +27,7 @@ from typing import Any, Dict, List, Optional
 
 from xml.sax.saxutils import escape
 
+from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_LEFT
@@ -178,25 +180,26 @@ def _render_experience_block(
         story.append(Spacer(1, 10))
 
 
-def export_resume_record_to_pdf(
-    *,
-    username: str,
-    record: Dict[str, Any],
-    out_dir: str = "./out",
-    highlighted_skills: Optional[List[str]] = None,
-    highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,
-    user_profile: Optional[Dict[str, Any]] = None,
-    education_entries: Optional[List[Dict[str, Any]]] = None,
-    experience_entries: Optional[List[Dict[str, Any]]] = None,
-) -> Path:
-    out_path = Path(out_dir)
-    out_path.mkdir(parents=True, exist_ok=True)
+class _PageCountingCanvas(canvas.Canvas):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._saved_page_states: List[Dict[str, Any]] = []
+        self.page_count = 0
 
-    now = datetime.now()
-    stamp_filename = now.strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"resume_{_safe_slug(username)}_{stamp_filename}.pdf"
-    filepath = out_path / filename
+    def showPage(self) -> None:
+        self._saved_page_states.append(dict(self.__dict__))
+        self._startPage()
 
+    def save(self) -> None:
+        total_pages = max(len(self._saved_page_states), 1)
+        for state in self._saved_page_states:
+            self.__dict__.update(state)
+            canvas.Canvas.showPage(self)
+        self.page_count = total_pages
+        canvas.Canvas.save(self)
+
+
+def _parse_resume_snapshot(record: Dict[str, Any]) -> tuple[Optional[Dict[str, Any]], Any]:
     resume_json = record.get("resume_json")
     rendered_text = record.get("rendered_text")
 
@@ -207,21 +210,24 @@ def export_resume_record_to_pdf(
         except Exception:
             snapshot = None
 
+    return snapshot, rendered_text
+
+
+def _build_resume_story(
+    *,
+    username: str,
+    record: Dict[str, Any],
+    highlighted_skills: Optional[List[str]] = None,
+    highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,
+    user_profile: Optional[Dict[str, Any]] = None,
+    education_entries: Optional[List[Dict[str, Any]]] = None,
+    experience_entries: Optional[List[Dict[str, Any]]] = None,
+) -> tuple[List[Any], str]:
+    snapshot, rendered_text = _parse_resume_snapshot(record)
     profile = user_profile or {}
     education_entries = education_entries or []
     experience_entries = experience_entries or []
     display_name = get_resume_name(profile, username)
-
-    doc = SimpleDocTemplate(
-        str(filepath),
-        pagesize=LETTER,
-        leftMargin=0.85 * inch,
-        rightMargin=0.85 * inch,
-        topMargin=0.85 * inch,
-        bottomMargin=0.85 * inch,
-        title=f"Resume - {display_name}",
-        author=display_name,
-    )
 
     styles = getSampleStyleSheet()
 
@@ -307,8 +313,7 @@ def export_resume_record_to_pdf(
                     story.append(Paragraph(line, Body))
         else:
             story.append(Paragraph("Resume data is missing or unreadable.", Body))
-        doc.build(story)
-        return filepath
+        return story, display_name
 
     projects: List[Dict[str, Any]] = snapshot.get("projects") or []
     agg: Dict[str, Any] = snapshot.get("aggregated_skills") or {}
@@ -423,5 +428,62 @@ def export_resume_record_to_pdf(
         story.append(Paragraph("CERTIFICATES", SectionStyle))
         _render_education_block(story, certificate_only, ProjectTitleStyle, MetaItalic, Body)
 
+    return story, display_name
+
+
+def get_resume_record_pdf_page_count(*,username: str,record: Dict[str, Any],highlighted_skills: Optional[List[str]] = None,highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,user_profile: Optional[Dict[str, Any]] = None,education_entries: Optional[List[Dict[str, Any]]] = None,experience_entries: Optional[List[Dict[str, Any]]] = None,) -> int:
+    story, display_name = _build_resume_story(
+        username=username,
+        record=record,
+        highlighted_skills=highlighted_skills,
+        highlighted_skills_by_project=highlighted_skills_by_project,
+        user_profile=user_profile,
+        education_entries=education_entries,
+        experience_entries=experience_entries,
+    )
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=LETTER,
+        leftMargin=0.85 * inch,
+        rightMargin=0.85 * inch,
+        topMargin=0.85 * inch,
+        bottomMargin=0.85 * inch,
+        title=f"Resume - {display_name}",
+        author=display_name,
+    )
+    counting_canvas = _PageCountingCanvas(buffer)
+    doc.build(story, canvasmaker=lambda *args, **kwargs: counting_canvas)
+    return max(counting_canvas.page_count, 1)
+
+
+def export_resume_record_to_pdf(*,username: str,record: Dict[str, Any],out_dir: str = "./out",highlighted_skills: Optional[List[str]] = None,highlighted_skills_by_project: Optional[Dict[str, List[str]]] = None,user_profile: Optional[Dict[str, Any]] = None,education_entries: Optional[List[Dict[str, Any]]] = None,experience_entries: Optional[List[Dict[str, Any]]] = None,) -> Path:
+    out_path = Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    now = datetime.now()
+    stamp_filename = now.strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"resume_{_safe_slug(username)}_{stamp_filename}.pdf"
+    filepath = out_path / filename
+
+    story, display_name = _build_resume_story(
+        username=username,
+        record=record,
+        highlighted_skills=highlighted_skills,
+        highlighted_skills_by_project=highlighted_skills_by_project,
+        user_profile=user_profile,
+        education_entries=education_entries,
+        experience_entries=experience_entries,
+    )
+    doc = SimpleDocTemplate(
+        str(filepath),
+        pagesize=LETTER,
+        leftMargin=0.85 * inch,
+        rightMargin=0.85 * inch,
+        topMargin=0.85 * inch,
+        bottomMargin=0.85 * inch,
+        title=f"Resume - {display_name}",
+        author=display_name,
+    )
     doc.build(story)
     return filepath
