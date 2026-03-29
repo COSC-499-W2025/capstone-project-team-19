@@ -1261,7 +1261,7 @@ Handles GitHub OAuth authentication and repository linking for projects during t
 
 - **Start GitHub Connection**
   - **Endpoint**: `POST /start`
-  - **Description**: Initiates GitHub OAuth connection flow for a project. If `connect_now` is `true` and user is not already connected, returns an authorization URL. If `connect_now` is `false`, records that GitHub connection was skipped.
+  - **Description**: Initiates GitHub OAuth connection flow for a project. If `connect_now` is `true` and user is not already connected, returns an authorization URL. If a stored token exists, it is validated first; if validation fails (expired or revoked), the token is cleared and an auth URL is returned so the user can re-authorize. If `connect_now` is `false`, records that GitHub connection was skipped.
   - **Path Parameters**:
     - `{upload_id}` (integer, required): The upload session ID
     - `{project}` (string, required): The project name

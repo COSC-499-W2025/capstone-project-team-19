@@ -31,6 +31,7 @@ import {
   X,
   Plus,
   Trash2,
+  ArrowLeft,
 } from "lucide-react";
 
 type Props = {
@@ -268,20 +269,20 @@ export default function ResumeDetail({
   /* ── Render ── */
   if (loading)
     return (
-      <div className="content">
-        <p>Loading...</p>
+      <div className="p-6">
+        <p className="text-sm text-[#7f7f7f]">Loading...</p>
       </div>
     );
   if (err && !resume)
     return (
-      <div className="content">
-        <p className="error">{err}</p>
+      <div className="p-6">
+        <p className="text-sm text-[#cc4b4b]">{err}</p>
       </div>
     );
   if (!resume)
     return (
-      <div className="content">
-        <p>Resume not found.</p>
+      <div className="p-6">
+        <p className="text-sm text-[#7f7f7f]">Resume not found.</p>
       </div>
     );
 
@@ -289,50 +290,50 @@ export default function ResumeDetail({
   const agg = resume.aggregated_skills;
 
   return (
-    <div className="content">
+    <div className="p-6">
       {/* Header */}
-      <div className="outputsHeader">
-        <button className="backBtn" onClick={onBack}>
-          &larr;
-        </button>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon-sm" onClick={onBack}>
+            <ArrowLeft className="size-4" />
+          </Button>
 
-        {editing && editingName ? (
-          <div className="flex items-center gap-2" style={{ flex: 1 }}>
-            <Input
-              value={nameVal}
-              onChange={(e) => setNameVal(e.target.value)}
-              className="max-w-xs text-lg font-semibold"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSaveName();
-                if (e.key === "Escape") {
+          {editing && editingName ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={nameVal}
+                onChange={(e) => setNameVal(e.target.value)}
+                className="max-w-xs text-lg font-semibold"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveName();
+                  if (e.key === "Escape") {
+                    setEditingName(false);
+                    setNameVal(resume.name);
+                  }
+                }}
+              />
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={handleSaveName}
+                disabled={savingName}
+              >
+                <Check className="size-4 text-emerald-600" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => {
                   setEditingName(false);
                   setNameVal(resume.name);
-                }
-              }}
-            />
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={handleSaveName}
-              disabled={savingName}
-            >
-              <Check className="size-4 text-emerald-600" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => {
-                setEditingName(false);
-                setNameVal(resume.name);
-              }}
-            >
-              <X className="size-4 text-slate-400" />
-            </Button>
-          </div>
-        ) : (
-          <>
-            <h2>
+                }}
+              >
+                <X className="size-4 text-slate-400" />
+              </Button>
+            </div>
+          ) : (
+            <h2 className="text-lg font-semibold text-foreground">
               {resume.name}
               {editing && (
                 <Button
@@ -345,29 +346,33 @@ export default function ResumeDetail({
                 </Button>
               )}
             </h2>
-          </>
-        )}
+          )}
+        </div>
 
-        {editing && (
-          <button
-            className="actionBtn outline"
-            onClick={() => setShowAddProject(true)}
+        <div className="flex items-center gap-2">
+          {editing && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddProject(true)}
+            >
+              Add Project
+            </Button>
+          )}
+          <Button
+            variant={editing ? "default" : "outline"}
+            size="sm"
+            onClick={toggleEditing}
           >
-            Add Project
-          </button>
-        )}
-        <button
-          className={`actionBtn ${editing ? "dark" : "outline"}`}
-          onClick={toggleEditing}
-        >
-          {editing ? "Done Editing" : "Edit"}
-        </button>
-        {!editing && (
-          <ExportDropdown onDocx={handleExportDocx} onPdf={handleExportPdf} />
-        )}
+            {editing ? "Done Editing" : "Edit"}
+          </Button>
+          {!editing && (
+            <ExportDropdown onDocx={handleExportDocx} onPdf={handleExportPdf} />
+          )}
+        </div>
       </div>
 
-      <hr className="divider" />
+      <hr className="my-4 border-t border-[#e5e5e5]" />
 
       {/* Success / Error banners */}
       {successMsg && (
@@ -382,46 +387,17 @@ export default function ResumeDetail({
       )}
 
       {/* Skills Summary */}
-      {editing ? (
-        <Card className="mb-6 rounded-2xl border-slate-200/80 bg-white shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base text-slate-900">
-              Skills
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <SkillRow label="Languages" items={agg.languages} />
-            <SkillRow label="Frameworks" items={agg.frameworks} />
-            <SkillRow label="Technical" items={agg.technical_skills} />
-            <SkillRow label="Writing" items={agg.writing_skills} />
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="skillsSummaryBlock">
-          <h3>Skills</h3>
-          {agg.languages.length > 0 && (
-            <p>
-              <strong>Languages:</strong> {agg.languages.join(", ")}
-            </p>
-          )}
-          {agg.frameworks.length > 0 && (
-            <p>
-              <strong>Frameworks:</strong> {agg.frameworks.join(", ")}
-            </p>
-          )}
-          {agg.technical_skills.length > 0 && (
-            <p>
-              <strong>Technical skills:</strong>{" "}
-              {agg.technical_skills.join(", ")}
-            </p>
-          )}
-          {agg.writing_skills.length > 0 && (
-            <p>
-              <strong>Writing skills:</strong> {agg.writing_skills.join(", ")}
-            </p>
-          )}
-        </div>
-      )}
+      <Card className="mb-6 rounded-2xl border-slate-200/80 bg-white shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base text-slate-900">Skills</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <SkillRow label="Languages" items={agg.languages} />
+          <SkillRow label="Frameworks" items={agg.frameworks} />
+          <SkillRow label="Technical" items={agg.technical_skills} />
+          <SkillRow label="Writing" items={agg.writing_skills} />
+        </CardContent>
+      </Card>
 
       {/* Projects */}
       {editing ? (
@@ -505,13 +481,20 @@ export default function ResumeDetail({
           })}
         </div>
       ) : (
-        /* ── View mode: flat list matching export structure ── */
-        <div className="resumeProjectsList">
-          <h3 className="groupHeader">Projects</h3>
+        /* ── View mode: styled cards matching export structure ── */
+        <div className="space-y-4">
+          <h3 className="text-base font-semibold text-slate-900 border-b border-[#e5e5e5] pb-1">
+            Projects
+          </h3>
           {sortedProjects.map((p, i) => (
-            <div key={i} className="resumeProjectBlock">
-              <ProjectBlockView project={p} />
-            </div>
+            <Card
+              key={i}
+              className="rounded-xl border-slate-200/80 bg-white shadow-sm"
+            >
+              <CardContent className="py-4">
+                <ProjectBlockView project={p} />
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
@@ -597,19 +580,19 @@ function ProjectBlockView({ project: p }: { project: ResumeProject }) {
     : role || dateLine;
 
   return (
-    <div className="projectBlockContent">
-      <h4 className="projectBlockName">{p.project_name}</h4>
+    <div>
+      <h4 className="text-[15px] font-semibold text-slate-900">{p.project_name}</h4>
 
       {subtitle && (
-        <p className="projectField" style={{ fontStyle: "italic" }}>
+        <p className="mt-0.5 text-sm italic text-slate-500">
           {subtitle}
         </p>
       )}
 
       {p.contribution_bullets.length > 0 && (
-        <ul className="bulletList">
+        <ul className="mt-1.5 list-disc pl-5 space-y-0.5">
           {p.contribution_bullets.map((b, j) => (
-            <li key={j}>{b}</li>
+            <li key={j} className="text-sm text-slate-700 leading-relaxed">{b}</li>
           ))}
         </ul>
       )}

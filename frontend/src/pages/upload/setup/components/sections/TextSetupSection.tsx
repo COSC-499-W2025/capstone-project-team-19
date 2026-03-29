@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DriveFile, MainFileSection, UploadProjectFilesRecord } from "../../../../../api/uploads";
 import type { SetupFlowResult, SetupProjectCard } from "../../types";
 import { setupPrimaryActionButtonClass, setupSecondaryActionButtonClass } from "./buttonStyles";
@@ -6,11 +6,13 @@ import { setupPrimaryActionButtonClass, setupSecondaryActionButtonClass } from "
 type Props = {
   project: SetupProjectCard;
   actions: SetupFlowResult["actions"];
+  refreshUpload: SetupFlowResult["refreshUpload"];
   isMutating: boolean;
 };
 
 const DRIVE_PAGE_SIZE = 5;
 const DRIVE_OAUTH_MESSAGE_SOURCE = "capstone-google-drive-oauth";
+const DRIVE_OAUTH_REFRESH_RETRY_DELAY_MS = 1500;
 
 function toggleString(values: string[], value: string): string[] {
   if (values.includes(value)) return values.filter((item) => item !== value);
@@ -37,7 +39,7 @@ function asDriveOauthMessage(value: unknown): DriveOauthMessage | null {
   return value as DriveOauthMessage;
 }
 
-export default function TextSetupSection({ project, actions, isMutating }: Props) {
+export default function TextSetupSection({ project, actions, refreshUpload, isMutating }: Props) {
   const [filesPayload, setFilesPayload] = useState<UploadProjectFilesRecord | null>(null);
   const [filesLoading, setFilesLoading] = useState(false);
   const [mainFile, setMainFile] = useState(project.mainFileRelpath ?? "");
@@ -54,10 +56,15 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   const [selectedDriveFileId, setSelectedDriveFileId] = useState("");
   const [driveMapByLocalFile, setDriveMapByLocalFile] = useState<Record<string, DriveFile>>({});
   const [driveMessage, setDriveMessage] = useState<string | null>(null);
+  const [awaitingDriveOauthReturn, setAwaitingDriveOauthReturn] = useState(false);
+  const [drivePagerButtonsWidth, setDrivePagerButtonsWidth] = useState<number | null>(null);
+  const drivePagerButtonsRef = useRef<HTMLDivElement | null>(null);
   const [localPage, setLocalPage] = useState(1);
   const [drivePage, setDrivePage] = useState(1);
   const [mainFileSaveMessage, setMainFileSaveMessage] = useState<string | null>(null);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [sectionSaveMessage, setSectionSaveMessage] = useState<string | null>(null);
+  const [supportingTextSaveMessage, setSupportingTextSaveMessage] = useState<string | null>(null);
+  const [supportingCsvSaveMessage, setSupportingCsvSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setMainFile(project.mainFileRelpath ?? "");
@@ -105,6 +112,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     return filesPayload.csv_files;
   }, [filesPayload]);
   const mainFileStatusMessage = mainFileSaveMessage ?? (project.mainFileRelpath ? "Main file saved." : null);
+  const hasSavedMainFile = Boolean(project.mainFileRelpath);
   const driveLocalFiles = useMemo(() => filesPayload?.all_files ?? [], [filesPayload]);
   const filteredDriveResults = useMemo(
     () =>
@@ -154,6 +162,13 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   }, [driveLocalFiles, selectedLocalFile]);
 
   useEffect(() => {
+    if (!isDriveConnected) return;
+    setAwaitingDriveOauthReturn(false);
+    setDriveMessage((prev) => (prev === "Google Drive authorization opened in a new tab." ? "Google Drive is connected." : prev));
+  }, [isDriveConnected]);
+
+  useEffect(() => {
+    if (awaitingDriveOauthReturn) return;
     if (isDriveConnected) return;
     setDriveFiles([]);
     setDriveFilesLoaded(false);
@@ -161,7 +176,85 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     setSelectedDriveFileId("");
     setDriveSearch("");
     setDrivePage(1);
-  }, [isDriveConnected]);
+  }, [awaitingDriveOauthReturn, isDriveConnected]);
+
+  useEffect(() => {
+    if (!awaitingDriveOauthReturn || isDriveConnected) return;
+    let active = true;
+    let refreshing = false;
+    let retryTimeoutId: number | null = null;
+
+    async function refreshOnReturn() {
+      if (!active || refreshing) return;
+      refreshing = true;
+      await refreshUpload();
+      refreshing = false;
+    }
+
+    function refreshWithRetry() {
+      void refreshOnReturn();
+
+      if (retryTimeoutId !== null) {
+        window.clearTimeout(retryTimeoutId);
+      }
+
+      retryTimeoutId = window.setTimeout(() => {
+        if (!active || document.visibilityState !== "visible") return;
+        void refreshOnReturn();
+      }, DRIVE_OAUTH_REFRESH_RETRY_DELAY_MS);
+    }
+
+    function onFocus() {
+      refreshWithRetry();
+    }
+
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        refreshWithRetry();
+      }
+    }
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    if (document.visibilityState === "visible") {
+      refreshWithRetry();
+    }
+
+    return () => {
+      active = false;
+      if (retryTimeoutId !== null) {
+        window.clearTimeout(retryTimeoutId);
+      }
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [awaitingDriveOauthReturn, isDriveConnected, refreshUpload]);
+
+  useEffect(() => {
+    const node = drivePagerButtonsRef.current;
+    if (!node) {
+      setDrivePagerButtonsWidth(null);
+      return;
+    }
+
+    const updateWidth = () => {
+      setDrivePagerButtonsWidth(Math.ceil(node.getBoundingClientRect().width));
+    };
+
+    updateWidth();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(updateWidth);
+      observer.observe(node);
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener("resize", updateWidth);
+    return () => {
+      window.removeEventListener("resize", updateWidth);
+    };
+  }, [filteredDriveResults.length]);
 
   useEffect(() => {
     function onDriveOauthMessage(event: MessageEvent) {
@@ -171,10 +264,12 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
 
       if (data.status === "connected") {
         setDriveMessage("Google Drive is connected.");
-        void actions.driveStart(project.projectName, true);
+        setAwaitingDriveOauthReturn(false);
+        void refreshUpload();
         return;
       }
       if (data.status === "error") {
+        setAwaitingDriveOauthReturn(false);
         setDriveMessage("Google Drive authorization failed. Please try connecting again.");
       }
     }
@@ -183,20 +278,20 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     return () => {
       window.removeEventListener("message", onDriveOauthMessage);
     };
-  }, [actions, project.projectName]);
+  }, [project.projectName, refreshUpload]);
 
   async function onSaveMainFile() {
     if (project.projectKey === null || !mainFile) return;
     const data = await actions.setMainFile(project.projectKey, mainFile);
     if (!data) return;
     setMainFileSaveMessage("Main file saved.");
-    setSaveMessage(null);
+    setSectionSaveMessage(null);
   }
 
   async function onLoadSections() {
     if (project.projectKey === null) return;
     if (!mainFile) {
-      setSaveMessage("Select and save a main file first.");
+      setSectionSaveMessage("Select and save a main file first.");
       return;
     }
     setSectionsLoading(true);
@@ -210,7 +305,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     if (project.projectKey === null) return;
     const data = await actions.setContributedSections(project.projectKey, selectedSectionIds);
     if (!data) return;
-    setSaveMessage("Contributed sections saved.");
+    setSectionSaveMessage("Contributed sections saved.");
   }
 
   async function onSaveSupportingText() {
@@ -219,14 +314,14 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
     const data = await actions.setSupportingTextFiles(project.projectKey, nonCsvRelpaths);
     if (!data) return;
     setSelectedSupportingText(nonCsvRelpaths);
-    setSaveMessage("Supporting text files saved.");
+    setSupportingTextSaveMessage("Supporting text files saved.");
   }
 
   async function onSaveSupportingCsv() {
     if (project.projectKey === null) return;
     const data = await actions.setSupportingCsvFiles(project.projectKey, selectedSupportingCsv);
     if (!data) return;
-    setSaveMessage("Supporting CSV files saved.");
+    setSupportingCsvSaveMessage("Supporting CSV files saved.");
   }
 
   function onSelectDriveResult(id: string) {
@@ -246,6 +341,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   }
 
   async function onConnectDrive() {
+    setAwaitingDriveOauthReturn(false);
     setDriveMessage(null);
     const data = await actions.driveStart(project.projectName, true);
     if (!data) return;
@@ -255,6 +351,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
         setDriveMessage("Pop-up blocked. Please allow pop-ups, then click Connect Google Drive again.");
         return;
       }
+      setAwaitingDriveOauthReturn(true);
       setDriveMessage("Google Drive authorization opened in a new tab.");
       return;
     }
@@ -262,6 +359,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
   }
 
   async function onLoadDriveFiles() {
+    setAwaitingDriveOauthReturn(false);
     setDriveMessage(null);
     setDriveLoading(true);
     const data = await actions.driveFiles(project.projectName);
@@ -365,6 +463,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
           >
             {sectionsLoading ? "Loading..." : sections.length > 0 ? "Save section selection" : "Load sections"}
           </button>
+          {sectionSaveMessage && <p className="text-sm text-zinc-700">{sectionSaveMessage}</p>}
         </div>
       ) : (
         <p className="text-sm text-zinc-600">
@@ -376,6 +475,9 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
         <>
           <div className="space-y-3">
             <div className="text-sm font-semibold text-zinc-900">Supporting text files</div>
+            {!hasSavedMainFile && (
+              <p className="text-sm text-zinc-600">Save a main file first to enable supporting text files.</p>
+            )}
             {supportingTextOptions.length === 0 && (
               <p className="text-sm text-zinc-600">No supporting text candidates found.</p>
             )}
@@ -387,7 +489,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                       type="checkbox"
                       checked={selectedSupportingText.includes(item.relpath)}
                       onChange={() => setSelectedSupportingText((prev) => toggleString(prev, item.relpath))}
-                      disabled={isMutating}
+                      disabled={isMutating || !hasSavedMainFile}
                     />
                     <span>{item.file_name}</span>
                   </label>
@@ -395,17 +497,21 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 <button
                   type="button"
                   onClick={onSaveSupportingText}
-                  disabled={isMutating || project.projectKey === null}
+                  disabled={isMutating || project.projectKey === null || !hasSavedMainFile}
                   className={setupPrimaryActionButtonClass}
                 >
                   Save supporting text files
                 </button>
+                {supportingTextSaveMessage && <p className="text-sm text-zinc-700">{supportingTextSaveMessage}</p>}
               </div>
             )}
           </div>
 
           <div className="space-y-3">
             <div className="text-sm font-semibold text-zinc-900">Supporting CSV files</div>
+            {!hasSavedMainFile && (
+              <p className="text-sm text-zinc-600">Save a main file first to enable supporting CSV files.</p>
+            )}
             {supportingCsvOptions.length === 0 && (
               <p className="text-sm text-zinc-600">No supporting CSV files found.</p>
             )}
@@ -417,7 +523,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                       type="checkbox"
                       checked={selectedSupportingCsv.includes(item.relpath)}
                       onChange={() => setSelectedSupportingCsv((prev) => toggleString(prev, item.relpath))}
-                      disabled={isMutating}
+                      disabled={isMutating || !hasSavedMainFile}
                     />
                     <span>{item.file_name}</span>
                   </label>
@@ -425,11 +531,12 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 <button
                   type="button"
                   onClick={onSaveSupportingCsv}
-                  disabled={isMutating || project.projectKey === null}
+                  disabled={isMutating || project.projectKey === null || !hasSavedMainFile}
                   className={setupPrimaryActionButtonClass}
                 >
                   Save supporting CSV files
                 </button>
+                {supportingCsvSaveMessage && <p className="text-sm text-zinc-700">{supportingCsvSaveMessage}</p>}
               </div>
             )}
           </div>
@@ -470,7 +577,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 type="button"
                 onClick={onLoadDriveFiles}
                 disabled={isMutating || driveLoading}
-                className={setupSecondaryActionButtonClass}
+                className={driveFilesLoaded ? setupSecondaryActionButtonClass : setupPrimaryActionButtonClass}
               >
                 {driveLoading ? "Loading..." : driveFilesLoaded ? "Reload Drive Files" : "Load Drive Files"}
               </button>
@@ -579,7 +686,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                 {filteredDriveResults.length > DRIVE_PAGE_SIZE && (
                   <div className="flex items-center justify-between pt-1 text-xs text-zinc-600">
                     <span>Page {safeDrivePage} of {drivePageCount}</span>
-                    <div className="flex gap-2">
+                    <div ref={drivePagerButtonsRef} className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => setDrivePage((page) => Math.max(1, page - 1))}
@@ -607,6 +714,7 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
                   onClick={onMapSelectedFile}
                   disabled={!isDriveConnected || !selectedLocalFile || !selectedDriveFileId}
                   className={setupSecondaryActionButtonClass}
+                  style={drivePagerButtonsWidth ? { width: `${drivePagerButtonsWidth}px` } : undefined}
                 >
                   Select
                 </button>
@@ -640,7 +748,6 @@ export default function TextSetupSection({ project, actions, isMutating }: Props
         </div>
       )}
 
-      {saveMessage && <p className="text-sm text-zinc-700">{saveMessage}</p>}
     </div>
   );
 }

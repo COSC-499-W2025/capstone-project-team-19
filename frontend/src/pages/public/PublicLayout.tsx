@@ -17,7 +17,7 @@ export default function PublicLayout({ children }: Props) {
   const navItems = [
     { to: `/public/${username}/projects`, label: "Projects" },
     { to: `/public/${username}/insights`, label: "Insights" },
-    { to: `/public/${username}/outputs`, label: "Outputs" },
+    { to: `/public/${username}/resume`, label: "Resume" },
   ];
 
   return (

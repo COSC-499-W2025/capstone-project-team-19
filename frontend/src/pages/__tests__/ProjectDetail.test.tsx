@@ -36,6 +36,10 @@ vi.mock("../../auth/user", () => ({
   getUsername: vi.fn(() => "testuser"),
 }));
 
+vi.mock("../../api/portfolioSettings", () => ({
+  updateProjectVisibility: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("../../components/TopBar", () => ({
   default: () => <div data-testid="topbar" />,
 }));
@@ -60,6 +64,7 @@ import {
   resetProjectDates,
   deleteThumbnail,
 } from "../../api/projects";
+import { updateProjectVisibility } from "../../api/portfolioSettings";
 
 const baseProject = {
   project_summary_id: 42,
@@ -398,6 +403,28 @@ describe("ProjectDetailPage", () => {
       renderPage();
       await waitFor(() => screen.getAllByText("Test Project").length > 0);
       expect(screen.queryByText(/← /)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("public dashboard visibility", () => {
+    it("shows Private selected when project is not public", async () => {
+      renderPage();
+      await waitFor(() => {
+        expect(screen.getByRole("group", { name: "Project visibility" })).toBeInTheDocument();
+      });
+      const privateBtn = screen.getByRole("button", { name: "Private" });
+      expect(privateBtn).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: "Public" })).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("calls updateProjectVisibility when switching to Public", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await waitFor(() => screen.getByRole("button", { name: "Public" }));
+      await user.click(screen.getByRole("button", { name: "Public" }));
+      await waitFor(() => {
+        expect(updateProjectVisibility).toHaveBeenCalledWith(42, true);
+      });
     });
   });
 

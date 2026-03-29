@@ -162,6 +162,10 @@ def _build_project_api_inputs(state: dict, project_name: str) -> dict[str, Any]:
     project_contrib = contributions.get(project_name) or {}
     if not isinstance(project_contrib, dict):
         project_contrib = {}
+        
+    # DEBUG STAETEMENT
+    print(f"[DEBUG] contributions keys: {list(contributions.keys())}")
+    print(f"[DEBUG] main_section_ids for {project_name!r}: {project_contrib.get('main_section_ids')}")
 
     file_roles = state.get("file_roles") or {}
     if not isinstance(file_roles, dict):
@@ -173,6 +177,10 @@ def _build_project_api_inputs(state: dict, project_name: str) -> dict[str, Any]:
     out = dict(project_inputs)
     out["main_file_relpath"] = project_roles.get("main_file")
     out["main_section_ids"] = project_contrib.get("main_section_ids") or []
+    derived_sections = state.get("derived_sections") or {}
+    project_derived = derived_sections.get(project_name) or {}
+    out["cached_sections"] = project_derived.get("sections") or []
+
     out["supporting_text_relpaths"] = project_contrib.get("supporting_text_relpaths") or []
     out["supporting_csv_relpaths"] = project_contrib.get("supporting_csv_relpaths") or []
     out["manual_project_summary"] = project_contrib.get("manual_project_summary")

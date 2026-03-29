@@ -171,7 +171,7 @@ export default function UploadAnalyzePage() {
 
   const completionText = useMemo(() => {
     if (!pageMessage?.includes("finished")) return null;
-    return "All analysis is complete. You can view, manage, and customize results in the Projects or Insights tabs. You can also export them as a resume or portfolio from the Outputs tab.";
+    return "All analysis is complete. You can view, manage, and customize results in the Projects or Insights tabs. You can also export them as a resume from the Resume tab.";
   }, [pageMessage]);
 
   const derivedRunStatus = useMemo(() => {
@@ -294,17 +294,17 @@ export default function UploadAnalyzePage() {
             <div className="flex flex-wrap justify-center gap-3">
               <button
                 type="button"
-                onClick={() => nav("/upload/consent")}
+                onClick={() => nav("/insights")}
                 className="rounded border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-900"
               >
-                Analyze again
+                Go to Insights
               </button>
               <button
                 type="button"
-                onClick={() => nav("/insights")}
+                onClick={() => nav("/resume")}
                 className="rounded border border-zinc-300 bg-[#001166] px-4 py-2 text-sm font-medium text-white"
               >
-                Go to Insights
+                Go to Resume
               </button>
             </div>
           </div>
