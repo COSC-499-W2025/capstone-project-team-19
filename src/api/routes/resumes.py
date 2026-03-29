@@ -16,7 +16,9 @@ from src.services.resumes_service import (
     add_project_to_resume,
 )
 import json
+from src.db.projects import get_project_key
 from src.db.resumes import get_resume_snapshot
+from src.db.skill_preferences import get_project_skill_names
 from src.services.skill_preferences_service import get_available_skills_with_status
 
 # Must match the mapping in src/export/resume_helpers.py filter_skills_by_highlighted
@@ -46,9 +48,6 @@ _SKILL_DISPLAY_NAMES = {
     "data_collection": "Data collection",
     "data_analysis": "Data analysis",
 }
-
-# Reverse map: display name → raw key (for looking up raw keys from snapshot display names)
-_DISPLAY_TO_RAW = {v: k for k, v in _SKILL_DISPLAY_NAMES.items()}
 
 
 def _skill_display_name(skill_name: str) -> str:
@@ -89,18 +88,18 @@ def get_resume_skills(
     if not record:
         raise HTTPException(status_code=404, detail="Resume not found")
 
-    # Extract skills from the raw (unfiltered) snapshot so hidden skills still appear
+    # Derive skills from the live project_skills table so the editor always
+    # reflects the actual resume projects, not a stale / previously-filtered snapshot.
     try:
         snapshot = json.loads(record.get("resume_json") or "{}")
     except Exception:
         snapshot = {}
-    agg = snapshot.get("aggregated_skills", {})
-    resume_display_skills = set(
-        agg.get("technical_skills", []) + agg.get("writing_skills", [])
-    )
-
-    # Map display names back to raw keys used by the preference system
-    resume_raw_keys = {_DISPLAY_TO_RAW.get(s, s) for s in resume_display_skills}
+    project_names = [p.get("project_name") for p in snapshot.get("projects", []) if p.get("project_name")]
+    resume_raw_keys: set[str] = set()
+    for name in project_names:
+        pk = get_project_key(conn, user_id, name)
+        if pk is not None:
+            resume_raw_keys.update(get_project_skill_names(conn, user_id, pk))
 
     # Get preference status for all user skills, then filter to resume-only
     all_skills = get_available_skills_with_status(

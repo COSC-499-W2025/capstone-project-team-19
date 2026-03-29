@@ -63,9 +63,11 @@ def get_resume_by_id(conn, user_id: int, resume_id: int) -> Optional[Dict[str, A
     except json.JSONDecodeError:
         snapshot = {}
 
-    # Apply skill preference filtering if user has any preferences
-    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
-       has_skill_preferences(conn, user_id, "global"):
+    # Apply skill preference filtering only when this resume has its own explicit
+    # preferences.  Global preferences are intentionally excluded here so that a
+    # newly-created resume always starts with all skills visible; global prefs
+    # only affect exports and the portfolio view.
+    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id):
         highlighted = get_highlighted_skills_for_display(
             conn, user_id, context="resume", context_id=resume_id
         )
