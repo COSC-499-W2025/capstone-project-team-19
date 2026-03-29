@@ -38,6 +38,7 @@ from src.db.skill_preferences import (
     has_skill_preferences,
     get_all_user_skills,
 )
+from src.export.resume_helpers import filter_skills_by_highlighted
 import json
 
 
@@ -65,16 +66,16 @@ def get_resume_by_id(conn, user_id: int, resume_id: int) -> Optional[Dict[str, A
     # Apply skill preference filtering if user has any preferences
     if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
        has_skill_preferences(conn, user_id, "global"):
-        highlighted = set(get_highlighted_skills_for_display(
+        highlighted = get_highlighted_skills_for_display(
             conn, user_id, context="resume", context_id=resume_id
-        ))
+        )
         agg = snapshot.get("aggregated_skills", {})
-        agg["technical_skills"] = [s for s in agg.get("technical_skills", []) if s in highlighted]
-        agg["writing_skills"] = [s for s in agg.get("writing_skills", []) if s in highlighted]
+        agg["technical_skills"] = filter_skills_by_highlighted(agg.get("technical_skills", []), highlighted)
+        agg["writing_skills"] = filter_skills_by_highlighted(agg.get("writing_skills", []), highlighted)
         snapshot["aggregated_skills"] = agg
         for project in snapshot.get("projects", []):
             if "skills" in project:
-                project["skills"] = [s for s in project["skills"] if s in highlighted]
+                project["skills"] = filter_skills_by_highlighted(project["skills"], highlighted)
 
     # Resolve overrides so the API returns the effective values
     for project in snapshot.get("projects", []):
