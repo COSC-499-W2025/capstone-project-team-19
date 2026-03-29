@@ -11,6 +11,7 @@
 - [Week 6-8 (Feb 9 - Mar 1)](#term-2-week-6-8-monday-february-9---sunday-march-1)
 - [Week 9 (Mar 2-8)](#term-2-week-9-monday-march-2---sunday-march-8)
 - [Week 10 (Mar 9-15)](#term-2-week-10-monday-march-9---sunday-march-15)
+- [Week 11 + 12 (Mar 16 - 29)][]
 
 ### Term 1
 
@@ -892,3 +893,43 @@ Next week, the team plans to continue stabilizing these newly connected flows so
 | GitHub Username | Screenshots                                                        |
 | --------------- | ------------------------------------------------------------------ |
 | `ivonanicetin`  | ![In progress tasks for Ivona](screenshots/InProgress-Ivona-week10.png)       |
+
+
+## (Term 2 Week 11 + 12) Monday March 16 - Sunday March 29
+
+**Connection to previous week:**  
+
+
+### Coding tasks
+
+### Testing or debugging tasks
+
+### Reviewing or collaboration tasks
+
+### Issues or blockers
+
+### Plan / goals for next week
+
+### Burnup chart
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshots                                                        |
+| --------------- | ------------------------------------------------------------------ |
+| `AdaraPutri`    | ![Completed tasks for Adara]()       |
+| `ammaarkhan`    | ![Completed tasks for Ammaar]()     |
+| `johaneshp`     | ![Completed tasks for Johanes]()   |
+| `salmavkh`      | ![Completed tasks for Salma]()       |
+| `taoTimTim`     | ![Completed tasks for Timmi]()       |
+
