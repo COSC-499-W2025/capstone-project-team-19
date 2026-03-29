@@ -103,3 +103,7 @@ class ManualProjectSummaryRequestDTO(BaseModel):
 
 class ManualContributionSummaryRequestDTO(BaseModel):
     manual_contribution_summary: str = ""
+
+class EligibleRolesResponseDTO(BaseModel):
+    project_name: str
+    roles: List[str]

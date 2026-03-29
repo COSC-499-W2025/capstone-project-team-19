@@ -61,6 +61,8 @@ from src.services.uploads_manual_summaries_service import (
     set_manual_project_summary,
     set_manual_contribution_summary,
 )
+from src.api.schemas.uploads import EligibleRolesResponseDTO
+from src.services.uploads_eligible_roles_service import get_eligible_roles_for_project
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -401,3 +403,22 @@ def post_manual_contribution_summary(
         body.manual_contribution_summary,
     )
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.get(
+    "/upload/{upload_id}/projects/{project_key:int}/eligible-roles",
+    response_model=ApiResponse[EligibleRolesResponseDTO],
+)
+def get_eligible_roles_route(
+    upload_id: int,
+    project_key: int,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    upload, project_name = _resolve_upload_project(conn, user_id, upload_id, project_key)
+    roles = get_eligible_roles_for_project(conn, user_id, upload_id, project_name)
+    return ApiResponse(
+        success=True,
+        data=EligibleRolesResponseDTO(project_name=project_name, roles=roles),
+        error=None,
+    )
