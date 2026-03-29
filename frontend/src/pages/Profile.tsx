@@ -562,6 +562,10 @@ export default function ProfilePage() {
       setPasswordError("New passwords do not match.");
       return;
     }
+    if (currentPassword === newPassword) {
+      setPasswordError("New password must be different from current password.");
+      return;
+    }
 
     setChangingPassword(true);
     try {

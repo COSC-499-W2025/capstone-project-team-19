@@ -187,6 +187,23 @@ describe("ProfilePage", () => {
     expect(changePassword).not.toHaveBeenCalled();
   });
 
+  it("blocks submit when current and new password are the same", async () => {
+    const { changePassword } = await import("../../api/auth");
+    const { user } = setup();
+
+    await screen.findByText("Security");
+    await user.click(screen.getByRole("button", { name: /Change password/i }));
+    await user.type(screen.getByLabelText("Current password"), "SamePass123");
+    await user.type(screen.getByLabelText("New password"), "SamePass123");
+    await user.type(screen.getByLabelText("Confirm new password"), "SamePass123");
+    await user.click(screen.getByRole("button", { name: /Save password/i }));
+
+    expect(
+      await screen.findByText("New password must be different from current password."),
+    ).toBeInTheDocument();
+    expect(changePassword).not.toHaveBeenCalled();
+  });
+
   it("submits change password and shows success message", async () => {
     const { changePassword } = await import("../../api/auth");
     (changePassword as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({

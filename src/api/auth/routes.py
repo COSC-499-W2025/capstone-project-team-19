@@ -56,6 +56,12 @@ def change_password(
     user_id: int = Depends(get_current_user_id),
     conn: sqlite3.Connection = Depends(get_db),
 ):
+    if payload.current_password == payload.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from current password",
+        )
+
     user = get_user_auth_by_id(conn, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
