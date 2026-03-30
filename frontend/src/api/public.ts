@@ -69,6 +69,9 @@ export interface PublicResumeDetail {
     frameworks: string[];
     technical_skills: string[];
     writing_skills: string[];
+    advanced?: string[];
+    intermediate?: string[];
+    beginner?: string[];
   };
   rendered_text: string | null;
 }

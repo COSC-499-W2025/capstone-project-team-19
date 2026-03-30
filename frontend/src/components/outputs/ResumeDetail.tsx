@@ -393,6 +393,14 @@ export default function ResumeDetail({
 
   const sortedProjects = sortProjectsByDate(resume.projects);
   const agg = resume.aggregated_skills;
+  const hasExpertiseTiers =
+    (agg.advanced?.length ?? 0) +
+      (agg.intermediate?.length ?? 0) +
+      (agg.beginner?.length ?? 0) >
+    0;
+  const hasAnalyzedContent = hasExpertiseTiers
+    ? true
+    : agg.technical_skills.length > 0 || agg.writing_skills.length > 0;
   const onePageStatus = resume.one_page_status;
   const exportBlocked = onePageStatus.overflow_mode === "block";
 
@@ -501,10 +509,16 @@ export default function ResumeDetail({
 
       {/* Skills Summary */}
       <Card className="mb-6 rounded-2xl border-slate-200/80 bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base text-slate-900">Skills</CardTitle>
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-base text-slate-900">Skills</CardTitle>
+            <p className="text-xs font-normal text-slate-500">
+              Languages and frameworks come from project detection. Advanced, Intermediate, and Beginner apply only to
+              analyzed skills below—not languages or frameworks.
+            </p>
+          </div>
           {editing && !skillsOpen && (
-            <CardAction>
+            <CardAction className="self-end sm:self-start">
               <Button variant="ghost" size="sm" onClick={openSkillEditor} className="text-xs">
                 <Pencil className="size-3.5 mr-1" />
                 Manage
@@ -527,8 +541,28 @@ export default function ResumeDetail({
             <>
               <SkillRow label="Languages" items={agg.languages} />
               <SkillRow label="Frameworks" items={agg.frameworks} />
-              <SkillRow label="Technical" items={agg.technical_skills} />
-              <SkillRow label="Writing" items={agg.writing_skills} />
+
+              {hasAnalyzedContent && (
+                <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                  <p className="text-sm font-semibold text-slate-900">Analyzed skills</p>
+                  <div className="rounded-lg border border-slate-200/90 bg-slate-50/80 p-3">
+                    <div className="space-y-2">
+                      {hasExpertiseTiers ? (
+                        <>
+                          <SkillRow label="Advanced" items={agg.advanced ?? []} />
+                          <SkillRow label="Intermediate" items={agg.intermediate ?? []} />
+                          <SkillRow label="Beginner" items={agg.beginner ?? []} />
+                        </>
+                      ) : (
+                        <>
+                          <SkillRow label="Technical" items={agg.technical_skills} />
+                          <SkillRow label="Writing" items={agg.writing_skills} />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </CardContent>

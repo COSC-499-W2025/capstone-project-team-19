@@ -1846,7 +1846,10 @@ Manages résumé-specific representations of projects.
               "aggregated_skills": {
                   "languages": ["Python", "JavaScript"],
                   "frameworks": ["React", "FastAPI"],
-                  "technical_skills": ["Backend Development", "Frontend Development"],
+                  "advanced": ["Backend Development"],
+                  "intermediate": ["Frontend Development"],
+                  "beginner": [],
+                  "technical_skills": [],
                   "writing_skills": []
               },
               "rendered_text": "Resume text here..."
@@ -2750,7 +2753,10 @@ Read-only, unauthenticated endpoints for viewing a user's public portfolio. All 
             "aggregated_skills": {
               "languages": ["Python"],
               "frameworks": ["FastAPI"],
-              "technical_skills": ["Backend Development"],
+              "advanced": ["Backend Development"],
+              "intermediate": [],
+              "beginner": [],
+              "technical_skills": [],
               "writing_skills": []
             },
             "rendered_text": "Resume — Software Engineer Resume\n..."
@@ -3142,10 +3148,13 @@ Example:
   - `activities` (List[Dict], optional)
 
 - **AggregatedSkillsDTO**
-  - `languages` (List[string], optional)
-  - `frameworks` (List[string], optional)
-  - `technical_skills` (List[string], optional)
-  - `writing_skills` (List[string], optional)
+  - `languages` (List[string], optional): Detected from projects
+  - `frameworks` (List[string], optional): Detected from projects
+  - `advanced` (List[string], optional): Analyzed skills at advanced expertise (used when present; preferred over the flat technical/writing split for display and exports)
+  - `intermediate` (List[string], optional)
+  - `beginner` (List[string], optional)
+  - `technical_skills` (List[string], optional): Legacy flat list when tier fields are empty
+  - `writing_skills` (List[string], optional): Legacy flat list when tier fields are empty
 
 - **ResumeDetailDTO**
   - `id` (int, required)

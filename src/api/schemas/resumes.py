@@ -32,6 +32,9 @@ class AggregatedSkillsDTO(BaseModel):
     frameworks: List[str] = []
     technical_skills: List[str] = []
     writing_skills: List[str] = []
+    advanced: List[str] = []
+    intermediate: List[str] = []
+    beginner: List[str] = []
 
 
 class ResumeContactDTO(BaseModel):

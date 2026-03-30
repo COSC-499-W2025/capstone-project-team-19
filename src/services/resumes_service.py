@@ -154,8 +154,36 @@ def get_resume_by_id(conn, user_id: int, resume_id: int) -> Optional[Dict[str, A
     except json.JSONDecodeError:
         snapshot = {}
 
+    # Migrate legacy snapshots: add expertise tiers (Advanced / Intermediate / Beginner).
+    # Only replace aggregated_skills when recompute actually finds skill data on projects;
+    # otherwise keep stored technical/writing lists (minimal project stubs would yield empty).
+    agg = snapshot.get("aggregated_skills") or {}
+    if any(k not in agg for k in ("advanced", "intermediate", "beginner")):
+        projects = snapshot.get("projects") or []
+        if projects:
+            recomputed = recompute_aggregated_skills(projects)
+            has_recomputed_skills = bool(
+                recomputed.get("technical_skills")
+                or recomputed.get("writing_skills")
+                or recomputed.get("advanced")
+                or recomputed.get("intermediate")
+                or recomputed.get("beginner")
+            )
+            if has_recomputed_skills:
+                snapshot["aggregated_skills"] = recomputed
+            else:
+                merged = dict(agg)
+                for k in ("advanced", "intermediate", "beginner"):
+                    merged.setdefault(k, [])
+                snapshot["aggregated_skills"] = merged
+        else:
+            merged = dict(agg)
+            for k in ("advanced", "intermediate", "beginner"):
+                merged.setdefault(k, [])
+            snapshot["aggregated_skills"] = merged
+
     # Apply skill preference filtering only when this resume has its own explicit
-    # preferences.  Global preferences are intentionally excluded here so that a
+    # preferences. Global preferences are intentionally excluded here so that a
     # newly-created resume always starts with all skills visible; global prefs
     # only affect exports and the portfolio view.
     if has_skill_preferences(conn, user_id, "resume", context_id=resume_id):
@@ -165,6 +193,8 @@ def get_resume_by_id(conn, user_id: int, resume_id: int) -> Optional[Dict[str, A
         agg = snapshot.get("aggregated_skills", {})
         agg["technical_skills"] = filter_skills_by_highlighted(agg.get("technical_skills", []), highlighted)
         agg["writing_skills"] = filter_skills_by_highlighted(agg.get("writing_skills", []), highlighted)
+        for tier_key in ("advanced", "intermediate", "beginner"):
+            agg[tier_key] = filter_skills_by_highlighted(agg.get(tier_key, []), highlighted)
         snapshot["aggregated_skills"] = agg
         for project in snapshot.get("projects", []):
             if "skills" in project:

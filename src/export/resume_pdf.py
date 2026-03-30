@@ -350,6 +350,18 @@ def _build_resume_story(
             all_hl.update(sl)
         effective_highlighted = list(all_hl)
 
+    adv = filter_skills_by_highlighted(
+        agg.get("advanced") or [],
+        effective_highlighted,
+    )
+    interm = filter_skills_by_highlighted(
+        agg.get("intermediate") or [],
+        effective_highlighted,
+    )
+    beg = filter_skills_by_highlighted(
+        agg.get("beginner") or [],
+        effective_highlighted,
+    )
     tech_skills = filter_skills_by_highlighted(
         agg.get("technical_skills") or [],
         effective_highlighted,
@@ -363,8 +375,13 @@ def _build_resume_story(
     story.append(Paragraph("SKILLS", SectionStyle))
     add_skill_line("Languages", languages)
     add_skill_line("Frameworks", agg.get("frameworks") or [])
-    add_skill_line("Technical", tech_skills)
-    add_skill_line("Writing", writing_skills)
+    if adv or interm or beg:
+        add_skill_line("Advanced", adv)
+        add_skill_line("Intermediate", interm)
+        add_skill_line("Beginner", beg)
+    else:
+        add_skill_line("Technical", tech_skills)
+        add_skill_line("Writing", writing_skills)
 
     if experience_entries:
         story.append(section_gap())
