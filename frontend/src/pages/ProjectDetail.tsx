@@ -647,8 +647,8 @@ export default function ProjectDetailPage() {
 
   <div className="rounded-[8px] border border-border bg-muted/30 p-[14px]">
     <p className="whitespace-pre-wrap text-[14px] leading-[1.7] text-foreground">
-      {project.contributions?.manual_contribution_summary ? (
-        project.contributions.manual_contribution_summary
+      {contributionSummaryText ? (
+        contributionSummaryText
       ) : (
         <span className="italic text-muted-foreground">
           No contribution summary yet.
