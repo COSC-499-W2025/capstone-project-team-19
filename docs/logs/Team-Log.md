@@ -11,7 +11,7 @@
 - [Week 6-8 (Feb 9 - Mar 1)](#term-2-week-6-8-monday-february-9---sunday-march-1)
 - [Week 9 (Mar 2-8)](#term-2-week-9-monday-march-2---sunday-march-8)
 - [Week 10 (Mar 9-15)](#term-2-week-10-monday-march-9---sunday-march-15)
-- [Week 11 + 12 (Mar 16 - 29)][]
+- [Week 11 + 12 (Mar 16 - 29)](#term-2-week-11--12-monday-march-16---sunday-march-29)
 
 ### Term 1
 
