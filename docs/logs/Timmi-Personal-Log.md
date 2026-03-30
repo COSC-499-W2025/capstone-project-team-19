@@ -3,6 +3,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 11-12 (Mar 16 - Mar 29)](#term-2-week-11--12-monday-march-16---sunday-march-29)
 - [Week 10 (Mar 9 - Mar 15)](#term-2-week-10-monday-march-9---sunday-march-15)
 - [Week 9 (Mar 2 - Mar 8)](#term-2-week-9-monday-march-2---sunday-march-9)
 - [Week 6-8 (Feb 9 - Mar 1)](#term-2-week-6-8-monday-february-9---sunday-march-1)
@@ -342,3 +343,49 @@ In [PR #578](#https://github.com/COSC-499-W2025/capstone-project-team-19/pull/57
 **Plan for Next Week**
 
 Next week, I plan to implement Adara’s idea of representing project difficulty levels with star icons instead of the text labels “Beginner”, “Intermediate”, and “Advanced”. A beginner project will display one star, intermediate two stars, and advanced three stars. This should reduce the amount of text on the screen and make the information easier to scan. I would also like to review the frontend with the team so we can identify inconsistencies and small UI changes we want to address before the Milestone 3 deliverable. Finally, I will be participating in the peer evaluations during Wednesday’s class.
+
+## (Term 2 Week 11 + 12) Monday March 16 - Sunday March 29
+
+![Screenshot of this week's peer evaluation](./screenshots/Timmi-Mar16-Mar29.png)
+
+**Coding Tasks**
+
+This week involved completing Milestone 3 features, refining the user interface based on peer and TA feedback, and addressing bugs across both the private dashboard and public portfolio views.
+
+I implemented visual improvements to how skill levels are displayed by replacing text labels with star icons in [PR #621](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/621). Instead of showing “Beginner”, “Intermediate”, and “Advanced”, skills are now represented using one to three stars. This change was based on TA feedback to reduce text and improve readability, and was an idea given to me by Adara in a previous PR. I created a reusable LevelStars component and updated all relevant views, including the Skills Timeline and Skills Log. I also updated the associated tests to reflect the new UI by asserting on accessibility labels rather than text content.
+
+I also worked on improving the GitHub integration flow in the upload setup process in [PR #634](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/634). This included restructuring the OAuth flow so that a new tab only opens when needed and automatically closes after authorization. I implemented a clearer step-based UI and added loading states to prevent the interface from appearing unresponsive. Additionally, I added backend token validation to ensure expired or invalid tokens are handled correctly. This required refactoring the frontend into smaller components and creating a custom hook to manage the OAuth callback flow.
+
+For project metadata, I improved how dates are displayed across both private and public project pages in [PR #635](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/635). Dates are now formatted into a more readable form and handle edge cases such as missing start or end dates. I also fixed an issue where public project pages were not displaying auto-inferred dates, ensuring consistency between private and public views.
+
+I made improvements to project visibility controls in [PR #636](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/636) by moving the public/private toggle from the project cards into the project detail page. This makes the interaction clearer and aligns with peer feedback (most peers could not figure out how to make a project private or public without help). The project cards now display visibility as a read-only label, while editing is handled in a dedicated section in the Project Detail page with descriptive context.
+
+I also extended resume functionality in [PR #637](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/637) by allowing users to both remove and add projects during resume editing. Previously, users could only remove projects, which created an inconsistent experience. I added backend support and implemented a modal for selecting projects to add, along with a confirmation popup if the user deletes the last project (informing them the whole resume will be deleted).
+
+Additionally, I fixed a visualization bug in the Project Heatmap in [PR #644](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/644). The issue caused all cells to appear with maximum intensity when only one project contributed. I resolved this by implementing a minimum scaling threshold, ensuring the heatmap better reflects relative activity levels.
+
+For the public portfolio, I implemented the Top 3 Projects showcase in [PR #674](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/674), which highlights up to three ranked public projects. This includes visual rank indicators, links to project-specific activity insights, and support for URL query parameters to control the Insights view. I also added unit tests to ensure correct rendering and routing behavior. The team felt that the current system did not quite meet the Milestone 3 requirements for a "Top 3 Projects Showcase", but by adding more visualization, and implementing the URLs for the top 3 projects, it is much clearer what the user should be looking at, and which projects are ranked higher. The user has the option on which projects display on their public portfolio, but of that subset the top 3 are defined by their scores (not decided by the user).
+
+I also implemented the Milestone 3 requirement of organizing skills by expertise on the one-page resume in [PR #681](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/681). Instead of simply listing the skills displayed by the user, the resume now displays skill levels (Beginner, Intermediate, Advanced) based on the stored level in the `project_skills` table. Because the Skill Log is event-based and the resume is a merged snapshot, the same skill may appear at different levels between the two views. I also updated existing tests to align with the new behavior.
+
+Finally, I completed the Milestone 3 documentation updates in [PR #664](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/664). This involved restructuring the README to link to dedicated documentation files (architecture, installation, testing, and known bugs), updating diagrams, and ensuring that test coverage instructions were included. I also added the ability for developers to generate coverage reports using our testing setup. I decided to split the root README up because it was growing long and difficult to navigate.
+
+**Testing and Debugging Tasks**
+
+Along with development, I updated and expanded tests to match new functionality in all my PRs that had code-based changes. This included modifying existing tests to align with updated rendering logic and implementing new ones when new features were introduced.
+
+I also addressed several bugs related to UI behavior and data consistency, including fixing issues in the GitHub integration flow (such as token validation and loading states), resolving the heatmap scaling issue, and ensuring that project dates are correctly displayed across both private and public views. All of these are mentioned in the Coding Tasks section above.
+
+**Team Contributions**
+
+This week, I began preparing the slides for our Milestone 3 presentation, building the general layout of what we should talk about and fleshing out as many slides as I could. Once the team distributed the slides amongst us, I finalized my sepcific slides (which were the Insights slides).
+
+I also reviewed the peer evaluation feedback (from Peer Testing 2), and created issues for all the feedback that required code-based changes. I took the majority of these issues on myself, but most of the Upload-related feedback issues were taken on by Salma. 
+
+I additionally wrote the combined team log for Weeks 11 and 12. 
+
+Lastly, I reviewed a large number of PRs throughout the week to help maintain code quality and ensure consistency across the codebase.
+
+**Plan for Next Week**
+
+This was the last week of coding and deliverables, so I won't be contributing anymore to this project. I plan on doing the project voting and studying for the final quiz. 
