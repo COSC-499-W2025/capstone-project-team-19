@@ -363,20 +363,20 @@ def export_resume_record_to_pdf(
         agg.get("beginner") or [],
         effective_highlighted,
     )
+    tech_skills = filter_skills_by_highlighted(
+        agg.get("technical_skills") or [],
+        effective_highlighted,
+    )
+    writing_skills = filter_skills_by_highlighted(
+        agg.get("writing_skills") or [],
+        effective_highlighted,
+    )
 
     if adv or interm or beg:
         add_skill_line("Advanced", adv)
         add_skill_line("Intermediate", interm)
         add_skill_line("Beginner", beg)
     else:
-        tech_skills = filter_skills_by_highlighted(
-            agg.get("technical_skills") or [],
-            effective_highlighted,
-        )
-        writing_skills = filter_skills_by_highlighted(
-            agg.get("writing_skills") or [],
-            effective_highlighted,
-        )
         add_skill_line("Technical skills", tech_skills)
         add_skill_line("Writing skills", writing_skills)
 
