@@ -188,6 +188,12 @@ export function addProjectToResume(
   );
 }
 
+export async function getResumeProjectEligibleRoles(resumeId: number, projectSummaryId: number) {
+  return api.get<ApiResponse<{ roles: string[] }>>(
+    `/resume/${resumeId}/projects/${projectSummaryId}/eligible-roles`
+  );
+}
+
 /* ── Export helpers ── */
 
 export async function downloadResumeDocx(id: number) {
@@ -214,3 +220,4 @@ function triggerDownload(blob: Blob, filename: string) {
   a.remove();
   URL.revokeObjectURL(url);
 }
+
