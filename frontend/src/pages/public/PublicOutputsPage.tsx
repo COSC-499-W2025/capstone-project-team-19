@@ -34,6 +34,14 @@ function sortProjectsByDate(projects: PublicResumeProject[]): PublicResumeProjec
 function ResumeView({ resume, username }: { resume: PublicResumeDetail; username: string }) {
     const agg = resume.aggregated_skills;
     const sortedProjects = sortProjectsByDate(resume.projects);
+    const hasExpertiseTiers =
+        (agg.advanced?.length ?? 0) +
+            (agg.intermediate?.length ?? 0) +
+            (agg.beginner?.length ?? 0) >
+        0;
+    const hasAnalyzedContent = hasExpertiseTiers
+        ? true
+        : agg.technical_skills.length > 0 || agg.writing_skills.length > 0;
 
     return (
         <div className="p-7">
@@ -49,17 +57,47 @@ function ResumeView({ resume, username }: { resume: PublicResumeDetail; username
 
             <div className="mt-6 py-4 px-5 bg-[var(--card)] border border-[var(--border)] rounded-xl">
                 <h3 className="m-0 mb-2 text-base border-b border-[var(--border)] pb-1">Skills</h3>
+                <p className="my-1 mb-2 text-xs text-slate-500">
+                    Languages and frameworks come from project detection. Advanced, Intermediate, and Beginner apply only
+                    to analyzed skills below—not languages or frameworks.
+                </p>
                 {agg.languages.length > 0 && (
                     <p className="my-1 text-sm"><strong>Languages:</strong> {agg.languages.join(", ")}</p>
                 )}
                 {agg.frameworks.length > 0 && (
                     <p className="my-1 text-sm"><strong>Frameworks:</strong> {agg.frameworks.join(", ")}</p>
                 )}
-                {agg.technical_skills.length > 0 && (
-                    <p className="my-1 text-sm"><strong>Technical skills:</strong> {agg.technical_skills.join(", ")}</p>
-                )}
-                {agg.writing_skills.length > 0 && (
-                    <p className="my-1 text-sm"><strong>Writing skills:</strong> {agg.writing_skills.join(", ")}</p>
+
+                {hasAnalyzedContent && (
+                    <div className="mt-3 border-t border-[var(--border)] pt-3">
+                        <p className="m-0 mb-2 text-sm font-semibold text-slate-900">Analyzed skills</p>
+                        <div className="rounded-lg border border-[var(--border)] bg-slate-50/90 p-3">
+                            <div className="space-y-1">
+                                {hasExpertiseTiers ? (
+                                    <>
+                                        {(agg.advanced?.length ?? 0) > 0 && (
+                                            <p className="my-1 text-sm"><strong>Advanced:</strong> {(agg.advanced ?? []).join(", ")}</p>
+                                        )}
+                                        {(agg.intermediate?.length ?? 0) > 0 && (
+                                            <p className="my-1 text-sm"><strong>Intermediate:</strong> {(agg.intermediate ?? []).join(", ")}</p>
+                                        )}
+                                        {(agg.beginner?.length ?? 0) > 0 && (
+                                            <p className="my-1 text-sm"><strong>Beginner:</strong> {(agg.beginner ?? []).join(", ")}</p>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        {agg.technical_skills.length > 0 && (
+                                            <p className="my-1 text-sm"><strong>Technical:</strong> {agg.technical_skills.join(", ")}</p>
+                                        )}
+                                        {agg.writing_skills.length > 0 && (
+                                            <p className="my-1 text-sm"><strong>Writing:</strong> {agg.writing_skills.join(", ")}</p>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
 

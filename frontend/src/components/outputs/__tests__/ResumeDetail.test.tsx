@@ -159,6 +159,28 @@ describe("ResumeDetail", () => {
       // Python appears in both project and skills summary
       expect(screen.getAllByText(/Python/).length).toBeGreaterThanOrEqual(1);
     });
+
+    it("shows Advanced / Intermediate / Beginner when expertise tiers are present", async () => {
+      setupMocks({
+        aggregated_skills: {
+          languages: ["Python"],
+          frameworks: [],
+          technical_skills: [],
+          writing_skills: [],
+          advanced: ["Testing & CI"],
+          intermediate: ["Object-oriented programming"],
+          beginner: ["Algorithms"],
+        },
+      });
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Skills")).toBeInTheDocument();
+      });
+      expect(screen.getByText(/Advanced:/)).toBeInTheDocument();
+      expect(screen.getByText(/Intermediate:/)).toBeInTheDocument();
+      expect(screen.getByText(/Beginner:/)).toBeInTheDocument();
+    });
   });
 
   describe("toggling edit mode", () => {

@@ -42,6 +42,10 @@ export interface ResumeDetail {
     frameworks: string[];
     technical_skills: string[];
     writing_skills: string[];
+    /** Expertise tiers (Beginner / Intermediate / Advanced from skill scores) */
+    advanced?: string[];
+    intermediate?: string[];
+    beginner?: string[];
   };
   rendered_text: string | null;
 }
