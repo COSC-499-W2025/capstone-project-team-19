@@ -44,7 +44,6 @@ type Props = {
 
 type ProjectEdits = {
   display_name: string;
-  summary_text: string;
   key_role: string;
   contribution_bullets: string[];
   scope: "resume_only" | "global";
@@ -216,7 +215,6 @@ export default function ResumeDetail({
     setEditingProjectId(p.project_summary_id);
     setProjectEdits({
       display_name: p.project_name,
-      summary_text: p.summary_text ?? "",
       key_role: p.key_role ?? "",
       contribution_bullets: [...p.contribution_bullets],
       scope: "resume_only",
@@ -245,9 +243,6 @@ export default function ResumeDetail({
       if (original) {
         if (projectEdits.display_name !== original.project_name) {
           payload.display_name = projectEdits.display_name;
-        }
-        if (projectEdits.summary_text !== (original.summary_text ?? "")) {
-          payload.summary_text = projectEdits.summary_text;
         }
         if (projectEdits.key_role !== (original.key_role ?? "")) {
           payload.key_role = projectEdits.key_role;
@@ -708,12 +703,6 @@ function ProjectReadView({ project: p }: { project: ResumeProject }) {
           {p.frameworks.join(", ")}
         </p>
       )}
-      {p.summary_text && (
-        <p>
-          <span className="font-medium text-slate-900">Summary:</span>{" "}
-          {p.summary_text}
-        </p>
-      )}
       {p.contribution_bullets.length > 0 && (
         <div>
           <p className="font-medium text-slate-900">Contributions:</p>
@@ -851,18 +840,6 @@ function ProjectEditForm({
           placeholder="e.g. Backend Developer"
           value={edits.key_role}
           onChange={(e) => setEdits({ ...edits, key_role: e.target.value })}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="edit-summary">Summary</Label>
-        <Textarea
-          id="edit-summary"
-          rows={3}
-          value={edits.summary_text}
-          onChange={(e) =>
-            setEdits({ ...edits, summary_text: e.target.value })
-          }
         />
       </div>
 

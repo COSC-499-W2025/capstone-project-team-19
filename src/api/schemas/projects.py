@@ -26,3 +26,7 @@ class ProjectDetailDTO(BaseModel):
     skills: List[str] = []
     metrics: Dict[str, Any] = {}
     contributions: Dict[str, Any] = {}
+
+class ProjectSummaryEditRequestDTO(BaseModel):
+    summary_text: Optional[str] = None
+    contribution_summary: Optional[str] = None

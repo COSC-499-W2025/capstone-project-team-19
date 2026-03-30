@@ -277,7 +277,7 @@ describe("ResumeDetail", () => {
         await waitFor(() => {
           expect(screen.getByLabelText("Display Name")).toBeInTheDocument();
           expect(screen.getByLabelText("Key Role")).toBeInTheDocument();
-          expect(screen.getByLabelText("Summary")).toBeInTheDocument();
+          expect(screen.queryByLabelText("Summary")).not.toBeInTheDocument();
           expect(screen.getByText("Save changes")).toBeInTheDocument();
           expect(screen.getByText("Cancel")).toBeInTheDocument();
         });

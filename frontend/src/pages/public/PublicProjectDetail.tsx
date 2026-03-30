@@ -175,20 +175,38 @@ export default function PublicProjectDetailPage() {
 
           {activeTab === "summary" && (
             <div className="space-y-[14px]">
-              <p className="whitespace-pre-wrap text-[14px] leading-[1.6] text-foreground">
-                {project.summary_text ?? (
-                  <em className="text-[#9f9f9f]">No summary available.</em>
-                )}
-              </p>
+              <div className="text-[18px] font-medium text-foreground">
+                Project Summary
+              </div>
+              <div className="space-y-[6px]">
+                <div className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
+                  Summary
+                </div>
+                <div className="rounded-[8px] border border-border bg-muted/30 p-[14px]">
+                  <p className="whitespace-pre-wrap text-[14px] leading-[1.7] text-foreground">
+                    {project.summary_text ? (
+                      project.summary_text
+                    ) : (
+                      <span className="italic text-muted-foreground">No summary available.</span>
+                    )}
+                  </p>
+                </div>
+              </div>
               {project.project_mode === "collaborative" && (
-                <>
-                  <div className="text-[16px] font-medium text-foreground">
+                <div className="space-y-[6px]">
+                  <div className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
                     Contribution Summary
                   </div>
-                  <p className="text-[14px] leading-[1.6] text-[#9f9f9f]">
-                    <em>No contribution summary available.</em>
-                  </p>
-                </>
+                  <div className="rounded-[8px] border border-border bg-muted/30 p-[14px]">
+                    <p className="whitespace-pre-wrap text-[14px] leading-[1.7] text-foreground">
+                      {project.contribution_summary ? (
+                        project.contribution_summary
+                      ) : (
+                        <span className="italic text-muted-foreground">No contribution summary available.</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
           )}

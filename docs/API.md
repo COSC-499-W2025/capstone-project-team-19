@@ -259,6 +259,45 @@ Handles project ingestion, analysis, classification, and metadata updates.
     }
     ```
 
+- **Edit Project Summary**
+  - **Endpoint**: `PATCH /{project_id}/summary`
+  - **Description**: Updates the editable summary fields of a specific project. Only fields included in the request body are changed; omitted fields are left unchanged. Passing an empty string (`""`) for a field resets it to the system-generated value.
+  - **Path Parameters**:
+    - `{project_id}` (integer, required): The project_summary_id of the project to update
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
+  - **Response DTO**: `ProjectDetailDTO`
+  - **Request Body**:
+    ```json
+    {
+        "summary_text": "Updated project summary text.",
+        "contribution_summary": "My specific contributions to this project."
+    }
+    ```
+  - **Fields**:
+    - `summary_text` (string, optional): Manual override for the AI-generated project summary. Pass `""` to clear the override and restore the system-generated text.
+    - `contribution_summary` (string, optional): Manual description of the user's contributions (only meaningful for collaborative projects). Pass `""` to clear.
+  - **Response Body**:
+    ```json
+    {
+        "success": true,
+        "data": {
+            "project_summary_id": 9,
+            "project_name": "My Project",
+            "project_type": "code",
+            "project_mode": "individual",
+            "summary_text": "Updated project summary text.",
+            "has_summary_override": true,
+            "languages": ["Python"],
+            "frameworks": ["Flask"],
+            "skills": ["Backend Development"],
+            "metrics": {},
+            "contributions": {}
+        },
+        "error": null
+    }
+    ```
+
 - **Project Ranking**
   - **Description**: Returns/updates the ranked list of projects (with computed scores) and supports manual ranking overrides.
   - **Ranking Behavior**:
