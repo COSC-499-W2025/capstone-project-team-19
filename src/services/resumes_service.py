@@ -62,6 +62,13 @@ def get_resume_by_id(conn, user_id: int, resume_id: int) -> Optional[Dict[str, A
     except json.JSONDecodeError:
         snapshot = {}
 
+    # Migrate legacy snapshots: add expertise tiers (Advanced / Intermediate / Beginner)
+    agg = snapshot.get("aggregated_skills") or {}
+    if any(k not in agg for k in ("advanced", "intermediate", "beginner")):
+        projects = snapshot.get("projects") or []
+        if projects:
+            snapshot["aggregated_skills"] = recompute_aggregated_skills(projects)
+
     # Apply skill preference filtering if user has any preferences
     if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
        has_skill_preferences(conn, user_id, "global"):
@@ -71,6 +78,8 @@ def get_resume_by_id(conn, user_id: int, resume_id: int) -> Optional[Dict[str, A
         agg = snapshot.get("aggregated_skills", {})
         agg["technical_skills"] = [s for s in agg.get("technical_skills", []) if s in highlighted]
         agg["writing_skills"] = [s for s in agg.get("writing_skills", []) if s in highlighted]
+        for tier_key in ("advanced", "intermediate", "beginner"):
+            agg[tier_key] = [s for s in agg.get(tier_key, []) if s in highlighted]
         snapshot["aggregated_skills"] = agg
         for project in snapshot.get("projects", []):
             if "skills" in project:

@@ -4,13 +4,69 @@ src/menu/resume/helpers.py
 Helper functions for building and rendering resume snapshots.
 """
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from src.models.project_summary import ProjectSummary
-from typing import Any, Dict, List
 from src.db.code_activity import get_code_activity_percents, get_normalized_code_metrics
 from src.db import get_latest_version_key
 from src.db.text_activity import get_text_activity_contribution
 from .date_helpers import enrich_snapshot_with_dates
+from src.analysis.skills.utils.skill_levels import score_to_level
+
+# Display-name labels for writing skills (partition resume skills into writing vs technical).
+WRITING_SKILL_LABELS = {
+    "Clear communication",
+    "Structured writing",
+    "Strong vocabulary",
+    "Analytical writing",
+    "Critical thinking",
+    "Revision & editing",
+    "Planning & organization",
+    "Research integration",
+    "Data collection",
+    "Data analysis",
+}
+
+_TECH_SKILL_MAP = {
+    "architecture_and_design": "Architecture & design",
+    "data_structures": "Data structures",
+    "frontend_skills": "Frontend development",
+    "object_oriented_programming": "Object-oriented programming",
+    "security_and_error_handling": "Security & error handling",
+    "testing_and_ci": "Testing & CI",
+    "algorithms": "Algorithms",
+    "backend_development": "Backend development",
+    "clean_code_and_quality": "Clean code & quality",
+    "devops_and_ci_cd": "DevOps & CI/CD",
+    "api_and_backend": "API & backend",
+}
+def _normalize_skill_level(level: Any, score: float) -> str:
+    """Prefer stored project_skills.level when present; otherwise derive from score."""
+    if isinstance(level, str):
+        t = level.strip()
+        if t == "Expert":
+            return "Advanced"
+        if t in ("Beginner", "Intermediate", "Advanced"):
+            return t
+    return score_to_level(score)
+
+
+def _tier_rank(tier: str) -> int:
+    return {"Beginner": 0, "Intermediate": 1, "Advanced": 2}.get(tier, 1)
+
+
+_WRITING_SKILL_MAP = {
+    "clarity": "Clear communication",
+    "structure": "Structured writing",
+    "vocabulary": "Strong vocabulary",
+    "argumentation": "Analytical writing",
+    "depth": "Critical thinking",
+    "process": "Revision & editing",
+    "planning": "Planning & organization",
+    "research": "Research integration",
+    "data_collection": "Data collection",
+    "data_analysis": "Data analysis",
+}
+
 
 def _clean_str(value: Any) -> str | None:
     if not isinstance(value, str):
@@ -198,6 +254,9 @@ def build_resume_snapshot(summaries: List[ProjectSummary], highlighted_skills: L
         else:  # code
             entry["activities"] = _extract_activity(ps)
 
+        entry["skills_detailed"] = _build_project_skills_detailed_snapshot(
+            ps, highlighted_skills=highlighted_skills
+        )
         projects.append(entry)
 
     agg = _aggregate_skills(summaries, highlighted_skills=highlighted_skills)
@@ -252,9 +311,6 @@ def render_snapshot(
         skills_lines.append(f"Frameworks: {', '.join(sorted(set(agg['frameworks'])))}")
 
     # Filter aggregated skills by the union of all per-project highlighted skills
-    tech_skills = agg.get("technical_skills", [])
-    writing_skills = agg.get("writing_skills", [])
-
     effective_highlighted = highlighted_skills
     if highlighted_skills_by_project is not None:
         all_highlighted: set[str] = set()
@@ -262,14 +318,31 @@ def render_snapshot(
             all_highlighted.update(skills_list)
         effective_highlighted = list(all_highlighted)
 
+    adv = list(agg.get("advanced") or [])
+    interm = list(agg.get("intermediate") or [])
+    beg = list(agg.get("beginner") or [])
+    tech_skills = list(agg.get("technical_skills", []))
+    writing_skills = list(agg.get("writing_skills", []))
+
     if effective_highlighted is not None:
+        adv = _filter_skills_by_highlighted(adv, effective_highlighted)
+        interm = _filter_skills_by_highlighted(interm, effective_highlighted)
+        beg = _filter_skills_by_highlighted(beg, effective_highlighted)
         tech_skills = _filter_skills_by_highlighted(tech_skills, effective_highlighted)
         writing_skills = _filter_skills_by_highlighted(writing_skills, effective_highlighted)
 
-    if tech_skills:
-        skills_lines.append(f"Technical skills: {', '.join(sorted(set(tech_skills)))}")
-    if writing_skills:
-        skills_lines.append(f"Writing skills: {', '.join(sorted(set(writing_skills)))}")
+    if adv or interm or beg:
+        if adv:
+            skills_lines.append(f"Advanced: {', '.join(adv)}")
+        if interm:
+            skills_lines.append(f"Intermediate: {', '.join(interm)}")
+        if beg:
+            skills_lines.append(f"Beginner: {', '.join(beg)}")
+    else:
+        if tech_skills:
+            skills_lines.append(f"Technical skills: {', '.join(sorted(set(tech_skills)))}")
+        if writing_skills:
+            skills_lines.append(f"Writing skills: {', '.join(sorted(set(writing_skills)))}")
 
     if skills_lines:
         lines.append("")
@@ -659,100 +732,180 @@ def _extract_skills(ps: ProjectSummary, map_labels: bool = False, highlighted_sk
     return []
 
 
+def _collect_skill_entries_per_project(
+    ps: ProjectSummary,
+    highlighted_skills: List[str] | None,
+) -> List[Tuple[str, float, str]]:
+    """Return (display_name, score, tier) per skill row (tier from DB level or score_to_level(score))."""
+    if ps.project_type == "text" and ps.project_mode == "collaborative":
+        tc = ps.contributions.get("text_collab")
+        if isinstance(tc, dict) and isinstance(tc.get("skills"), list) and tc["skills"]:
+            collab_skills = tc["skills"]
+            if highlighted_skills is not None:
+                collab_skills = [s for s in collab_skills if s in highlighted_skills]
+            return [(str(s), 0.5, "Intermediate") for s in collab_skills]
+
+    detailed = ps.metrics.get("skills_detailed")
+    if isinstance(detailed, list) and detailed:
+        pairs: List[Tuple[str, float, str]] = []
+        for s in detailed:
+            if not isinstance(s, dict):
+                continue
+            raw = s.get("skill_name")
+            if not raw:
+                continue
+            if highlighted_skills is not None and raw not in highlighted_skills:
+                continue
+            display = _WRITING_SKILL_MAP.get(raw) or _TECH_SKILL_MAP.get(raw) or str(raw)
+            try:
+                score = float(s.get("score") or 0.0)
+            except (TypeError, ValueError):
+                score = 0.0
+            tier = _normalize_skill_level(s.get("level"), score)
+            pairs.append((display, score, tier))
+        return pairs
+
+    return [
+        (name, 0.5, "Intermediate")
+        for name in _extract_skills(ps, map_labels=True, highlighted_skills=highlighted_skills)
+    ]
+
+
+def _build_project_skills_detailed_snapshot(
+    ps: ProjectSummary,
+    highlighted_skills: List[str] | None,
+) -> List[Dict[str, Any]]:
+    """Per-project skills with scores for snapshot JSON and ``recompute_aggregated_skills``."""
+    entries = _collect_skill_entries_per_project(ps, highlighted_skills)
+    merged_score: Dict[str, float] = {}
+    merged_tier: Dict[str, str] = {}
+    for display, score, tier in entries:
+        if display not in merged_score or score > merged_score[display]:
+            merged_score[display] = score
+        if display not in merged_tier or _tier_rank(tier) > _tier_rank(merged_tier[display]):
+            merged_tier[display] = tier
+    return [
+        {"display_name": d, "score": merged_score[d], "level": merged_tier[d]}
+        for d in sorted(merged_score.keys(), key=lambda x: -merged_score[x])
+    ]
+
+
 def _aggregate_skills(summaries: List[ProjectSummary], highlighted_skills: List[str] | None = None,) -> Dict[str, List[str]]:
     langs = set()
     frameworks = set()
     tech_skills = set()
     writing_skills = set()
-
-    tech_skill_map = {
-        "architecture_and_design": "Architecture & design",
-        "data_structures": "Data structures",
-        "frontend_skills": "Frontend development",
-        "object_oriented_programming": "Object-oriented programming",
-        "security_and_error_handling": "Security & error handling",
-        "testing_and_ci": "Testing & CI",
-        "algorithms": "Algorithms",
-        "backend_development": "Backend development",
-        "clean_code_and_quality": "Clean code & quality",
-        "devops_and_ci_cd": "DevOps & CI/CD",
-        "api_and_backend": "API & backend",
-    }
-
-    writing_skill_map = {
-        "clarity": "Clear communication",
-        "structure": "Structured writing",
-        "vocabulary": "Strong vocabulary",
-        "argumentation": "Analytical writing",
-        "depth": "Critical thinking",
-        "process": "Revision & editing",
-        "planning": "Planning & organization",
-        "research": "Research integration",
-        "data_collection": "Data collection",
-        "data_analysis": "Data analysis",
-    }
+    best_scores: Dict[str, float] = {}
+    best_tier: Dict[str, str] = {}
 
     for ps in summaries:
         langs.update(ps.languages or [])
         frameworks.update(ps.frameworks or [])
-        skills = _extract_skills(ps, highlighted_skills=highlighted_skills)
-        for s in skills:
-            if s in writing_skill_map:
-                writing_skills.add(writing_skill_map[s])
-            else:
-                tech_skills.add(tech_skill_map.get(s, s))
+        for display, score, tier in _collect_skill_entries_per_project(ps, highlighted_skills):
+            if display not in best_scores or score > best_scores[display]:
+                best_scores[display] = score
+            if display not in best_tier or _tier_rank(tier) > _tier_rank(best_tier[display]):
+                best_tier[display] = tier
+
+    advanced: List[str] = []
+    intermediate: List[str] = []
+    beginner: List[str] = []
+
+    for display, score in sorted(best_scores.items(), key=lambda x: -x[1]):
+        tier = best_tier.get(display) or score_to_level(score)
+        if tier == "Advanced":
+            advanced.append(display)
+        elif tier == "Intermediate":
+            intermediate.append(display)
+        else:
+            beginner.append(display)
+        if display in WRITING_SKILL_LABELS:
+            writing_skills.add(display)
+        else:
+            tech_skills.add(display)
 
     return {
         "languages": sorted(langs),
         "frameworks": sorted(frameworks),
         "technical_skills": sorted(tech_skills),
         "writing_skills": sorted(writing_skills),
+        "advanced": advanced,
+        "intermediate": intermediate,
+        "beginner": beginner,
     }
-
-# Display-name labels for writing skills.  Used to partition already-mapped
-# skill labels (from resume snapshot JSON) into writing vs technical buckets.
-WRITING_SKILL_LABELS = {
-    "Clear communication",
-    "Structured writing",
-    "Strong vocabulary",
-    "Analytical writing",
-    "Critical thinking",
-    "Revision & editing",
-    "Planning & organization",
-    "Research integration",
-    "Data collection",
-    "Data analysis",
-}
 
 
 def recompute_aggregated_skills(projects: List[Dict[str, Any]]) -> Dict[str, List[str]]:
     """Rebuild aggregated_skills from a list of snapshot project dicts.
 
-    Unlike ``_aggregate_skills`` (which works on ``ProjectSummary`` objects and
-    maps raw skill keys to display names), this operates on resume-snapshot
-    project entries where skills are already display-name strings.
+    Uses ``skills_detailed`` (display_name, score) when present; otherwise falls
+    back to ``skills`` strings with a neutral score (Intermediate tier).
     """
     langs: set[str] = set()
     frameworks: set[str] = set()
-    tech_skills: set[str] = set()
-    writing_skills: set[str] = set()
+    best_scores: Dict[str, float] = {}
+    best_tier: Dict[str, str] = {}
 
     for p in projects:
         for lang in p.get("languages") or []:
             langs.add(lang)
         for fw in p.get("frameworks") or []:
             frameworks.add(fw)
-        for skill in p.get("skills") or []:
-            if skill in WRITING_SKILL_LABELS:
-                writing_skills.add(skill)
-            else:
-                tech_skills.add(skill)
+
+        sd = p.get("skills_detailed")
+        if isinstance(sd, list) and sd:
+            for item in sd:
+                if not isinstance(item, dict):
+                    continue
+                display = item.get("display_name")
+                if not display:
+                    continue
+                try:
+                    score = float(item.get("score", 0.0))
+                except (TypeError, ValueError):
+                    score = 0.0
+                tier = _normalize_skill_level(item.get("level"), score)
+                if display not in best_scores or score > best_scores[display]:
+                    best_scores[display] = score
+                if display not in best_tier or _tier_rank(tier) > _tier_rank(best_tier[display]):
+                    best_tier[display] = tier
+        else:
+            for skill in p.get("skills") or []:
+                sk = str(skill)
+                if sk not in best_scores:
+                    best_scores[sk] = 0.5
+                else:
+                    best_scores[sk] = max(best_scores[sk], 0.5)
+                if sk not in best_tier:
+                    best_tier[sk] = "Intermediate"
+
+    tech_skills: set[str] = set()
+    writing_skills: set[str] = set()
+    advanced: List[str] = []
+    intermediate: List[str] = []
+    beginner: List[str] = []
+
+    for display, score in sorted(best_scores.items(), key=lambda x: -x[1]):
+        tier = best_tier.get(display) or score_to_level(score)
+        if tier == "Advanced":
+            advanced.append(display)
+        elif tier == "Intermediate":
+            intermediate.append(display)
+        else:
+            beginner.append(display)
+        if display in WRITING_SKILL_LABELS:
+            writing_skills.add(display)
+        else:
+            tech_skills.add(display)
 
     return {
         "languages": sorted(langs),
         "frameworks": sorted(frameworks),
         "technical_skills": sorted(tech_skills),
         "writing_skills": sorted(writing_skills),
+        "advanced": advanced,
+        "intermediate": intermediate,
+        "beginner": beginner,
     }
 
 
