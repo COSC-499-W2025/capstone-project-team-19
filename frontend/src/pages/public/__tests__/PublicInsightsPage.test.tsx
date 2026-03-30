@@ -7,6 +7,7 @@ vi.mock('react-router-dom', () => ({
   useParams: vi.fn(() => ({ username: 'testuser' })),
   useNavigate: vi.fn(() => vi.fn()),
   useLocation: vi.fn(() => ({ pathname: '/public/testuser/insights' })),
+  useSearchParams: vi.fn(() => [new URLSearchParams(), vi.fn()]),
   NavLink: ({ to, children }: { to: string; children: React.ReactNode | ((props: { isActive: boolean }) => React.ReactNode) }) => {
     const content = typeof children === 'function' ? children({ isActive: false }) : children
     return <a href={to}>{content}</a>
@@ -33,6 +34,15 @@ vi.mock('../../../auth/user', () => ({
   getUsername: vi.fn(() => null),
 }))
 
+vi.mock('../../../components/insights/tabs/Projects/PublicActivityHeatmapTab', () => ({
+  default: ({ initialProjectId }: { initialProjectId?: number }) => (
+    <div
+      data-testid="activity-heatmap-mock"
+      data-initial-project={initialProjectId === undefined ? '' : String(initialProjectId)}
+    />
+  ),
+}))
+
 import {
   publicGetRanking,
   publicGetSkillsTimeline,
@@ -40,6 +50,8 @@ import {
   publicGetPortfolioStatus,
   publicGetActivityByDate,
 } from '../../../api/public'
+
+import { useSearchParams, useParams } from 'react-router-dom'
 
 const emptyTimeline = {
   dated: [],
@@ -323,6 +335,41 @@ describe('PublicInsightsPage', () => {
       await waitFor(() => {
         expect(screen.getByText('Skills')).toBeInTheDocument()
       })
+    })
+  })
+
+  describe('URL query param handling', () => {
+    beforeEach(() => {
+      vi.mocked(publicGetRanking).mockResolvedValue([
+        { rank: 1, project_summary_id: 1, project_name: 'A' },
+      ])
+      vi.mocked(publicGetSkillsTimeline).mockResolvedValue({
+        skills: [],
+      } as unknown as Awaited<ReturnType<typeof publicGetSkillsTimeline>>)
+      vi.mocked(publicListProjects).mockResolvedValue([])
+    })
+
+    it('passes initialProjectId from ?project= when view=activity-heatmap', async () => {
+      vi.mocked(useSearchParams).mockReturnValue([
+        new URLSearchParams('view=activity-heatmap&project=42'),
+        vi.fn(),
+      ])
+      vi.mocked(useParams).mockReturnValue({ username: 'johndoe' })
+      render(<PublicInsightsPage />)
+      await waitFor(() => {
+        const el = screen.getByTestId('activity-heatmap-mock')
+        expect(el).toHaveAttribute('data-initial-project', '42')
+      })
+      expect(screen.getByRole('heading', { name: 'Activity Heatmap' })).toBeInTheDocument()
+    })
+
+    it('defaults to ranked projects when view param is missing', async () => {
+      vi.mocked(useSearchParams).mockReturnValue([new URLSearchParams(), vi.fn()])
+      render(<PublicInsightsPage />)
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: 'Ranked Projects' })).toBeInTheDocument()
+      })
+      expect(screen.queryByTestId('activity-heatmap-mock')).not.toBeInTheDocument()
     })
   })
 })

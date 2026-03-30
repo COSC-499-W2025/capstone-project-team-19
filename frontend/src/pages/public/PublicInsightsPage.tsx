@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import PublicLayout from "./PublicLayout";
 import { publicGetRanking, publicGetSkillsTimeline, publicListProjects } from "../../api/public";
 import type { PublicRankingItem } from "../../api/public";
@@ -13,6 +13,19 @@ import PublicProjectSkillHeatmapTab from "../../components/insights/tabs/Project
 import { PageContainer, PageHeader, SectionCard } from "../../components/shared";
 
 type PublicView = "ranked-projects" | "skills-overview" | "skills-timeline" | "skills-log" | "activity-heatmap" | "project-heatmap";
+
+const PUBLIC_VIEW_SET = new Set<PublicView>([
+    "ranked-projects",
+    "skills-overview",
+    "skills-timeline",
+    "skills-log",
+    "activity-heatmap",
+    "project-heatmap",
+]);
+
+function isPublicView(v: string | null): v is PublicView {
+    return v != null && PUBLIC_VIEW_SET.has(v as PublicView);
+}
 
 const NAV_ITEMS: { id: PublicView; label: string; indent?: boolean }[] = [
     { id: "ranked-projects", label: "Ranked Projects" },
@@ -119,7 +132,37 @@ function filterTimelineByProjects(timeline: SkillTimelineDTO, publicNames: Set<s
 
 export default function PublicInsightsPage() {
     const { username } = useParams<{ username: string }>();
-    const [activeView, setActiveView] = useState<PublicView>("ranked-projects");
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const [activeView, setActiveView] = useState<PublicView>(() => {
+        const v = searchParams.get("view");
+        return isPublicView(v) ? v : "ranked-projects";
+    });
+
+    const projectIdFromUrl = useMemo(() => {
+        const raw = searchParams.get("project");
+        if (!raw) return undefined;
+        const n = Number(raw);
+        return Number.isFinite(n) ? n : undefined;
+    }, [searchParams]);
+
+    useEffect(() => {
+        const v = searchParams.get("view");
+        if (isPublicView(v)) setActiveView(v);
+    }, [searchParams]);
+
+    const selectView = useCallback(
+        (id: PublicView) => {
+            setActiveView(id);
+            setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.set("view", id);
+                if (id !== "activity-heatmap") next.delete("project");
+                return next;
+            });
+        },
+        [setSearchParams],
+    );
 
     const [rankings, setRankings] = useState<PublicRankingItem[]>([]);
     const [timeline, setTimeline] = useState<SkillTimelineDTO | null>(null);
@@ -166,7 +209,13 @@ export default function PublicInsightsPage() {
             if (rankingsError) return <div className="py-4 text-center text-red-600">{rankingsError}</div>;
             return <RankedProjectsView rankings={rankings} />;
         }
-        if (activeView === "activity-heatmap") return <PublicActivityHeatmapTab username={username!} />;
+        if (activeView === "activity-heatmap")
+            return (
+                <PublicActivityHeatmapTab
+                    username={username!}
+                    initialProjectId={projectIdFromUrl}
+                />
+            );
         if (activeView === "project-heatmap") return <PublicProjectSkillHeatmapTab username={username!} />;
 
         if (loadingTimeline) return <div className="py-4 text-center text-slate-600">Loading...</div>;
