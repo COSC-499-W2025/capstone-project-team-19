@@ -930,15 +930,16 @@ During these two weeks, the team focused on finishing the application by complet
 
 ### Testing or debugging tasks
 
-[PR #634](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/634) - The GitHub integration flow in the upload setup was improved and stabilized by fixing OAuth handling, token validation, and repository loading issues that previously caused broken or inconsistent behavior. The flow was also refactored into clearer step-based interactions with improved UI feedback, ensuring a more reliable and intuitive connection process.
-
-[PR #644](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/644) - A bug in the Project Heatmap visualization was fixed where low-activity cells were incorrectly displayed with maximum intensity due to improper scaling. The color normalization logic was updated to enforce a minimum scale, ensuring more accurate and visually meaningful representations of project activity.
-
-[PR #667](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/667) - Unfinished upload handling was improved by adding recovery and cleanup mechanisms to prevent stale file-path and re-upload issues during the upload workflow. This included new API endpoints, frontend recovery flows, and test coverage to ensure reliable behavior when users exit and resume uploads mid-process.
-
-[PR #669](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/669) - Comprehensive frontend test coverage was added for the upload wizard flow, including consent validation, recovery handling, setup navigation, and analysis execution paths. Shared test utilities were introduced to support consistent testing across upload-related pages and edge cases.
+Following the coding work, the team focused on stabilizing key workflows and improving reliability across the system through targeted debugging and additional test coverage.
 
 
+**Upload Flow**
+
+[PR #634](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/634) improved and stabilized the GitHub integration flow in the upload setup by fixing issues with OAuth handling, token validation, and repository loading that previously caused inconsistent behavior. This PR also refactored the flow into clearer step-based interactions with better UI feedback. Following that, [PR #667](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/667) improved unfinished upload handling by adding recovery and cleanup mechanisms, including new API endpoints and frontend flows to prevent stale file path issues and allow users to safely exit,resume, or restart uploads. [PR #669](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/669) added comprehensive frontend test coverage for the upload wizard flow, covering consent validation, recovery handling, setup navigation, and analysis execution, along with shared test utilities to support consistent testing across related pages.
+
+**Project Heatmap Bug**
+
+[PR #644](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/644) fixed a bug in the Project Heatmap where low-activity cells were incorrectly displayed with maximum intensity due to improper scaling logic, the PR updated the normalization to better reflect actual activity levels.
 
 ### Documentation Tasks
 
