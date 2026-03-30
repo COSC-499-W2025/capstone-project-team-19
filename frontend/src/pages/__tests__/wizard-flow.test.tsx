@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import App from "../../App";
 import * as consentApi from "../../api/consent";
-import { tokenStore } from "../../auth/token";
+import { buildConsentSuccessResponses, setAuthenticatedTestUser, setRoute } from "./uploadTestUtils";
 
 vi.mock("../../api/consent", () => ({
   getConsentStatus: vi.fn(),
@@ -16,66 +16,16 @@ const mockedGetConsentStatus = vi.mocked(consentApi.getConsentStatus);
 const mockedPostInternalConsent = vi.mocked(consentApi.postInternalConsent);
 const mockedPostExternalConsent = vi.mocked(consentApi.postExternalConsent);
 
-function setRoute(path: string) {
-  window.history.pushState({}, "", path);
-}
-
-function makeJwt(payload: Record<string, unknown>) {
-  const header = { alg: "HS256", typ: "JWT" };
-
-  const b64url = (obj: unknown) =>
-    btoa(JSON.stringify(obj))
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/g, "");
-
-  return `${b64url(header)}.${b64url(payload)}.sig`;
-}
-
 describe("upload wizard flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    setAuthenticatedTestUser();
 
-    tokenStore.set(
-      makeJwt({
-        sub: "1",
-        username: "testuser",
-        exp: Math.floor(Date.now() / 1000) + 60 * 60,
-      })
-    );
-
-    mockedGetConsentStatus.mockResolvedValue({
-      success: true,
-      data: {
-        user_id: 1,
-        internal_consent: null,
-        external_consent: null,
-      },
-      error: null,
-    });
-
-    mockedPostInternalConsent.mockResolvedValue({
-      success: true,
-      data: {
-        consent_id: 1,
-        user_id: 1,
-        status: "accepted",
-        timestamp: "2026-03-08T00:00:00",
-      },
-      error: null,
-    });
-
-    mockedPostExternalConsent.mockResolvedValue({
-      success: true,
-      data: {
-        consent_id: 2,
-        user_id: 1,
-        status: "accepted",
-        timestamp: "2026-03-08T00:00:01",
-      },
-      error: null,
-    });
+    const defaultResponses = buildConsentSuccessResponses();
+    mockedGetConsentStatus.mockResolvedValue(defaultResponses.status);
+    mockedPostInternalConsent.mockResolvedValue(defaultResponses.internalSave);
+    mockedPostExternalConsent.mockResolvedValue(defaultResponses.externalSave);
   });
 
   it("/upload/consent renders with active step 1", async () => {
@@ -104,6 +54,68 @@ describe("upload wizard flow", () => {
     expect(mockedPostInternalConsent).toHaveBeenCalledWith("accepted");
     expect(mockedPostExternalConsent).toHaveBeenCalledWith("accepted");
     expect(window.location.pathname).toBe("/upload/upload");
+  });
+
+  it("shows validation when internal consent is not accepted", async () => {
+    const user = userEvent.setup();
+    setRoute("/upload/consent");
+    render(<App />);
+
+    await screen.findByText("USER CONSENT NOTICE");
+
+    const yesButtons = screen.getAllByLabelText("Yes, I consent.");
+    await user.click(yesButtons[1]);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(
+      await screen.findByText('Please select "Yes, I consent." for user consent to continue.')
+    ).toBeInTheDocument();
+    expect(mockedPostInternalConsent).not.toHaveBeenCalled();
+    expect(mockedPostExternalConsent).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/upload/consent");
+  });
+
+  it("shows validation when external consent option is missing", async () => {
+    const user = userEvent.setup();
+    setRoute("/upload/consent");
+    render(<App />);
+
+    await screen.findByText("USER CONSENT NOTICE");
+
+    const yesButtons = screen.getAllByLabelText("Yes, I consent.");
+    await user.click(yesButtons[0]);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(
+      await screen.findByText("Please select an external service consent option to continue.")
+    ).toBeInTheDocument();
+    expect(mockedPostInternalConsent).not.toHaveBeenCalled();
+    expect(mockedPostExternalConsent).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/upload/consent");
+  });
+
+  it("shows save error and stays on consent page when API save fails", async () => {
+    const user = userEvent.setup();
+    mockedPostExternalConsent.mockResolvedValueOnce({
+      success: false,
+      data: null,
+      error: { message: "Failed external consent save.", code: 500 },
+    });
+
+    setRoute("/upload/consent");
+    render(<App />);
+
+    await screen.findByText("USER CONSENT NOTICE");
+
+    const yesButtons = screen.getAllByLabelText("Yes, I consent.");
+    await user.click(yesButtons[0]);
+    await user.click(yesButtons[1]);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(await screen.findByText("Failed external consent save.")).toBeInTheDocument();
+    expect(mockedPostInternalConsent).toHaveBeenCalledWith("accepted");
+    expect(mockedPostExternalConsent).toHaveBeenCalledWith("accepted");
+    expect(window.location.pathname).toBe("/upload/consent");
   });
 
   it("/upload/upload renders step 2 with active sidebar state", async () => {

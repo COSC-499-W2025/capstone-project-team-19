@@ -80,6 +80,15 @@ export interface PublicSkill {
 
 /* ── API functions ── */
 
+export interface PublicPortfolioStatus {
+  exists: boolean;
+  is_public: boolean;
+}
+
+export function publicGetPortfolioStatus(username: string): Promise<PublicPortfolioStatus> {
+  return api.get<PublicPortfolioStatus>(`/public/${username}/status`);
+}
+
 export function publicListProjects(username: string): Promise<PublicProject[]> {
   return api
     .get<ApiResponse<{ projects: PublicProject[] }>>(`/public/${username}/projects`)

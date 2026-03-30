@@ -35,6 +35,22 @@ class LoginIn(BaseModel):
             raise ValueError('Password cannot be empty')
         return v
 
+class ChangePasswordIn(BaseModel):
+    current_password: str = Field(..., min_length=1, description="Current password cannot be empty")
+    new_password: str = Field(..., min_length=8, description="New password must be at least 8 characters long and include upper/lowercase and a number")
+
+    @field_validator('current_password')
+    @classmethod
+    def validate_current_password_not_empty(cls, v: str) -> str:
+        if not v:
+            raise ValueError('Current password cannot be empty')
+        return v
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_new_password_strength(cls, v: str) -> str:
+        return validate_password_strength(v)
+
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"

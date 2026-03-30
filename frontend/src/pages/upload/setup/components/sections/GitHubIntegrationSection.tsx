@@ -10,7 +10,8 @@ type Props = {
   localGitDetected: boolean | null;
 };
 
-const BTN_PRIMARY = "rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50";
+const BTN_PRIMARY =
+  "rounded border border-[#001166] bg-[#001166] px-4 py-2 text-sm font-medium text-white hover:bg-[#000d4d] disabled:opacity-50";
 const BTN_SECONDARY = "rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-50";
 
 export default function GitHubIntegrationSection({ project, actions, isMutating, localGitDetected }: Props) {

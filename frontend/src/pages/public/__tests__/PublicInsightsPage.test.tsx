@@ -10,6 +10,7 @@ vi.mock('../PublicLayout', () => ({
 vi.mock('../../../api/public', () => ({
   publicGetRanking: vi.fn(() => Promise.resolve([])),
   publicGetSkillsTimeline: vi.fn(() => Promise.resolve(null)),
+  publicListProjects: vi.fn(() => Promise.resolve([])),
 }))
 
 vi.mock('../../../components/insights/tabs/Projects/PublicActivityHeatmapTab', () => ({
@@ -21,7 +22,7 @@ vi.mock('../../../components/insights/tabs/Projects/PublicActivityHeatmapTab', (
   ),
 }))
 
-import { publicGetRanking, publicGetSkillsTimeline } from '../../../api/public'
+import { publicGetRanking, publicGetSkillsTimeline, publicListProjects } from '../../../api/public'
 
 function renderInsights(initialPath: string) {
   return render(
@@ -41,6 +42,7 @@ describe('PublicInsightsPage', () => {
     vi.mocked(publicGetSkillsTimeline).mockResolvedValue({
       skills: [],
     } as unknown as Awaited<ReturnType<typeof publicGetSkillsTimeline>>)
+    vi.mocked(publicListProjects).mockResolvedValue([])
   })
 
   it('passes initialProjectId from ?project= when view=activity-heatmap', async () => {

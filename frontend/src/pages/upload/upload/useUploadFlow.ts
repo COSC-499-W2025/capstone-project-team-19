@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import {
+  getUploadStatus,
   postProjectsUpload,
   postUploadClassifications,
   postUploadDedupResolve,
@@ -39,7 +40,10 @@ import {
   uploadState,
 } from "./uploadHelpers";
 
-export function useUploadFlow() {
+export function useUploadFlow(
+  resumeUploadIdParam: string | null = null,
+  resumeStageParam: string | null = null,
+) {
   const [stageIndex, setStageIndex] = useState(0);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -75,7 +79,9 @@ export function useUploadFlow() {
   const allProjectsPreviouslySkipped = useMemo(
     () =>
       discoveredProjects.length > 0 &&
-      discoveredProjects.every((projectName) => projectNotes[projectName]?.includes(SKIPPED_PROJECT_NOTE)),
+      discoveredProjects.every((projectName) =>
+        Boolean(projectNotes[projectName]?.some((note) => note.text === SKIPPED_PROJECT_NOTE)),
+      ),
     [discoveredProjects, projectNotes],
   );
 
@@ -284,7 +290,7 @@ export function useUploadFlow() {
     }
 
     if (currentStage.key === "classification") {
-      if (classificationStageCompleted) return "Completed";
+      if (classificationStageCompleted) return "Continue to Setup";
       if (uploadData && !needsClassification && !needsProjectTypes && classificationDirtySinceSubmit) return "Resubmit";
       return "Submit and Continue";
     }
@@ -311,8 +317,10 @@ export function useUploadFlow() {
     if (currentStage.key === "deduplication") return !uploadData || !dedupResolved;
 
     if (!uploadData) return true;
+    if (currentStage.key === "classification" && classificationStageCompleted) {
+      return !uploadData.upload_id;
+    }
     if (!allClassificationRowsComplete) return true;
-    if (classificationStageCompleted) return true;
     if (!needsClassification && !needsProjectTypes) return !classificationDirtySinceSubmit;
     return !classificationReady;
   }, [
@@ -331,18 +339,64 @@ export function useUploadFlow() {
     uploadData,
   ]);
 
-  const sidebarNextDisabled = useMemo(() => {
-    if (isSubmitting) return true;
-    if (!uploadData) return true;
-    if (uploadData.status === "failed") return true;
-    return (
-      uploadData.status === "needs_dedup" ||
-      uploadData.status === "needs_classification" ||
-      uploadData.status === "needs_project_types"
-    );
-  }, [isSubmitting, uploadData]);
-
   const sizeLabel = selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB` : null;
+  const requestedUploadId = useMemo(() => {
+    const raw = (resumeUploadIdParam ?? "").trim();
+    if (!raw) return null;
+    const parsed = Number.parseInt(raw, 10);
+    if (!Number.isInteger(parsed) || parsed <= 0) return null;
+    return parsed;
+  }, [resumeUploadIdParam]);
+
+  const requestedStageIndex = useMemo(() => {
+    const key = (resumeStageParam ?? "").trim();
+    if (!key) return null;
+    const idx = STAGES.findIndex((stage) => stage.key === key);
+    return idx >= 0 ? idx : null;
+  }, [resumeStageParam]);
+
+  useEffect(() => {
+    if (requestedUploadId === null) return;
+    const targetUploadId = requestedUploadId;
+
+    let active = true;
+
+    async function loadRequestedUpload() {
+      try {
+        const response = await getUploadStatus(targetUploadId);
+        if (!response.success || !response.data) {
+          throw new Error(response.error?.message ?? "Failed to load upload context.");
+        }
+        if (!active) return;
+
+        setUploadData(response.data);
+
+        if (requestedStageIndex !== null) {
+          setStageIndex(requestedStageIndex);
+          return;
+        }
+
+        const status = response.data.status;
+        if (status === "needs_dedup") {
+          setStageIndex(STAGES.findIndex((stage) => stage.key === "deduplication"));
+          return;
+        }
+        if (status === "parsed" || status === "started") {
+          setStageIndex(STAGES.findIndex((stage) => stage.key === "projects"));
+          return;
+        }
+        setStageIndex(STAGES.findIndex((stage) => stage.key === "classification"));
+      } catch (e: unknown) {
+        if (!active) return;
+        setSubmitError(e instanceof Error ? e.message : "Failed to load upload context.");
+      }
+    }
+
+    loadRequestedUpload();
+    return () => {
+      active = false;
+    };
+  }, [requestedStageIndex, requestedUploadId]);
 
   useEffect(() => {
     if (dedupCases.length > 0) {
@@ -679,9 +733,9 @@ export function useUploadFlow() {
     }
   }
 
-  async function onPrimaryAction() {
-    if (primaryDisabled) return;
-    await runCurrentStageAction(currentStage.key);
+  async function onPrimaryAction(): Promise<boolean> {
+    if (primaryDisabled) return false;
+    return runCurrentStageAction(currentStage.key);
   }
 
   function onDedupDecisionChange(projectName: string, value: VisibleDedupDecision) {
@@ -710,6 +764,19 @@ export function useUploadFlow() {
     }));
   }
 
+  function onOpenProjectDetailsInNewTab(projectName: string) {
+    const trimmedProjectName = projectName.trim();
+    if (!trimmedProjectName) return;
+
+    const returnTo = uploadData?.upload_id ? `/upload/upload?uploadId=${uploadData.upload_id}` : "/upload/upload";
+    const query = new URLSearchParams({
+      openProject: trimmedProjectName,
+      openedFromUpload: "1",
+      returnTo,
+    });
+    window.open(`/projects?${query.toString()}`, "_blank");
+  }
+
   return {
     uploadId: uploadData?.upload_id ?? null,
     stageIndex,
@@ -724,7 +791,6 @@ export function useUploadFlow() {
     primaryLabel,
     primaryDisabled,
     classificationStageCompleted,
-    sidebarNextDisabled,
     discoveredProjects,
     projectNotes,
     allProjectsPreviouslySkipped,
@@ -755,5 +821,6 @@ export function useUploadFlow() {
     onNextDedupCase,
     onClassificationChange,
     onProjectTypeChange,
+    onOpenProjectDetailsInNewTab,
   };
 }

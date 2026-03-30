@@ -1,10 +1,28 @@
-# GitHub Integration Documentation
+# GitHub Integration
 
 This document explains how the system currently interacts with the GitHub REST API to supplement collaborative code analysis with GitHub contribution data.
 
 The integration supports GitHub OAuth login, repository selection, and retrieval and storage of contribution metrics for linked projects.
 
 ---
+
+## Setting up GitHub OAuth
+
+To enable GitHub analysis:
+1. Create a GitHub OAuth App:
+   - Visit https://github.com/settings/developers
+   - Select **OAuth Apps --> New OAuth App**
+   - Application name: `Capstone Portfolio Analyzer`
+   - Homepage URL: `http://localhost:8000`
+   - Authorization callback URL: `http://localhost:8000/auth/github/callback`
+2. Copy the **Client ID** from the OAuth app.
+3. Generate a client secret:
+   - Click "Generate a new client secret"
+   - Copy the client secret and add to your `.env` file 
+4. Add the following to your `.env` file (as shown in `.env.example`):
+    ```env
+    GITHUB_CLIENT_ID=<your-client-id>
+    ```
 
 ## API Endpoints Used
 
