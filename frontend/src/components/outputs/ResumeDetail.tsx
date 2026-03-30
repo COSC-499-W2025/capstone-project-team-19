@@ -652,6 +652,15 @@ function OnePageStatusBanner({
 }: {
   status: ResumeDetailType["one_page_status"];
 }) {
+  const suggestions = [
+    "Only provide your best 2-3 projects.",
+    "Make sure your profile summary is not too long (about 2-5 sentences).",
+    "Only provide the most relevant work experience.",
+    "Only provide the most relevant awards or certificates.",
+    "Only provide the most relevant education.",
+    "Shorten the points in each project.",
+  ];
+
   if (status.fits_one_page) {
     return (
       <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
@@ -663,14 +672,30 @@ function OnePageStatusBanner({
   if (status.overflow_mode === "warn") {
     return (
       <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
-        {status.overflow_reason ?? "This resume exceeds 1 page, but export is still allowed."}
+        <p>
+          {status.overflow_reason ?? "This resume exceeds 1 page, but export is still allowed."}
+        </p>
+        <p className="mt-2 font-medium">Here are some suggestions on how to shorten it:</p>
+        <ul className="mt-1 list-disc pl-5 space-y-1">
+          {suggestions.map((suggestion) => (
+            <li key={suggestion}>{suggestion}</li>
+          ))}
+        </ul>
       </div>
     );
   }
 
   return (
     <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
-      {status.overflow_reason ?? "This resume exceeds 1 page and must be shortened before export."}
+      <p>
+        {status.overflow_reason ?? "This resume exceeds 1 page and must be shortened before export."}
+      </p>
+      <p className="mt-2 font-medium">Here are some suggestions on how to shorten it:</p>
+      <ul className="mt-1 list-disc pl-5 space-y-1">
+        {suggestions.map((suggestion) => (
+          <li key={suggestion}>{suggestion}</li>
+        ))}
+      </ul>
     </div>
   );
 }

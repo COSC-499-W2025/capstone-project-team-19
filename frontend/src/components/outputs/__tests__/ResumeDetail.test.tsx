@@ -238,8 +238,7 @@ describe("ResumeDetail", () => {
           page_count: 2,
           overflow_detected: true,
           overflow_mode: "block",
-          overflow_reason:
-            "This resume exceeds one page and must be shortened before export.",
+          overflow_reason: "This resume exceeds one page and must be shortened before exporting.",
           has_manual_project_edits: false,
         },
       });
@@ -248,10 +247,16 @@ describe("ResumeDetail", () => {
       await waitFor(() => {
         expect(
           screen.getByText(
-            "This resume exceeds one page and must be shortened before export."
+            "This resume exceeds one page and must be shortened before exporting."
           )
         ).toBeInTheDocument();
       });
+      expect(
+        screen.getByText("Here are some suggestions on how to shorten it:")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Only provide your best 2-3 projects.")
+      ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
     });
 
@@ -276,6 +281,9 @@ describe("ResumeDetail", () => {
           )
         ).toBeInTheDocument();
       });
+      expect(
+        screen.getByText("Shorten the points in each project.")
+      ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
     });
   });

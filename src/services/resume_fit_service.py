@@ -97,7 +97,7 @@ def _fit_status_from_page_count(page_count: int, has_manual_edits: bool) -> Dict
     overflow_reason = (
         "This resume exceeds one page because of manual project edits. Export is still allowed."
         if has_manual_edits
-        else "This resume exceeds one page and must be shortened before export."
+        else "This resume exceeds one page and must be shortened before exporting."
     )
     return {
         "fits_one_page": False,
