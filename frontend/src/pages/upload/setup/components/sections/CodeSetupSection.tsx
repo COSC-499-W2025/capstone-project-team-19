@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import type { GitHubRepo, GitIdentityOption } from "../../../../../api/uploads";
+import type { GitIdentityOption } from "../../../../../api/uploads";
 import type { SetupFlowResult, SetupProjectCard } from "../../types";
+import { setupPrimaryActionButtonClass } from "./buttonStyles";
+import GitHubIntegrationSection from "./GitHubIntegrationSection";
 
 type Props = {
   project: SetupProjectCard;
@@ -29,12 +31,6 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
   const [identityMessage, setIdentityMessage] = useState<string | null>(null);
   const [localGitDetected, setLocalGitDetected] = useState<boolean | null>(null);
 
-  const [repos, setRepos] = useState<GitHubRepo[]>([]);
-  const [selectedRepo, setSelectedRepo] = useState(project.githubRepoFullName ?? "");
-  const [reposLoading, setReposLoading] = useState(false);
-  const [authUrl, setAuthUrl] = useState<string | null>(null);
-  const [githubMessage, setGithubMessage] = useState<string | null>(null);
-
   const canPickIdentities =
     project.classification === "collaborative" &&
     localGitDetected === true &&
@@ -49,10 +45,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
     setSelectedIndices(project.gitSelectedIdentityIndices);
   }, [project.gitSelectedIdentityIndices]);
 
-  useEffect(() => {
-    setSelectedRepo(project.githubRepoFullName ?? "");
-  }, [project.githubRepoFullName]);
-
+  // Detect local .git and load contributor identities
   useEffect(() => {
     if (project.projectKey === null) {
       setLocalGitDetected(null);
@@ -73,13 +66,11 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
         setLocalGitDetected(true);
         setIdentities(gitData.options);
         setSelectedIndices(gitData.selected_indices);
-        setIdentitiesLoading(false);
-        return;
+      } else {
+        setLocalGitDetected(false);
+        setIdentities([]);
+        setSelectedIndices([]);
       }
-
-      setLocalGitDetected(false);
-      setIdentities([]);
-      setSelectedIndices([]);
       setIdentitiesLoading(false);
     }
 
@@ -114,48 +105,9 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
     setIdentityMessage("Identity selection saved.");
   }
 
-  async function onGithubStart(connectNow: boolean) {
-    setGithubMessage(null);
-    const data = await actions.githubStart(project.projectName, connectNow);
-    if (!data) return;
-
-    setAuthUrl(data.auth_url ?? null);
-    if (!connectNow) {
-      setGithubMessage("GitHub integration skipped for now.");
-      return;
-    }
-
-    if (data.auth_url) {
-      setGithubMessage("Continue with GitHub OAuth using the link below.");
-      return;
-    }
-
-    setGithubMessage("GitHub is connected.");
-  }
-
-  async function onLoadRepos() {
-    setReposLoading(true);
-    setGithubMessage(null);
-    const data = await actions.githubRepos(project.projectName);
-    setReposLoading(false);
-    if (!data) return;
-
-    setRepos(data.repos);
-    if (!selectedRepo && data.repos.length > 0) {
-      setSelectedRepo(data.repos[0].full_name);
-    }
-    setGithubMessage(data.repos.length > 0 ? "Repositories loaded." : "No repositories found.");
-  }
-
-  async function onLinkRepo() {
-    if (!selectedRepo) return;
-    const data = await actions.githubLink(project.projectName, selectedRepo);
-    if (!data) return;
-    setGithubMessage("Repository linked.");
-  }
-
   return (
     <div className="space-y-4">
+      {/* --- Git Detection --- */}
       <div className="space-y-2">
         <h4 className="text-lg leading-tight font-semibold text-zinc-900">Git Detection</h4>
         <p className="text-sm leading-relaxed text-zinc-700">{identitySummary}</p>
@@ -167,6 +119,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
         </p>
       )}
 
+      {/* --- Identity picker (collaborative projects with a .git repo) --- */}
       {canPickIdentities && (
         <div className="space-y-3">
           <div className="text-sm font-semibold text-zinc-900">Select your identity (collaborative code)</div>
@@ -203,7 +156,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             type="button"
             onClick={onSaveIdentities}
             disabled={isMutating || project.projectKey === null}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+            className={setupPrimaryActionButtonClass}
           >
             Save identity selection
           </button>
@@ -211,83 +164,12 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
         </div>
       )}
 
-      <div className="space-y-3">
-        <h4 className="text-lg leading-tight font-semibold text-zinc-900">GitHub Integration</h4>
-        <p className="text-sm text-zinc-700">
-          State: <span className="font-medium">{project.githubState}</span>
-          {project.githubRepoLinked && project.githubRepoFullName ? ` | Linked repo: ${project.githubRepoFullName}` : ""}
-        </p>
-        {!localGitDetected && project.classification === "collaborative" && (
-          <p className="text-sm text-zinc-700">
-            With no local .git history, collaborative identity is inferred from the connected GitHub account during analysis.
-          </p>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onGithubStart(true)}
-            disabled={isMutating}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-          >
-            Connect GitHub
-          </button>
-          <button
-            type="button"
-            onClick={() => onGithubStart(false)}
-            disabled={isMutating}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-          >
-            Skip for now
-          </button>
-          <button
-            type="button"
-            onClick={onLoadRepos}
-            disabled={isMutating || reposLoading}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-          >
-            {reposLoading ? "Loading..." : "Load repositories"}
-          </button>
-        </div>
-
-        {authUrl && (
-          <a
-            href={authUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-[#001166]"
-          >
-            Open GitHub Authorization
-          </a>
-        )}
-
-        {repos.length > 0 && (
-          <div className="space-y-2">
-            <select
-              value={selectedRepo}
-              onChange={(event) => setSelectedRepo(event.target.value)}
-              className="h-12 w-full rounded border border-zinc-300 bg-zinc-50 px-4 py-3 text-sm text-zinc-700"
-              disabled={isMutating}
-            >
-              {repos.map((repo) => (
-                <option key={repo.full_name} value={repo.full_name}>
-                  {repo.full_name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={onLinkRepo}
-              disabled={isMutating || !selectedRepo}
-              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
-            >
-              Link selected repository
-            </button>
-          </div>
-        )}
-
-        {githubMessage && <p className="text-sm text-zinc-700">{githubMessage}</p>}
-      </div>
+      <GitHubIntegrationSection
+        project={project}
+        actions={actions}
+        isMutating={isMutating}
+        localGitDetected={localGitDetected}
+      />
     </div>
   );
 }

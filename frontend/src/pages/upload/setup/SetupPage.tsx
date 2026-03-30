@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { RunPreflightRecord, RunWarning } from "../../../api/uploads";
 import { getUsername } from "../../../auth/user";
@@ -6,8 +6,12 @@ import UploadWizardShell from "../../../components/UploadWizardShell";
 import "../UploadShared.css";
 import SetupAnalyzeConfirmDialog from "./components/SetupAnalyzeConfirmDialog";
 import SetupProjectGroup from "./components/SetupProjectGroup";
+import { useUnfinishedUploadExitGuard } from "../hooks/useUnfinishedUploadExitGuard";
+import { saveUploadRecoveryStage } from "../upload/recoveryStage";
+import { useGitHubOAuthCallback } from "./hooks/useGitHubOAuthCallback";
 import { useSetupFlow } from "./hooks/useSetupFlow";
 import type { SummaryMode } from "./types";
+import UploadConfirmDialog from "../upload/components/UploadConfirmDialog";
 
 function toOptionalBadgeLabel(item: RunWarning): string | null {
   const code = String(item.code || "");
@@ -45,20 +49,49 @@ function deriveInitialSummaryModes(manualOnlySummaries: boolean): ProjectSummary
 export default function UploadSetupPage() {
   const username = getUsername();
   const nav = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [readiness, setReadiness] = useState<RunPreflightRecord | null>(null);
   const [checkingReadiness, setCheckingReadiness] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [leaveSetupDialogOpen, setLeaveSetupDialogOpen] = useState(false);
+  const [isLeavingSetupFlow, setIsLeavingSetupFlow] = useState(false);
   const [summaryModesByProject, setSummaryModesByProject] = useState<Record<string, ProjectSummaryModes>>({});
+  const pendingLeaveNavigationRef = useRef<(() => Promise<void>) | null>(null);
+  const [leaveCleanupError, setLeaveCleanupError] = useState<string | null>(null);
 
   const uploadIdParam = searchParams.get("uploadId") ?? "";
   const flow = useSetupFlow(uploadIdParam);
   const hasAnalysisStarted = flow.uploadStatus === "analyzing" || flow.uploadStatus === "done";
 
+  useUnfinishedUploadExitGuard({
+    enabled: Boolean(flow.uploadId) && !hasAnalysisStarted,
+    uploadId: flow.uploadId,
+    onRequestConfirmLeave: (confirmNavigation) => {
+      pendingLeaveNavigationRef.current = confirmNavigation;
+      setLeaveSetupDialogOpen(true);
+    },
+    onCleanupError: (message) => {
+      setLeaveCleanupError(message);
+    },
+  });
+
+  useEffect(() => {
+    if (!flow.uploadId || hasAnalysisStarted) return;
+    saveUploadRecoveryStage(flow.uploadId, "setup");
+  }, [flow.uploadId, hasAnalysisStarted]);
+
   useEffect(() => {
     if (flow.hasValidUploadId) return;
     nav("/upload/upload", { replace: true });
   }, [flow.hasValidUploadId, nav]);
+
+  useGitHubOAuthCallback({
+    searchParams,
+    setSearchParams,
+    hasValidUploadId: flow.hasValidUploadId,
+    refreshUpload: flow.refreshUpload,
+    setActionError: flow.setActionError,
+  });
 
   useEffect(() => {
     if (!flow.uploadNotFound) return;
@@ -170,6 +203,29 @@ export default function UploadSetupPage() {
     nav(`/upload/analyze?uploadId=${uploadIdParam}`);
   }
 
+  function onCancelLeaveSetupFlow() {
+    if (isLeavingSetupFlow) return;
+    pendingLeaveNavigationRef.current = null;
+    setLeaveSetupDialogOpen(false);
+  }
+
+  async function onConfirmLeaveSetupFlow() {
+    if (isLeavingSetupFlow) return;
+    const confirmNavigation = pendingLeaveNavigationRef.current;
+    if (!confirmNavigation) {
+      setLeaveSetupDialogOpen(false);
+      return;
+    }
+
+    setLeaveCleanupError(null);
+    setIsLeavingSetupFlow(true);
+    try {
+      await confirmNavigation();
+    } finally {
+      setIsLeavingSetupFlow(false);
+    }
+  }
+
   const summaryMissingByProject = useMemo(() => {
     const out: Record<string, boolean> = {};
     for (const project of flow.projectCards) {
@@ -230,7 +286,12 @@ export default function UploadSetupPage() {
           source: "local",
         });
       }
-      if (project.projectType === "text" && project.mainFileRelpath && project.mainSectionIds.length === 0) {
+      if (
+        project.projectType === "text" &&
+        project.classification === "collaborative" &&
+        project.mainFileRelpath &&
+        project.mainSectionIds.length === 0
+      ) {
         out.push({
           code: "missing_contribution_sections",
           project: project.projectName,
@@ -307,6 +368,14 @@ export default function UploadSetupPage() {
         const project = flow.projectCards.find((p) => p.projectName === projectName);
         if (!project || project.projectType !== "text" || project.classification !== "collaborative") return false;
       }
+      if (code === "missing_contribution_sections") {
+        const project = flow.projectCards.find((p) => p.projectName === projectName);
+        if (!project || project.projectType !== "text" || project.classification !== "collaborative") return false;
+      }
+      if (code === "missing_supporting_files") {
+        const project = flow.projectCards.find((p) => p.projectName === projectName);
+        if (!project || project.projectType !== "text" || project.classification !== "collaborative") return false;
+      }
       const summaryModes = resolvedSummaryModesByProject[projectName];
       if (code === "missing_manual_summary") {
         if (summaryModes?.project === "llm" || summaryModes?.project === null) return false;
@@ -337,9 +406,7 @@ export default function UploadSetupPage() {
         username={username}
         steps={steps}
         actionLabel={hasAnalysisStarted ? "Open Analyze" : "Analyze"}
-        onAction={onAnalyzeAction}
-        actionDisabled={analyzeButtonDisabled}
-        showAction
+        showAction={false}
         breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Upload", href: "/upload" },
@@ -354,8 +421,12 @@ export default function UploadSetupPage() {
           )}
           {flow.loadError && <p className="error mb-3 text-sm">{flow.loadError}</p>}
           {flow.actionError && <p className="error mb-3 text-sm">{flow.actionError}</p>}
+          {leaveCleanupError && <p className="error mb-3 text-sm">{leaveCleanupError}</p>}
           {!flow.loading && !flow.loadError && (
             <div className="mb-8 rounded-md border border-zinc-300 bg-white px-4 py-3">
+              <p className="mb-2 text-sm text-zinc-700">
+                Expand each project card below to complete setup details before moving to Analyze. We recommend resolving any yellow warnings first for a more complete analysis.
+              </p>
               <p className="text-sm font-semibold text-zinc-900">Status Guide</p>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 font-medium text-rose-700">
@@ -391,6 +462,7 @@ export default function UploadSetupPage() {
                 expandedProjectNames={flow.expandedProjectNames}
                 onToggleProject={flow.onToggleProject}
                 actions={flow.actions}
+                refreshUpload={flow.refreshUpload}
                 isMutating={flow.isMutating}
                 manualOnlySummaries={flow.manualOnlySummaries}
               />
@@ -407,17 +479,51 @@ export default function UploadSetupPage() {
                 expandedProjectNames={flow.expandedProjectNames}
                 onToggleProject={flow.onToggleProject}
                 actions={flow.actions}
+                refreshUpload={flow.refreshUpload}
                 isMutating={flow.isMutating}
                 manualOnlySummaries={flow.manualOnlySummaries}
               />
             </div>
           )}
+
+          <div className="mt-10 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => nav(`/upload/upload?uploadId=${uploadIdParam}&stage=classification`)}
+              className="h-10 min-w-[96px] rounded-md border border-zinc-400 bg-white px-5 text-sm font-semibold text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={flow.isMutating}
+            >
+              Back
+            </button>
+
+            <button
+              type="button"
+              onClick={onAnalyzeAction}
+              className="h-10 min-w-[160px] rounded-md bg-[var(--upload-accent)] px-5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={analyzeButtonDisabled}
+            >
+              {hasAnalysisStarted ? "Open Analyze" : "Analyze"}
+            </button>
+          </div>
         </div>
       </UploadWizardShell>
       <SetupAnalyzeConfirmDialog
         open={confirmOpen}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={onConfirmContinueToAnalyze}
+      />
+      <UploadConfirmDialog
+        open={leaveSetupDialogOpen}
+        title="Leave Upload Setup?"
+        description="Your unfinished upload will be deleted if you leave now."
+        confirmLabel="Leave"
+        confirmDisabled={isLeavingSetupFlow}
+        busy={isLeavingSetupFlow}
+        busyMessage="Deleting unfinished upload..."
+        onCancel={onCancelLeaveSetupFlow}
+        onConfirm={() => {
+          void onConfirmLeaveSetupFlow();
+        }}
       />
     </>
   );

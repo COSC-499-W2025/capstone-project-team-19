@@ -1,10 +1,28 @@
-# GitHub Integration Documentation
+# GitHub Integration
 
 This document explains how the system currently interacts with the GitHub REST API to supplement collaborative code analysis with GitHub contribution data.
 
 The integration supports GitHub OAuth login, repository selection, and retrieval and storage of contribution metrics for linked projects.
 
 ---
+
+## Setting up GitHub OAuth
+
+To enable GitHub analysis:
+1. Create a GitHub OAuth App:
+   - Visit https://github.com/settings/developers
+   - Select **OAuth Apps --> New OAuth App**
+   - Application name: `Capstone Portfolio Analyzer`
+   - Homepage URL: `http://localhost:8000`
+   - Authorization callback URL: `http://localhost:8000/auth/github/callback`
+2. Copy the **Client ID** from the OAuth app.
+3. Generate a client secret:
+   - Click "Generate a new client secret"
+   - Copy the client secret and add to your `.env` file 
+4. Add the following to your `.env` file (as shown in `.env.example`):
+    ```env
+    GITHUB_CLIENT_ID=<your-client-id>
+    ```
 
 ## API Endpoints Used
 
@@ -74,6 +92,10 @@ OAuth scope required:
 - `repo`
 
 The token is stored locally in the application's database and reused until revoked.
+
+### Token Validation (Web Flow)
+
+When the web API receives a request to start the GitHub connection (`POST /projects/upload/{id}/projects/{name}/github/start`), it validates any existing stored token before trusting it. A quick `GET https://api.github.com/user` request verifies the token is still valid. If the token is invalid (expired, revoked, or "Bad credentials"), it is revoked locally and the user is given a new authorization URL so they can re-authenticate. This prevents the "No repositories found" error when a stored token has gone stale.
 
 ---
 

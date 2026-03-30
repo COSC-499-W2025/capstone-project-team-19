@@ -137,6 +137,15 @@ function createAppRouter() {
       />
 
       <Route
+        path="/resume"
+        element={
+          <RequireAuth>
+            <OutputsPage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
         path="/outputs"
         element={
           <RequireAuth>
@@ -158,6 +167,7 @@ function createAppRouter() {
       <Route path="/public/:username/projects" element={<PublicProjectsPage />} />
       <Route path="/public/:username/projects/:id" element={<PublicProjectDetailPage />} />
       <Route path="/public/:username/insights" element={<PublicInsightsPage />} />
+      <Route path="/public/:username/resume" element={<PublicOutputsPage />} />
       <Route path="/public/:username/outputs" element={<PublicOutputsPage />} />
 
       <Route

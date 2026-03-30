@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { publicListProjects, publicGetActivityHeatmapData } from "../../../../api/public";
 import type { PublicProject } from "../../../../api/public";
 import type { ActivityHeatmapData } from "../../../../api/projects";
 import { getColorForValue } from "./heatmapUtils";
 import HeatmapLegend from "./HeatmapLegend";
 
-export default function PublicActivityHeatmapTab({ username }: { username: string }) {
+export default function PublicActivityHeatmapTab({
+    username,
+    initialProjectId,
+}: {
+    username: string;
+    /** From Insights URL (?project=) - selects this project when data loads */
+    initialProjectId?: number;
+}) {
+    const [, setSearchParams] = useSearchParams();
     const [projects, setProjects] = useState<PublicProject[]>([]);
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [heatmap, setHeatmap] = useState<ActivityHeatmapData | null>(null);
@@ -21,6 +30,27 @@ export default function PublicActivityHeatmapTab({ username }: { username: strin
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
     }, [username]);
+
+    useEffect(() => {
+        if (initialProjectId == null || projects.length === 0) return;
+        const found = projects.some((p) => p.project_summary_id === initialProjectId);
+        if (found) setSelectedId(initialProjectId);
+    }, [projects, initialProjectId]);
+
+    function syncProjectToUrl(projectId: number | null) {
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("view", "activity-heatmap");
+            if (projectId != null) next.set("project", String(projectId));
+            else next.delete("project");
+            return next;
+        });
+    }
+
+    function onSelectProject(projectId: number | null) {
+        setSelectedId(projectId);
+        syncProjectToUrl(projectId);
+    }
 
     useEffect(() => {
         if (!selectedId) { setHeatmap(null); return; }
@@ -45,7 +75,10 @@ export default function PublicActivityHeatmapTab({ username }: { username: strin
                 <h3 className="text-lg font-semibold text-slate-800 m-0">Activity Heatmap</h3>
                 <select
                     value={selectedId ?? ""}
-                    onChange={(e) => setSelectedId(Number(e.target.value) || null)}
+                    onChange={(e) => {
+                        const id = Number(e.target.value) || null;
+                        onSelectProject(id);
+                    }}
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 min-w-[200px]"
                     aria-label="Select project"
                 >

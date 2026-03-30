@@ -8,10 +8,6 @@ vi.mock("../../api/projects", () => ({
   fetchThumbnailUrl: vi.fn(),
 }));
 
-vi.mock("../../api/portfolioSettings", () => ({
-  updateProjectVisibility: vi.fn(),
-}));
-
 vi.mock("../../auth/user", () => ({
   getUsername: vi.fn(() => "testuser"),
 }));

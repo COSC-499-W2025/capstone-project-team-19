@@ -7,6 +7,8 @@ from src.api.schemas.common import ApiResponse, DeleteResultDTO
 from src.api.schemas.projects import ProjectListDTO, ProjectListItemDTO, ProjectDetailDTO
 from src.api.schemas.uploads import (
     UploadDTO,
+    UploadListDTO,
+    UploadListItemDTO,
     ClassificationsRequest,
     ProjectTypesRequest,
     DedupResolveRequestDTO,
@@ -29,7 +31,7 @@ from src.services.git_identities_service import (
     get_git_identities as get_git_identities_service,
     save_git_identities as save_git_identities_service,
 )
-from src.db.uploads import get_upload_by_id
+from src.db.uploads import get_upload_by_id, list_uploads_for_user
 from src.services.projects_service import (
     list_projects,
     get_project_by_id,
@@ -38,6 +40,7 @@ from src.services.projects_service import (
 )
 from src.services.uploads_service import (
     start_upload,
+    cancel_upload,
     get_upload_status,
     resolve_dedup,
     submit_classifications,
@@ -85,6 +88,28 @@ def post_projects_upload(
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
 
 
+@router.get("/uploads", response_model=ApiResponse[UploadListDTO])
+def get_projects_uploads(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    rows = list_uploads_for_user(conn, user_id, limit=limit, offset=offset)
+    dto = UploadListDTO(
+        uploads=[
+            UploadListItemDTO(
+                upload_id=row["upload_id"],
+                status=row["status"],
+                zip_name=row.get("zip_name"),
+                created_at=row.get("created_at"),
+            )
+            for row in rows
+        ]
+    )
+    return ApiResponse(success=True, data=dto, error=None)
+
+
 @router.get("/upload/{upload_id}", response_model=ApiResponse[UploadDTO])
 def get_projects_upload(
     upload_id: int,
@@ -95,6 +120,16 @@ def get_projects_upload(
     if upload is None:
         raise HTTPException(status_code=404, detail="Upload not found")
     return ApiResponse(success=True, data=UploadDTO(**upload), error=None)
+
+
+@router.delete("/upload/{upload_id}", response_model=ApiResponse[None])
+def delete_projects_upload(
+    upload_id: int,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    cancel_upload(conn, user_id, upload_id)
+    return ApiResponse(success=True, data=None, error=None)
 
 
 @router.post("/upload/{upload_id}/run", response_model=ApiResponse[RunAnalysisReadyDTO])

@@ -1,6 +1,11 @@
-import { Link, NavLink } from "react-router-dom";
+import { useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { getPortfolioSettings } from "../api/portfolioSettings";
+import { getUsername } from "../auth/user";
 import { CircleUserRound } from "../lib/ui-icons";
 import { cn } from "../lib/utils";
+import AppButton from "./shared/AppButton";
+import AppDialogShell from "./shared/AppDialogShell";
 
 type Props = {
   showNav?: boolean;
@@ -11,11 +16,39 @@ const navItems = [
   { to: "/upload", label: "Upload" },
   { to: "/projects", label: "Projects" },
   { to: "/insights", label: "Insights" },
-  { to: "/outputs", label: "Outputs" },
+  { to: "/resume", label: "Resume" },
 ];
 
 export default function TopBar({ showNav = false }: Props) {
+  const location = useLocation();
+  const nav = useNavigate();
+  const username = getUsername();
+  const [showPrivateWarning, setShowPrivateWarning] = useState(false);
+
+  function getPublicPath(): string {
+    const p = location.pathname;
+    if (!username) return "/";
+    if (p.startsWith("/projects/")) return `/public/${username}${p}`;
+    if (p.startsWith("/projects")) return `/public/${username}/projects`;
+    if (p.startsWith("/insights")) return `/public/${username}/insights`;
+    if (p.startsWith("/outputs")) return `/public/${username}/outputs`;
+    return `/public/${username}/projects`;
+  }
+
+  function handlePublicClick() {
+    getPortfolioSettings()
+      .then((s) => {
+        if (s.portfolio_public) {
+          nav(getPublicPath());
+        } else {
+          setShowPrivateWarning(true);
+        }
+      })
+      .catch(() => setShowPrivateWarning(true));
+  }
+
   return (
+    <>
     <header className="sticky top-0 z-50 h-16 w-full bg-[#001166] text-white">
       <div className="flex h-16 w-full items-center justify-between px-[40px]">
         <Link
@@ -57,6 +90,18 @@ export default function TopBar({ showNav = false }: Props) {
               ))}
             </nav>
 
+            <div className="flex overflow-hidden rounded-full border border-white/30 text-xs font-medium">
+              <span className="cursor-default bg-white px-3 py-1.5 text-[#001166]">
+                Private
+              </span>
+              <button
+                className="cursor-pointer px-3 py-1.5 text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+                onClick={handlePublicClick}
+              >
+                Public
+              </button>
+            </div>
+
             <Link
               to="/profile"
               className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ECECEC] no-underline hover:no-underline"
@@ -71,5 +116,36 @@ export default function TopBar({ showNav = false }: Props) {
         )}
       </div>
     </header>
+
+    <AppDialogShell
+      open={showPrivateWarning}
+      onOpenChange={setShowPrivateWarning}
+      title="Dashboard not public"
+      width="sm"
+      footer={
+        <>
+          <AppButton variant="outline" onClick={() => setShowPrivateWarning(false)}>
+            Cancel
+          </AppButton>
+          {location.pathname !== "/profile" && (
+            <AppButton
+              variant="primary"
+              onClick={() => {
+                setShowPrivateWarning(false);
+                nav("/profile");
+              }}
+            >
+              Go to Profile
+            </AppButton>
+          )}
+        </>
+      }
+    >
+      <p className="text-sm text-gray-600">
+        You have not enabled public viewing of your dashboard. Please modify
+        viewing access in the profile page.
+      </p>
+    </AppDialogShell>
+    </>
   );
 }
