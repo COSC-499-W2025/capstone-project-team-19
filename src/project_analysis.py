@@ -826,6 +826,12 @@ def analyze_code_contributions(
                 summary.summary_text = prompt_manual_code_project_summary(project_name)
             else:
                 summary.summary_text = "[No manual project summary provided]"
+                
+    # Persist manual contribution summary for non-LLM mode
+    if summary is not None and current_ext_consent != "accepted":
+        manual_contrib = (api_inputs or {}).get("manual_contribution_summary")
+        if isinstance(manual_contrib, str) and manual_contrib.strip():
+            summary.contributions["manual_contribution_summary"] = manual_contrib.strip()
 
 
 def run_text_analysis(

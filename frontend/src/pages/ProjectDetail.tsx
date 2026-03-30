@@ -107,6 +107,7 @@ export default function ProjectDetailPage() {
   const [editContributionSummary, setEditContributionSummary] = useState("");
   const [savingSummary, setSavingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+
   // Visibility (public dashboard)
   const [savingVisibility, setSavingVisibility] = useState(false);
 
@@ -131,7 +132,7 @@ export default function ProjectDetailPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [editingSummary, editingDates]);
 
-  // Block all in-app navigation while editing (requires data router via createBrowserRouter)
+  // Block all in-app navigation while editing
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       (editingSummary || editingDates) &&
@@ -384,7 +385,7 @@ export default function ProjectDetailPage() {
           }
         />
 
-        {/* Thumbnail + meta tags (aligned with main layout) */}
+        {/* Thumbnail + meta tags */}
         <SectionCard className="w-full bg-white">
           <div className="flex gap-[20px]">
             <div className="shrink-0 space-y-[8px]">
@@ -495,7 +496,7 @@ export default function ProjectDetailPage() {
           </div>
         </SectionCard>
 
-        {/* Duration — light panel; view: title + range left, Edit top-right; edit: stacked fields + full-width primary actions */}
+        {/* Duration */}
         <SectionCard className="w-full rounded-[10px] border-[#e0e0e0] bg-[#f4f4f6] px-[22px] py-[20px]">
           {!editingDates ? (
             <div className="flex items-start justify-between gap-[16px]">
@@ -536,7 +537,6 @@ export default function ProjectDetailPage() {
               <div className="text-[18px] font-medium leading-none text-foreground">
                 Duration
               </div>
-              {/* Narrow column — matches compact date + action layout */}
               <div className="w-full max-w-[248px] space-y-[16px]">
                 <div className="flex flex-col gap-[16px]">
                   <AppField label="Start date">
@@ -612,51 +612,41 @@ export default function ProjectDetailPage() {
 
           {activeTab === "summary" && (
             <div className="space-y-[14px]">
-{!editingSummary ? (
-  <>
-    <div className="flex items-center justify-between">
-      <div className="text-[18px] font-medium text-foreground">
-        Project Summary
-      </div>
+              {!editingSummary ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="text-[18px] font-medium text-foreground">
+                      Project Summary
+                    </div>
+                    <AppButton variant="outline" size="sm" aria-label="Edit summary" onClick={handleStartEditSummary}>
+                      Edit
+                    </AppButton>
+                  </div>
 
-      <AppButton variant="outline" size="sm" aria-label="Edit summary" onClick={handleStartEditSummary}>
-        Edit
-      </AppButton>
-    </div>
-<div className="space-y-[6px]">
-  <div className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
-    Summary
-  </div>
+                  <div className="space-y-[6px]">
+                    <div className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      Summary
+                    </div>
+                    <div className="rounded-[8px] border border-border bg-muted/30 p-[14px]">
+                      <p className="whitespace-pre-wrap text-[14px] leading-[1.7] text-foreground">
+                        {normalizeContributionSummary(project.summary_text) ?? (
+                          <span className="italic text-muted-foreground">No summary yet.</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
 
-  <div className="rounded-[8px] border border-border bg-muted/30 p-[14px]">
-    <p className="whitespace-pre-wrap text-[14px] leading-[1.7] text-foreground">
-      {project.summary_text ? (
-        project.summary_text
-      ) : (
-        <span className="italic text-muted-foreground">No summary yet.</span>
-      )}
-    </p>
-  </div>
-</div>
-
-                  {project.project_mode === "collaborative" && (
-<div className="space-y-[6px]">
-  <div className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
-    Contribution Summary
-  </div>
-
-  <div className="rounded-[8px] border border-border bg-muted/30 p-[14px]">
-    <p className="whitespace-pre-wrap text-[14px] leading-[1.7] text-foreground">
-      {contributionSummaryText ? (
-        contributionSummaryText
-      ) : (
-        <span className="italic text-muted-foreground">
-          No contribution summary yet.
-        </span>
-      )}
-    </p>
-  </div>
-</div>
+                  {contributionSummaryText && (
+                    <div className="space-y-[6px]">
+                      <div className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        Contribution Summary
+                      </div>
+                      <div className="rounded-[8px] border border-border bg-muted/30 p-[14px]">
+                        <p className="whitespace-pre-wrap text-[14px] leading-[1.7] text-foreground">
+                          {contributionSummaryText}
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </>
               ) : (

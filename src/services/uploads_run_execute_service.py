@@ -159,9 +159,23 @@ def _build_project_api_inputs(state: dict, project_name: str) -> dict[str, Any]:
     contributions = state.get("contributions") or {}
     if not isinstance(contributions, dict):
         contributions = {}
+
+    # contributions may be keyed by project_name OR by str(project_key)
+    # the manual summaries service saves by str(project_key), so check both
+    dedup_project_keys = state.get("dedup_project_keys") or {}
+    project_key = dedup_project_keys.get(project_name)
+    project_key_str = str(project_key) if project_key is not None else None
+
     project_contrib = contributions.get(project_name) or {}
     if not isinstance(project_contrib, dict):
         project_contrib = {}
+
+    # merge in key-keyed contributions (manual summaries service writes here)
+    if project_key_str:
+        key_contrib = contributions.get(project_key_str) or {}
+        if isinstance(key_contrib, dict):
+            # key-keyed values take precedence since they come from the summaries service
+            project_contrib = {**project_contrib, **key_contrib}
         
     # DEBUG STAETEMENT
     print(f"[DEBUG] contributions keys: {list(contributions.keys())}")
@@ -183,7 +197,17 @@ def _build_project_api_inputs(state: dict, project_name: str) -> dict[str, Any]:
 
     out["supporting_text_relpaths"] = project_contrib.get("supporting_text_relpaths") or []
     out["supporting_csv_relpaths"] = project_contrib.get("supporting_csv_relpaths") or []
-    out["manual_project_summary"] = project_contrib.get("manual_project_summary")
+    # manual_project_summaries is a separate top-level key written by set_manual_project_summary
+    manual_project_summaries = state.get("manual_project_summaries") or {}
+    out["manual_project_summary"] = (
+        (manual_project_summaries.get(project_key_str) if project_key_str else None)
+        or project_contrib.get("manual_project_summary")
+    )
     out["manual_contribution_summary"] = project_contrib.get("manual_contribution_summary")
     out["key_role"] = project_contrib.get("key_role")
+    print(f"[DEBUG api_inputs] project={project_name!r}")
+    print(f"[DEBUG api_inputs] manual_project_summary={out.get('manual_project_summary')!r}")
+    print(f"[DEBUG api_inputs] manual_contribution_summary={out.get('manual_contribution_summary')!r}")
+    print(f"[DEBUG api_inputs] project_key_str={project_key_str!r}")
+    print(f"[DEBUG api_inputs] manual_project_summaries keys={list((state.get('manual_project_summaries') or {}).keys())}")
     return out
