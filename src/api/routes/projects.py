@@ -4,7 +4,7 @@ from sqlite3 import Connection
 
 from src.api.dependencies import get_db, get_current_user_id
 from src.api.schemas.common import ApiResponse, DeleteResultDTO
-from src.api.schemas.projects import ProjectListDTO, ProjectListItemDTO, ProjectDetailDTO
+from src.api.schemas.projects import ProjectListDTO, ProjectListItemDTO, ProjectDetailDTO, ProjectSummaryEditRequestDTO
 from src.api.schemas.uploads import (
     UploadDTO,
     UploadListDTO,
@@ -37,6 +37,7 @@ from src.services.projects_service import (
     get_project_by_id,
     delete_project,
     delete_all_projects,
+    edit_project_summary,
 )
 from src.services.uploads_service import (
     start_upload,
@@ -383,6 +384,26 @@ def get_project(
     conn: Connection = Depends(get_db),
 ):
     project = get_project_by_id(conn, user_id, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    dto = ProjectDetailDTO(**project)
+    return ApiResponse(success=True, data=dto, error=None)
+
+
+@router.patch("/{project_id:int}/summary", response_model=ApiResponse[ProjectDetailDTO])
+def patch_project_summary(
+    project_id: int,
+    request: ProjectSummaryEditRequestDTO,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    project = edit_project_summary(
+        conn,
+        user_id,
+        project_id,
+        summary_text=request.summary_text,
+        contribution_summary=request.contribution_summary,
+    )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     dto = ProjectDetailDTO(**project)

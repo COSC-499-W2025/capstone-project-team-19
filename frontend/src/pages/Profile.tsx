@@ -1,14 +1,16 @@
-import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { ReactNode } from "react";
 import TopBar from "../components/TopBar";
 import { getUsername } from "../auth/user";
 import { tokenStore } from "../auth/token";
-import { changePassword, deleteAccount } from "../api/auth";
+import { changePassword, deleteAccount, logout } from "../api/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Eye, EyeOff, Globe, KeyRound, LogOut, Pencil, ShieldCheck, Trash2 } from "lucide-react";
+import MinimalConfirmDialog from "../components/shared/MinimalConfirmDialog";
+import { Link, useBlocker } from "react-router-dom";
 import {
   getProfile,
   updateProfile,
@@ -116,7 +118,12 @@ function ProfileFormField({
         {label}
         {required ? " (required)" : " (optional)"}
       </label>
-      <Input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+      <Input
+        value={value}
+        placeholder={placeholder}
+        className="placeholder:text-slate-400 placeholder:italic"
+        onChange={(e) => onChange(e.target.value)}
+      />
     </div>
   );
 }
@@ -173,6 +180,7 @@ function EditableList<T extends Record<string, any>>({
                         <Input
                           value={String(entry[f.key] ?? "")}
                           placeholder={f.placeholder}
+                          className="placeholder:text-slate-400 placeholder:italic"
                           onChange={(e) => updateEntry(idx, f.key, e.target.value)}
                         />
                       </div>
@@ -190,6 +198,7 @@ function EditableList<T extends Record<string, any>>({
                       rows={f.rows ?? 2}
                       value={String(entry[f.key] ?? "")}
                       placeholder={f.placeholder}
+                      className="placeholder:text-slate-400 placeholder:italic"
                       onChange={(e) => updateEntry(idx, f.key, e.target.value)}
                     />
                   </div>
@@ -311,6 +320,10 @@ export default function ProfilePage() {
   const [resumes, setResumes] = useState<ResumeListItem[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const bypassBeforeUnloadRef = useRef(false);
+  const hasUnsavedChangesRef = useRef(false);
 
   function startEditList<TSource, TDraft>({
     sourceEntries,
@@ -355,20 +368,20 @@ export default function ProfilePage() {
 
   const educationFields = useMemo<Array<FieldSpec<EditableEducationEntry>>>(
     () => [
-      { key: "title", label: "Title", required: true, placeholder: "BSc in Computer Science" },
-      { key: "organization", label: "Organization", placeholder: "University / Provider" },
-      { key: "date_text", label: "Dates (display text)", placeholder: "2022 - 2026" },
-      { key: "description", label: "Description", kind: "textarea", rows: 2 },
+      { key: "title", label: "Title", required: true, placeholder: "e.g. BSc in Computer Science" },
+      { key: "organization", label: "Organization", placeholder: "e.g. University of Victoria" },
+      { key: "date_text", label: "Dates (display text)", placeholder: "e.g. 2022 - 2026" },
+      { key: "description", label: "Description", kind: "textarea", rows: 2, placeholder: "e.g. Dean's List; focus in software engineering." },
     ],
     [],
   );
 
   const experienceFields = useMemo<Array<FieldSpec<EditableExperienceEntry>>>(
     () => [
-      { key: "role", label: "Role", required: true, placeholder: "Full Stack Engineer" },
-      { key: "company", label: "Company", placeholder: "Company name" },
-      { key: "date_text", label: "Dates (display text)", placeholder: "Sep 2025 - Dec 2025" },
-      { key: "description", label: "Description", kind: "textarea", rows: 2 },
+      { key: "role", label: "Role", required: true, placeholder: "e.g. Full Stack Engineer" },
+      { key: "company", label: "Company", placeholder: "e.g. Company name" },
+      { key: "date_text", label: "Dates (display text)", placeholder: "e.g. Sep 2025 - Dec 2025" },
+      { key: "description", label: "Description", kind: "textarea", rows: 2, placeholder: "e.g. Built React + Node features; improved API response time by 30%." },
     ],
     [],
   );
@@ -398,6 +411,102 @@ export default function ProfilePage() {
         setSettingsLoading(false);
       });
   }, []);
+
+  const hasUnsavedChanges = useMemo(() => {
+    if (!profile) return false;
+
+    const profileDirty =
+      editingProfile &&
+      ((profileDraft.full_name ?? profile.full_name ?? "") !== (profile.full_name ?? "") ||
+        (profileDraft.email ?? profile.email ?? "") !== (profile.email ?? "") ||
+        (profileDraft.phone ?? profile.phone ?? "") !== (profile.phone ?? "") ||
+        (profileDraft.linkedin ?? profile.linkedin ?? "") !== (profile.linkedin ?? "") ||
+        (profileDraft.github ?? profile.github ?? "") !== (profile.github ?? "") ||
+        (profileDraft.location ?? profile.location ?? "") !== (profile.location ?? ""));
+
+    const summaryDirty =
+      editingSummary && (summaryDraft ?? "") !== (profile.profile_text ?? "");
+
+    const educationDirty =
+      editingEducation &&
+      JSON.stringify(educationDraft) !==
+        JSON.stringify(
+          education.map((e) => ({
+            title: e.title,
+            organization: e.organization,
+            date_text: e.date_text,
+            description: e.description,
+          }))
+        );
+
+    const certsDirty =
+      editingCerts &&
+      JSON.stringify(certsDraft) !==
+        JSON.stringify(
+          certifications.map((e) => ({
+            title: e.title,
+            organization: e.organization,
+            date_text: e.date_text,
+            description: e.description,
+          }))
+        );
+
+    const experienceDirty =
+      editingExperience &&
+      JSON.stringify(experienceDraft) !==
+        JSON.stringify(
+          experience.map((e) => ({
+            role: e.role,
+            company: e.company,
+            date_text: e.date_text,
+            description: e.description,
+          }))
+        );
+
+    return profileDirty || summaryDirty || educationDirty || certsDirty || experienceDirty;
+  }, [
+    profile,
+    editingProfile,
+    editingSummary,
+    editingEducation,
+    editingCerts,
+    editingExperience,
+    profileDraft,
+    summaryDraft,
+    educationDraft,
+    certsDraft,
+    experienceDraft,
+    education,
+    certifications,
+    experience,
+  ]);
+  hasUnsavedChangesRef.current = hasUnsavedChanges;
+
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (bypassBeforeUnloadRef.current) return;
+      if (!hasUnsavedChangesRef.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
+  const blocker = useBlocker(hasUnsavedChanges);
+  useEffect(() => {
+    setShowLeaveDialog(blocker.state === "blocked");
+  }, [blocker.state]);
+
+  function handleConfirmLeave() {
+    if (blocker.state !== "blocked") return;
+    // Prevent the browser-native beforeunload prompt when this blocked
+    // navigation is intentionally confirmed via our custom modal.
+    bypassBeforeUnloadRef.current = true;
+    setShowLeaveDialog(false);
+    blocker.proceed();
+  }
 
   function startEditProfile() {
     if (!profile) return;
@@ -542,6 +651,21 @@ export default function ProfilePage() {
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      // ignore server-side logout errors and continue local sign-out
+    } finally {
+      bypassBeforeUnloadRef.current = true;
+      tokenStore.clear();
+      window.location.replace("/login");
+    }
+  }
+
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -586,6 +710,7 @@ export default function ProfilePage() {
     setDeleting(true);
     try {
       await deleteAccount();
+      bypassBeforeUnloadRef.current = true;
       tokenStore.clear();
       window.location.replace("/login");
     } catch {
@@ -599,6 +724,24 @@ export default function ProfilePage() {
   return (
     <>
       <TopBar showNav username={username} />
+      <MinimalConfirmDialog
+        open={showLeaveDialog}
+        onOpenChange={(open) => {
+          setShowLeaveDialog(open);
+          if (!open && blocker.state === "blocked") blocker.reset();
+        }}
+        message="You have unsaved changes on this page. Leave without saving?"
+        confirmLabel="Leave page"
+        confirmClassName="bg-red-600 hover:bg-red-700"
+        onConfirm={handleConfirmLeave}
+      />
+      <MinimalConfirmDialog
+        open={showLogoutDialog}
+        onOpenChange={setShowLogoutDialog}
+        message="Are you sure you want to sign out?"
+        confirmLabel={loggingOut ? "Signing out..." : "Sign out"}
+        onConfirm={handleLogout}
+      />
 
       <PageContainer className="min-h-[calc(100vh-56px)] bg-background pt-[12px]">
         <PageHeader
@@ -624,31 +767,37 @@ export default function ProfilePage() {
                   <ProfileFormField
                     label="Full name"
                     value={profileDraft.full_name ?? profile.full_name ?? ""}
+                    placeholder="e.g. Jane Doe"
                     onChange={(v) => setProfileDraft((d) => ({ ...d, full_name: v }))}
                   />
                   <ProfileFormField
                     label="Email"
                     value={profileDraft.email ?? profile.email ?? ""}
+                    placeholder="e.g. jane@example.com"
                     onChange={(v) => setProfileDraft((d) => ({ ...d, email: v }))}
                   />
                   <ProfileFormField
                     label="Phone"
                     value={profileDraft.phone ?? profile.phone ?? ""}
+                    placeholder="e.g. +1 (250) 555-0123"
                     onChange={(v) => setProfileDraft((d) => ({ ...d, phone: v }))}
                   />
                   <ProfileFormField
                     label="Location"
                     value={profileDraft.location ?? profile.location ?? ""}
+                    placeholder="e.g. Victoria, BC"
                     onChange={(v) => setProfileDraft((d) => ({ ...d, location: v }))}
                   />
                   <ProfileFormField
                     label="LinkedIn URL"
                     value={profileDraft.linkedin ?? profile.linkedin ?? ""}
+                    placeholder="e.g. https://linkedin.com/in/janedoe"
                     onChange={(v) => setProfileDraft((d) => ({ ...d, linkedin: v }))}
                   />
                   <ProfileFormField
                     label="GitHub URL"
                     value={profileDraft.github ?? profile.github ?? ""}
+                    placeholder="e.g. https://github.com/janedoe"
                     onChange={(v) => setProfileDraft((d) => ({ ...d, github: v }))}
                   />
                 </div>
@@ -686,6 +835,8 @@ export default function ProfilePage() {
                 <Textarea
                   rows={4}
                   value={summaryDraft}
+                  placeholder="e.g. Detail-oriented software engineering student with full-stack internship experience."
+                  className="placeholder:text-slate-400 placeholder:italic"
                   onChange={(e) => setSummaryDraft(e.target.value)}
                 />
               ) : (
@@ -848,9 +999,9 @@ export default function ProfilePage() {
 
                   <p className="text-xs text-slate-500">
                     To control which projects appear publicly, use the{" "}
-                    <a href="/projects" className="text-indigo-600 hover:underline">
+                    <Link to="/projects" className="text-indigo-600 hover:underline">
                       Projects
-                    </a>{" "}
+                    </Link>{" "}
                     page — each card has a Public / Private toggle.
                   </p>
                 </Fragment>
@@ -979,6 +1130,8 @@ export default function ProfilePage() {
                 size="default"
                 className="h-11 w-full justify-start gap-3 border-slate-200 text-slate-700 hover:bg-slate-50"
                 type="button"
+                onClick={() => setShowLogoutDialog(true)}
+                disabled={loggingOut}
               >
                 <LogOut className="size-4" />
                 Sign out

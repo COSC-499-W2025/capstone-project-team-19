@@ -178,6 +178,21 @@ Handles authentication and security for the endpoints.
   }
   ```
 
+- **Logout**
+  - **Endpoint**: `POST /logout`
+  - **Description**: Logs out the currently authenticated user session. This endpoint requires a valid Bearer token and returns success; clients should also clear any locally stored token.
+  - **Headers**: `Authorization: Bearer <access_token>`
+  - **Response Status**: `200 OK` on success, `401 Unauthorized` if token is missing or invalid
+  - **Request Body**: None.
+  - **Response Body**:
+  ```json
+  {
+    "success": true,
+    "data": null,
+    "error": null
+  }
+  ```
+
 ---
 
 
@@ -239,6 +254,45 @@ Handles project ingestion, analysis, classification, and metadata updates.
                 "code_complexity": {...}
             },
             "contributions": {...}
+        },
+        "error": null
+    }
+    ```
+
+- **Edit Project Summary**
+  - **Endpoint**: `PATCH /{project_id}/summary`
+  - **Description**: Updates the editable summary fields of a specific project. Only fields included in the request body are changed; omitted fields are left unchanged. Passing an empty string (`""`) for a field resets it to the system-generated value.
+  - **Path Parameters**:
+    - `{project_id}` (integer, required): The project_summary_id of the project to update
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Response Status**: `200 OK` on success, `404 Not Found` if project doesn't exist or belong to user
+  - **Response DTO**: `ProjectDetailDTO`
+  - **Request Body**:
+    ```json
+    {
+        "summary_text": "Updated project summary text.",
+        "contribution_summary": "My specific contributions to this project."
+    }
+    ```
+  - **Fields**:
+    - `summary_text` (string, optional): Manual override for the AI-generated project summary. Pass `""` to clear the override and restore the system-generated text.
+    - `contribution_summary` (string, optional): Manual description of the user's contributions (only meaningful for collaborative projects). Pass `""` to clear.
+  - **Response Body**:
+    ```json
+    {
+        "success": true,
+        "data": {
+            "project_summary_id": 9,
+            "project_name": "My Project",
+            "project_type": "code",
+            "project_mode": "individual",
+            "summary_text": "Updated project summary text.",
+            "has_summary_override": true,
+            "languages": ["Python"],
+            "frameworks": ["Flask"],
+            "skills": ["Backend Development"],
+            "metrics": {},
+            "contributions": {}
         },
         "error": null
     }
@@ -1801,6 +1855,45 @@ Manages résumé-specific representations of projects.
       }
       ```
 
+- **Get Resume Skills**
+  - **Endpoint**: `GET /{resume_id}/skills`
+  - **Description**: Returns all skills present in a specific résumé snapshot, along with their current preference status (highlighted or hidden). Only skills that actually appear in this résumé are returned — not every skill the user has ever recorded. Skill preferences fall back to global preferences if no resume-level preferences are set.
+  - **Path Parameters**:
+    - `{resume_id}` (integer, required): The ID of the résumé snapshot
+  - **Auth: Bearer** means this header is required: `Authorization: Bearer <access_token>`
+  - **Response Status**: `200 OK` or `404 Not Found`
+  - **Response Body**: Uses `ResumeSkillListDTO` containing a list of `ResumeSkillStatusDTO` objects
+    ```json
+    {
+      "success": true,
+      "data": {
+        "skills": [
+          {
+            "skill_name": "clarity",
+            "display_name": "Clear communication",
+            "is_highlighted": true,
+            "display_order": null
+          },
+          {
+            "skill_name": "architecture_and_design",
+            "display_name": "Architecture & design",
+            "is_highlighted": false,
+            "display_order": null
+          }
+        ]
+      },
+      "error": null
+    }
+    ```
+  - **Fields**:
+    - `skill_name` (string): Raw skill key used when saving preferences (e.g. `"clarity"`, `"architecture_and_design"`)
+    - `display_name` (string): Human-readable label shown in the UI and exported PDF/DOCX
+    - `is_highlighted` (boolean): Whether the skill is currently shown on this résumé
+    - `display_order` (integer or null): Explicit ordering position; `null` means default order
+  - **Error Responses**:
+    - `401 Unauthorized`: Missing or invalid Bearer token
+    - `404 Not Found`: Resume not found
+
 - **Generate Resume**
   - **Endpoint**: `POST /generate`
   - **Description**: Creates a new résumé snapshot from the user's projects. If `project_ids` is not provided, automatically selects the top 5 ranked projects. Builds the snapshot, enriches with contribution bullets and dates, and renders the text.
@@ -1875,8 +1968,11 @@ Manages résumé-specific representations of projects.
       - `"replace"`: Replace all existing bullets with the provided list
       - `"append"`: Keep existing bullets and add the provided bullets to the end
     - `key_role` (string, optional): The user's key role for the project (e.g. "Backend Developer", "Team Lead"). Follows the same `scope` rules as other fields.
-    - `skill_preferences` (array, optional): Resume-level skill highlighting preferences. Each entry uses `SkillPreferenceDTO`.
-    - `skill_preferences_reset` (boolean, optional): If true, clears all resume-level skill preferences (reverts to defaults).
+    - `skill_preferences` (array, optional): Resume-level skill highlighting preferences. Each entry uses `SkillPreferenceDTO`:
+      - `skill_name` (string, required): Raw skill key — use values from `GET /{resume_id}/skills`
+      - `is_highlighted` (boolean, optional, default `true`): Whether to show this skill on the résumé
+      - `display_order` (integer, optional): Explicit sort position (lower = higher priority)
+    - `skill_preferences_reset` (boolean, optional): If `true`, clears all resume-level skill preferences and reverts to global defaults. Cannot be combined with `skill_preferences`.
 
   - **Response Status**: `200 OK` or `404 Not Found`
   - **Response Body**: Uses `ResumeDetailDTO`
@@ -1910,6 +2006,22 @@ Manages résumé-specific representations of projects.
             "scope": "resume_only",
             "contribution_bullets": ["Added new feature Y"],
             "contribution_edit_mode": "append"
+        }
+        ```
+    - **Example: Update skill preferences for this résumé**:
+        ```json
+        {
+            "skill_preferences": [
+                { "skill_name": "clarity", "is_highlighted": true },
+                { "skill_name": "architecture_and_design", "is_highlighted": false },
+                { "skill_name": "testing_and_ci", "is_highlighted": true, "display_order": 1 }
+            ]
+        }
+        ```
+    - **Example: Reset skill preferences to defaults**:
+        ```json
+        {
+            "skill_preferences_reset": true
         }
         ```
 

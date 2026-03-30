@@ -141,6 +141,8 @@ def get_public_project_detail(
     except (json.JSONDecodeError, TypeError):
         summary_dict = {}
 
+    manual_overrides = summary_dict.get("manual_overrides") or {}
+    contributions = summary_dict.get("contributions") or {}
     dates = compute_project_dates(
         conn=conn,
         user_id=user_id,
@@ -158,7 +160,8 @@ def get_public_project_detail(
         "created_at": row["created_at"],
         "start_date": dates.start_date,
         "end_date": dates.end_date,
-        "summary_text": summary_dict.get("summary_text"),
+        "summary_text": manual_overrides.get("summary_text") or summary_dict.get("summary_text"),
+        "contribution_summary": contributions.get("manual_contribution_summary"),
         "languages": summary_dict.get("languages", []),
         "frameworks": summary_dict.get("frameworks", []),
         "skills": summary_dict.get("skills", []),
