@@ -321,6 +321,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [pendingLeaveHref, setPendingLeaveHref] = useState<string | null>(null);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const bypassBeforeUnloadRef = useRef(false);
   const hasUnsavedChangesRef = useRef(false);
 
@@ -720,6 +721,13 @@ export default function ProfilePage() {
         confirmClassName="bg-red-600 hover:bg-red-700"
         onConfirm={handleConfirmLeave}
       />
+      <MinimalConfirmDialog
+        open={showLogoutDialog}
+        onOpenChange={setShowLogoutDialog}
+        message="Are you sure you want to sign out?"
+        confirmLabel={loggingOut ? "Signing out..." : "Sign out"}
+        onConfirm={handleLogout}
+      />
 
       <PageContainer className="min-h-[calc(100vh-56px)] bg-background pt-[12px]">
         <PageHeader
@@ -1012,11 +1020,11 @@ export default function ProfilePage() {
                 size="default"
                 className="h-11 w-full justify-start gap-3 border-slate-200 text-slate-700 hover:bg-slate-50"
                 type="button"
-                onClick={handleLogout}
+                onClick={() => setShowLogoutDialog(true)}
                 disabled={loggingOut}
               >
                 <LogOut className="size-4" />
-                {loggingOut ? "Signing out..." : "Sign out"}
+                Sign out
               </Button>
 
               {confirmingDelete ? (

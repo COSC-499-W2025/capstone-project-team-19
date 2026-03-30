@@ -232,6 +232,17 @@ describe("ProfilePage", () => {
     expect(screen.getByRole("button", { name: /Cancel/i })).toBeInTheDocument();
   });
 
+  it("shows confirmation when Sign out is clicked", async () => {
+    const { user } = setup();
+
+    const signOutBtn = await screen.findByRole("button", { name: /^Sign out$/i });
+    await user.click(signOutBtn);
+
+    expect(screen.getByText(/Are you sure you want to sign out\?/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Cancel$/i })[0]).toBeInTheDocument();
+    expect(screen.getByTestId("minimal-confirm-button")).toHaveTextContent("Sign out");
+  });
+
   it("shows unsaved-changes dialog when leaving with dirty edits", async () => {
     const { user } = setup();
 
@@ -316,7 +327,18 @@ describe("ProfilePage", () => {
     expect(screen.getByRole("button", { name: /Delete account/i })).toBeInTheDocument();
   });
 
-  it("calls logout API, clears token, and redirects to login", async () => {
+  it("cancels sign out confirmation", async () => {
+    const { logout } = await import("../../api/auth");
+    const { user } = setup();
+
+    await user.click(await screen.findByRole("button", { name: /^Sign out$/i }));
+    await user.click(screen.getAllByRole("button", { name: /^Cancel$/i })[0]);
+
+    expect(screen.queryByText(/Are you sure you want to sign out\?/i)).not.toBeInTheDocument();
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it("calls logout API, clears token, and redirects to login after confirmation", async () => {
     const { logout } = await import("../../api/auth");
     const { tokenStore } = await import("../../auth/token");
 
@@ -329,6 +351,7 @@ describe("ProfilePage", () => {
 
     const { user } = setup();
     await user.click(await screen.findByRole("button", { name: /^Sign out$/i }));
+    await user.click(screen.getByTestId("minimal-confirm-button"));
 
     await vi.waitFor(() => {
       expect(logout).toHaveBeenCalled();
