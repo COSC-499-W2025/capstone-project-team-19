@@ -27,6 +27,7 @@ from typing import Any, Dict, List, Optional
 from docx import Document
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.shared import Inches, Pt
 
 from src.export.resume_helpers import (
     format_date_range,
@@ -136,12 +137,70 @@ def _add_hyperlink(paragraph, url: str, text: str) -> None:
     paragraph._p.append(hyperlink)
 
 
+def _set_paragraph_spacing(paragraph, *, before: float = 0, after: float = 0, line: float | None = None) -> None:
+    fmt = paragraph.paragraph_format
+    fmt.space_before = Pt(before)
+    fmt.space_after = Pt(after)
+    if line is not None:
+        fmt.line_spacing = Pt(line)
+
+
+def _configure_document_layout(doc: Document) -> None:
+    section = doc.sections[0]
+    section.top_margin = Inches(0.85)
+    section.bottom_margin = Inches(0.85)
+    section.left_margin = Inches(0.85)
+    section.right_margin = Inches(0.85)
+
+    normal = doc.styles["Normal"]
+    normal.font.name = "Arial"
+    normal.font.size = Pt(11)
+    normal.paragraph_format.space_before = Pt(0)
+    normal.paragraph_format.space_after = Pt(2)
+    normal.paragraph_format.line_spacing = Pt(14)
+
+    title_style = doc.styles["Title"]
+    title_style.font.name = "Arial"
+    title_style.font.size = Pt(24)
+    title_style.font.bold = True
+    title_style.paragraph_format.space_before = Pt(0)
+    title_style.paragraph_format.space_after = Pt(4)
+    title_style.paragraph_format.line_spacing = Pt(28)
+
+    heading1 = doc.styles["Heading 1"]
+    heading1.font.name = "Arial"
+    heading1.font.size = Pt(14)
+    heading1.font.bold = True
+    heading1.paragraph_format.space_before = Pt(0)
+    heading1.paragraph_format.space_after = Pt(6)
+    heading1.paragraph_format.line_spacing = Pt(18)
+
+    heading2 = doc.styles["Heading 2"]
+    heading2.font.name = "Arial"
+    heading2.font.size = Pt(12)
+    heading2.font.bold = True
+    heading2.paragraph_format.space_before = Pt(8)
+    heading2.paragraph_format.space_after = Pt(2)
+    heading2.paragraph_format.line_spacing = Pt(15)
+
+    bullet = doc.styles["List Bullet"]
+    bullet.font.name = "Arial"
+    bullet.font.size = Pt(11)
+    bullet.paragraph_format.left_indent = Inches(0.25)
+    bullet.paragraph_format.space_before = Pt(0)
+    bullet.paragraph_format.space_after = Pt(0)
+    bullet.paragraph_format.line_spacing = Pt(14)
+
+
 def _render_education_entries(doc: Document, entries: List[Dict[str, Any]]) -> None:
     for entry in entries:
         title = entry.get("title") or "Untitled"
         p = doc.add_paragraph()
         run = p.add_run(title)
         run.bold = True
+        run.font.name = "Arial"
+        run.font.size = Pt(12)
+        _set_paragraph_spacing(p, before=8, after=2, line=15)
 
         details = []
         if entry.get("organization"):
@@ -153,12 +212,17 @@ def _render_education_entries(doc: Document, entries: List[Dict[str, Any]]) -> N
             meta = doc.add_paragraph(" | ".join(details))
             if meta.runs:
                 meta.runs[0].italic = True
+                meta.runs[0].font.name = "Arial"
+                meta.runs[0].font.size = Pt(10.5)
+            _set_paragraph_spacing(meta, after=6, line=13)
 
         description = _clean_str(entry.get("description"))
         if description:
-            doc.add_paragraph(description)
+            desc = doc.add_paragraph(description)
+            _set_paragraph_spacing(desc, after=2, line=14)
 
-        doc.add_paragraph("")
+        spacer = doc.add_paragraph("")
+        _set_paragraph_spacing(spacer, after=4, line=6)
 
 
 def _render_experience_entries(doc: Document, entries: List[Dict[str, Any]]) -> None:
@@ -167,6 +231,9 @@ def _render_experience_entries(doc: Document, entries: List[Dict[str, Any]]) -> 
         p = doc.add_paragraph()
         run = p.add_run(role)
         run.bold = True
+        run.font.name = "Arial"
+        run.font.size = Pt(12)
+        _set_paragraph_spacing(p, before=8, after=2, line=15)
 
         details = []
         if entry.get("company"):
@@ -178,12 +245,17 @@ def _render_experience_entries(doc: Document, entries: List[Dict[str, Any]]) -> 
             meta = doc.add_paragraph(" | ".join(details))
             if meta.runs:
                 meta.runs[0].italic = True
+                meta.runs[0].font.name = "Arial"
+                meta.runs[0].font.size = Pt(10.5)
+            _set_paragraph_spacing(meta, after=6, line=13)
 
         description = _clean_str(entry.get("description"))
         if description:
-            doc.add_paragraph(description)
+            desc = doc.add_paragraph(description)
+            _set_paragraph_spacing(desc, after=2, line=14)
 
-        doc.add_paragraph("")
+        spacer = doc.add_paragraph("")
+        _set_paragraph_spacing(spacer, after=4, line=6)
 
 
 def export_resume_record_to_docx(
@@ -207,6 +279,7 @@ def export_resume_record_to_docx(
     filepath = out_path / filename
 
     doc = Document()
+    _configure_document_layout(doc)
 
     profile = user_profile or {}
     contact_parts = get_contact_parts(profile)
@@ -214,7 +287,12 @@ def export_resume_record_to_docx(
     experience_entries = experience_entries or []
 
     display_name = get_resume_name(profile, username)
-    doc.add_heading(display_name.upper(), level=0)
+    name_para = doc.add_paragraph(style="Title")
+    name_run = name_para.add_run(display_name.upper())
+    name_run.font.name = "Arial"
+    name_run.font.size = Pt(24)
+    name_run.bold = True
+    _set_paragraph_spacing(name_para, after=4, line=28)
 
     contact_bits = []
     if contact_parts["phone"]:
@@ -230,6 +308,7 @@ def export_resume_record_to_docx(
 
     if contact_bits:
         p = doc.add_paragraph()
+        _set_paragraph_spacing(p, after=6, line=14)
         for i, item in enumerate(contact_bits):
             if i > 0:
                 p.add_run(" | ")
@@ -254,9 +333,11 @@ def export_resume_record_to_docx(
         doc.add_heading("Resume Snapshot", level=1)
         if isinstance(rendered_text, str) and rendered_text.strip():
             for line in rendered_text.splitlines():
-                doc.add_paragraph(line)
+                para = doc.add_paragraph(line)
+                _set_paragraph_spacing(para, after=2, line=14)
         else:
-            doc.add_paragraph("Resume data is missing or unreadable.")
+            para = doc.add_paragraph("Resume data is missing or unreadable.")
+            _set_paragraph_spacing(para, after=2, line=14)
         doc.save(str(filepath))
         return filepath
 
@@ -266,7 +347,8 @@ def export_resume_record_to_docx(
     profile_text = get_visible_profile_text(profile)
     if profile_text:
         add_section_heading(doc, "Profile")
-        doc.add_paragraph(profile_text)
+        para = doc.add_paragraph(profile_text)
+        _set_paragraph_spacing(para, after=2, line=14)
 
     education_only = [e for e in education_entries if e.get("entry_type") == "education"]
     certificate_only = [e for e in education_entries if e.get("entry_type") == "certificate"]
@@ -279,7 +361,8 @@ def export_resume_record_to_docx(
         clean = [str(x).strip() for x in items if str(x).strip()]
         if not clean:
             return
-        doc.add_paragraph(f"{label}: {', '.join(sorted(set(clean)))}")
+        para = doc.add_paragraph(f"{label}: {', '.join(sorted(set(clean)))}")
+        _set_paragraph_spacing(para, after=2, line=14)
 
     languages = clean_languages_above_threshold(
         agg.get("languages") or [],
@@ -293,6 +376,18 @@ def export_resume_record_to_docx(
             all_hl.update(sl)
         effective_highlighted = list(all_hl)
 
+    adv = filter_skills_by_highlighted(
+        agg.get("advanced") or [],
+        effective_highlighted,
+    )
+    interm = filter_skills_by_highlighted(
+        agg.get("intermediate") or [],
+        effective_highlighted,
+    )
+    beg = filter_skills_by_highlighted(
+        agg.get("beginner") or [],
+        effective_highlighted,
+    )
     tech_skills = filter_skills_by_highlighted(
         agg.get("technical_skills") or [],
         effective_highlighted,
@@ -305,8 +400,13 @@ def export_resume_record_to_docx(
     add_section_heading(doc, "Skills")
     add_skill_line("Languages", languages)
     add_skill_line("Frameworks", agg.get("frameworks") or [])
-    add_skill_line("Technical skills", tech_skills)
-    add_skill_line("Writing skills", writing_skills)
+    if adv or interm or beg:
+        add_skill_line("Advanced", adv)
+        add_skill_line("Intermediate", interm)
+        add_skill_line("Beginner", beg)
+    else:
+        add_skill_line("Technical skills", tech_skills)
+        add_skill_line("Writing skills", writing_skills)
 
     if experience_entries:
         add_section_heading(doc, "Experience")
@@ -322,7 +422,12 @@ def export_resume_record_to_docx(
 
     for p in projects_sorted:
         project_name = _resume_display_name(p)
-        doc.add_heading(project_name, level=2)
+        heading = doc.add_paragraph(style="Heading 2")
+        heading_run = heading.add_run(project_name)
+        heading_run.font.name = "Arial"
+        heading_run.font.size = Pt(12)
+        heading_run.bold = True
+        _set_paragraph_spacing(heading, before=8, after=2, line=15)
 
         role = _resume_key_role(p) or "[Role]"
         date_line = format_date_range(p.get("start_date"), p.get("end_date"))
@@ -352,7 +457,8 @@ def export_resume_record_to_docx(
         for b in bullets_to_use:
             add_bullet(doc, str(b))
 
-        doc.add_paragraph("")
+        spacer = doc.add_paragraph("")
+        _set_paragraph_spacing(spacer, after=4, line=6)
 
     if certificate_only:
         add_section_heading(doc, "Certificates")

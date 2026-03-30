@@ -117,7 +117,7 @@ export default function SetupProjectCard({
             mode={contributionSummaryMode}
             onModeChange={(mode) => onContributionSummaryModeChange(project.projectName, mode)}
           />
-          <KeyRoleSection project={project} actions={actions} isMutating={isMutating} />
+          <KeyRoleSection project={project} actions={actions} isMutating={isMutating} manualOnlySummaries={manualOnlySummaries}/>
           {project.projectType === "code" ? (
             <CodeSetupSection project={project} actions={actions} isMutating={isMutating} />
           ) : project.projectType === "text" ? (

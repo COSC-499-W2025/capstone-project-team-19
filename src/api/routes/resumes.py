@@ -15,6 +15,7 @@ from src.services.resumes_service import (
     remove_project_from_resume,
     add_project_to_resume,
 )
+from src.analysis.skills.roles.role_eligibility import get_eligible_roles
 import json
 from src.db.projects import get_project_key
 from src.db.resumes import get_resume_snapshot
@@ -208,6 +209,49 @@ def post_resume_generate(
     dto = ResumeDetailDTO(**resume)
     return ApiResponse(success=True, data=dto, error=None)
 
+@router.get("/{resume_id}/projects/{project_summary_id}/eligible-roles", response_model=ApiResponse[dict])
+def get_resume_project_eligible_roles(
+    resume_id: int,
+    project_summary_id: int,
+    user_id: int = Depends(get_current_user_id),
+    conn: Connection = Depends(get_db),
+):
+    resume = get_resume_by_id(conn, user_id, resume_id)
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    project = next(
+        (p for p in resume["projects"] if p["project_summary_id"] == project_summary_id),
+        None,
+    )
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found in resume")
+
+    project_type = project.get("project_type")
+    project_name = project.get("project_name")
+
+    bucket_scores = None
+    if project_name:
+        try:
+            rows = conn.execute(
+                """
+                SELECT ps.skill_name, ps.score
+                FROM project_skills ps
+                JOIN projects p ON p.project_key = ps.project_key
+                WHERE ps.user_id = ? AND p.display_name = ?
+                """,
+                (user_id, project_name),
+            ).fetchall()
+            if rows:
+                bucket_scores = {row[0]: float(row[1]) for row in rows if row[1] is not None}
+        except Exception:
+            pass
+
+    print(f"[DEBUG] project_name: {project_name}")
+    print(f"[DEBUG] project_type: {project_type}")
+    print(f"[DEBUG] bucket_scores: {bucket_scores}")
+    roles = get_eligible_roles(project_type or "code", bucket_scores)
+    return ApiResponse(success=True, data={"roles": roles}, error=None)
 
 @router.post("/{resume_id}/edit", response_model=ApiResponse[ResumeDetailDTO])
 def post_resume_edit(

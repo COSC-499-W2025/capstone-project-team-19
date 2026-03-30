@@ -290,24 +290,27 @@ class TestKeyRoleIntegration:
 class TestKeyRoleSelectionLogic:
     """Tests for the actual LLM vs manual selection logic in analysis functions."""
 
-    def test_llm_called_when_consent_accepted_and_description_exists(self, monkeypatch):
-        """Test that extract_key_role_llm is called when consent accepted and description exists."""
+    def test_llm_called_when_consent_accepted_and_description_empty(self, monkeypatch):
+        """Test that extract_key_role_llm is called with fallback text when consent accepted
+        but manual description is empty, instead of falling back to prompt_key_role."""
         from src.project_analysis import run_text_analysis
 
         summary = _create_summary("TestProject", "text", "individual")
+        summary.summary_text = "A research paper on distributed systems."
         _setup_text_analysis_mocks(monkeypatch)
 
-        inputs = iter(["I implemented the authentication system"])
+        inputs = iter([""])  # user leaves description blank
         monkeypatch.setattr("builtins.input", lambda _: next(inputs))
 
         llm_called = {"value": False}
 
         def mock_extract_key_role_llm(desc):
             llm_called["value"] = True
-            return "Auth Developer"
+            assert desc.strip()  # should receive non-empty fallback text
+            return "Research Author"
 
         monkeypatch.setattr("src.project_analysis.extract_key_role_llm", mock_extract_key_role_llm)
-        monkeypatch.setattr("src.project_analysis.prompt_key_role", lambda proj: "Should Not Be Called")
+        monkeypatch.setattr("src.project_analysis.prompt_key_role", lambda proj: pytest.fail("prompt_key_role should not be called when consent is accepted"))
 
         run_text_analysis(
             conn=MagicMock(),
@@ -319,7 +322,7 @@ class TestKeyRoleSelectionLogic:
         )
 
         assert llm_called["value"] is True
-        assert summary.contributions["key_role"] == "Auth Developer"
+        assert summary.contributions["key_role"] == "Research Author"
 
     def test_manual_prompt_called_when_consent_rejected(self, monkeypatch):
         """Test that prompt_key_role is called when consent is rejected."""
@@ -351,37 +354,6 @@ class TestKeyRoleSelectionLogic:
 
         assert prompt_called["value"] is True
         assert summary.contributions["key_role"] == "Backend Dev"
-
-    def test_manual_prompt_called_when_description_empty(self, monkeypatch):
-        """Test that prompt_key_role is called when description is empty (even with consent)."""
-        from src.project_analysis import run_text_analysis
-
-        summary = _create_summary("TestProject", "text", "individual")
-        _setup_text_analysis_mocks(monkeypatch)
-
-        inputs = iter([""])
-        monkeypatch.setattr("builtins.input", lambda _: next(inputs))
-
-        prompt_called = {"value": False}
-
-        def mock_prompt_key_role(proj):
-            prompt_called["value"] = True
-            return "Manual Role"
-
-        monkeypatch.setattr("src.project_analysis.extract_key_role_llm", lambda desc: "LLM Should Not Be Called")
-        monkeypatch.setattr("src.project_analysis.prompt_key_role", mock_prompt_key_role)
-
-        run_text_analysis(
-            conn=MagicMock(),
-            user_id=1,
-            project_name="TestProject",
-            current_ext_consent="accepted",  # consent accepted but no description
-            zip_path="/fake/path.zip",
-            summary=summary
-        )
-
-        assert prompt_called["value"] is True
-        assert summary.contributions["key_role"] == "Manual Role"
 
     def test_manual_prompt_called_when_consent_none(self, monkeypatch):
         """Test that prompt_key_role is called when consent is None."""

@@ -42,8 +42,54 @@ export interface ResumeDetail {
     frameworks: string[];
     technical_skills: string[];
     writing_skills: string[];
+    /** Expertise tiers (Beginner / Intermediate / Advanced from skill scores) */
+    advanced?: string[];
+    intermediate?: string[];
+    beginner?: string[];
   };
   rendered_text: string | null;
+  one_page_status: {
+    fits_one_page: boolean;
+    page_count: number;
+    overflow_detected: boolean;
+    overflow_mode: "none" | "block" | "warn";
+    overflow_reason: string | null;
+    has_manual_project_edits: boolean;
+  };
+  preview: {
+    display_name: string;
+    contact: {
+      phone: string | null;
+      email: string | null;
+      linkedin: string | null;
+      github: string | null;
+      location: string | null;
+    };
+    profile_text: string | null;
+    education_entries: {
+      entry_id: number;
+      entry_type: string | null;
+      title: string | null;
+      organization: string | null;
+      date_text: string | null;
+      description: string | null;
+    }[];
+    experience_entries: {
+      entry_id: number;
+      role: string | null;
+      company: string | null;
+      date_text: string | null;
+      description: string | null;
+    }[];
+    certificate_entries: {
+      entry_id: number;
+      entry_type: string | null;
+      title: string | null;
+      organization: string | null;
+      date_text: string | null;
+      description: string | null;
+    }[];
+  };
 }
 
 export interface RankedProject {
@@ -146,6 +192,12 @@ export function addProjectToResume(
   );
 }
 
+export async function getResumeProjectEligibleRoles(resumeId: number, projectSummaryId: number) {
+  return api.get<ApiResponse<{ roles: string[] }>>(
+    `/resume/${resumeId}/projects/${projectSummaryId}/eligible-roles`
+  );
+}
+
 /* ── Export helpers ── */
 
 export async function downloadResumeDocx(id: number) {
@@ -158,6 +210,10 @@ export async function downloadResumePdf(id: number) {
   triggerDownload(blob, `resume_${id}.pdf`);
 }
 
+export function getResumePdfPreviewBlob(id: number) {
+  return api.getBlob(`/resume/${id}/preview/pdf`);
+}
+
 function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -168,3 +224,4 @@ function triggerDownload(blob: Blob, filename: string) {
   a.remove();
   URL.revokeObjectURL(url);
 }
+

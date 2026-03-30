@@ -10,12 +10,16 @@ vi.mock("../../../api/outputs", () => ({
   addProjectToResume: vi.fn(),
   downloadResumeDocx: vi.fn(),
   downloadResumePdf: vi.fn(),
+  getResumeProjectEligibleRoles: vi.fn(),
+  getResumePdfPreviewBlob: vi.fn(),
   getResumeSkills: vi.fn(),
   updateSkillVisibility: vi.fn(),
 }));
 
 vi.mock("../ExportDropdown", () => ({
-  default: () => <button>Export</button>,
+  default: (props: { disabled?: boolean }) => (
+    <button disabled={props.disabled}>Export</button>
+  ),
 }));
 vi.mock("../AddProjectModal", () => ({
   default: (props: { onClose: () => void; onAdded: () => void }) => (
@@ -37,6 +41,8 @@ import {
   getResume,
   editResume,
   removeProjectFromResume,
+  getResumeProjectEligibleRoles,
+  getResumePdfPreviewBlob,
   getResumeSkills,
 } from "../../../api/outputs";
 
@@ -70,6 +76,28 @@ const baseResume = {
     writing_skills: [],
   },
   rendered_text: null,
+  one_page_status: {
+    fits_one_page: true,
+    page_count: 1,
+    overflow_detected: false,
+    overflow_mode: "none" as const,
+    overflow_reason: null,
+    has_manual_project_edits: false,
+  },
+  preview: {
+    display_name: "Jane Doe",
+    contact: {
+      phone: "1234567890",
+      email: "jane@example.com",
+      linkedin: null,
+      github: null,
+      location: "Kelowna, BC",
+    },
+    profile_text: "A focused software student.",
+    education_entries: [],
+    experience_entries: [],
+    certificate_entries: [],
+  },
 };
 
 function setupMocks(overrides: Partial<typeof baseResume> = {}) {
@@ -79,6 +107,14 @@ function setupMocks(overrides: Partial<typeof baseResume> = {}) {
     data: resume,
     error: null,
   } as any);
+  vi.mocked(getResumeProjectEligibleRoles).mockResolvedValue({
+    success: true,
+    data: { roles: ["Backend Developer", "Frontend Developer", "Full-Stack Developer"] },
+    error: null,
+  } as any);
+  vi.mocked(getResumePdfPreviewBlob).mockResolvedValue(
+    new Blob(["pdf"], { type: "application/pdf" })
+  );
   vi.mocked(getResumeSkills).mockResolvedValue({
     success: true,
     data: { skills: [] },
@@ -91,18 +127,25 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+if (!URL.createObjectURL) {
+  URL.createObjectURL = vi.fn(() => "blob:preview");
+}
+if (!URL.revokeObjectURL) {
+  URL.revokeObjectURL = vi.fn();
+}
+
 describe("ResumeDetail", () => {
   describe("view mode (default)", () => {
     it("renders resume name and project content", async () => {
       setupMocks();
+      const user = userEvent.setup();
       render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
 
       await waitFor(() => {
         expect(screen.getByText("My Resume")).toBeInTheDocument();
       });
-      expect(screen.getByText("Project Alpha")).toBeInTheDocument();
-      expect(screen.getByText(/Backend Developer/)).toBeInTheDocument();
-      expect(screen.getByText(/Built REST API/)).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /Preview your resume/i }));
+      expect(screen.getByTitle("Resume PDF preview")).toBeInTheDocument();
     });
 
     it("shows Edit button in header", async () => {
@@ -121,7 +164,6 @@ describe("ResumeDetail", () => {
       await waitFor(() => {
         expect(screen.getByText("My Resume")).toBeInTheDocument();
       });
-      // No edit form labels should be visible
       expect(screen.queryByLabelText("Display Name")).not.toBeInTheDocument();
     });
 
@@ -147,7 +189,6 @@ describe("ResumeDetail", () => {
       render(<ResumeDetail resumeId={1} onBack={onBack} />);
 
       await waitFor(() => screen.getByText("My Resume"));
-      // Back button is now an icon button with ArrowLeft SVG
       const buttons = screen.getAllByRole("button");
       const backBtn = buttons.find(
         (b) => b.querySelector("svg") && !b.textContent?.trim()
@@ -164,8 +205,130 @@ describe("ResumeDetail", () => {
       await waitFor(() => {
         expect(screen.getByText("Skills")).toBeInTheDocument();
       });
-      // Python appears in both project and skills summary
       expect(screen.getAllByText(/Python/).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("shows Advanced / Intermediate / Beginner when expertise tiers are present", async () => {
+      setupMocks({
+        aggregated_skills: {
+          languages: ["Python"],
+          frameworks: [],
+          technical_skills: [],
+          writing_skills: [],
+          advanced: ["Testing & CI"],
+          intermediate: ["Object-oriented programming"],
+          beginner: ["Algorithms"],
+        },
+      });
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Skills")).toBeInTheDocument();
+      });
+      expect(screen.getByText(/Advanced:/)).toBeInTheDocument();
+      expect(screen.getByText(/Intermediate:/)).toBeInTheDocument();
+      expect(screen.getByText(/Beginner:/)).toBeInTheDocument();
+    });
+
+    it("shows the one-page success banner when resume fits", async () => {
+      setupMocks();
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("This resume fits on 1 page.")).toBeInTheDocument();
+      });
+    });
+
+    it("keeps preview hidden until user expands it", async () => {
+      setupMocks();
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Preview your resume/i })
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByTitle("Resume PDF preview")).not.toBeInTheDocument();
+    });
+
+    it("hides the preview again when collapsed", async () => {
+      setupMocks();
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Preview your resume/i })
+        ).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: /Preview your resume/i }));
+      expect(screen.getByTitle("Resume PDF preview")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: /Preview your resume/i }));
+      expect(screen.queryByTitle("Resume PDF preview")).not.toBeInTheDocument();
+    });
+
+    it("blocks export when backend says the resume exceeds one page", async () => {
+      const user = userEvent.setup();
+      setupMocks({
+        one_page_status: {
+          fits_one_page: false,
+          page_count: 2,
+          overflow_detected: true,
+          overflow_mode: "block",
+          overflow_reason: "This resume exceeds one page and must be shortened before exporting.",
+          has_manual_project_edits: false,
+        },
+      });
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            "This resume exceeds one page and must be shortened before exporting."
+          )
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByRole("button", { name: /view suggestions on how to shorten the resume/i })
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Only provide your best 2-3 projects.")).not.toBeInTheDocument();
+      await user.click(
+        screen.getByRole("button", { name: /view suggestions on how to shorten the resume/i })
+      );
+      expect(screen.getByText("Only provide your best 2-3 projects.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
+    });
+
+    it("shows a warning and keeps export enabled after manual project edits", async () => {
+      const user = userEvent.setup();
+      setupMocks({
+        one_page_status: {
+          fits_one_page: false,
+          page_count: 2,
+          overflow_detected: true,
+          overflow_mode: "warn",
+          overflow_reason:
+            "This resume exceeds one page because of manual project edits. Export is still allowed.",
+          has_manual_project_edits: true,
+        },
+      });
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            "This resume exceeds one page because of manual project edits. Export is still allowed."
+          )
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Shorten the points in each project.")).not.toBeInTheDocument();
+      await user.click(
+        screen.getByRole("button", { name: /view suggestions on how to shorten the resume/i })
+      );
+      expect(screen.getByText("Shorten the points in each project.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
     });
   });
 
@@ -211,10 +374,6 @@ describe("ResumeDetail", () => {
       render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
 
       await waitFor(() => screen.getByText("My Resume"));
-      // The pencil button is inside the h2 — find it by aria label isn't set,
-      // but clicking on the heading area should work. We verify the name input
-      // appears after clicking.
-      // In edit mode, there should be a pencil-like button near the name
       expect(screen.getByText("Done Editing")).toBeInTheDocument();
     });
 
@@ -231,7 +390,6 @@ describe("ResumeDetail", () => {
 
       await waitFor(() => screen.getByText("My Resume"));
 
-      // Find and click the pencil button (inside h2, it's a button element)
       const buttons = screen.getAllByRole("button");
       const pencilBtn = buttons.find(
         (b) => b.querySelector("svg") && b.closest("h2")
@@ -239,12 +397,10 @@ describe("ResumeDetail", () => {
       if (pencilBtn) {
         await user.click(pencilBtn);
 
-        // Now we should see an input with the current name
         const input = screen.getByDisplayValue("My Resume");
         await user.clear(input);
         await user.type(input, "Updated Name");
 
-        // Click the check button
         const checkBtns = screen.getAllByRole("button");
         const checkBtn = checkBtns.find(
           (b) => b.querySelector(".text-emerald-600") !== null
@@ -266,7 +422,6 @@ describe("ResumeDetail", () => {
 
       await waitFor(() => screen.getByText("Project Alpha"));
 
-      // Find the pencil button on the project card (not inside h2)
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
         (b) => (b as HTMLButtonElement).title === "Edit project"
@@ -280,6 +435,53 @@ describe("ResumeDetail", () => {
           expect(screen.queryByLabelText("Summary")).not.toBeInTheDocument();
           expect(screen.getByText("Save changes")).toBeInTheDocument();
           expect(screen.getByText("Cancel")).toBeInTheDocument();
+        });
+      }
+    });
+
+    it("loads eligible roles into key role dropdown when project edit opens", async () => {
+      setupMocks();
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
+
+      await waitFor(() => screen.getByText("Project Alpha"));
+
+      const buttons = screen.getAllByRole("button");
+      const projectPencil = buttons.find(
+        (b) => (b as HTMLButtonElement).title === "Edit project"
+      );
+      if (projectPencil) {
+        await user.click(projectPencil);
+
+        await waitFor(() => {
+          const roleSelect = screen.getByLabelText("Key Role");
+          expect(roleSelect).toBeInTheDocument();
+          expect(screen.getByRole("option", { name: "Backend Developer" })).toBeInTheDocument();
+          expect(screen.getByRole("option", { name: "Frontend Developer" })).toBeInTheDocument();
+          expect(screen.getByRole("option", { name: "Full-Stack Developer" })).toBeInTheDocument();
+        });
+
+        expect(getResumeProjectEligibleRoles).toHaveBeenCalledWith(1, 10);
+      }
+    });
+
+    it("shows loading state in key role dropdown while roles are fetching", async () => {
+      setupMocks();
+      vi.mocked(getResumeProjectEligibleRoles).mockReturnValue(new Promise(() => {}));
+
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} initialEditing onBack={vi.fn()} />);
+
+      await waitFor(() => screen.getByText("Project Alpha"));
+
+      const buttons = screen.getAllByRole("button");
+      const projectPencil = buttons.find(
+        (b) => (b as HTMLButtonElement).title === "Edit project"
+      );
+      if (projectPencil) {
+        await user.click(projectPencil);
+        await waitFor(() => {
+          expect(screen.getByRole("option", { name: "Loading roles..." })).toBeInTheDocument();
         });
       }
     });
@@ -300,7 +502,6 @@ describe("ResumeDetail", () => {
         await waitFor(() => screen.getByText("Cancel"));
         await user.click(screen.getByText("Cancel"));
 
-        // Form should be gone
         expect(screen.queryByLabelText("Display Name")).not.toBeInTheDocument();
         expect(editResume).not.toHaveBeenCalled();
       }
@@ -319,7 +520,6 @@ describe("ResumeDetail", () => {
 
       await waitFor(() => screen.getByText("Project Alpha"));
 
-      // Click project pencil
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
         (b) => (b as HTMLButtonElement).title === "Edit project"
@@ -328,12 +528,10 @@ describe("ResumeDetail", () => {
         await user.click(projectPencil);
         await waitFor(() => screen.getByLabelText("Display Name"));
 
-        // Change display name
         const nameInput = screen.getByLabelText("Display Name");
         await user.clear(nameInput);
         await user.type(nameInput, "Renamed Project");
 
-        // Click save
         await user.click(screen.getByText("Save changes"));
 
         await waitFor(() => {
@@ -372,16 +570,13 @@ describe("ResumeDetail", () => {
       );
       if (projectPencil) {
         await user.click(projectPencil);
+
         await waitFor(() => screen.getByLabelText("Key Role"));
 
-        // Change key role
-        const roleInput = screen.getByLabelText("Key Role");
-        await user.clear(roleInput);
-        await user.type(roleInput, "Full Stack Dev");
+        const roleSelect = screen.getByLabelText("Key Role");
+        await user.selectOptions(roleSelect, "Full-Stack Developer");
 
-        // Switch to global scope
         await user.click(screen.getByLabelText("All resumes & portfolio"));
-
         await user.click(screen.getByText("Save changes"));
 
         await waitFor(() => {
@@ -389,7 +584,7 @@ describe("ResumeDetail", () => {
             1,
             expect.objectContaining({
               scope: "global",
-              key_role: "Full Stack Dev",
+              key_role: "Full-Stack Developer",
             })
           );
         });
@@ -415,7 +610,6 @@ describe("ResumeDetail", () => {
         await user.click(projectPencil);
         await waitFor(() => screen.getByText("Save changes"));
 
-        // Save without changing anything
         await user.click(screen.getByText("Save changes"));
 
         expect(editResume).not.toHaveBeenCalled();
@@ -508,10 +702,7 @@ describe("ResumeDetail", () => {
       await user.click(confirmBtn);
 
       await waitFor(() => {
-        expect(removeProjectFromResume).toHaveBeenCalledWith(
-          1,
-          "Project Alpha"
-        );
+        expect(removeProjectFromResume).toHaveBeenCalledWith(1, "Project Alpha");
       });
 
       await waitFor(() => {
@@ -603,7 +794,6 @@ describe("ResumeDetail", () => {
 
       await waitFor(() => screen.getByText("Project Alpha"));
 
-      // Open project edit
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
         (b) => (b as HTMLButtonElement).title === "Edit project"
@@ -612,10 +802,8 @@ describe("ResumeDetail", () => {
         await user.click(projectPencil);
         await waitFor(() => screen.getByLabelText("Display Name"));
 
-        // Click Done Editing
         await user.click(screen.getByText("Done Editing"));
 
-        // Form should be gone, back to view mode
         expect(screen.queryByLabelText("Display Name")).not.toBeInTheDocument();
         expect(screen.getByText("Edit")).toBeInTheDocument();
       }

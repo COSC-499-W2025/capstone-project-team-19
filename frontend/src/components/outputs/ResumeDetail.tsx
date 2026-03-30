@@ -5,6 +5,8 @@ import {
   removeProjectFromResume,
   downloadResumeDocx,
   downloadResumePdf,
+  getResumeProjectEligibleRoles,
+  getResumePdfPreviewBlob,
   getResumeSkills,
   type ResumeDetail as ResumeDetailType,
   type ResumeProject,
@@ -33,6 +35,8 @@ import {
   X,
   Plus,
   Trash2,
+  ChevronDown,
+  ChevronUp,
   ArrowLeft,
 } from "lucide-react";
 
@@ -66,6 +70,9 @@ export default function ResumeDetail({
   const [nameVal, setNameVal] = useState("");
   const [savingName, setSavingName] = useState(false);
 
+  // Key role editing
+  const [eligibleRoles, setEligibleRoles] = useState<string[]>([]);
+
   // Per-project editing
   const [editingProjectId, setEditingProjectId] = useState<number | null>(null);
   const [projectEdits, setProjectEdits] = useState<ProjectEdits | null>(null);
@@ -77,6 +84,9 @@ export default function ResumeDetail({
   );
   const [removingProject, setRemovingProject] = useState(false);
   const [showAddProject, setShowAddProject] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Skill preferences
   const [skillsOpen, setSkillsOpen] = useState(false);
@@ -97,6 +107,36 @@ export default function ResumeDetail({
   }
 
   useEffect(loadResume, [resumeId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+
+    if (editing || !showPreview) {
+      setPdfPreviewUrl(null);
+      setPreviewLoading(false);
+      return;
+    }
+
+    setPreviewLoading(true);
+    getResumePdfPreviewBlob(resumeId)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPdfPreviewUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setPdfPreviewUrl(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [resumeId, editing, showPreview, successMsg]);
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -220,11 +260,17 @@ export default function ResumeDetail({
       scope: "resume_only",
     });
     setErr(null);
+    // fetch eligible roles for this project
+    setEligibleRoles([]);
+    getResumeProjectEligibleRoles(resumeId, p.project_summary_id)
+      .then((res) => { if (res.data?.roles) setEligibleRoles(res.data.roles); })
+      .catch(() => setEligibleRoles([]));
   }
 
   function cancelEditingProject() {
     setEditingProjectId(null);
     setProjectEdits(null);
+    setEligibleRoles([]);
   }
 
   /* ── Save project edits ── */
@@ -347,6 +393,16 @@ export default function ResumeDetail({
 
   const sortedProjects = sortProjectsByDate(resume.projects);
   const agg = resume.aggregated_skills;
+  const hasExpertiseTiers =
+    (agg.advanced?.length ?? 0) +
+      (agg.intermediate?.length ?? 0) +
+      (agg.beginner?.length ?? 0) >
+    0;
+  const hasAnalyzedContent = hasExpertiseTiers
+    ? true
+    : agg.technical_skills.length > 0 || agg.writing_skills.length > 0;
+  const onePageStatus = resume.one_page_status;
+  const exportBlocked = onePageStatus.overflow_mode === "block";
 
   return (
     <div className="p-6">
@@ -426,12 +482,18 @@ export default function ResumeDetail({
             {editing ? "Done Editing" : "Edit"}
           </Button>
           {!editing && (
-            <ExportDropdown onDocx={handleExportDocx} onPdf={handleExportPdf} />
+            <ExportDropdown
+              onDocx={handleExportDocx}
+              onPdf={handleExportPdf}
+              disabled={exportBlocked}
+            />
           )}
         </div>
       </div>
 
       <hr className="my-4 border-t border-[#e5e5e5]" />
+
+      {!editing && <OnePageStatusBanner status={onePageStatus} />}
 
       {/* Success / Error banners */}
       {successMsg && (
@@ -447,10 +509,16 @@ export default function ResumeDetail({
 
       {/* Skills Summary */}
       <Card className="mb-6 rounded-2xl border-slate-200/80 bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base text-slate-900">Skills</CardTitle>
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-base text-slate-900">Skills</CardTitle>
+            <p className="text-xs font-normal text-slate-500">
+              Languages and frameworks come from project detection. Advanced, Intermediate, and Beginner apply only to
+              analyzed skills below—not languages or frameworks.
+            </p>
+          </div>
           {editing && !skillsOpen && (
-            <CardAction>
+            <CardAction className="self-end sm:self-start">
               <Button variant="ghost" size="sm" onClick={openSkillEditor} className="text-xs">
                 <Pencil className="size-3.5 mr-1" />
                 Manage
@@ -473,8 +541,28 @@ export default function ResumeDetail({
             <>
               <SkillRow label="Languages" items={agg.languages} />
               <SkillRow label="Frameworks" items={agg.frameworks} />
-              <SkillRow label="Technical" items={agg.technical_skills} />
-              <SkillRow label="Writing" items={agg.writing_skills} />
+
+              {hasAnalyzedContent && (
+                <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                  <p className="text-sm font-semibold text-slate-900">Analyzed skills</p>
+                  <div className="rounded-lg border border-slate-200/90 bg-slate-50/80 p-3">
+                    <div className="space-y-2">
+                      {hasExpertiseTiers ? (
+                        <>
+                          <SkillRow label="Advanced" items={agg.advanced ?? []} />
+                          <SkillRow label="Intermediate" items={agg.intermediate ?? []} />
+                          <SkillRow label="Beginner" items={agg.beginner ?? []} />
+                        </>
+                      ) : (
+                        <>
+                          <SkillRow label="Technical" items={agg.technical_skills} />
+                          <SkillRow label="Writing" items={agg.writing_skills} />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </CardContent>
@@ -552,6 +640,7 @@ export default function ResumeDetail({
                       updateBullet={updateBullet}
                       removeBullet={removeBullet}
                       addBullet={addBullet}
+                      eligibleRoles={eligibleRoles}
                     />
                   ) : (
                     <ProjectReadView project={p} />
@@ -562,22 +651,45 @@ export default function ResumeDetail({
           })}
         </div>
       ) : (
-        /* ── View mode: styled cards matching export structure ── */
-        <div className="space-y-4">
-          <h3 className="text-base font-semibold text-slate-900 border-b border-[#e5e5e5] pb-1">
-            Projects
-          </h3>
-          {sortedProjects.map((p, i) => (
-            <Card
-              key={i}
-              className="rounded-xl border-slate-200/80 bg-white shadow-sm"
+        <>
+          <div className="resumePreviewToggleRow">
+            <button
+              type="button"
+              className="resumePreviewToggle"
+              onClick={() => setShowPreview((value) => !value)}
+              aria-expanded={showPreview}
             >
-              <CardContent className="py-4">
-                <ProjectBlockView project={p} />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              <span>Preview your resume</span>
+              {showPreview ? (
+                <ChevronUp className="size-4" aria-hidden="true" />
+              ) : (
+                <ChevronDown className="size-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+          {showPreview && (
+            <ResumePreview
+              resume={resume}
+              pdfPreviewUrl={pdfPreviewUrl}
+              previewLoading={previewLoading}
+            />
+          )}
+          <div className="mt-6 space-y-4">
+            <h3 className="border-b border-[#e5e5e5] pb-1 text-base font-semibold text-slate-900">
+              Projects
+            </h3>
+            {sortedProjects.map((p, i) => (
+              <Card
+                key={p.project_summary_id ?? `${p.project_name}-${i}`}
+                className="rounded-xl border-slate-200/80 bg-white shadow-sm"
+              >
+                <CardContent className="py-4">
+                  <ProjectBlockView project={p} />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
       {showAddProject && resume && (
@@ -652,13 +764,93 @@ function SkillRow({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-/** View-mode project block matching export structure: name, role | dates, bullets */
+function OnePageStatusBanner({
+  status,
+}: {
+  status: ResumeDetailType["one_page_status"];
+}) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestions = [
+    "Only provide your best 2-3 projects.",
+    "Make sure your profile summary is not too long (about 2-5 sentences).",
+    "Only provide the most relevant work experience.",
+    "Only provide the most relevant awards or certificates.",
+    "Only provide the most relevant education.",
+    "Shorten the points in each project.",
+  ];
+
+  if (status.fits_one_page) {
+    return (
+      <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+        This resume fits on 1 page.
+      </div>
+    );
+  }
+
+  if (status.overflow_mode === "warn") {
+    return (
+      <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+        <p>
+          {status.overflow_reason ?? "This resume exceeds 1 page, but export is still allowed."}
+        </p>
+        <button
+          type="button"
+          className="mt-2 inline-flex items-center gap-2 font-medium underline underline-offset-2"
+          onClick={() => setShowSuggestions((value) => !value)}
+          aria-expanded={showSuggestions}
+        >
+          <span>View suggestions on how to shorten the resume</span>
+          {showSuggestions ? (
+            <ChevronUp className="size-4" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="size-4" aria-hidden="true" />
+          )}
+        </button>
+        {showSuggestions && (
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {suggestions.map((suggestion) => (
+              <li key={suggestion}>{suggestion}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
+      <p>
+        {status.overflow_reason ?? "This resume exceeds 1 page and must be shortened before export."}
+      </p>
+      <button
+        type="button"
+        className="mt-2 inline-flex items-center gap-2 font-medium underline underline-offset-2"
+        onClick={() => setShowSuggestions((value) => !value)}
+        aria-expanded={showSuggestions}
+      >
+        <span>View suggestions on how to shorten the resume</span>
+        {showSuggestions ? (
+          <ChevronUp className="size-4" aria-hidden="true" />
+        ) : (
+          <ChevronDown className="size-4" aria-hidden="true" />
+        )}
+      </button>
+      {showSuggestions && (
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          {suggestions.map((suggestion) => (
+            <li key={suggestion}>{suggestion}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function ProjectBlockView({ project: p }: { project: ResumeProject }) {
-  const dateLine = formatDateRange(p.start_date, p.end_date);
-  const role = p.key_role || "";
-  const subtitle = role && dateLine
-    ? `${role} | ${dateLine}`
-    : role || dateLine;
+  const dateRange = formatDateRange(p.start_date, p.end_date);
+  const subtitle = [p.key_role, p.project_type, p.project_mode, dateRange]
+    .filter(Boolean)
+    .join(" • ");
 
   return (
     <div>
@@ -670,12 +862,61 @@ function ProjectBlockView({ project: p }: { project: ResumeProject }) {
         </p>
       )}
 
+      {p.summary_text && (
+        <p className="mt-2 text-sm leading-relaxed text-slate-700">{p.summary_text}</p>
+      )}
+
       {p.contribution_bullets.length > 0 && (
-        <ul className="mt-1.5 list-disc pl-5 space-y-0.5">
+        <ul className="mt-1.5 list-disc space-y-0.5 pl-5">
           {p.contribution_bullets.map((b, j) => (
-            <li key={j} className="text-sm text-slate-700 leading-relaxed">{b}</li>
+            <li key={j} className="text-sm leading-relaxed text-slate-700">
+              {b}
+            </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+function ResumePreview({
+  resume,
+  pdfPreviewUrl,
+  previewLoading,
+}: {
+  resume: ResumeDetailType;
+  pdfPreviewUrl: string | null;
+  previewLoading: boolean;
+}) {
+  return (
+    <div className="resumePreviewShell">
+      <div className="resumePreviewMeta">
+        <span>Letter-size preview</span>
+        <span>Estimated pages: {resume.one_page_status.page_count}</span>
+      </div>
+
+      {previewLoading && (
+        <div className="resumePdfPreviewStatus">Loading PDF preview...</div>
+      )}
+
+      {!previewLoading && pdfPreviewUrl && (
+        <iframe
+          title="Resume PDF preview"
+          className="resumePdfPreviewFrame"
+          src={`${pdfPreviewUrl}#view=FitH&toolbar=0&navpanes=0`}
+        />
+      )}
+
+      {!previewLoading && !pdfPreviewUrl && (
+        <div className="resumePdfPreviewStatus">
+          PDF preview could not be loaded right now.
+        </div>
+      )}
+
+      {resume.one_page_status.overflow_detected && (
+        <p className="resumePreviewOverflowNote">
+          Content below the visible page boundary would spill onto another page in export.
+        </p>
       )}
     </div>
   );
@@ -810,6 +1051,7 @@ function ProjectEditForm({
   updateBullet,
   removeBullet,
   addBullet,
+  eligibleRoles,
 }: {
   edits: ProjectEdits;
   setEdits: (e: ProjectEdits) => void;
@@ -819,6 +1061,7 @@ function ProjectEditForm({
   updateBullet: (i: number, v: string) => void;
   removeBullet: (i: number) => void;
   addBullet: () => void;
+  eligibleRoles: string[];
 }) {
   return (
     <div className="space-y-5">
@@ -835,12 +1078,20 @@ function ProjectEditForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="edit-key-role">Key Role</Label>
-        <Input
+        <select
           id="edit-key-role"
-          placeholder="e.g. Backend Developer"
           value={edits.key_role}
           onChange={(e) => setEdits({ ...edits, key_role: e.target.value })}
-        />
+          disabled={eligibleRoles.length === 0}
+          className="h-10 w-full rounded border border-zinc-300 bg-zinc-50 px-3 text-sm text-zinc-700 disabled:opacity-60"
+        >
+          <option value="">
+            {eligibleRoles.length === 0 ? "Loading roles..." : "Select a role..."}
+          </option>
+          {eligibleRoles.map((role) => (
+            <option key={role} value={role}>{role}</option>
+          ))}
+        </select>
       </div>
 
       <div className="space-y-2">

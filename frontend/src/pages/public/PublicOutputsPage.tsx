@@ -49,6 +49,14 @@ function SkillRow({ label, items }: { label: string; items: string[] }) {
 function ResumeView({ resume, username }: { resume: PublicResumeDetail; username: string }) {
     const agg = resume.aggregated_skills;
     const sortedProjects = sortProjectsByDate(resume.projects);
+    const hasExpertiseTiers =
+        (agg.advanced?.length ?? 0) +
+            (agg.intermediate?.length ?? 0) +
+            (agg.beginner?.length ?? 0) >
+        0;
+    const hasAnalyzedContent = hasExpertiseTiers
+        ? true
+        : agg.technical_skills.length > 0 || agg.writing_skills.length > 0;
 
     return (
         <div className="p-6">
@@ -68,10 +76,32 @@ function ResumeView({ resume, username }: { resume: PublicResumeDetail; username
                     <CardTitle className="text-base text-slate-900">Skills</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
+                    <p className="mb-2 text-xs text-slate-500">
+                        Languages and frameworks come from project detection. Advanced, Intermediate, and Beginner apply only
+                        to analyzed skills below—not languages or frameworks.
+                    </p>
                     <SkillRow label="Languages" items={agg.languages} />
                     <SkillRow label="Frameworks" items={agg.frameworks} />
-                    <SkillRow label="Technical" items={agg.technical_skills} />
-                    <SkillRow label="Writing" items={agg.writing_skills} />
+
+                    {hasAnalyzedContent && (
+                        <div className="mt-3 border-t border-slate-200 pt-3">
+                            <p className="mb-2 text-sm font-semibold text-slate-900">Analyzed skills</p>
+                            <div className="rounded-lg border border-slate-200 bg-slate-50/90 p-3 space-y-1">
+                                {hasExpertiseTiers ? (
+                                    <>
+                                        <SkillRow label="Advanced" items={agg.advanced ?? []} />
+                                        <SkillRow label="Intermediate" items={agg.intermediate ?? []} />
+                                        <SkillRow label="Beginner" items={agg.beginner ?? []} />
+                                    </>
+                                ) : (
+                                    <>
+                                        <SkillRow label="Technical" items={agg.technical_skills} />
+                                        <SkillRow label="Writing" items={agg.writing_skills} />
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
