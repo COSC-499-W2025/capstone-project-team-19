@@ -947,15 +947,18 @@ Following the coding work, the team focused on stabilizing key workflows and imp
 
 ### Reviewing or collaboration tasks
 
-The team collaboratively prepared for the Milestone 3 presentation by organizing slide content, practicing delivery, and refining the overall structure, with an initial presentation plan guiding individual contributions. Work was distributed across deliverables, including demo video creation and documentation, while the team also coordinated around branching strategies, resolving merge conflicts, and managing PR dependencies to ensure a smooth integration process.
+The team collaboratively prepared for the Milestone 3 presentation by organizing slide content and practicing the presentation together. For the Milestone 3 deliverables, work was distributed evenly. The majority of the team worked on the demo video, splitting up the pages they will cover, and the rest of the team put together the documentation requirements, which was then merged into `main`.
+
+Additionally, the team resolved merge conflicts and managed PR dependencies to ensure smooth integration as each PR was merged into main.
 
 ### Issues or blockers
 
-No major blockers were encountered during this period, as the team was able to make steady progress across features and deliverables. Minor challenges included managing merge conflicts and coordinating work across dependent branches, which were resolved through communication and careful PR sequencing.
+No major blockers were encountered during this period, and the team made steady progress across features and deliverables. Minor challenges included managing merge conflicts and coordinating work across dependent branches, which were resolved through communication and careful PR sequencing/reviewing.
 
 ### Plan / goals for next week
 
-With development complete, the team’s focus will shift to final course deliverables, including project voting and any remaining administrative tasks. No further feature development is planned as the project has reached completion.
+This was the last week of coding and deliverables. In the following weeks, The team will be contributing to the final class requirements separately, being the project voting and the last quiz. Other than that, we will each be studying hard for our finals and celebrating the win of completing this project with a strong finish. We are all proud of the project we have built, and are thankful to have had a team that overall worked very well together.
+
 
 ### Burnup chart
 
