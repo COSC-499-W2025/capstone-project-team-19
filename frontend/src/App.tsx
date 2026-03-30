@@ -7,7 +7,41 @@ import {
   useParams,
 } from "react-router-dom";
 
-import { createAppRouter } from "./router";
+function PublicHomeRedirect() {
+  const { username } = useParams<{ username: string }>();
+  return <Navigate to={`/public/${username}/projects`} replace />;
+}
+import type { ReactNode } from "react";
+
+import LoginPage from "./pages/Login";
+import RegisterPage from "./pages/Register";
+import HomePage from "./pages/Home";
+import { tokenStore, isTokenValid } from "./auth/token";
+import UploadPage from "./pages/upload/upload/UploadPage";
+import UploadSetupPage from "./pages/upload/setup/SetupPage";
+import UploadAnalyzePage from "./pages/upload/analyze/AnalyzePage";
+import ConsentPage from "./pages/upload/consent/ConsentPage";
+import ProjectsPage from "./pages/Projects";
+import ProjectDetailPage from "./pages/ProjectDetail";
+import InsightsPage from "./pages/InsightsPage";
+import OutputsPage from "./pages/Outputs";
+import ProfilePage from "./pages/Profile";
+import UIPlaygroundPage from "./pages/UIPlayground";
+import PublicProjectsPage from "./pages/public/PublicProjects";
+import PublicProjectDetailPage from "./pages/public/PublicProjectDetail";
+import PublicInsightsPage from "./pages/public/PublicInsightsPage";
+import PublicOutputsPage from "./pages/public/PublicOutputsPage";
+
+function RequireAuth({ children }: { children: ReactNode }) {
+  const token = tokenStore.get();
+
+  if (!isTokenValid(token)) {
+    tokenStore.clear();
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 export default function App() {
   const router = createAppRouter();
