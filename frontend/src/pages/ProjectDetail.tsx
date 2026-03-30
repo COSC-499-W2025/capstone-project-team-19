@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useBlocker, useNavigate, useParams } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import { getUsername } from "../auth/user";
 import {
@@ -11,6 +11,7 @@ import {
   getProjectFeedback,
   listProjects,
   patchProjectDates,
+  patchProjectSummary,
   resetProjectDates,
   uploadThumbnail,
   type FeedbackItem,
@@ -100,11 +101,43 @@ export default function ProjectDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Summary editing
+  const [editingSummary, setEditingSummary] = useState(false);
+  const [editSummaryText, setEditSummaryText] = useState("");
+  const [editContributionSummary, setEditContributionSummary] = useState("");
+  const [savingSummary, setSavingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
   // Visibility (public dashboard)
   const [savingVisibility, setSavingVisibility] = useState(false);
 
   // Tabs
   const [activeTab, setActiveTab] = useState("summary");
+
+  // Reset editing state when navigating to a different project
+  useEffect(() => {
+    setEditingSummary(false);
+    setEditSummaryText("");
+    setEditContributionSummary("");
+    setSummaryError(null);
+    setEditingDates(false);
+    setDatesError(null);
+  }, [projectId]);
+
+  // Warn on browser refresh/close while editing
+  useEffect(() => {
+    if (!editingSummary && !editingDates) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [editingSummary, editingDates]);
+
+  // Block all in-app navigation while editing
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      (editingSummary || editingDates) &&
+      currentLocation.pathname !== nextLocation.pathname
+  );
 
   useEffect(() => {
     let objectUrl: string | null = null;
@@ -201,6 +234,35 @@ export default function ProjectDetailPage() {
       setDatesError(e instanceof Error ? e.message : "Reset failed");
     } finally {
       setSavingDates(false);
+    }
+  }
+
+  function handleStartEditSummary() {
+    setEditSummaryText(project?.summary_text ?? "");
+    setEditContributionSummary(project?.contributions?.manual_contribution_summary ?? "");
+    setSummaryError(null);
+    setEditingSummary(true);
+  }
+
+  function handleCancelEditSummary() {
+    setSummaryError(null);
+    setEditingSummary(false);
+  }
+
+  async function handleSaveSummary() {
+    setSavingSummary(true);
+    setSummaryError(null);
+    try {
+      const updated = await patchProjectSummary(projectId, {
+        summary_text: editSummaryText || null,
+        contribution_summary: editContributionSummary || null,
+      });
+      setProject(updated);
+      setEditingSummary(false);
+    } catch (e: unknown) {
+      setSummaryError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingSummary(false);
     }
   }
 
@@ -323,7 +385,7 @@ export default function ProjectDetailPage() {
           }
         />
 
-        {/* Thumbnail + meta tags (aligned with main layout) */}
+        {/* Thumbnail + meta tags */}
         <SectionCard className="w-full bg-white">
           <div className="flex gap-[20px]">
             <div className="shrink-0 space-y-[8px]">
@@ -434,7 +496,7 @@ export default function ProjectDetailPage() {
           </div>
         </SectionCard>
 
-        {/* Duration — light panel; view: title + range left, Edit top-right; edit: stacked fields + full-width primary actions */}
+        {/* Duration */}
         <SectionCard className="w-full rounded-[10px] border-[#e0e0e0] bg-[#f4f4f6] px-[22px] py-[20px]">
           {!editingDates ? (
             <div className="flex items-start justify-between gap-[16px]">
@@ -475,7 +537,6 @@ export default function ProjectDetailPage() {
               <div className="text-[18px] font-medium leading-none text-foreground">
                 Duration
               </div>
-              {/* Narrow column — matches compact date + action layout */}
               <div className="w-full max-w-[248px] space-y-[16px]">
                 <div className="flex flex-col gap-[16px]">
                   <AppField label="Start date">
@@ -551,20 +612,75 @@ export default function ProjectDetailPage() {
 
           {activeTab === "summary" && (
             <div className="space-y-[14px]">
-              <p className="whitespace-pre-wrap text-[14px] leading-[1.6] text-foreground">
-                {normalizeContributionSummary(project.summary_text) ?? (
-                  <em className="text-[#9f9f9f]">No summary yet.</em>
-                )}
-              </p>
-              {contributionSummaryText && (
+              {!editingSummary ? (
                 <>
-                  <div className="text-[16px] font-medium text-foreground">
-                    Contribution Summary
+                  <div className="flex items-center justify-between">
+                    <div className="text-[18px] font-medium text-foreground">
+                      Project Summary
+                    </div>
+                    <AppButton variant="outline" size="sm" aria-label="Edit summary" onClick={handleStartEditSummary}>
+                      Edit
+                    </AppButton>
                   </div>
-                  <p className="whitespace-pre-wrap text-[14px] leading-[1.6] text-foreground">
-                    {contributionSummaryText}
-                  </p>
+
+                  <div className="space-y-[6px]">
+                    <div className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      Summary
+                    </div>
+                    <div className="rounded-[8px] border border-border bg-muted/30 p-[14px]">
+                      <p className="whitespace-pre-wrap text-[14px] leading-[1.7] text-foreground">
+                        {normalizeContributionSummary(project.summary_text) ?? (
+                          <span className="italic text-muted-foreground">No summary yet.</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {contributionSummaryText && (
+                    <div className="space-y-[6px]">
+                      <div className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        Contribution Summary
+                      </div>
+                      <div className="rounded-[8px] border border-border bg-muted/30 p-[14px]">
+                        <p className="whitespace-pre-wrap text-[14px] leading-[1.7] text-foreground">
+                          {contributionSummaryText}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </>
+              ) : (
+                <div className="space-y-[14px]">
+                  <AppField label="Summary">
+                    <textarea
+                      className="w-full rounded-[6px] border border-input bg-background px-[12px] py-[8px] text-[14px] leading-[1.6] text-foreground placeholder:text-[#9f9f9f] focus:outline-none focus:ring-1 focus:ring-ring"
+                      rows={6}
+                      value={editSummaryText}
+                      onChange={(e) => setEditSummaryText(e.target.value)}
+                      placeholder="Enter project summary…"
+                    />
+                  </AppField>
+                  {project.project_mode === "collaborative" && (
+                    <AppField label="Contribution Summary">
+                      <textarea
+                        className="w-full rounded-[6px] border border-input bg-background px-[12px] py-[8px] text-[14px] leading-[1.6] text-foreground placeholder:text-[#9f9f9f] focus:outline-none focus:ring-1 focus:ring-ring"
+                        rows={4}
+                        value={editContributionSummary}
+                        onChange={(e) => setEditContributionSummary(e.target.value)}
+                        placeholder="Enter contribution summary…"
+                      />
+                    </AppField>
+                  )}
+                  {summaryError && <p className="text-[13px] text-[#cc4b4b]">{summaryError}</p>}
+                  <div className="flex gap-[8px]">
+                    <AppButton onClick={handleSaveSummary} disabled={savingSummary}>
+                      {savingSummary ? "Saving…" : "Save"}
+                    </AppButton>
+                    <AppButton variant="outline" onClick={handleCancelEditSummary} disabled={savingSummary}>
+                      Cancel
+                    </AppButton>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -646,6 +762,15 @@ export default function ProjectDetailPage() {
         description="Are you sure you want to delete this project? This cannot be undone."
         confirmLabel="Delete"
         onConfirm={handleDeleteProject}
+      />
+
+      <ConfirmDialog
+        open={blocker.state === "blocked"}
+        onOpenChange={(open) => { if (!open && blocker.state === "blocked") blocker.reset?.(); }}
+        title="Unsaved Changes"
+        description="You have unsaved changes. Leave anyway?"
+        confirmLabel="Leave"
+        onConfirm={() => blocker.proceed?.()}
       />
     </>
   );

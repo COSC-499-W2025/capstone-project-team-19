@@ -97,8 +97,14 @@ def _prompt_contribution_and_key_role(
     # Extract or prompt for key role
     if isinstance(key_role_override, str) and key_role_override.strip():
         key_role = key_role_override.strip()
-    elif current_ext_consent == "accepted" and contribution_desc:
-        key_role = extract_key_role_llm(contribution_desc)
+    elif current_ext_consent == "accepted":
+        text_for_key_role = (
+            contribution_desc
+            or (getattr(summary, "contributions", {}) or {}).get("llm_contribution_summary")
+            or getattr(summary, "summary_text", None)
+            or ""
+        )
+        key_role = extract_key_role_llm(text_for_key_role) if text_for_key_role.strip() else None
     elif allow_prompts:
         key_role = prompt_key_role(project_name)
     else:

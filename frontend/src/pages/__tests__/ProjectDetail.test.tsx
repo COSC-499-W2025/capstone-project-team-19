@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import ProjectDetailPage from "../ProjectDetail";
 
 const mockNavigate = vi.fn();
@@ -30,6 +30,7 @@ vi.mock("../../api/projects", () => ({
   deleteProject: vi.fn(),
   patchProjectDates: vi.fn(),
   resetProjectDates: vi.fn(),
+  patchProjectSummary: vi.fn(),
 }));
 
 vi.mock("../../auth/user", () => ({
@@ -63,6 +64,7 @@ import {
   patchProjectDates,
   resetProjectDates,
   deleteThumbnail,
+  patchProjectSummary,
 } from "../../api/projects";
 import { updateProjectVisibility } from "../../api/portfolioSettings";
 
@@ -101,11 +103,11 @@ function setupDefaultMocks() {
 }
 
 function renderPage() {
-  return render(
-    <MemoryRouter>
-      <ProjectDetailPage />
-    </MemoryRouter>
+  const router = createMemoryRouter(
+    [{ path: "/projects/:id", element: <ProjectDetailPage /> }],
+    { initialEntries: ["/projects/42"] }
   );
+  return render(<RouterProvider router={router} />);
 }
 
 describe("ProjectDetailPage", () => {
@@ -270,11 +272,16 @@ describe("ProjectDetailPage", () => {
   });
 
   describe("dates editing", () => {
+    // The Duration "Edit" button is the first Edit button in the DOM (above the Summary tab).
+    async function clickDatesEdit(user: ReturnType<typeof userEvent.setup>) {
+      await waitFor(() => expect(screen.getAllByRole("button", { name: "Edit" }).length).toBeGreaterThan(0));
+      await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    }
+
     it("shows date edit form after clicking Edit", async () => {
       const user = userEvent.setup();
       renderPage();
-      await waitFor(() => screen.getByText("Edit"));
-      await user.click(screen.getByText("Edit"));
+      await clickDatesEdit(user);
       expect(screen.getByText("Start date")).toBeInTheDocument();
       expect(screen.getByText("End date")).toBeInTheDocument();
     });
@@ -282,8 +289,7 @@ describe("ProjectDetailPage", () => {
     it("cancels date editing and restores original values", async () => {
       const user = userEvent.setup();
       renderPage();
-      await waitFor(() => screen.getByText("Edit"));
-      await user.click(screen.getByText("Edit"));
+      await clickDatesEdit(user);
       await user.click(screen.getByText("Cancel"));
       expect(screen.queryByText("Start date")).not.toBeInTheDocument();
     });
@@ -292,8 +298,7 @@ describe("ProjectDetailPage", () => {
       vi.mocked(patchProjectDates).mockResolvedValue({ ...baseDates, source: "MANUAL" });
       const user = userEvent.setup();
       renderPage();
-      await waitFor(() => screen.getByText("Edit"));
-      await user.click(screen.getByText("Edit"));
+      await clickDatesEdit(user);
       await user.click(screen.getByText("Save"));
       await waitFor(() => {
         expect(patchProjectDates).toHaveBeenCalledWith(42, "2024-01-01", "2024-06-01");
@@ -304,8 +309,7 @@ describe("ProjectDetailPage", () => {
       vi.mocked(getProjectDates).mockResolvedValue({ ...baseDates, source: "MANUAL" });
       const user = userEvent.setup();
       renderPage();
-      await waitFor(() => screen.getByText("Edit"));
-      await user.click(screen.getByText("Edit"));
+      await clickDatesEdit(user);
       expect(screen.getByText("Reset to auto")).toBeInTheDocument();
     });
 
@@ -314,8 +318,7 @@ describe("ProjectDetailPage", () => {
       vi.mocked(resetProjectDates).mockResolvedValue({ ...baseDates, source: "AUTO" });
       const user = userEvent.setup();
       renderPage();
-      await waitFor(() => screen.getByText("Edit"));
-      await user.click(screen.getByText("Edit"));
+      await clickDatesEdit(user);
       await user.click(screen.getByText("Reset to auto"));
       await waitFor(() => {
         expect(resetProjectDates).toHaveBeenCalledWith(42);
@@ -328,6 +331,77 @@ describe("ProjectDetailPage", () => {
       await waitFor(() => {
         expect(screen.getByText("manual")).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("summary editing", () => {
+    async function clickSummaryEdit(user: ReturnType<typeof userEvent.setup>) {
+      await waitFor(() => expect(screen.getByRole("button", { name: "Edit summary" })).toBeInTheDocument());
+      await user.click(screen.getByRole("button", { name: "Edit summary" }));
+    }
+
+    it("shows summary edit form after clicking Edit", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await clickSummaryEdit(user);
+      expect(screen.getByPlaceholderText("Enter project summary…")).toBeInTheDocument();
+    });
+
+    it("pre-fills the textarea with the current summary", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await clickSummaryEdit(user);
+      const textarea = screen.getByPlaceholderText("Enter project summary…") as HTMLTextAreaElement;
+      expect(textarea.value).toBe("A test project summary.");
+    });
+
+    it("cancels summary editing and returns to view mode", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await clickSummaryEdit(user);
+      await user.click(screen.getByText("Cancel"));
+      expect(screen.queryByPlaceholderText("Enter project summary…")).not.toBeInTheDocument();
+    });
+
+    it("calls patchProjectSummary and updates the displayed summary on save", async () => {
+      vi.mocked(patchProjectSummary).mockResolvedValue({
+        ...baseProject,
+        summary_text: "Updated summary",
+      });
+      const user = userEvent.setup();
+      renderPage();
+      await clickSummaryEdit(user);
+      const textarea = screen.getByPlaceholderText("Enter project summary…");
+      await user.clear(textarea);
+      await user.type(textarea, "Updated summary");
+      await user.click(screen.getByText("Save"));
+      await waitFor(() => {
+        expect(patchProjectSummary).toHaveBeenCalledWith(42, { summary_text: "Updated summary", contribution_summary: null });
+        expect(screen.getByText("Updated summary")).toBeInTheDocument();
+      });
+    });
+
+    it("shows error message when patchProjectSummary fails", async () => {
+      vi.mocked(patchProjectSummary).mockRejectedValue(new Error("Save failed"));
+      const user = userEvent.setup();
+      renderPage();
+      await clickSummaryEdit(user);
+      await user.click(screen.getByText("Save"));
+      await waitFor(() => {
+        expect(screen.getByText("Save failed")).toBeInTheDocument();
+      });
+    });
+
+    it("shows contribution summary textarea for collaborative projects", async () => {
+      vi.mocked(getProject).mockResolvedValue({
+        ...baseProject,
+        project_mode: "collaborative",
+        contributions: { manual_contribution_summary: "My contribution." },
+      });
+      const user = userEvent.setup();
+      renderPage();
+      await clickSummaryEdit(user);
+      expect(screen.getByPlaceholderText("Enter contribution summary…")).toBeInTheDocument();
     });
   });
 

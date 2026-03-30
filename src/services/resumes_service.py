@@ -34,11 +34,47 @@ from src.services.skill_preferences_service import (
     normalize_skill_preferences,
     get_highlighted_skills_for_display,
 )
+from src.services.resume_fit_service import compute_resume_fit_status
 from src.db.skill_preferences import (
     has_skill_preferences,
     get_all_user_skills,
 )
+from src.db.user_profile import get_user_profile, get_contact_parts, get_visible_profile_text, get_resume_name
+from src.db.user_education import list_user_education_entries
+from src.db.user_experience import list_user_experience_entries
+from src.db.users import get_user_by_id
+from src.export.resume_helpers import filter_skills_by_highlighted
 import json
+
+
+def _clean_bullet_text(value: Any) -> str:
+    # Keep behavior consistent with other parts of the app: trim and strip leading bullet markers.
+    text = str(value).strip()
+    if text.startswith(("-", "•")):
+        text = text.lstrip("-•").strip()
+    return text
+
+
+def _validate_contribution_bullets(bullets: List[Any]) -> List[str]:
+    MIN_BULLETS = 2
+    MAX_BULLETS = 4
+    MAX_BULLET_CHARS = 240
+
+    cleaned: List[str] = [_clean_bullet_text(b) for b in bullets]
+    cleaned = [b for b in cleaned if b]
+
+    if len(cleaned) < MIN_BULLETS or len(cleaned) > MAX_BULLETS:
+        raise ValueError(
+            f"contribution_bullets must contain between {MIN_BULLETS} and {MAX_BULLETS} bullet points."
+        )
+
+    too_long = [i + 1 for i, b in enumerate(cleaned) if len(b) > MAX_BULLET_CHARS]
+    if too_long:
+        raise ValueError(
+            f"Contribution bullet(s) {', '.join(map(str, too_long))} exceed {MAX_BULLET_CHARS} characters."
+        )
+
+    return cleaned
 
 
 def list_user_resumes(conn, user_id: int) -> List[Dict[str, Any]]:
@@ -46,6 +82,62 @@ def list_user_resumes(conn, user_id: int) -> List[Dict[str, Any]]:
     Service method for listing resumes.
     """
     return list_resumes(conn, user_id)
+
+
+def _get_username(conn, user_id: int) -> str:
+    user = get_user_by_id(conn, user_id)
+    if not user:
+        return "user"
+    if hasattr(user, "keys"):
+        return str(user["username"])
+    return str(user[1])
+
+
+def _build_resume_preview(conn, user_id: int) -> Dict[str, Any]:
+    profile = get_user_profile(conn, user_id)
+    username = _get_username(conn, user_id)
+    education_entries = list_user_education_entries(conn, user_id)
+    experience_entries = list_user_experience_entries(conn, user_id)
+
+    return {
+        "display_name": get_resume_name(profile, username),
+        "contact": get_contact_parts(profile),
+        "profile_text": get_visible_profile_text(profile),
+        "education_entries": [
+            {
+                "entry_id": entry["entry_id"],
+                "entry_type": entry.get("entry_type"),
+                "title": entry.get("title"),
+                "organization": entry.get("organization"),
+                "date_text": entry.get("date_text"),
+                "description": entry.get("description"),
+            }
+            for entry in education_entries
+            if entry.get("entry_type") == "education"
+        ],
+        "experience_entries": [
+            {
+                "entry_id": entry["entry_id"],
+                "role": entry.get("role"),
+                "company": entry.get("company"),
+                "date_text": entry.get("date_text"),
+                "description": entry.get("description"),
+            }
+            for entry in experience_entries
+        ],
+        "certificate_entries": [
+            {
+                "entry_id": entry["entry_id"],
+                "entry_type": entry.get("entry_type"),
+                "title": entry.get("title"),
+                "organization": entry.get("organization"),
+                "date_text": entry.get("date_text"),
+                "description": entry.get("description"),
+            }
+            for entry in education_entries
+            if entry.get("entry_type") == "certificate"
+        ],
+    }
 
 def get_resume_by_id(conn, user_id: int, resume_id: int) -> Optional[Dict[str, Any]]:
     """
@@ -62,19 +154,21 @@ def get_resume_by_id(conn, user_id: int, resume_id: int) -> Optional[Dict[str, A
     except json.JSONDecodeError:
         snapshot = {}
 
-    # Apply skill preference filtering if user has any preferences
-    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
-       has_skill_preferences(conn, user_id, "global"):
-        highlighted = set(get_highlighted_skills_for_display(
+    # Apply skill preference filtering only when this resume has its own explicit
+    # preferences.  Global preferences are intentionally excluded here so that a
+    # newly-created resume always starts with all skills visible; global prefs
+    # only affect exports and the portfolio view.
+    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id):
+        highlighted = get_highlighted_skills_for_display(
             conn, user_id, context="resume", context_id=resume_id
-        ))
+        )
         agg = snapshot.get("aggregated_skills", {})
-        agg["technical_skills"] = [s for s in agg.get("technical_skills", []) if s in highlighted]
-        agg["writing_skills"] = [s for s in agg.get("writing_skills", []) if s in highlighted]
+        agg["technical_skills"] = filter_skills_by_highlighted(agg.get("technical_skills", []), highlighted)
+        agg["writing_skills"] = filter_skills_by_highlighted(agg.get("writing_skills", []), highlighted)
         snapshot["aggregated_skills"] = agg
         for project in snapshot.get("projects", []):
             if "skills" in project:
-                project["skills"] = [s for s in project["skills"] if s in highlighted]
+                project["skills"] = filter_skills_by_highlighted(project["skills"], highlighted)
 
     # Resolve overrides so the API returns the effective values
     for project in snapshot.get("projects", []):
@@ -83,12 +177,16 @@ def get_resume_by_id(conn, user_id: int, resume_id: int) -> Optional[Dict[str, A
         project["contribution_bullets"] = resolve_resume_contribution_bullets(project)
         project["key_role"] = resolve_resume_key_role(project)
 
+    one_page_status = compute_resume_fit_status(conn, user_id, record)
+
     # Combine DB fields with parsed JSON
     return {
         "id": record["id"],
         "name": record["name"],
         "created_at": record["created_at"],
         "rendered_text": record.get("rendered_text"),
+        "one_page_status": one_page_status,
+        "preview": _build_resume_preview(conn, user_id),
         **snapshot  # projects, aggregated_skills
     }
 
@@ -210,13 +308,20 @@ def edit_resume(
     if summary_text is not None:
         updates["summary_text"] = summary_text or None
     if contribution_bullets is not None:
+        # Validate user-provided bullets so exports don't need to truncate text.
+        # Note: we validate the final bullet list after applying append/replace logic.
         if contribution_edit_mode == "append" and contribution_bullets:
             # Append new bullets to existing ones
             current_bullets = resolve_resume_contribution_bullets(project_entry)
-            updates["contribution_bullets"] = current_bullets + contribution_bullets
+            combined = current_bullets + contribution_bullets
+            updates["contribution_bullets"] = _validate_contribution_bullets(combined)
         else:
             # Replace mode: use provided bullets directly
-            updates["contribution_bullets"] = contribution_bullets or None
+            updates["contribution_bullets"] = (
+                _validate_contribution_bullets(contribution_bullets)
+                if contribution_bullets
+                else None
+            )
     if key_role is not None:
         updates["key_role"] = key_role or None
 
@@ -306,34 +411,61 @@ def remove_project_from_resume(
 
 
 def add_project_to_resume(
-    conn, user_id: int, resume_id: int, project_summary_id: int
+    conn,
+    user_id: int,
+    resume_id: int,
+    project_summary_id: int,
 ) -> Optional[Dict[str, Any]]:
-    """Add a project to a resume snapshot. Returns updated resume or None."""
+    """
+    Add a single project to an existing resume snapshot.
+
+    Returns the updated resume dict, or None if the resume/project could not be
+    loaded or the project is already present in the resume.
+    """
     record = get_resume_snapshot(conn, user_id, resume_id)
     if not record:
         return None
+
     try:
         snapshot = json.loads(record["resume_json"])
     except json.JSONDecodeError:
         return None
-    projects = snapshot.get("projects") or []
-    existing_names = {p.get("project_name") for p in projects}
+
+    existing_projects = snapshot.get("projects") or []
+    if any(
+        p.get("project_summary_id") == project_summary_id
+        for p in existing_projects
+    ):
+        return None
+
     summaries = load_project_summaries_by_ids(conn, user_id, [project_summary_id])
     if not summaries:
         return None
-    snapshot_data = build_resume_snapshot_data(
-        conn, user_id, summaries, print_output=False, resume_id=resume_id
+
+    new_snapshot_data = build_resume_snapshot_data(
+        conn,
+        user_id,
+        summaries,
+        print_output=False,
+        resume_id=resume_id,
     )
-    if not snapshot_data:
+    if not new_snapshot_data:
         return None
-    new_project = snapshot_data[0]["projects"][0]
-    if new_project.get("project_name") in existing_names:
+
+    new_snapshot, _rendered = new_snapshot_data
+    new_projects = new_snapshot.get("projects") or []
+    if not new_projects:
         return None
-    projects.append(new_project)
-    snapshot["projects"] = projects
-    snapshot["aggregated_skills"] = recompute_aggregated_skills(projects)
+
+    new_project = new_projects[0]
+    if any(p.get("project_name") == new_project.get("project_name") for p in existing_projects):
+        return None
+
+    snapshot["projects"] = [*existing_projects, new_project]
+    snapshot["aggregated_skills"] = recompute_aggregated_skills(snapshot["projects"])
     snapshot = enrich_snapshot_with_dates(conn, user_id, snapshot)
     rendered = render_snapshot(conn, user_id, snapshot, print_output=False)
     updated_json = json.dumps(snapshot, default=str)
     update_resume_snapshot(conn, user_id, resume_id, updated_json, rendered)
+
     return get_resume_by_id(conn, user_id, resume_id)
