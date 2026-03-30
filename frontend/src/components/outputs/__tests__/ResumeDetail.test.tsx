@@ -10,6 +10,8 @@ vi.mock("../../../api/outputs", () => ({
   addProjectToResume: vi.fn(),
   downloadResumeDocx: vi.fn(),
   downloadResumePdf: vi.fn(),
+  getResumeSkills: vi.fn(),
+  updateSkillVisibility: vi.fn(),
 }));
 
 vi.mock("../ExportDropdown", () => ({
@@ -35,6 +37,7 @@ import {
   getResume,
   editResume,
   removeProjectFromResume,
+  getResumeSkills,
 } from "../../../api/outputs";
 
 const baseResume = {
@@ -74,6 +77,11 @@ function setupMocks(overrides: Partial<typeof baseResume> = {}) {
   vi.mocked(getResume).mockResolvedValue({
     success: true,
     data: resume,
+    error: null,
+  } as any);
+  vi.mocked(getResumeSkills).mockResolvedValue({
+    success: true,
+    data: { skills: [] },
     error: null,
   } as any);
   return resume;
@@ -261,7 +269,7 @@ describe("ResumeDetail", () => {
       // Find the pencil button on the project card (not inside h2)
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
-        (b) => b.querySelector("svg") && !b.closest("h2") && b.closest("[data-slot='card-action']")
+        (b) => (b as HTMLButtonElement).title === "Edit project"
       );
       if (projectPencil) {
         await user.click(projectPencil);
@@ -285,7 +293,7 @@ describe("ResumeDetail", () => {
 
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
-        (b) => b.querySelector("svg") && !b.closest("h2") && b.closest("[data-slot='card-action']")
+        (b) => (b as HTMLButtonElement).title === "Edit project"
       );
       if (projectPencil) {
         await user.click(projectPencil);
@@ -314,7 +322,7 @@ describe("ResumeDetail", () => {
       // Click project pencil
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
-        (b) => b.querySelector("svg") && !b.closest("h2") && b.closest("[data-slot='card-action']")
+        (b) => (b as HTMLButtonElement).title === "Edit project"
       );
       if (projectPencil) {
         await user.click(projectPencil);
@@ -360,7 +368,7 @@ describe("ResumeDetail", () => {
 
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
-        (b) => b.querySelector("svg") && !b.closest("h2") && b.closest("[data-slot='card-action']")
+        (b) => (b as HTMLButtonElement).title === "Edit project"
       );
       if (projectPencil) {
         await user.click(projectPencil);
@@ -401,7 +409,7 @@ describe("ResumeDetail", () => {
 
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
-        (b) => b.querySelector("svg") && !b.closest("h2") && b.closest("[data-slot='card-action']")
+        (b) => (b as HTMLButtonElement).title === "Edit project"
       );
       if (projectPencil) {
         await user.click(projectPencil);
@@ -598,7 +606,7 @@ describe("ResumeDetail", () => {
       // Open project edit
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
-        (b) => b.querySelector("svg") && !b.closest("h2") && b.closest("[data-slot='card-action']")
+        (b) => (b as HTMLButtonElement).title === "Edit project"
       );
       if (projectPencil) {
         await user.click(projectPencil);
