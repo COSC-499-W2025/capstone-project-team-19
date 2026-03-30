@@ -319,7 +319,7 @@ I worked on PR [#671](https://github.com/COSC-499-W2025/capstone-project-team-19
 I also reviewed various PRs, three of them are:
 - PR [#616](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/616) on unifying the page-level layout with the new UI. I suggested making better use of the full width and height of the layout to prevent text from overflowing and improve overall consistency.
 - PR [#666](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/666) on profile page fixes. I recommended adding a confirmation popup before users sign out to prevent accidental actions. I also suggested implementing React Router route blocking so the unsaved changes warning works properly when users navigate using the browser’s back, forward, or exit actions.
-- PR [#672](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/666) on moving the edit summary feature from the resume page to the projects page. I suggested adding proper documentation for the new endpoint. I also recommended including a warning popup for unsaved changes and flagged another bug.
+- PR [#672](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/672) on moving the edit summary feature from the resume page to the projects page. I suggested adding proper documentation for the new endpoint. I also recommended including a warning popup for unsaved changes and flagged another bug.
 
 Other than that, I also prepared and delivered the Milestone 3 presentation with the team. I also created a video demo showcasing the upload process to clearly illustrate the full user flow.
 
