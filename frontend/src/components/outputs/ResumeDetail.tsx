@@ -652,6 +652,7 @@ function OnePageStatusBanner({
 }: {
   status: ResumeDetailType["one_page_status"];
 }) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestions = [
     "Only provide your best 2-3 projects.",
     "Make sure your profile summary is not too long (about 2-5 sentences).",
@@ -675,12 +676,26 @@ function OnePageStatusBanner({
         <p>
           {status.overflow_reason ?? "This resume exceeds 1 page, but export is still allowed."}
         </p>
-        <p className="mt-2 font-medium">Here are some suggestions on how to shorten it:</p>
-        <ul className="mt-1 list-disc pl-5 space-y-1">
-          {suggestions.map((suggestion) => (
-            <li key={suggestion}>{suggestion}</li>
-          ))}
-        </ul>
+        <button
+          type="button"
+          className="mt-2 inline-flex items-center gap-2 font-medium underline underline-offset-2"
+          onClick={() => setShowSuggestions((value) => !value)}
+          aria-expanded={showSuggestions}
+        >
+          <span>View suggestions on how to shorten the resume</span>
+          {showSuggestions ? (
+            <ChevronUp className="size-4" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="size-4" aria-hidden="true" />
+          )}
+        </button>
+        {showSuggestions && (
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {suggestions.map((suggestion) => (
+              <li key={suggestion}>{suggestion}</li>
+            ))}
+          </ul>
+        )}
       </div>
     );
   }
@@ -690,12 +705,26 @@ function OnePageStatusBanner({
       <p>
         {status.overflow_reason ?? "This resume exceeds 1 page and must be shortened before export."}
       </p>
-      <p className="mt-2 font-medium">Here are some suggestions on how to shorten it:</p>
-      <ul className="mt-1 list-disc pl-5 space-y-1">
-        {suggestions.map((suggestion) => (
-          <li key={suggestion}>{suggestion}</li>
-        ))}
-      </ul>
+      <button
+        type="button"
+        className="mt-2 inline-flex items-center gap-2 font-medium underline underline-offset-2"
+        onClick={() => setShowSuggestions((value) => !value)}
+        aria-expanded={showSuggestions}
+      >
+        <span>View suggestions on how to shorten the resume</span>
+        {showSuggestions ? (
+          <ChevronUp className="size-4" aria-hidden="true" />
+        ) : (
+          <ChevronDown className="size-4" aria-hidden="true" />
+        )}
+      </button>
+      {showSuggestions && (
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          {suggestions.map((suggestion) => (
+            <li key={suggestion}>{suggestion}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

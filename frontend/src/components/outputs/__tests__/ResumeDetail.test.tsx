@@ -232,6 +232,7 @@ describe("ResumeDetail", () => {
     });
 
     it("blocks export when backend says the resume exceeds one page", async () => {
+      const user = userEvent.setup();
       setupMocks({
         one_page_status: {
           fits_one_page: false,
@@ -252,15 +253,18 @@ describe("ResumeDetail", () => {
         ).toBeInTheDocument();
       });
       expect(
-        screen.getByText("Here are some suggestions on how to shorten it:")
+        screen.getByRole("button", { name: /view suggestions on how to shorten the resume/i })
       ).toBeInTheDocument();
-      expect(
-        screen.getByText("Only provide your best 2-3 projects.")
-      ).toBeInTheDocument();
+      expect(screen.queryByText("Only provide your best 2-3 projects.")).not.toBeInTheDocument();
+      await user.click(
+        screen.getByRole("button", { name: /view suggestions on how to shorten the resume/i })
+      );
+      expect(screen.getByText("Only provide your best 2-3 projects.")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
     });
 
     it("shows a warning and keeps export enabled after manual project edits", async () => {
+      const user = userEvent.setup();
       setupMocks({
         one_page_status: {
           fits_one_page: false,
@@ -281,9 +285,11 @@ describe("ResumeDetail", () => {
           )
         ).toBeInTheDocument();
       });
-      expect(
-        screen.getByText("Shorten the points in each project.")
-      ).toBeInTheDocument();
+      expect(screen.queryByText("Shorten the points in each project.")).not.toBeInTheDocument();
+      await user.click(
+        screen.getByRole("button", { name: /view suggestions on how to shorten the resume/i })
+      );
+      expect(screen.getByText("Shorten the points in each project.")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
     });
   });
