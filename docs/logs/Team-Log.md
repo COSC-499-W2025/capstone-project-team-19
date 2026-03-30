@@ -983,9 +983,9 @@ This was the last week of coding and deliverables. In the following weeks, The t
 
 | GitHub Username | Screenshots                                                        |
 | --------------- | ------------------------------------------------------------------ |
-| `AdaraPutri`    | ![Completed tasks for Adara]()       |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Week11-12.png)       |
 | `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Week11-12.png)     |
-| `johaneshp`     | ![Completed tasks for Johanes]()   |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Week11-12.png)   |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Week11-12.png)       |
 | `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Week11-12.png)       |
 | `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Week11-12.png)       |
