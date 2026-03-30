@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Globe, KeyRound, LogOut, Pencil, ShieldCheck, Trash2 } from "lucide-react";
 import MinimalConfirmDialog from "../components/shared/MinimalConfirmDialog";
+import { Link, useBlocker } from "react-router-dom";
 import {
   getProfile,
   updateProfile,
@@ -320,7 +321,6 @@ export default function ProfilePage() {
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
-  const [pendingLeaveHref, setPendingLeaveHref] = useState<string | null>(null);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const bypassBeforeUnloadRef = useRef(false);
   const hasUnsavedChangesRef = useRef(false);
@@ -494,46 +494,18 @@ export default function ProfilePage() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
 
+  const blocker = useBlocker(hasUnsavedChanges);
   useEffect(() => {
-    function onDocumentClick(e: MouseEvent) {
-      if (!hasUnsavedChangesRef.current) return;
-      const target = e.target as HTMLElement | null;
-      const link = target?.closest("a[href]") as HTMLAnchorElement | null;
-      if (!link) return;
-      if (e.defaultPrevented) return;
-      if (e.button !== 0) return;
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      if (link.target && link.target !== "_self") return;
-      if (link.hasAttribute("download")) return;
-
-      let destination: URL;
-      try {
-        destination = new URL(link.href, window.location.href);
-      } catch {
-        return;
-      }
-
-      if (destination.origin !== window.location.origin) return;
-
-      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-      const next = `${destination.pathname}${destination.search}${destination.hash}`;
-      if (current === next) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-      setPendingLeaveHref(next);
-      setShowLeaveDialog(true);
-    }
-
-    document.addEventListener("click", onDocumentClick, true);
-    return () => document.removeEventListener("click", onDocumentClick, true);
-  }, []);
+    setShowLeaveDialog(blocker.state === "blocked");
+  }, [blocker.state]);
 
   function handleConfirmLeave() {
-    if (!pendingLeaveHref) return;
-
+    if (blocker.state !== "blocked") return;
+    // Prevent the browser-native beforeunload prompt when this blocked
+    // navigation is intentionally confirmed via our custom modal.
     bypassBeforeUnloadRef.current = true;
-    window.location.assign(pendingLeaveHref);
+    setShowLeaveDialog(false);
+    blocker.proceed();
   }
 
   function startEditProfile() {
@@ -688,6 +660,7 @@ export default function ProfilePage() {
     } catch {
       // ignore server-side logout errors and continue local sign-out
     } finally {
+      bypassBeforeUnloadRef.current = true;
       tokenStore.clear();
       window.location.replace("/login");
     }
@@ -697,6 +670,7 @@ export default function ProfilePage() {
     setDeleting(true);
     try {
       await deleteAccount();
+      bypassBeforeUnloadRef.current = true;
       tokenStore.clear();
       window.location.replace("/login");
     } catch {
@@ -714,7 +688,7 @@ export default function ProfilePage() {
         open={showLeaveDialog}
         onOpenChange={(open) => {
           setShowLeaveDialog(open);
-          if (!open) setPendingLeaveHref(null);
+          if (!open && blocker.state === "blocked") blocker.reset();
         }}
         message="You have unsaved changes on this page. Leave without saving?"
         confirmLabel="Leave page"
@@ -985,9 +959,9 @@ export default function ProfilePage() {
 
                   <p className="text-xs text-slate-500">
                     To control which projects appear publicly, use the{" "}
-                    <a href="/projects" className="text-indigo-600 hover:underline">
+                    <Link to="/projects" className="text-indigo-600 hover:underline">
                       Projects
-                    </a>{" "}
+                    </Link>{" "}
                     page — each card has a Public / Private toggle.
                   </p>
                 </Fragment>

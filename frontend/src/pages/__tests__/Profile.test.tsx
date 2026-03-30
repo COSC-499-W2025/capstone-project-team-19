@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import ProfilePage from "../Profile";
 
 vi.mock("../../auth/user", () => ({
@@ -127,18 +127,26 @@ vi.mock("../../auth/token", () => ({
 }));
 
 
-function renderProfile() {
-  return render(
-    <MemoryRouter>
-      <ProfilePage />
-    </MemoryRouter>
+function renderProfile(initialEntries: string[] = ["/profile"]) {
+  const router = createMemoryRouter(
+    [
+      { path: "/", element: <div data-testid="home-page">home</div> },
+      { path: "/projects", element: <div data-testid="projects-page">projects</div> },
+      { path: "/profile", element: <ProfilePage /> },
+    ],
+    { initialEntries }
   );
+
+  return {
+    router,
+    ...render(<RouterProvider router={router} />),
+  };
 }
 
-function setup() {
+function setup(initialEntries?: string[]) {
   return {
     user: userEvent.setup(),
-    ...renderProfile(),
+    ...renderProfile(initialEntries),
   };
 }
 
@@ -286,13 +294,6 @@ describe("ProfilePage", () => {
   });
 
   it("navigates away when unsaved-changes dialog is confirmed", async () => {
-    const assignFn = vi.fn();
-    const originalLocation = window.location;
-    Object.defineProperty(window, "location", {
-      value: { ...originalLocation, assign: assignFn },
-      writable: true,
-    });
-
     const { user } = setup();
 
     const profileTag = await screen.findByText("@testuser");
@@ -306,12 +307,28 @@ describe("ProfilePage", () => {
     await user.click(screen.getByRole("link", { name: /^Projects$/i }));
     await user.click(await screen.findByRole("button", { name: /Leave page/i }));
 
-    expect(assignFn).toHaveBeenCalledWith("/projects");
+    expect(await screen.findByTestId("projects-page")).toBeInTheDocument();
+  });
 
-    Object.defineProperty(window, "location", {
-      value: originalLocation,
-      writable: true,
+  it("shows unsaved-changes dialog on browser back navigation", async () => {
+    const { user, router } = setup(["/", "/profile"]);
+
+    const profileTag = await screen.findByText("@testuser");
+    const profileCard = profileTag.closest('[data-slot="card"]') as HTMLElement;
+    await user.click(within(profileCard).getByRole("button", { name: /Edit/i }));
+
+    const nameInput = screen.getByDisplayValue("Test User");
+    await user.clear(nameInput);
+    await user.type(nameInput, "Test User Updated");
+
+    await act(async () => {
+      await router.navigate(-1);
     });
+
+    expect(
+      await screen.findByText(/You have unsaved changes on this page\. Leave without saving\?/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("home-page")).not.toBeInTheDocument();
   });
 
   it("cancels delete account confirmation", async () => {
