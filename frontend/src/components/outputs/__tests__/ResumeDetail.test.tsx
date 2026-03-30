@@ -123,11 +123,13 @@ describe("ResumeDetail", () => {
   describe("view mode (default)", () => {
     it("renders resume name and project content", async () => {
       setupMocks();
+      const user = userEvent.setup();
       render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
 
       await waitFor(() => {
         expect(screen.getByText("My Resume")).toBeInTheDocument();
       });
+      await user.click(screen.getByRole("button", { name: /Preview your resume/i }));
       expect(
         screen.getByTitle("Resume PDF preview")
       ).toBeInTheDocument();
@@ -197,6 +199,36 @@ describe("ResumeDetail", () => {
       await waitFor(() => {
         expect(screen.getByText("This resume fits on 1 page.")).toBeInTheDocument();
       });
+    });
+
+    it("keeps preview hidden until user expands it", async () => {
+      setupMocks();
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Preview your resume/i })
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByTitle("Resume PDF preview")).not.toBeInTheDocument();
+    });
+
+    it("hides the preview again when collapsed", async () => {
+      setupMocks();
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Preview your resume/i })
+        ).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: /Preview your resume/i }));
+      expect(screen.getByTitle("Resume PDF preview")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: /Preview your resume/i }));
+      expect(screen.queryByTitle("Resume PDF preview")).not.toBeInTheDocument();
     });
 
     it("blocks export when backend says the resume exceeds one page", async () => {

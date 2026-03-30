@@ -32,6 +32,8 @@ import {
   X,
   Plus,
   Trash2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 type Props = {
@@ -78,6 +80,7 @@ export default function ResumeDetail({
   const [showAddProject, setShowAddProject] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   function loadResume() {
     setLoading(true);
@@ -97,7 +100,7 @@ export default function ResumeDetail({
     let cancelled = false;
     let objectUrl: string | null = null;
 
-    if (editing) {
+    if (editing || !showPreview) {
       setPdfPreviewUrl(null);
       setPreviewLoading(false);
       return;
@@ -121,7 +124,7 @@ export default function ResumeDetail({
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [resumeId, editing, successMsg]);
+  }, [resumeId, editing, showPreview, successMsg]);
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -546,11 +549,30 @@ export default function ResumeDetail({
           })}
         </div>
       ) : (
-        <ResumePreview
-          resume={resume}
-          pdfPreviewUrl={pdfPreviewUrl}
-          previewLoading={previewLoading}
-        />
+        <>
+          <div className="resumePreviewToggleRow">
+            <button
+              type="button"
+              className="resumePreviewToggle"
+              onClick={() => setShowPreview((value) => !value)}
+              aria-expanded={showPreview}
+            >
+              <span>Preview your resume</span>
+              {showPreview ? (
+                <ChevronUp className="size-4" aria-hidden="true" />
+              ) : (
+                <ChevronDown className="size-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+          {showPreview && (
+            <ResumePreview
+              resume={resume}
+              pdfPreviewUrl={pdfPreviewUrl}
+              previewLoading={previewLoading}
+            />
+          )}
+        </>
       )}
 
       {showAddProject && resume && (
