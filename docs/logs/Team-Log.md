@@ -11,6 +11,7 @@
 - [Week 6-8 (Feb 9 - Mar 1)](#term-2-week-6-8-monday-february-9---sunday-march-1)
 - [Week 9 (Mar 2-8)](#term-2-week-9-monday-march-2---sunday-march-8)
 - [Week 10 (Mar 9-15)](#term-2-week-10-monday-march-9---sunday-march-15)
+- [Week 11 + 12 (Mar 16 - 29)](#term-2-week-11--12-monday-march-16---sunday-march-29)
 
 ### Term 1
 
@@ -892,3 +893,100 @@ Next week, the team plans to continue stabilizing these newly connected flows so
 | GitHub Username | Screenshots                                                        |
 | --------------- | ------------------------------------------------------------------ |
 | `ivonanicetin`  | ![In progress tasks for Ivona](screenshots/InProgress-Ivona-week10.png)       |
+
+
+## (Term 2 Week 11 + 12) Monday March 16 - Sunday March 29
+
+**Connection to previous week:**  
+
+Building on Week 10, where the team focused on connecting major flows (Upload --> Analyze --> Outputs) and beginning the UI redesign, Weeks 11 and 12 were focused on completing and refining the system. During this time, the team finalized core features across the application, aligned all pages with the updated UI baseline, and improved overall usability and stability through additional fixes and testing. This period represents the transition from feature implementation to a more complete and polished final product. We additionally took in all the feedback from the peer evaluations and implemented the changes necessary to make the user experience less confusing.
+
+### Coding tasks
+
+For the code, the team focused on finishing the application by completing remaining features, aligning the UI, and improving overall usability across the system. Since many PRs were completed in Weeks 11 and 12, we have written about them in a grouped format, organizing them based on which part of the system they relate to.
+
+**Home Page, Shared Frontend UI, and Authentication**
+
+[PR #613](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/613) refactored authentication flows and route protection so users with invalid or missing tokens are redirected properly, and also redesigned the Home page to match the updated UI system. [PR #616](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/616) introduced a shared page-level layout across authenticated pages, adding a consistent container,  navigation, and structure to support the UI redesign.
+
+**Public and Private Projects Page**
+
+[PR #617](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/617) implemented *public* insights and resume views so selected projects can be displayed externally with skill timelines, rankings, heatmaps, and resume data. [PR #618](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/618) refactored the Projects and Project Details pages, including public versions, and updated the FeatureTile component to support thumbnails for consistent project cards. [PR #635](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/635) improved how project dates are displayed by introducing clearer formatting and handling missing or partial date data, while also fixing public project date fallbacks. [PR #636](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/636) redesigned project visibility controls by moving the project visibility toggle from project cards to the project detail page and simplifying the projects list to show private/public as read-only indicators. [PR #656](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/656) added a toggle in the main navigation/header bar that allows users to switch between their private and public views and updated public pages to follow the new UI baseline. [PR #674](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/674) introduced a Top Projects section on the public projects page to highlight ranked projects and additionally implemented links under each project that takes the user directly to project-specific activity insights.
+
+**Profile Page**
+
+[PR #619](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/619) implemented the frontend Profile page UI, allowing users to edit personal details, certifications, education, experience, and summaries. [PR #662](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/662) added account deletion functionality with backend cleanup to remove all associated user data. [PR #666](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/666) applied peer-testing fixes to the Profile page, including improved placeholders, unsaved change warnings, and logout functionality. [PR #671](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/671) implemented end-to-end change-password functionality, including backend validation, frontend UI, and supporting tests and documentation.
+
+**Resume Page & Export**
+
+[PR #637](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/637) added the ability to remove and add projects to a resume through updated UI and backend endpoints. [PR #660](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/660) renamed the Outputs page to Resume and simplified navigation by removing the unused landing and portfolio view. [PR #661](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/661) refactored the Resume page and related components to align with the updated Tailwind and shared UI styling system. [PR #675](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/675) improved resume export by enforcing a one-page constraint, adding backend validation, and adding preview behavior to better match final output. [PR #678](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/678) added controls to allow users to choose which skills appear in their resume and updated export behavior accordingly. [PR #679](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/679) improved how key roles are assigned and selected, including fixing missing values and replacing free text input with a controlled dropdown. This was discussed in the last weekly, Wednesday meeting with the TA (Week 11). [PR #681](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/681) implemented organizing skills by expertise on the one-page resume, using stored skill levels to group skills appropriately, and updated tests to reflect the new behavior. Lastly, [PR #672](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/672) moved summary editing from the resume section to the project details page and added a new backend endpoint to support this change.
+
+**Upload Page**
+
+[PR #633](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/633) fixed several issues in the upload workflow, including duplicate analysis detection, deduplication problems, and missing summaries, while also improving the UI with clearer instructions and better navigation behavior.
+
+**Insights Page**
+
+[PR #621](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/621) updated skill level indicators from text labels to a star-based system to improve clarity and reduce visual clutter.
+
+### Testing or debugging tasks
+
+Following the coding work, the team focused on stabilizing key workflows and improving reliability across the system through targeted debugging and additional test coverage.
+
+**Upload Flow**
+
+[PR #634](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/634) improved and stabilized the GitHub integration flow in the upload setup by fixing issues with OAuth handling, token validation, and repository loading that previously caused inconsistent behavior. This PR also refactored the flow into clearer step-based interactions with better UI feedback. Following that, [PR #667](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/667) improved unfinished upload handling by adding recovery and cleanup mechanisms, including new API endpoints and frontend flows to prevent stale file path issues and allow users to safely exit,resume, or restart uploads. [PR #669](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/669) added comprehensive frontend test coverage for the upload wizard flow, covering consent validation, recovery handling, setup navigation, and analysis execution, along with shared test utilities to support consistent testing across related pages.
+
+**Bugs**
+
+[PR #644](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/644) fixed a bug in the Project Heatmap where low-activity cells were incorrectly displayed with maximum intensity due to improper scaling logic, the PR updated the normalization to better reflect actual activity levels.
+
+[PR #689](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/689) fixed issues where manual project and contribution summaries entered during setup were not being persisted or displayed correctly. This addresses / fixes backend validation errors, state mismatches, and frontend rendering conditions so summaries now appear properly on the Project Detail page.
+
+**Refactoring**
+
+[PR #684](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/684) refactored the public insights and resume pages to align with their private counterparts and incorporated updates from recent fixes, including the Project Heatmap. This PR also implemented tests for the public insights and outputs page, ensuring our system has better coverage. The tests mock the public API and assert loading and error states, page structure, switching between insight views (including heatmap tabs), and the public resume view (skills summary, projects, date formatting, export controls, and multi-project ordering).
+
+### Documentation Tasks
+
+[PR #664](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/664) - Milestone 3 documentation was organized and expanded, centralizing key artifacts such as system architecture, DFD diagrams, installation guides, testing reports, and known bugs into structured docs linked from the main README. Updates also enabled easier generation of test coverage reports, improving clarity and accessibility for reviewers and future developers.
+
+### Reviewing or collaboration tasks
+
+The team collaboratively prepared for the Milestone 3 presentation by organizing slide content and practicing the presentation together. For the Milestone 3 deliverables, work was distributed evenly. The majority of the team worked on the demo video, splitting up the pages they will cover, and the rest of the team put together the documentation requirements, which was then merged into `main`.
+
+Additionally, the team resolved merge conflicts and managed PR dependencies to ensure smooth integration as each PR was merged into main.
+
+### Issues or blockers
+
+No major blockers were encountered during this period, and the team made steady progress across features and deliverables. Minor challenges included managing merge conflicts and coordinating work across dependent branches, which were resolved through communication and careful PR sequencing/reviewing.
+
+### Plan / goals for next week
+
+This was the last week of coding and deliverables. In the following weeks, The team will be contributing to the final class requirements separately, being the project voting and the last quiz. Other than that, we will each be studying hard for our finals and celebrating the win of completing this project with a strong finish. We are all proud of the project we have built, and are thankful to have had a team that overall worked very well together.
+
+
+### Burnup chart
+
+### Github usernames
+
+| GitHub Username | Student Name          |
+| --------------- | --------------------- |
+| `AdaraPutri`    | Adara Putri           |
+| `ammaarkhan`    | Ammaar Khan           |
+| `ivonanicetin`  | Ivona Nicetin         |
+| `johaneshp`     | Johanes Hamonangan    |
+| `salmavkh`      | Salma Vikha Ainindita |
+| `taoTimTim`     | Timmi Draper          |
+
+### Table view of completed tasks by username
+
+| GitHub Username | Screenshots                                                        |
+| --------------- | ------------------------------------------------------------------ |
+| `AdaraPutri`    | ![Completed tasks for Adara](screenshots/Completed-Adara-Week11-12.png)       |
+| `ammaarkhan`    | ![Completed tasks for Ammaar](screenshots/Completed-Ammaar-Week11-12.png)     |
+| `johaneshp`     | ![Completed tasks for Johanes](screenshots/Completed-Johanes-Week11-12.png)   | ![More tasks for Johanes](screenshots/Completed-Johanes-Week11-12-2.png) |
+| `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Week11-12.png)       |
+| `taoTimTim`     | ![Completed tasks for Timmi](screenshots/Completed-Timmi-Week11-12.png)       |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Week11-12.png)       |
+
