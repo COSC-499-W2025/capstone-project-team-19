@@ -222,7 +222,13 @@ export default function PublicInsightsPage() {
         if (timelineError) return <div className="py-4 text-center text-red-600">{timelineError}</div>;
         if (!filteredTimeline) return <div className="py-4 text-center text-slate-600">No skill data available.</div>;
 
-        if (activeView === "skills-overview") return <SkillsOverview timeline={filteredTimeline} />;
+        if (activeView === "skills-overview") return (
+            <div className="flex flex-col w-full">
+                <main className="flex-1 min-w-0 px-6">
+                    <SkillsOverview timeline={filteredTimeline} />
+                </main>
+            </div>
+        );
         if (activeView === "skills-log") return <SkillsLog timeline={filteredTimeline} />;
         if (activeView === "skills-timeline") return (
             <>
@@ -252,8 +258,12 @@ export default function PublicInsightsPage() {
                         </div>
 
                         {/* Row 1: title */}
-                        <div className="flex items-baseline gap-3 border-b border-slate-200 px-6 pb-3 pt-10">
-                            <h3 className="m-0 text-lg font-semibold text-slate-900">{pageTitle}</h3>
+                        <div className="flex w-full min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b border-slate-200 px-6 pb-3 pt-10">
+                            <div className="min-w-0 flex-1">
+                                <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-2">
+                                    <h3 className="m-0 text-lg font-semibold text-slate-900">{pageTitle}</h3>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Row 2: sidebar nav */}

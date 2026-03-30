@@ -2,7 +2,7 @@ import { HEATMAP_COLORS } from "./heatmapUtils";
 
 export default function HeatmapLegend() {
     return (
-        <div className="flex items-center justify-center gap-2 mt-4 text-xs text-slate-500">
+        <div className="flex items-center justify-start gap-2 mt-4 text-xs text-slate-500">
             <span>Less</span>
             {HEATMAP_COLORS.map((c, i) => (
                 <span
