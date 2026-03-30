@@ -899,10 +899,11 @@ Next week, the team plans to continue stabilizing these newly connected flows so
 
 **Connection to previous week:**  
 
+Building on Week 10, where the team focused on connecting major flows (Upload --> Analyze --> Outputs) and beginning the UI redesign, Weeks 11 and 12 were focused on completing and refining the system. During this time, the team finalized core features across the application, aligned all pages with the updated UI baseline, and improved overall usability and stability through additional fixes and testing. This period represents the transition from feature implementation to a more complete and polished final product. We additionally took in all the feedback from the peer evaluations and implemented the changes necessary to make the user experience less confusing.
 
 ### Coding tasks
 
-During these two weeks, the team focused on finishing the application by completing remaining features, aligning the UI, and improving overall usability across the system. Since many PRs were completed in Weeks 11 and 12, we have written about them in a grouped format, organizing them based on which part of the system they relate to.
+For the code, the team focused on finishing the application by completing remaining features, aligning the UI, and improving overall usability across the system. Since many PRs were completed in Weeks 11 and 12, we have written about them in a grouped format, organizing them based on which part of the system they relate to.
 
 **Home Page, Shared Frontend UI, and Authentication**
 
