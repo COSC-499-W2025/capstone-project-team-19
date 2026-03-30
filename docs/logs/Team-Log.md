@@ -933,7 +933,6 @@ For the code, the team focused on finishing the application by completing remain
 
 Following the coding work, the team focused on stabilizing key workflows and improving reliability across the system through targeted debugging and additional test coverage.
 
-
 **Upload Flow**
 
 [PR #634](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/634) improved and stabilized the GitHub integration flow in the upload setup by fixing issues with OAuth handling, token validation, and repository loading that previously caused inconsistent behavior. This PR also refactored the flow into clearer step-based interactions with better UI feedback. Following that, [PR #667](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/667) improved unfinished upload handling by adding recovery and cleanup mechanisms, including new API endpoints and frontend flows to prevent stale file path issues and allow users to safely exit,resume, or restart uploads. [PR #669](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/669) added comprehensive frontend test coverage for the upload wizard flow, covering consent validation, recovery handling, setup navigation, and analysis execution, along with shared test utilities to support consistent testing across related pages.
@@ -941,6 +940,10 @@ Following the coding work, the team focused on stabilizing key workflows and imp
 **Project Heatmap Bug**
 
 [PR #644](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/644) fixed a bug in the Project Heatmap where low-activity cells were incorrectly displayed with maximum intensity due to improper scaling logic, the PR updated the normalization to better reflect actual activity levels.
+
+**Refactoring**
+
+[PR #684](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/684) refactored the public insights and resume pages to align with their private counterparts and incorporated updates from recent fixes, including the Project Heatmap. This PR also implemented tests for the public insights and outputs page, ensuring our system has better coverage. The tests mock the public API and assert loading and error states, page structure, switching between insight views (including heatmap tabs), and the public resume view (skills summary, projects, date formatting, export controls, and multi-project ordering).
 
 ### Documentation Tasks
 
