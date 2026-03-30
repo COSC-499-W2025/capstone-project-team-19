@@ -2,7 +2,7 @@ import json
 import pytest
 from src.db.resumes import insert_resume_snapshot
 from src.db.project_summaries import save_project_summary, get_project_summary_by_name
-from src.db.skill_preferences import get_user_skill_preferences
+from src.db.skill_preferences import get_user_skill_preferences, upsert_skill_preference
 from src.db.skills import insert_project_skill
 
 #TESTS
@@ -498,3 +498,165 @@ def test_edit_resume_global_scope(client, auth_headers, seed_conn):
     project_row = get_project_summary_by_name(seed_conn, 1, "TestProject")
     summary_dict = json.loads(project_row["summary_json"])
     assert summary_dict.get("manual_overrides", {}).get("summary_text") == "Globally updated summary"
+
+def _seed_project_with_skills(conn, user_id, project_name, skills):
+    """Helper: save a project summary and insert project_skills rows, return project_key."""
+    save_project_summary(conn, user_id, project_name, json.dumps({
+        "project_name": project_name,
+        "project_type": "code",
+        "project_mode": "individual",
+        "metrics": {},
+    }))
+    row = conn.execute(
+        "SELECT project_key FROM projects WHERE user_id = ? AND display_name = ?",
+        (user_id, project_name),
+    ).fetchone()
+    project_key = row[0]
+    for skill in skills:
+        insert_project_skill(conn, user_id, project_name, skill, "Intermediate", 0.7, json.dumps([]))
+    conn.commit()
+    return project_key
+
+
+def test_get_resume_skills_not_found(client, auth_headers):
+    res = client.get("/resume/9999/skills", headers=auth_headers)
+    assert res.status_code == 404
+
+
+def test_get_resume_skills_returns_only_resume_project_skills(client, auth_headers, seed_conn):
+    """Skills returned come from the live project_skills table, scoped to the resume's projects."""
+    _seed_project_with_skills(seed_conn, 1, "ProjectA", ["algorithms", "testing_and_ci"])
+    _seed_project_with_skills(seed_conn, 1, "ProjectB", ["api_and_backend"])
+
+    resume_json = json.dumps({
+        "projects": [{"project_name": "ProjectA"}],
+        "aggregated_skills": {},
+    })
+    resume_id = insert_resume_snapshot(seed_conn, 1, "My Resume", resume_json)
+    seed_conn.commit()
+
+    res = client.get(f"/resume/{resume_id}/skills", headers=auth_headers)
+    assert res.status_code == 200
+    skills = res.json()["data"]["skills"]
+    skill_names = {s["skill_name"] for s in skills}
+
+    assert "algorithms" in skill_names
+    assert "testing_and_ci" in skill_names
+    # ProjectB's skill must not appear — it's not in this resume
+    assert "api_and_backend" not in skill_names
+
+
+def test_get_resume_skills_all_highlighted_by_default(client, auth_headers, seed_conn):
+    """Without any saved preferences every skill defaults to is_highlighted=True."""
+    _seed_project_with_skills(seed_conn, 1, "ProjectA", ["algorithms", "testing_and_ci"])
+
+    resume_json = json.dumps({
+        "projects": [{"project_name": "ProjectA"}],
+        "aggregated_skills": {},
+    })
+    resume_id = insert_resume_snapshot(seed_conn, 1, "My Resume", resume_json)
+    seed_conn.commit()
+
+    res = client.get(f"/resume/{resume_id}/skills", headers=auth_headers)
+    assert res.status_code == 200
+    for skill in res.json()["data"]["skills"]:
+        assert skill["is_highlighted"] is True
+
+
+def test_get_resume_skills_reflects_saved_preferences(client, auth_headers, seed_conn):
+    """A hidden resume-scope preference is reflected in the is_highlighted field."""
+    project_key = _seed_project_with_skills(seed_conn, 1, "ProjectA", ["algorithms", "testing_and_ci"])
+
+    resume_json = json.dumps({
+        "projects": [{"project_name": "ProjectA"}],
+        "aggregated_skills": {},
+    })
+    resume_id = insert_resume_snapshot(seed_conn, 1, "My Resume", resume_json)
+
+    upsert_skill_preference(
+        seed_conn, user_id=1, skill_name="algorithms",
+        context="resume", context_id=resume_id, is_highlighted=False,
+    )
+    seed_conn.commit()
+
+    res = client.get(f"/resume/{resume_id}/skills", headers=auth_headers)
+    assert res.status_code == 200
+    skills = {s["skill_name"]: s for s in res.json()["data"]["skills"]}
+    assert skills["algorithms"]["is_highlighted"] is False
+    assert skills["testing_and_ci"]["is_highlighted"] is True
+
+
+def test_get_resume_skills_isolated_between_resumes(client, auth_headers, seed_conn):
+    """Preferences set on resume A must not bleed into resume B (the carryover bug)."""
+    _seed_project_with_skills(seed_conn, 1, "ProjectA", ["algorithms"])
+
+    resume_json = json.dumps({"projects": [{"project_name": "ProjectA"}], "aggregated_skills": {}})
+    resume_a = insert_resume_snapshot(seed_conn, 1, "Resume A", resume_json)
+    resume_b = insert_resume_snapshot(seed_conn, 1, "Resume B", resume_json)
+
+    upsert_skill_preference(
+        seed_conn, user_id=1, skill_name="algorithms",
+        context="resume", context_id=resume_a, is_highlighted=False,
+    )
+    seed_conn.commit()
+
+    res = client.get(f"/resume/{resume_b}/skills", headers=auth_headers)
+    assert res.status_code == 200
+    skills = {s["skill_name"]: s for s in res.json()["data"]["skills"]}
+    # Resume B has no preferences, so algorithms must appear highlighted
+    assert skills["algorithms"]["is_highlighted"] is True
+
+
+# =============================================================================
+# GET /resume/{id} — skill filtering behaviour (commit range 55eec8e..f0ad13f)
+# =============================================================================
+
+def test_get_resume_by_id_filters_skills_by_resume_preferences(client, auth_headers, seed_conn):
+    """Hidden skills are removed from aggregated_skills when resume-scope prefs exist."""
+    # Seed project_skills so get_highlighted_skills_for_display knows both skills exist
+    _seed_project_with_skills(seed_conn, 1, "ProjectA", ["algorithms", "testing_and_ci"])
+
+    resume_json = json.dumps({
+        "projects": [{"project_name": "ProjectA"}],
+        "aggregated_skills": {
+            "technical_skills": ["Algorithms", "Testing & CI"],
+            "writing_skills": [],
+        },
+    })
+    resume_id = insert_resume_snapshot(seed_conn, 1, "Test Resume", resume_json)
+
+    upsert_skill_preference(
+        seed_conn, user_id=1, skill_name="algorithms",
+        context="resume", context_id=resume_id, is_highlighted=False,
+    )
+    seed_conn.commit()
+
+    res = client.get(f"/resume/{resume_id}", headers=auth_headers)
+    assert res.status_code == 200
+    tech = res.json()["data"]["aggregated_skills"]["technical_skills"]
+    assert "Algorithms" not in tech
+    assert "Testing & CI" in tech
+
+
+def test_get_resume_by_id_global_prefs_not_applied(client, auth_headers, seed_conn):
+    """Global skill preferences must NOT filter the resume detail view."""
+    resume_json = json.dumps({
+        "projects": [],
+        "aggregated_skills": {
+            "technical_skills": ["Algorithms"],
+            "writing_skills": [],
+        },
+    })
+    resume_id = insert_resume_snapshot(seed_conn, 1, "Test Resume", resume_json)
+
+    # Set a global preference hiding algorithms — should have no effect on GET /resume/{id}
+    upsert_skill_preference(
+        seed_conn, user_id=1, skill_name="algorithms",
+        context="global", is_highlighted=False,
+    )
+    seed_conn.commit()
+
+    res = client.get(f"/resume/{resume_id}", headers=auth_headers)
+    assert res.status_code == 200
+    tech = res.json()["data"]["aggregated_skills"]["technical_skills"]
+    assert "Algorithms" in tech
