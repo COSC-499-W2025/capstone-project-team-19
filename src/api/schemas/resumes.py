@@ -103,3 +103,14 @@ class ResumeEditRequestDTO(BaseModel):
     key_role: Optional[str] = None
     skill_preferences: Optional[List[SkillPreferenceDTO]] = None
     skill_preferences_reset: Optional[bool] = False
+
+
+class ResumeSkillStatusDTO(BaseModel):
+    skill_name: str
+    display_name: str
+    is_highlighted: bool
+    display_order: Optional[int] = None
+
+
+class ResumeSkillListDTO(BaseModel):
+    skills: List[ResumeSkillStatusDTO]

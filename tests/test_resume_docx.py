@@ -585,3 +585,93 @@ def test_resume_export_uses_full_name_when_present(monkeypatch, tmp_path):
 
     txt = _doc_text(path)
     assert "JOHN TAN" in txt
+
+from src.export.resume_helpers import filter_skills_by_highlighted
+
+
+class TestFilterSkillsByHighlighted:
+    def test_none_returns_all(self):
+        skills = ["Algorithms", "Testing & CI"]
+        assert filter_skills_by_highlighted(skills, None) == skills
+
+    def test_empty_highlighted_returns_empty(self):
+        assert filter_skills_by_highlighted(["Algorithms"], []) == []
+
+    def test_keeps_highlighted_skills(self):
+        result = filter_skills_by_highlighted(
+            ["Algorithms", "Testing & CI"],
+            ["algorithms", "testing_and_ci"],
+        )
+        assert result == ["Algorithms", "Testing & CI"]
+
+    def test_removes_hidden_skills(self):
+        result = filter_skills_by_highlighted(
+            ["Algorithms", "Testing & CI"],
+            ["algorithms"],
+        )
+        assert result == ["Algorithms"]
+        assert "Testing & CI" not in result
+
+    def test_writing_skills_mapped_correctly(self):
+        result = filter_skills_by_highlighted(
+            ["Clear communication", "Data analysis"],
+            ["clarity", "data_analysis"],
+        )
+        assert "Clear communication" in result
+        assert "Data analysis" in result
+
+    def test_unknown_display_name_falls_back_to_raw_match(self):
+        # A skill whose display name is the same as its raw key
+        result = filter_skills_by_highlighted(["python"], ["python"])
+        assert result == ["python"]
+
+
+# =============================================================================
+# export_resume_record_to_docx with highlighted_skills
+# =============================================================================
+
+def _minimal_record(skills_override=None):
+    agg = skills_override or {
+        "languages": ["Python 80%", "SQL 20%"],
+        "frameworks": ["FastAPI"],
+        "technical_skills": ["Algorithms", "Testing & CI"],
+        "writing_skills": ["Clear communication"],
+    }
+    return {
+        "name": "Test Resume",
+        "resume_json": json.dumps({
+            "profile_text": "",
+            "aggregated_skills": agg,
+            "projects": [],
+        }),
+    }
+
+
+def test_export_docx_highlighted_skills_filters_output(tmp_path):
+    """Skills not in highlighted_skills are absent from the exported docx."""
+    record = _minimal_record()
+    path = exp.export_resume_record_to_docx(
+        username="tester",
+        record=record,
+        out_dir=str(tmp_path),
+        highlighted_skills=["algorithms"],   # only Algorithms kept
+    )
+    txt = _doc_text(path)
+    assert "Algorithms" in txt
+    assert "Testing & CI" not in txt
+    assert "Clear communication" not in txt
+
+
+def test_export_docx_no_highlighted_skills_shows_all(tmp_path):
+    """When highlighted_skills=None every skill is included."""
+    record = _minimal_record()
+    path = exp.export_resume_record_to_docx(
+        username="tester",
+        record=record,
+        out_dir=str(tmp_path),
+        highlighted_skills=None,
+    )
+    txt = _doc_text(path)
+    assert "Algorithms" in txt
+    assert "Testing & CI" in txt
+    assert "Clear communication" in txt

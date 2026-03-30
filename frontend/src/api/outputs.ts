@@ -127,6 +127,12 @@ export function getRankedProjects() {
 
 /* ── Resume editing ── */
 
+export interface SkillPreference {
+  skill_name: string;
+  is_highlighted: boolean;
+  display_order?: number;
+}
+
 export interface ResumeEditRequest {
   name?: string;
   project_summary_id?: number;
@@ -136,12 +142,29 @@ export interface ResumeEditRequest {
   contribution_bullets?: string[];
   contribution_edit_mode?: "append" | "replace";
   key_role?: string;
+  skill_preferences?: SkillPreference[];
+  skill_preferences_reset?: boolean;
 }
 
 export function editResume(resumeId: number, payload: ResumeEditRequest) {
   return api.postJson<ApiResponse<ResumeDetail>>(
     `/resume/${resumeId}/edit`,
     payload
+  );
+}
+
+/* ── Skill preferences ── */
+
+export interface SkillWithStatus {
+  skill_name: string;
+  display_name: string;
+  is_highlighted: boolean;
+  display_order: number | null;
+}
+
+export function getResumeSkills(resumeId: number) {
+  return api.get<ApiResponse<{ skills: SkillWithStatus[] }>>(
+    `/resume/${resumeId}/skills`
   );
 }
 

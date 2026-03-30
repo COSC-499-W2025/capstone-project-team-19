@@ -43,6 +43,7 @@ from src.db.user_profile import get_user_profile, get_contact_parts, get_visible
 from src.db.user_education import list_user_education_entries
 from src.db.user_experience import list_user_experience_entries
 from src.db.users import get_user_by_id
+from src.export.resume_helpers import filter_skills_by_highlighted
 import json
 
 
@@ -153,19 +154,21 @@ def get_resume_by_id(conn, user_id: int, resume_id: int) -> Optional[Dict[str, A
     except json.JSONDecodeError:
         snapshot = {}
 
-    # Apply skill preference filtering if user has any preferences
-    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
-       has_skill_preferences(conn, user_id, "global"):
-        highlighted = set(get_highlighted_skills_for_display(
+    # Apply skill preference filtering only when this resume has its own explicit
+    # preferences.  Global preferences are intentionally excluded here so that a
+    # newly-created resume always starts with all skills visible; global prefs
+    # only affect exports and the portfolio view.
+    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id):
+        highlighted = get_highlighted_skills_for_display(
             conn, user_id, context="resume", context_id=resume_id
-        ))
+        )
         agg = snapshot.get("aggregated_skills", {})
-        agg["technical_skills"] = [s for s in agg.get("technical_skills", []) if s in highlighted]
-        agg["writing_skills"] = [s for s in agg.get("writing_skills", []) if s in highlighted]
+        agg["technical_skills"] = filter_skills_by_highlighted(agg.get("technical_skills", []), highlighted)
+        agg["writing_skills"] = filter_skills_by_highlighted(agg.get("writing_skills", []), highlighted)
         snapshot["aggregated_skills"] = agg
         for project in snapshot.get("projects", []):
             if "skills" in project:
-                project["skills"] = [s for s in project["skills"] if s in highlighted]
+                project["skills"] = filter_skills_by_highlighted(project["skills"], highlighted)
 
     # Resolve overrides so the API returns the effective values
     for project in snapshot.get("projects", []):

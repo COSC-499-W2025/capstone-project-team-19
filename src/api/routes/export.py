@@ -26,6 +26,9 @@ from src.export.portfolio_docx import export_portfolio_to_docx
 from src.export.portfolio_pdf import export_portfolio_to_pdf
 from src.insights.rank_projects.rank_project_importance import collect_project_data
 from src.services.resume_fit_service import build_resume_fit_status
+from src.services.skill_preferences_service import get_highlighted_skills_for_display
+from src.db.skill_preferences import has_skill_preferences
+from src.services.resume_fit_service import build_resume_fit_status
 
 
 router = APIRouter(tags=["export"])
@@ -72,6 +75,13 @@ def export_resume_docx(
     experience_entries = list_user_experience_entries(conn, user_id)
     _assert_resume_export_allowed(username=username,record=record,user_profile=user_profile,education_entries=education_entries,experience_entries=experience_entries,)
 
+    highlighted_skills = None
+    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
+       has_skill_preferences(conn, user_id, "global"):
+        highlighted_skills = get_highlighted_skills_for_display(
+            conn, user_id, context="resume", context_id=resume_id
+        )
+
     temp_dir = tempfile.mkdtemp()
     background_tasks.add_task(_cleanup_temp_dir, temp_dir)
 
@@ -82,6 +92,7 @@ def export_resume_docx(
         user_profile=user_profile,
         education_entries=education_entries,
         experience_entries=experience_entries,
+        highlighted_skills=highlighted_skills,
     )
 
     return FileResponse(
@@ -117,6 +128,13 @@ def export_resume_pdf(
         experience_entries=experience_entries,
     )
 
+    highlighted_skills = None
+    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
+       has_skill_preferences(conn, user_id, "global"):
+        highlighted_skills = get_highlighted_skills_for_display(
+            conn, user_id, context="resume", context_id=resume_id
+        )
+
     temp_dir = tempfile.mkdtemp()
     background_tasks.add_task(_cleanup_temp_dir, temp_dir)
 
@@ -127,6 +145,7 @@ def export_resume_pdf(
         user_profile=user_profile,
         education_entries=education_entries,
         experience_entries=experience_entries,
+        highlighted_skills=highlighted_skills,
     )
 
     return FileResponse(
@@ -155,6 +174,13 @@ def preview_resume_pdf(
     education_entries = list_user_education_entries(conn, user_id)
     experience_entries = list_user_experience_entries(conn, user_id)
 
+    highlighted_skills = None
+    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
+       has_skill_preferences(conn, user_id, "global"):
+        highlighted_skills = get_highlighted_skills_for_display(
+            conn, user_id, context="resume", context_id=resume_id
+        )
+
     temp_dir = tempfile.mkdtemp()
     background_tasks.add_task(_cleanup_temp_dir, temp_dir)
 
@@ -165,6 +191,7 @@ def preview_resume_pdf(
         user_profile=user_profile,
         education_entries=education_entries,
         experience_entries=experience_entries,
+        highlighted_skills=highlighted_skills,
     )
 
     return FileResponse(
