@@ -245,27 +245,27 @@ Continue implementing public page for the output and insights. Planning to have 
 Week recap:
 These 2 weeks, I worked on 5 PRs:
 
-First PR: #617
+First PR: ([#617])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/617)
 
 This PR is the implementation of public insights and outputs pages, which filters the insights to only show the projects that are set as public.
 
-Second PR: #618
+Second PR: ([#618])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/618)
 This PR refactor the ui of the projects page, project details, public projects and public project details. FeatureTile is modified to be able to show thumbnail if exist to be used as project-card to maintain consistency.
 
-Third PR: #656
+Third PR: ([#656])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/656)
 This PR adds the toggle button at the top bar to allow account owner to check their own public page directly after modifying. It is implemented by checking whether the current logged in user is visiting their own public page. Toggle button will not show if they are viewing other account's public page.
 
-Fourth PR: #672
+Fourth PR: ([#672])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/672)
 This pr implements the edit project summary in the project detail page, by adding new patch project/{project_id}/summary endpoint. And removed the edit summary feature from the resume page.
 
 PRs I reviewed:
-in PR #619 & #601, ivona implemented the backend and frontend of profile page, and I reviewed about the validation of each fields, but i still approve it since she planned to implement it in the following week
+in PR ([#619])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/619) & ([#601])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/601), ivona implemented the backend and frontend of profile page, and I reviewed about the validation of each fields, but i still approve it since she planned to implement it in the following week
 
-#621: I reviewed this pr to add base grey star so that the user have a clue the maximum level they can achieve
+([#621])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/621): I reviewed this pr to add base grey star so that the user have a clue the maximum level they can achieve
 
-#636: I reviewed this pr to change color to follow the current baseline color palettes
+([#636])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/636): I reviewed this pr to change color to follow the current baseline color palettes
 
-#674: I approved this PR, a good implementation of top 3 showcase project
+([#674])(https://github.com/COSC-499-W2025/capstone-project-team-19/pull/674): I approved this PR, a good implementation of top 3 showcase project
 
 Next week plan: 
 No coding and delivarables due next week, will focus on exam and project voting
