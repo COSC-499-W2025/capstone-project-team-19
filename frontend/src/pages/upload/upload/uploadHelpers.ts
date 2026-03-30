@@ -1,5 +1,5 @@
 import type { ProjectType, UploadRecord } from "../../../api/uploads";
-import type { DedupCase, ProjectClassificationValue, ProjectTypeValue } from "./uploadTypes";
+import type { DedupCase, ProjectClassificationValue, ProjectNote, ProjectTypeValue } from "./uploadTypes";
 
 export const SKIPPED_PROJECT_NOTE = "Already analyzed in a previous upload and skipped here.";
 
@@ -209,13 +209,17 @@ export function getDedupCases(upload: UploadRecord | null): DedupCase[] {
   });
 }
 
-export function getProjectNotes(upload: UploadRecord | null): Record<string, string[]> {
-  const notes: Record<string, string[]> = {};
+export function getProjectNotes(upload: UploadRecord | null): Record<string, ProjectNote[]> {
+  const notes: Record<string, ProjectNote[]> = {};
 
-  function addNote(projectName: string, note: string) {
-    if (!projectName.trim() || !note.trim()) return;
+  function addNote(projectName: string, text: string, linkedProjectName?: string) {
+    if (!projectName.trim() || !text.trim()) return;
     if (!notes[projectName]) notes[projectName] = [];
-    if (!notes[projectName].includes(note)) notes[projectName].push(note);
+    const existing = notes[projectName].find(
+      (note) => note.text === text && note.linkedProjectName === linkedProjectName,
+    );
+    if (existing) return;
+    notes[projectName].push({ text, linkedProjectName });
   }
 
   const state = uploadState(upload);
@@ -232,16 +236,11 @@ export function getProjectNotes(upload: UploadRecord | null): Record<string, str
       if (existing !== projectName && currentUploadProjects.has(existing)) {
         addNote(projectName, `Similar to another project in this upload "${existing}".`);
       } else {
-        addNote(projectName, `Similar to previously analyzed project "${existing}".`);
+        addNote(projectName, `Similar to previously analyzed project "${existing}".`, existing);
       }
     } else {
       addNote(projectName, "Similar to a previously analyzed project.");
     }
-  }
-
-  const newVersions = asStringMap(state.dedup_new_versions);
-  for (const [projectName, existingProject] of Object.entries(newVersions)) {
-    addNote(projectName, `Matched to existing project history "${existingProject}" from earlier uploads.`);
   }
 
   const skipped = asStringArray(state.dedup_skipped_projects);

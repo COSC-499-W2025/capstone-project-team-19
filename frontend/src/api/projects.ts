@@ -10,6 +10,19 @@ export type Project = {
   is_public: boolean;
 };
 
+export type ProjectTextCollabContribution = {
+  contribution_summary?: string;
+  [key: string]: unknown;
+};
+
+export type ProjectContributions = {
+  manual_contribution_summary?: string;
+  llm_contribution_summary?: string;
+  non_llm_contribution_summary?: string;
+  text_collab?: ProjectTextCollabContribution;
+  [key: string]: unknown;
+};
+
 export type ProjectDetail = {
   project_summary_id: number;
   project_key: number | null;
@@ -21,7 +34,7 @@ export type ProjectDetail = {
   languages: string[];
   frameworks: string[];
   skills: string[];
-  contributions: { manual_contribution_summary?: string; [key: string]: unknown };
+  contributions: ProjectContributions;
 };
 
 export type ProjectDatesItem = {

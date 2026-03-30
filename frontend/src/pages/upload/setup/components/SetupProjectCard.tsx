@@ -21,6 +21,7 @@ type Props = {
   expanded: boolean;
   onToggle: (projectName: string) => void;
   actions: SetupFlowResult["actions"];
+  refreshUpload: SetupFlowResult["refreshUpload"];
   isMutating: boolean;
   manualOnlySummaries: boolean;
 };
@@ -36,6 +37,7 @@ export default function SetupProjectCard({
   expanded,
   onToggle,
   actions,
+  refreshUpload,
   isMutating,
   manualOnlySummaries,
 }: Props) {
@@ -54,8 +56,11 @@ export default function SetupProjectCard({
     neutral: "bg-zinc-500",
   }[statusTone];
 
-  const optionalBadgeClass = "border-amber-200 bg-amber-50 text-amber-700";
-  const optionalBadgeDotClass = "bg-amber-500";
+  const isContributionSectionWarning = (optionalWarningLabel || "").includes("missing contribution section");
+  const optionalBadgeClass = isContributionSectionWarning
+    ? "border-rose-200 bg-rose-50 text-rose-700"
+    : "border-amber-200 bg-amber-50 text-amber-700";
+  const optionalBadgeDotClass = isContributionSectionWarning ? "bg-rose-500" : "bg-amber-500";
 
   return (
     <Card className="gap-0 rounded-md border border-zinc-400 bg-white py-0 shadow-none ring-0">
@@ -116,7 +121,7 @@ export default function SetupProjectCard({
           {project.projectType === "code" ? (
             <CodeSetupSection project={project} actions={actions} isMutating={isMutating} />
           ) : project.projectType === "text" ? (
-            <TextSetupSection project={project} actions={actions} isMutating={isMutating} />
+            <TextSetupSection project={project} actions={actions} refreshUpload={refreshUpload} isMutating={isMutating} />
           ) : (
             <ProjectSetupInputsSection collaborative={project.classification === "collaborative"} />
           )}

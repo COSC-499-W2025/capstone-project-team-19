@@ -61,32 +61,32 @@ export default function PublicProjectsPage() {
 
   return (
     <PublicLayout>
-      <PageContainer className="flex flex-col gap-[20px]">
+      <PageContainer className="flex min-h-[calc(100vh-64px)] flex-col gap-[20px] bg-background pt-[12px]">
         <PageHeader
           title="Projects"
           breadcrumbs={[{ label: "Home", href: "/" }, { label: "Projects" }]}
         />
 
         {loading && (
-          <SectionCard>
+          <SectionCard className="w-full bg-white">
             <p className="text-[14px] text-[#7f7f7f]">Loading…</p>
           </SectionCard>
         )}
 
         {error && (
-          <SectionCard>
+          <SectionCard className="w-full bg-white">
             <p className="text-[14px] text-[#cc4b4b]">{error}</p>
           </SectionCard>
         )}
 
         {!loading && !error && projects.length === 0 && (
-          <SectionCard>
+          <SectionCard className="w-full bg-white">
             <p className="text-[14px] text-[#7f7f7f]">No projects yet.</p>
           </SectionCard>
         )}
 
         {!loading && !error && projects.length > 0 && (
-          <SectionCard>
+          <SectionCard className="w-full bg-white">
             <div className="flex flex-wrap gap-[20px]">
               {projects.map((p) => (
                 <FeatureTile

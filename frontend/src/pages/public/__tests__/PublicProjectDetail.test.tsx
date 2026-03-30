@@ -8,9 +8,11 @@ const mockNavigate = vi.fn()
 vi.mock('react-router-dom', () => ({
   useParams: vi.fn(() => ({ username: 'johndoe', id: '42' })),
   useNavigate: vi.fn(() => mockNavigate),
-  NavLink: ({ to, children }: { to: string; children: React.ReactNode }) => (
-    <a href={to}>{children}</a>
-  ),
+  useLocation: vi.fn(() => ({ pathname: '/public/johndoe/projects/42' })),
+  NavLink: ({ to, children }: { to: string; children: React.ReactNode | ((props: { isActive: boolean }) => React.ReactNode) }) => {
+    const content = typeof children === 'function' ? children({ isActive: false }) : children
+    return <a href={to}>{content}</a>
+  },
   Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
     <a href={to}>{children}</a>
   ),
@@ -20,6 +22,7 @@ vi.mock('../../../api/public', () => ({
   publicGetProject: vi.fn(),
   publicFetchThumbnailUrl: vi.fn(),
   publicListProjects: vi.fn(),
+  publicGetPortfolioStatus: vi.fn(),
 }))
 
 vi.mock('../../../auth/token', () => ({
@@ -34,6 +37,7 @@ import {
   publicGetProject,
   publicFetchThumbnailUrl,
   publicListProjects,
+  publicGetPortfolioStatus,
 } from '../../../api/public'
 
 const baseProject = {
@@ -57,6 +61,7 @@ function setupDefaultMocks() {
   vi.mocked(publicListProjects).mockResolvedValue([
     { project_summary_id: 42, project_name: 'Test Project', project_type: null, project_mode: null, created_at: null },
   ])
+  vi.mocked(publicGetPortfolioStatus).mockResolvedValue({ exists: true, is_public: true })
 }
 
 describe('PublicProjectDetailPage', () => {
@@ -74,10 +79,12 @@ describe('PublicProjectDetailPage', () => {
   })
 
   describe('loading and error states', () => {
-    it('shows loading state initially', () => {
+    it('shows loading state initially', async () => {
       vi.mocked(publicGetProject).mockReturnValue(new Promise(() => {}))
       render(<PublicProjectDetailPage />)
-      expect(screen.getByText('Loading…')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText('Loading…')).toBeInTheDocument()
+      })
     })
 
     it('shows error message when API fails', async () => {

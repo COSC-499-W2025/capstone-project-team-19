@@ -20,6 +20,15 @@ class UploadDTO(BaseModel):
     zip_name: Optional[str] = None
     state: Dict[str, Any] = {}
 
+class UploadListItemDTO(BaseModel):
+    upload_id: int
+    status: UploadStatus
+    zip_name: Optional[str] = None
+    created_at: Optional[str] = None
+
+class UploadListDTO(BaseModel):
+    uploads: List[UploadListItemDTO]
+
 class ClassificationsRequest(BaseModel):
     assignments: Dict[str, str]  # project_name -> individual|collaborative
 

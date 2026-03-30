@@ -302,6 +302,16 @@
   color: #555;
 }
 
+.projectsStageListNoteLink {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #0b3eb6;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
 .projectsStageBlockedNote {
   margin-top: 4px;
   color: #555;

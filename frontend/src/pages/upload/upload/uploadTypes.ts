@@ -20,6 +20,11 @@ export type DedupCase = {
   filesLabel?: string;
 };
 
+export type ProjectNote = {
+  text: string;
+  linkedProjectName?: string;
+};
+
 export const STAGES: StageDef[] = [
   { key: "upload", label: "Upload" },
   { key: "projects", label: "Projects" },

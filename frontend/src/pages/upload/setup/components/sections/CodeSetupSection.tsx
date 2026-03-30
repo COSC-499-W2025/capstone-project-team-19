@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { GitIdentityOption } from "../../../../../api/uploads";
 import type { SetupFlowResult, SetupProjectCard } from "../../types";
+import { setupPrimaryActionButtonClass } from "./buttonStyles";
 import GitHubIntegrationSection from "./GitHubIntegrationSection";
 
 type Props = {
@@ -155,7 +156,7 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
             type="button"
             onClick={onSaveIdentities}
             disabled={isMutating || project.projectKey === null}
-            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 disabled:opacity-50"
+            className={setupPrimaryActionButtonClass}
           >
             Save identity selection
           </button>
@@ -163,7 +164,6 @@ export default function CodeSetupSection({ project, actions, isMutating }: Props
         </div>
       )}
 
-      {/* --- GitHub Integration (connect, load repos, link) --- */}
       <GitHubIntegrationSection
         project={project}
         actions={actions}
