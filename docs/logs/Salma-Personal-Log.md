@@ -4,6 +4,7 @@
 
 ### Term 2
 
+- [Week 11 and Week 12 (March 16–29)](#t2-week-11-and-week-12-monday-march-16---sunday-march-29)
 - [Week 10 (March 9-15)](#t2-week-10-monday-march-9---sunday-march-15)
 - [Week 9 (Mar 2–8)](#t2-week-9-monday-2nd---sunday-8th-march)
 - [Weeks 6–8 (Feb 9–Mar 1)](#t2-weeks-6-8-monday-february-9---sunday-march-1)
@@ -302,3 +303,24 @@ I also reviewed some PRs, three of them are:
 - PR [#579](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/579) on public API endpoints, where I suggested adding documentation for the new endpoints.
 
 Next week: I plan to add tests for the Upload pages frontend UI and possibly modify the UI to better match the baseline design.
+
+## (T2 Week 11 and Week 12) Monday March 16 - Sunday March 29
+
+![Screenshot of this week's peer evaluation](./screenshots/Salma-Mar16-Mar29.PNG)
+
+I worked on PR [#633](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/633), where I focused on improving the overall upload wizard experience and fixing several usability issues. I resolved problems with incorrect duplicate analysis flags and improved the deduplication logic, while also making the Google Drive connection UI more intuitive. In addition, I added clearer instructions in the upload and setup steps, refined navigation by keeping the Next button consistent and simplifying the sidebar, and fixed smaller issues like button visibility and the missing LLM summary in the Projects tab.
+
+I worked on PR [#667](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/667), which makes the upload flow more robust when users leave midway through the process. I added backend support to cancel unfinished uploads and clean up related data, and introduced an endpoint for detecting unfinished uploads. On the frontend, I implemented flows that allow users to resume or start a new upload and ensured they return to the correct step. I also added tests to cover cleanup behavior and re-upload scenarios, preventing issues with stale file paths.
+
+I worked on PR [#669](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/669), where I added comprehensive frontend tests for the full upload wizard flow. I created shared test utilities to standardize testing, and expanded coverage across the consent, upload, setup, and analyze pages. These tests include validation checks, failure scenarios, redirects, and recovery flows, which helps improve the reliability and stability of the user experience.
+
+I worked on PR [#671](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/671), where I implemented an end-to-end authenticated change-password feature. On the backend, I added a secure API that verifies the current password and updates it using proper hashing, along with database helpers and validation rules. On the frontend, I integrated a change-password form into the Profile Security section and connected it to the API. I also added tests for both backend and frontend and updated the API documentation to reflect the new feature.
+
+I also reviewed various PRs, three of them are:
+- PR [#616](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/616) on unifying the page-level layout with the new UI. I suggested making better use of the full width and height of the layout to prevent text from overflowing and improve overall consistency.
+- PR [#666](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/666) on profile page fixes. I recommended adding a confirmation popup before users sign out to prevent accidental actions. I also suggested implementing React Router route blocking so the unsaved changes warning works properly when users navigate using the browser’s back, forward, or exit actions.
+- PR [#672](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/666) on moving the edit summary feature from the resume page to the projects page. I suggested adding proper documentation for the new endpoint. I also recommended including a warning popup for unsaved changes and flagged another bug.
+
+Other than that, I also prepared and delivered the Milestone 3 presentation with the team. I also created a video demo showcasing the upload process to clearly illustrate the full user flow.
+
+Next week: No more deliverables are expected. I plan to participate in project voting, prepare for the upcoming quiz, and complete the remaining course requirements. And... what a ride! I’m also thankful for the consistent collaboration and support from the team :)
