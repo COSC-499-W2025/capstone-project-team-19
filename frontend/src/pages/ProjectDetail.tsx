@@ -552,17 +552,17 @@ export default function ProjectDetailPage() {
           {activeTab === "summary" && (
             <div className="space-y-[14px]">
               <p className="whitespace-pre-wrap text-[14px] leading-[1.6] text-foreground">
-                {project.summary_text ?? <em className="text-[#9f9f9f]">No summary yet.</em>}
+                {normalizeContributionSummary(project.summary_text) ?? (
+                  <em className="text-[#9f9f9f]">No summary yet.</em>
+                )}
               </p>
-              {project.project_mode === "collaborative" && (
+              {contributionSummaryText && (
                 <>
                   <div className="text-[16px] font-medium text-foreground">
                     Contribution Summary
                   </div>
                   <p className="whitespace-pre-wrap text-[14px] leading-[1.6] text-foreground">
-                    {contributionSummaryText ?? (
-                      <em className="text-[#9f9f9f]">No contribution summary yet.</em>
-                    )}
+                    {contributionSummaryText}
                   </p>
                 </>
               )}

@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from src.db.uploads import get_upload_by_id, patch_upload_state
 
 
-_ALLOWED_STATUSES = {"needs_summaries", "analyzing", "done"}
+_ALLOWED_STATUSES = {"needs_file_roles", "needs_summaries", "analyzing", "done"}
 
 
 def set_manual_project_summary(
@@ -118,12 +118,23 @@ def _require_project_key_in_upload(state: dict, project_key: int) -> None:
     required = state.get("summaries_required_project_keys") or []
     required_set = set(str(x) for x in required)
 
-    # If you didn’t store the required list yet, we fail loudly so it doesn’t silently pass wrong keys.
+    # If summaries_required_project_keys is empty, this is an individual project
+    # upload (only collaborative text projects populate this list).
+    # Fall back to checking dedup_project_keys instead.
     if not required_set:
-        raise HTTPException(
-            status_code=409,
-            detail="Upload missing summaries_required_project_keys (wizard transition must set this).",
-        )
+        dedup_project_keys = state.get("dedup_project_keys") or {}
+        known_keys = set(str(v) for v in dedup_project_keys.values() if v is not None)
+        if not known_keys:
+            raise HTTPException(
+                status_code=409,
+                detail="Upload has no known project keys.",
+            )
+        if str(project_key) not in known_keys:
+            raise HTTPException(
+                status_code=404,
+                detail={"message": "Project not found in this upload", "project_key": project_key},
+            )
+        return
 
     if str(project_key) not in required_set:
         raise HTTPException(
