@@ -178,6 +178,21 @@ Handles authentication and security for the endpoints.
   }
   ```
 
+- **Logout**
+  - **Endpoint**: `POST /logout`
+  - **Description**: Logs out the currently authenticated user session. This endpoint requires a valid Bearer token and returns success; clients should also clear any locally stored token.
+  - **Headers**: `Authorization: Bearer <access_token>`
+  - **Response Status**: `200 OK` on success, `401 Unauthorized` if token is missing or invalid
+  - **Request Body**: None.
+  - **Response Body**:
+  ```json
+  {
+    "success": true,
+    "data": null,
+    "error": null
+  }
+  ```
+
 ---
 
 
