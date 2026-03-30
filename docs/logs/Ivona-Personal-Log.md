@@ -2,6 +2,7 @@
 ## Table of Contents
 
 ### Term 2
+- [Week 11-12 (March 16-March 29)](#t2-week-11-12-monday-march-16---sunday-march-29)
 - [Week 10 (March 9-March 15)](#t2-week-10-monday-march-9---sunday-march-15)
 - [Week 9 (March 2-March 8)](#t2-week-9-monday-march-2---sunday-march-8)
 - [Week 8 (Feb 9-March 1)](#t2-week-8-monday-february-9---sunday-march-1)
@@ -281,4 +282,33 @@ Next Week:
 I plan finish my PRs that I didn't merge, update the profile page in the frontend to include the new fields. And add backend , api functionality for some extra profile page features such as adding a profile picutre/editing it ect.
 
 
+## (T2 Week 11-12) Monday March 16 - Sunday March 29
+![Screenshot of this week's peer eval](./screenshots/Ivona-Mar.16-29.PNG)
 
+This sprint I worked on 4 PRs. I attended team meetings, presented milestone 3, and reviewed 5 PRs.
+
+Coding PRs:
+
+1st PR:
+I worked on PR ([#601](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/601)) which creates the api endpoints for the profile page fields, his was a PR that i worked on last sprint but never fully finished / or got merged in time so I finished it this week.
+
+2nd PR:
+I worked on PR ([#619](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/619)) which worked on the frontend of the profile page, it adds the profile detail to it allowing the user to edit them, the certification, education, profile summary, and experience. This is stuff that is connected to the resume which can be edited directly in the profile page.
+
+3rd PR:
+I worked on PR ([#666](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/666)) which makes all the changes from peer-testing for the profile page and adds the functionality for the logout function. The chages were making the placeholder data clearer,and adding pop up warnings.
+
+4th PR:
+I worked on PR ([#675](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/675)) which was to make the resume restricted to 1-page, this required backend changes and I also added a preview of the resume which was a new feature but it felt like it was apporopriate with how we decided to give the user a warning if the resume was longer than 1 page and I also added warning if the page is longer because of their own edits to the resume.
+
+PRs I reviewed:
+
+1st PR review (Timmi's): ([#637](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/637)) on adding the funcunality of adding/ removing projects to/from the resumes.
+
+2nd PR review (Timmi's) ([#644](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/644)) on changing the colouring of the heatmap.
+
+3rd PR review (Ammar's) ([#660](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/660)) changing the path of the outputs page to just be the resume page ans scratching the inbetween stage we had.
+
+4th PR review (Ammar's) ([#661](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/661)) which was refactoring the resume page.
+
+5th PR review (Ammar's) ([#662](https://github.com/COSC-499-W2025/capstone-project-team-19/pull/662)) on adding the delete profile functionality.
