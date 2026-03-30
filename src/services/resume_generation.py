@@ -12,6 +12,7 @@ from src.menu.resume.helpers import (
 )
 from src.models.project_summary import ProjectSummary
 from src.services.skill_preferences_service import get_highlighted_skills_for_display
+from src.services.resume_fit_service import tighten_generated_resume_snapshot
 
 
 def load_project_summaries_by_ids(
@@ -75,7 +76,7 @@ def build_resume_snapshot_data(
     # via get_resume_by_id and export routes.
     snapshot = build_resume_snapshot(summaries)
     snapshot = enrich_snapshot_with_contributions(conn, user_id, snapshot)
-
+    snapshot = tighten_generated_resume_snapshot(conn, user_id, snapshot)
     highlighted_skills = get_highlighted_skills_for_display(
         conn=conn,
         user_id=user_id,
@@ -83,7 +84,10 @@ def build_resume_snapshot_data(
         context_id=resume_id,
     )
     rendered = render_snapshot(
-        conn, user_id, snapshot, print_output=print_output,
+        conn,
+        user_id,
+        snapshot,
+        print_output=print_output,
         highlighted_skills=highlighted_skills if highlighted_skills else None,
     )
     return snapshot, rendered

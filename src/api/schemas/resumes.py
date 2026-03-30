@@ -33,6 +33,48 @@ class AggregatedSkillsDTO(BaseModel):
     technical_skills: List[str] = []
     writing_skills: List[str] = []
 
+
+class ResumeContactDTO(BaseModel):
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    linkedin: Optional[str] = None
+    github: Optional[str] = None
+    location: Optional[str] = None
+
+
+class ResumeEducationEntryDTO(BaseModel):
+    entry_id: int
+    entry_type: Optional[str] = None
+    title: Optional[str] = None
+    organization: Optional[str] = None
+    date_text: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ResumeExperienceEntryDTO(BaseModel):
+    entry_id: int
+    role: Optional[str] = None
+    company: Optional[str] = None
+    date_text: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ResumePreviewDTO(BaseModel):
+    display_name: str
+    contact: ResumeContactDTO
+    profile_text: Optional[str] = None
+    education_entries: List[ResumeEducationEntryDTO] = []
+    experience_entries: List[ResumeExperienceEntryDTO] = []
+    certificate_entries: List[ResumeEducationEntryDTO] = []
+
+class ResumeOnePageStatusDTO(BaseModel):
+    fits_one_page: bool
+    page_count: int
+    overflow_detected: bool
+    overflow_mode: Literal["none", "block", "warn"]
+    overflow_reason: Optional[str] = None
+    has_manual_project_edits: bool = False
+
 class ResumeDetailDTO(BaseModel):
     id: int
     name: str
@@ -40,6 +82,8 @@ class ResumeDetailDTO(BaseModel):
     projects: List[ResumeProjectDTO] = []
     aggregated_skills: AggregatedSkillsDTO = AggregatedSkillsDTO()
     rendered_text: Optional[str] = None
+    one_page_status: ResumeOnePageStatusDTO
+    preview: ResumePreviewDTO
 
 class ResumeGenerateRequestDTO(BaseModel):
     name: str

@@ -44,6 +44,48 @@ export interface ResumeDetail {
     writing_skills: string[];
   };
   rendered_text: string | null;
+  one_page_status: {
+    fits_one_page: boolean;
+    page_count: number;
+    overflow_detected: boolean;
+    overflow_mode: "none" | "block" | "warn";
+    overflow_reason: string | null;
+    has_manual_project_edits: boolean;
+  };
+  preview: {
+    display_name: string;
+    contact: {
+      phone: string | null;
+      email: string | null;
+      linkedin: string | null;
+      github: string | null;
+      location: string | null;
+    };
+    profile_text: string | null;
+    education_entries: {
+      entry_id: number;
+      entry_type: string | null;
+      title: string | null;
+      organization: string | null;
+      date_text: string | null;
+      description: string | null;
+    }[];
+    experience_entries: {
+      entry_id: number;
+      role: string | null;
+      company: string | null;
+      date_text: string | null;
+      description: string | null;
+    }[];
+    certificate_entries: {
+      entry_id: number;
+      entry_type: string | null;
+      title: string | null;
+      organization: string | null;
+      date_text: string | null;
+      description: string | null;
+    }[];
+  };
 }
 
 export interface RankedProject {
@@ -156,6 +198,10 @@ export async function downloadResumeDocx(id: number) {
 export async function downloadResumePdf(id: number) {
   const blob = await api.getBlob(`/resume/${id}/export/pdf`);
   triggerDownload(blob, `resume_${id}.pdf`);
+}
+
+export function getResumePdfPreviewBlob(id: number) {
+  return api.getBlob(`/resume/${id}/preview/pdf`);
 }
 
 function triggerDownload(blob: Blob, filename: string) {

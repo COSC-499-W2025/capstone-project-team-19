@@ -25,8 +25,10 @@ from src.db.user_experience import list_user_experience_entries
 from src.export.portfolio_docx import export_portfolio_to_docx
 from src.export.portfolio_pdf import export_portfolio_to_pdf
 from src.insights.rank_projects.rank_project_importance import collect_project_data
+from src.services.resume_fit_service import build_resume_fit_status
 from src.services.skill_preferences_service import get_highlighted_skills_for_display
 from src.db.skill_preferences import has_skill_preferences
+from src.services.resume_fit_service import build_resume_fit_status
 
 
 router = APIRouter(tags=["export"])
@@ -35,6 +37,18 @@ router = APIRouter(tags=["export"])
 def _cleanup_temp_dir(path: str) -> None:
     """Remove temporary directory after response is sent."""
     shutil.rmtree(path, ignore_errors=True)
+
+
+def _assert_resume_export_allowed(*,username: str,record: dict,user_profile: dict,education_entries: list[dict],experience_entries: list[dict],) -> None:
+    fit_status = build_resume_fit_status(
+        username=username,
+        record=record,
+        user_profile=user_profile,
+        education_entries=education_entries,
+        experience_entries=experience_entries,
+    )
+    if fit_status["overflow_mode"] == "block":
+        raise HTTPException(status_code=400, detail=fit_status["overflow_reason"])
 
 
 # ------------------------------------------------------------------------------
@@ -59,6 +73,7 @@ def export_resume_docx(
     user_profile = get_user_profile(conn, user_id)
     education_entries = list_user_education_entries(conn, user_id)
     experience_entries = list_user_experience_entries(conn, user_id)
+    _assert_resume_export_allowed(username=username,record=record,user_profile=user_profile,education_entries=education_entries,experience_entries=experience_entries,)
 
     highlighted_skills = None
     if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
@@ -95,6 +110,59 @@ def export_resume_pdf(
     conn: Connection = Depends(get_db),
 ):
     """Export a resume to PDF format."""
+    user_id = current_user["id"]
+    username = current_user["username"]
+
+    record = get_resume_snapshot(conn, user_id, resume_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    user_profile = get_user_profile(conn, user_id)
+    education_entries = list_user_education_entries(conn, user_id)
+    experience_entries = list_user_experience_entries(conn, user_id)
+    _assert_resume_export_allowed(
+        username=username,
+        record=record,
+        user_profile=user_profile,
+        education_entries=education_entries,
+        experience_entries=experience_entries,
+    )
+
+    highlighted_skills = None
+    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
+       has_skill_preferences(conn, user_id, "global"):
+        highlighted_skills = get_highlighted_skills_for_display(
+            conn, user_id, context="resume", context_id=resume_id
+        )
+
+    temp_dir = tempfile.mkdtemp()
+    background_tasks.add_task(_cleanup_temp_dir, temp_dir)
+
+    filepath = export_resume_record_to_pdf(
+        username=username,
+        record=record,
+        out_dir=temp_dir,
+        user_profile=user_profile,
+        education_entries=education_entries,
+        experience_entries=experience_entries,
+        highlighted_skills=highlighted_skills,
+    )
+
+    return FileResponse(
+        path=str(filepath),
+        filename=filepath.name,
+        media_type="application/pdf",
+    )
+
+
+@router.get("/resume/{resume_id}/preview/pdf", response_class=FileResponse)
+def preview_resume_pdf(
+    resume_id: int,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+    conn: Connection = Depends(get_db),
+):
+    """Render a resume PDF preview without export blocking."""
     user_id = current_user["id"]
     username = current_user["username"]
 
