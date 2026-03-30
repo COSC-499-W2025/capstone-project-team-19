@@ -10,10 +10,15 @@ vi.mock("../../../api/outputs", () => ({
   addProjectToResume: vi.fn(),
   downloadResumeDocx: vi.fn(),
   downloadResumePdf: vi.fn(),
+  getResumePdfPreviewBlob: vi.fn(),
+  getResumeSkills: vi.fn(),
+  updateSkillVisibility: vi.fn(),
 }));
 
 vi.mock("../ExportDropdown", () => ({
-  default: () => <button>Export</button>,
+  default: (props: { disabled?: boolean }) => (
+    <button disabled={props.disabled}>Export</button>
+  ),
 }));
 vi.mock("../AddProjectModal", () => ({
   default: (props: { onClose: () => void; onAdded: () => void }) => (
@@ -35,6 +40,8 @@ import {
   getResume,
   editResume,
   removeProjectFromResume,
+  getResumePdfPreviewBlob,
+  getResumeSkills,
 } from "../../../api/outputs";
 
 const baseResume = {
@@ -67,6 +74,28 @@ const baseResume = {
     writing_skills: [],
   },
   rendered_text: null,
+  one_page_status: {
+    fits_one_page: true,
+    page_count: 1,
+    overflow_detected: false,
+    overflow_mode: "none" as const,
+    overflow_reason: null,
+    has_manual_project_edits: false,
+  },
+  preview: {
+    display_name: "Jane Doe",
+    contact: {
+      phone: "1234567890",
+      email: "jane@example.com",
+      linkedin: null,
+      github: null,
+      location: "Kelowna, BC",
+    },
+    profile_text: "A focused software student.",
+    education_entries: [],
+    experience_entries: [],
+    certificate_entries: [],
+  },
 };
 
 function setupMocks(overrides: Partial<typeof baseResume> = {}) {
@@ -76,6 +105,14 @@ function setupMocks(overrides: Partial<typeof baseResume> = {}) {
     data: resume,
     error: null,
   } as any);
+  vi.mocked(getResumePdfPreviewBlob).mockResolvedValue(
+    new Blob(["pdf"], { type: "application/pdf" })
+  );
+  vi.mocked(getResumeSkills).mockResolvedValue({
+    success: true,
+    data: { skills: [] },
+    error: null,
+  } as any);
   return resume;
 }
 
@@ -83,18 +120,27 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+if (!URL.createObjectURL) {
+  URL.createObjectURL = vi.fn(() => "blob:preview");
+}
+if (!URL.revokeObjectURL) {
+  URL.revokeObjectURL = vi.fn();
+}
+
 describe("ResumeDetail", () => {
   describe("view mode (default)", () => {
     it("renders resume name and project content", async () => {
       setupMocks();
+      const user = userEvent.setup();
       render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
 
       await waitFor(() => {
         expect(screen.getByText("My Resume")).toBeInTheDocument();
       });
-      expect(screen.getByText("Project Alpha")).toBeInTheDocument();
-      expect(screen.getByText(/Backend Developer/)).toBeInTheDocument();
-      expect(screen.getByText(/Built REST API/)).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /Preview your resume/i }));
+      expect(
+        screen.getByTitle("Resume PDF preview")
+      ).toBeInTheDocument();
     });
 
     it("shows Edit button in header", async () => {
@@ -180,6 +226,107 @@ describe("ResumeDetail", () => {
       expect(screen.getByText(/Advanced:/)).toBeInTheDocument();
       expect(screen.getByText(/Intermediate:/)).toBeInTheDocument();
       expect(screen.getByText(/Beginner:/)).toBeInTheDocument();
+    });
+
+    it("shows the one-page success banner when resume fits", async () => {
+      setupMocks();
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("This resume fits on 1 page.")).toBeInTheDocument();
+      });
+    });
+
+    it("keeps preview hidden until user expands it", async () => {
+      setupMocks();
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Preview your resume/i })
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByTitle("Resume PDF preview")).not.toBeInTheDocument();
+    });
+
+    it("hides the preview again when collapsed", async () => {
+      setupMocks();
+      const user = userEvent.setup();
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Preview your resume/i })
+        ).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: /Preview your resume/i }));
+      expect(screen.getByTitle("Resume PDF preview")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: /Preview your resume/i }));
+      expect(screen.queryByTitle("Resume PDF preview")).not.toBeInTheDocument();
+    });
+
+    it("blocks export when backend says the resume exceeds one page", async () => {
+      const user = userEvent.setup();
+      setupMocks({
+        one_page_status: {
+          fits_one_page: false,
+          page_count: 2,
+          overflow_detected: true,
+          overflow_mode: "block",
+          overflow_reason: "This resume exceeds one page and must be shortened before exporting.",
+          has_manual_project_edits: false,
+        },
+      });
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            "This resume exceeds one page and must be shortened before exporting."
+          )
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByRole("button", { name: /view suggestions on how to shorten the resume/i })
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Only provide your best 2-3 projects.")).not.toBeInTheDocument();
+      await user.click(
+        screen.getByRole("button", { name: /view suggestions on how to shorten the resume/i })
+      );
+      expect(screen.getByText("Only provide your best 2-3 projects.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
+    });
+
+    it("shows a warning and keeps export enabled after manual project edits", async () => {
+      const user = userEvent.setup();
+      setupMocks({
+        one_page_status: {
+          fits_one_page: false,
+          page_count: 2,
+          overflow_detected: true,
+          overflow_mode: "warn",
+          overflow_reason:
+            "This resume exceeds one page because of manual project edits. Export is still allowed.",
+          has_manual_project_edits: true,
+        },
+      });
+      render(<ResumeDetail resumeId={1} onBack={vi.fn()} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            "This resume exceeds one page because of manual project edits. Export is still allowed."
+          )
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Shorten the points in each project.")).not.toBeInTheDocument();
+      await user.click(
+        screen.getByRole("button", { name: /view suggestions on how to shorten the resume/i })
+      );
+      expect(screen.getByText("Shorten the points in each project.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
     });
   });
 
@@ -283,7 +430,7 @@ describe("ResumeDetail", () => {
       // Find the pencil button on the project card (not inside h2)
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
-        (b) => b.querySelector("svg") && !b.closest("h2") && b.closest("[data-slot='card-action']")
+        (b) => (b as HTMLButtonElement).title === "Edit project"
       );
       if (projectPencil) {
         await user.click(projectPencil);
@@ -291,7 +438,7 @@ describe("ResumeDetail", () => {
         await waitFor(() => {
           expect(screen.getByLabelText("Display Name")).toBeInTheDocument();
           expect(screen.getByLabelText("Key Role")).toBeInTheDocument();
-          expect(screen.getByLabelText("Summary")).toBeInTheDocument();
+          expect(screen.queryByLabelText("Summary")).not.toBeInTheDocument();
           expect(screen.getByText("Save changes")).toBeInTheDocument();
           expect(screen.getByText("Cancel")).toBeInTheDocument();
         });
@@ -307,7 +454,7 @@ describe("ResumeDetail", () => {
 
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
-        (b) => b.querySelector("svg") && !b.closest("h2") && b.closest("[data-slot='card-action']")
+        (b) => (b as HTMLButtonElement).title === "Edit project"
       );
       if (projectPencil) {
         await user.click(projectPencil);
@@ -336,7 +483,7 @@ describe("ResumeDetail", () => {
       // Click project pencil
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
-        (b) => b.querySelector("svg") && !b.closest("h2") && b.closest("[data-slot='card-action']")
+        (b) => (b as HTMLButtonElement).title === "Edit project"
       );
       if (projectPencil) {
         await user.click(projectPencil);
@@ -382,7 +529,7 @@ describe("ResumeDetail", () => {
 
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
-        (b) => b.querySelector("svg") && !b.closest("h2") && b.closest("[data-slot='card-action']")
+        (b) => (b as HTMLButtonElement).title === "Edit project"
       );
       if (projectPencil) {
         await user.click(projectPencil);
@@ -423,7 +570,7 @@ describe("ResumeDetail", () => {
 
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
-        (b) => b.querySelector("svg") && !b.closest("h2") && b.closest("[data-slot='card-action']")
+        (b) => (b as HTMLButtonElement).title === "Edit project"
       );
       if (projectPencil) {
         await user.click(projectPencil);
@@ -620,7 +767,7 @@ describe("ResumeDetail", () => {
       // Open project edit
       const buttons = screen.getAllByRole("button");
       const projectPencil = buttons.find(
-        (b) => b.querySelector("svg") && !b.closest("h2") && b.closest("[data-slot='card-action']")
+        (b) => (b as HTMLButtonElement).title === "Edit project"
       );
       if (projectPencil) {
         await user.click(projectPencil);

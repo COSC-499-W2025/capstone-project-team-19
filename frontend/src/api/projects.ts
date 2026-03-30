@@ -113,6 +113,15 @@ export function resetProjectDates(projectId: number): Promise<ProjectDatesItem> 
     .then((r) => r.data);
 }
 
+export function patchProjectSummary(
+  projectId: number,
+  body: { summary_text?: string | null; contribution_summary?: string | null },
+): Promise<ProjectDetail> {
+  return api
+    .patchJson<{ success: boolean; data: ProjectDetail }>(`/projects/${projectId}/summary`, body)
+    .then((r) => r.data);
+}
+
 export function getProjectFeedback(projectId: number): Promise<FeedbackItem[]> {
   return api
     .get<{ success: boolean; data: { project_id: number; project_name: string; feedback: FeedbackItem[] } }>(

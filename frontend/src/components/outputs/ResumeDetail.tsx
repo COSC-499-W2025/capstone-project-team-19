@@ -5,8 +5,11 @@ import {
   removeProjectFromResume,
   downloadResumeDocx,
   downloadResumePdf,
+  getResumePdfPreviewBlob,
+  getResumeSkills,
   type ResumeDetail as ResumeDetailType,
   type ResumeProject,
+  type SkillWithStatus,
 } from "../../api/outputs";
 import { MinimalConfirmDialog } from "../shared";
 import ExportDropdown from "./ExportDropdown";
@@ -31,6 +34,8 @@ import {
   X,
   Plus,
   Trash2,
+  ChevronDown,
+  ChevronUp,
   ArrowLeft,
 } from "lucide-react";
 
@@ -42,7 +47,6 @@ type Props = {
 
 type ProjectEdits = {
   display_name: string;
-  summary_text: string;
   key_role: string;
   contribution_bullets: string[];
   scope: "resume_only" | "global";
@@ -76,6 +80,15 @@ export default function ResumeDetail({
   );
   const [removingProject, setRemovingProject] = useState(false);
   const [showAddProject, setShowAddProject] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Skill preferences
+  const [skillsOpen, setSkillsOpen] = useState(false);
+  const [availableSkills, setAvailableSkills] = useState<SkillWithStatus[]>([]);
+  const [pendingSkills, setPendingSkills] = useState<Map<string, boolean>>(new Map());
+  const [savingSkills, setSavingSkills] = useState(false);
 
   function loadResume() {
     setLoading(true);
@@ -91,6 +104,36 @@ export default function ResumeDetail({
 
   useEffect(loadResume, [resumeId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+
+    if (editing || !showPreview) {
+      setPdfPreviewUrl(null);
+      setPreviewLoading(false);
+      return;
+    }
+
+    setPreviewLoading(true);
+    getResumePdfPreviewBlob(resumeId)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPdfPreviewUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setPdfPreviewUrl(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [resumeId, editing, showPreview, successMsg]);
+
   // Clear success message after 3 seconds
   useEffect(() => {
     if (!successMsg) return;
@@ -105,8 +148,64 @@ export default function ResumeDetail({
       setProjectEdits(null);
       setEditingName(false);
       setNameVal(resume?.name ?? "");
+      setSkillsOpen(false);
+      setPendingSkills(new Map());
     }
     setEditing(!editing);
+  }
+
+  /* ── Skill preferences ── */
+  function openSkillEditor() {
+    getResumeSkills(resumeId)
+      .then((r) => {
+        const skills = r.data?.skills ?? [];
+        setAvailableSkills(skills);
+        setPendingSkills(new Map(skills.map((s) => [s.skill_name, s.is_highlighted])));
+        setSkillsOpen(true);
+      })
+      .catch((e) => setErr(e.message));
+  }
+
+  function toggleSkill(skillName: string) {
+    setPendingSkills((prev) => {
+      const next = new Map(prev);
+      next.set(skillName, !next.get(skillName));
+      return next;
+    });
+  }
+
+  async function handleSaveSkills() {
+    setSavingSkills(true);
+    setErr(null);
+    try {
+      const preferences = availableSkills.map((s) => ({
+        skill_name: s.skill_name,
+        is_highlighted: pendingSkills.get(s.skill_name) ?? s.is_highlighted,
+      }));
+      const updated = await editResume(resumeId, { skill_preferences: preferences });
+      setResume(updated.data);
+      setSkillsOpen(false);
+      setSuccessMsg("Skill preferences saved");
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setSavingSkills(false);
+    }
+  }
+
+  async function handleResetSkills() {
+    setSavingSkills(true);
+    setErr(null);
+    try {
+      const updated = await editResume(resumeId, { skill_preferences_reset: true });
+      setResume(updated.data);
+      setSkillsOpen(false);
+      setSuccessMsg("Skill preferences reset to defaults");
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setSavingSkills(false);
+    }
   }
 
   /* ── Export ── */
@@ -152,7 +251,6 @@ export default function ResumeDetail({
     setEditingProjectId(p.project_summary_id);
     setProjectEdits({
       display_name: p.project_name,
-      summary_text: p.summary_text ?? "",
       key_role: p.key_role ?? "",
       contribution_bullets: [...p.contribution_bullets],
       scope: "resume_only",
@@ -181,9 +279,6 @@ export default function ResumeDetail({
       if (original) {
         if (projectEdits.display_name !== original.project_name) {
           payload.display_name = projectEdits.display_name;
-        }
-        if (projectEdits.summary_text !== (original.summary_text ?? "")) {
-          payload.summary_text = projectEdits.summary_text;
         }
         if (projectEdits.key_role !== (original.key_role ?? "")) {
           payload.key_role = projectEdits.key_role;
@@ -296,6 +391,8 @@ export default function ResumeDetail({
   const hasAnalyzedContent = hasExpertiseTiers
     ? true
     : agg.technical_skills.length > 0 || agg.writing_skills.length > 0;
+  const onePageStatus = resume.one_page_status;
+  const exportBlocked = onePageStatus.overflow_mode === "block";
 
   return (
     <div className="p-6">
@@ -375,12 +472,18 @@ export default function ResumeDetail({
             {editing ? "Done Editing" : "Edit"}
           </Button>
           {!editing && (
-            <ExportDropdown onDocx={handleExportDocx} onPdf={handleExportPdf} />
+            <ExportDropdown
+              onDocx={handleExportDocx}
+              onPdf={handleExportPdf}
+              disabled={exportBlocked}
+            />
           )}
         </div>
       </div>
 
       <hr className="my-4 border-t border-[#e5e5e5]" />
+
+      {!editing && <OnePageStatusBanner status={onePageStatus} />}
 
       {/* Success / Error banners */}
       {successMsg && (
@@ -396,37 +499,61 @@ export default function ResumeDetail({
 
       {/* Skills Summary */}
       <Card className="mb-6 rounded-2xl border-slate-200/80 bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base text-slate-900">Skills</CardTitle>
-          <p className="text-xs font-normal text-slate-500">
-            Languages and frameworks come from project detection. Advanced, Intermediate, and Beginner apply only to
-            analyzed skills below—not languages or frameworks.
-          </p>
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-base text-slate-900">Skills</CardTitle>
+            <p className="text-xs font-normal text-slate-500">
+              Languages and frameworks come from project detection. Advanced, Intermediate, and Beginner apply only to
+              analyzed skills below—not languages or frameworks.
+            </p>
+          </div>
+          {editing && !skillsOpen && (
+            <CardAction className="self-end sm:self-start">
+              <Button variant="ghost" size="sm" onClick={openSkillEditor} className="text-xs">
+                <Pencil className="size-3.5 mr-1" />
+                Manage
+              </Button>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent className="space-y-2">
-          <SkillRow label="Languages" items={agg.languages} />
-          <SkillRow label="Frameworks" items={agg.frameworks} />
+          {skillsOpen ? (
+            <SkillPreferencesPanel
+              skills={availableSkills}
+              pending={pendingSkills}
+              onToggle={toggleSkill}
+              onSave={handleSaveSkills}
+              onReset={handleResetSkills}
+              onCancel={() => setSkillsOpen(false)}
+              saving={savingSkills}
+            />
+          ) : (
+            <>
+              <SkillRow label="Languages" items={agg.languages} />
+              <SkillRow label="Frameworks" items={agg.frameworks} />
 
-          {hasAnalyzedContent && (
-            <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
-              <p className="text-sm font-semibold text-slate-900">Analyzed skills</p>
-              <div className="rounded-lg border border-slate-200/90 bg-slate-50/80 p-3">
-                <div className="space-y-2">
-                  {hasExpertiseTiers ? (
-                    <>
-                      <SkillRow label="Advanced" items={agg.advanced ?? []} />
-                      <SkillRow label="Intermediate" items={agg.intermediate ?? []} />
-                      <SkillRow label="Beginner" items={agg.beginner ?? []} />
-                    </>
-                  ) : (
-                    <>
-                      <SkillRow label="Technical" items={agg.technical_skills} />
-                      <SkillRow label="Writing" items={agg.writing_skills} />
-                    </>
-                  )}
+              {hasAnalyzedContent && (
+                <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                  <p className="text-sm font-semibold text-slate-900">Analyzed skills</p>
+                  <div className="rounded-lg border border-slate-200/90 bg-slate-50/80 p-3">
+                    <div className="space-y-2">
+                      {hasExpertiseTiers ? (
+                        <>
+                          <SkillRow label="Advanced" items={agg.advanced ?? []} />
+                          <SkillRow label="Intermediate" items={agg.intermediate ?? []} />
+                          <SkillRow label="Beginner" items={agg.beginner ?? []} />
+                        </>
+                      ) : (
+                        <>
+                          <SkillRow label="Technical" items={agg.technical_skills} />
+                          <SkillRow label="Writing" items={agg.writing_skills} />
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -513,22 +640,45 @@ export default function ResumeDetail({
           })}
         </div>
       ) : (
-        /* ── View mode: styled cards matching export structure ── */
-        <div className="space-y-4">
-          <h3 className="text-base font-semibold text-slate-900 border-b border-[#e5e5e5] pb-1">
-            Projects
-          </h3>
-          {sortedProjects.map((p, i) => (
-            <Card
-              key={i}
-              className="rounded-xl border-slate-200/80 bg-white shadow-sm"
+        <>
+          <div className="resumePreviewToggleRow">
+            <button
+              type="button"
+              className="resumePreviewToggle"
+              onClick={() => setShowPreview((value) => !value)}
+              aria-expanded={showPreview}
             >
-              <CardContent className="py-4">
-                <ProjectBlockView project={p} />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              <span>Preview your resume</span>
+              {showPreview ? (
+                <ChevronUp className="size-4" aria-hidden="true" />
+              ) : (
+                <ChevronDown className="size-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+          {showPreview && (
+            <ResumePreview
+              resume={resume}
+              pdfPreviewUrl={pdfPreviewUrl}
+              previewLoading={previewLoading}
+            />
+          )}
+          <div className="mt-6 space-y-4">
+            <h3 className="border-b border-[#e5e5e5] pb-1 text-base font-semibold text-slate-900">
+              Projects
+            </h3>
+            {sortedProjects.map((p, i) => (
+              <Card
+                key={p.project_summary_id ?? `${p.project_name}-${i}`}
+                className="rounded-xl border-slate-200/80 bg-white shadow-sm"
+              >
+                <CardContent className="py-4">
+                  <ProjectBlockView project={p} />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
       {showAddProject && resume && (
@@ -603,13 +753,93 @@ function SkillRow({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-/** View-mode project block matching export structure: name, role | dates, bullets */
+function OnePageStatusBanner({
+  status,
+}: {
+  status: ResumeDetailType["one_page_status"];
+}) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestions = [
+    "Only provide your best 2-3 projects.",
+    "Make sure your profile summary is not too long (about 2-5 sentences).",
+    "Only provide the most relevant work experience.",
+    "Only provide the most relevant awards or certificates.",
+    "Only provide the most relevant education.",
+    "Shorten the points in each project.",
+  ];
+
+  if (status.fits_one_page) {
+    return (
+      <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+        This resume fits on 1 page.
+      </div>
+    );
+  }
+
+  if (status.overflow_mode === "warn") {
+    return (
+      <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+        <p>
+          {status.overflow_reason ?? "This resume exceeds 1 page, but export is still allowed."}
+        </p>
+        <button
+          type="button"
+          className="mt-2 inline-flex items-center gap-2 font-medium underline underline-offset-2"
+          onClick={() => setShowSuggestions((value) => !value)}
+          aria-expanded={showSuggestions}
+        >
+          <span>View suggestions on how to shorten the resume</span>
+          {showSuggestions ? (
+            <ChevronUp className="size-4" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="size-4" aria-hidden="true" />
+          )}
+        </button>
+        {showSuggestions && (
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {suggestions.map((suggestion) => (
+              <li key={suggestion}>{suggestion}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
+      <p>
+        {status.overflow_reason ?? "This resume exceeds 1 page and must be shortened before export."}
+      </p>
+      <button
+        type="button"
+        className="mt-2 inline-flex items-center gap-2 font-medium underline underline-offset-2"
+        onClick={() => setShowSuggestions((value) => !value)}
+        aria-expanded={showSuggestions}
+      >
+        <span>View suggestions on how to shorten the resume</span>
+        {showSuggestions ? (
+          <ChevronUp className="size-4" aria-hidden="true" />
+        ) : (
+          <ChevronDown className="size-4" aria-hidden="true" />
+        )}
+      </button>
+      {showSuggestions && (
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          {suggestions.map((suggestion) => (
+            <li key={suggestion}>{suggestion}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function ProjectBlockView({ project: p }: { project: ResumeProject }) {
-  const dateLine = formatDateRange(p.start_date, p.end_date);
-  const role = p.key_role || "";
-  const subtitle = role && dateLine
-    ? `${role} | ${dateLine}`
-    : role || dateLine;
+  const dateRange = formatDateRange(p.start_date, p.end_date);
+  const subtitle = [p.key_role, p.project_type, p.project_mode, dateRange]
+    .filter(Boolean)
+    .join(" • ");
 
   return (
     <div>
@@ -621,12 +851,61 @@ function ProjectBlockView({ project: p }: { project: ResumeProject }) {
         </p>
       )}
 
+      {p.summary_text && (
+        <p className="mt-2 text-sm leading-relaxed text-slate-700">{p.summary_text}</p>
+      )}
+
       {p.contribution_bullets.length > 0 && (
-        <ul className="mt-1.5 list-disc pl-5 space-y-0.5">
+        <ul className="mt-1.5 list-disc space-y-0.5 pl-5">
           {p.contribution_bullets.map((b, j) => (
-            <li key={j} className="text-sm text-slate-700 leading-relaxed">{b}</li>
+            <li key={j} className="text-sm leading-relaxed text-slate-700">
+              {b}
+            </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+function ResumePreview({
+  resume,
+  pdfPreviewUrl,
+  previewLoading,
+}: {
+  resume: ResumeDetailType;
+  pdfPreviewUrl: string | null;
+  previewLoading: boolean;
+}) {
+  return (
+    <div className="resumePreviewShell">
+      <div className="resumePreviewMeta">
+        <span>Letter-size preview</span>
+        <span>Estimated pages: {resume.one_page_status.page_count}</span>
+      </div>
+
+      {previewLoading && (
+        <div className="resumePdfPreviewStatus">Loading PDF preview...</div>
+      )}
+
+      {!previewLoading && pdfPreviewUrl && (
+        <iframe
+          title="Resume PDF preview"
+          className="resumePdfPreviewFrame"
+          src={`${pdfPreviewUrl}#view=FitH&toolbar=0&navpanes=0`}
+        />
+      )}
+
+      {!previewLoading && !pdfPreviewUrl && (
+        <div className="resumePdfPreviewStatus">
+          PDF preview could not be loaded right now.
+        </div>
+      )}
+
+      {resume.one_page_status.overflow_detected && (
+        <p className="resumePreviewOverflowNote">
+          Content below the visible page boundary would spill onto another page in export.
+        </p>
       )}
     </div>
   );
@@ -654,12 +933,6 @@ function ProjectReadView({ project: p }: { project: ResumeProject }) {
           {p.frameworks.join(", ")}
         </p>
       )}
-      {p.summary_text && (
-        <p>
-          <span className="font-medium text-slate-900">Summary:</span>{" "}
-          {p.summary_text}
-        </p>
-      )}
       {p.contribution_bullets.length > 0 && (
         <div>
           <p className="font-medium text-slate-900">Contributions:</p>
@@ -682,6 +955,80 @@ function ProjectReadView({ project: p }: { project: ResumeProject }) {
     </div>
   );
 }
+
+/** Inline skill preference toggle panel */
+function SkillPreferencesPanel({
+  skills,
+  pending,
+  onToggle,
+  onSave,
+  onReset,
+  onCancel,
+  saving,
+}: {
+  skills: SkillWithStatus[];
+  pending: Map<string, boolean>;
+  onToggle: (skillName: string) => void;
+  onSave: () => void;
+  onReset: () => void;
+  onCancel: () => void;
+  saving: boolean;
+}) {
+  if (skills.length === 0) {
+    return (
+      <p className="text-sm text-slate-500">No skills found for this resume.</p>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-slate-500">
+        Toggle which skills appear on this resume.
+      </p>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+        {skills.map((s) => {
+          const checked = pending.get(s.skill_name) ?? s.is_highlighted;
+          return (
+            <label
+              key={s.skill_name}
+              className="flex items-center gap-2 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggle(s.skill_name)}
+                disabled={saving}
+                className="h-4 w-4 rounded border-slate-300 accent-slate-800"
+              />
+              <span className={`text-sm ${checked ? "text-slate-800" : "text-slate-400 line-through"}`}>
+                {s.display_name}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+      <Separator />
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button onClick={onSave} disabled={saving} size="sm" className="gap-1.5">
+          <Check className="size-3.5" />
+          {saving ? "Saving..." : "Save"}
+        </Button>
+        <Button variant="ghost" onClick={onCancel} disabled={saving} size="sm">
+          Cancel
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onReset}
+          disabled={saving}
+          className="ml-auto text-xs text-slate-500"
+        >
+          Reset to defaults
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 
 /** Edit form for a single project */
 function ProjectEditForm({
@@ -723,18 +1070,6 @@ function ProjectEditForm({
           placeholder="e.g. Backend Developer"
           value={edits.key_role}
           onChange={(e) => setEdits({ ...edits, key_role: e.target.value })}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="edit-summary">Summary</Label>
-        <Textarea
-          id="edit-summary"
-          rows={3}
-          value={edits.summary_text}
-          onChange={(e) =>
-            setEdits({ ...edits, summary_text: e.target.value })
-          }
         />
       </div>
 

@@ -23,6 +23,7 @@ class PublicProjectDetailDTO(BaseModel):
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     summary_text: Optional[str] = None
+    contribution_summary: Optional[str] = None
     languages: List[str] = []
     frameworks: List[str] = []
     skills: List[str] = []

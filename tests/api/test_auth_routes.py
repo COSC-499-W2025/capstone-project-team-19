@@ -143,6 +143,11 @@ def test_delete_account_requires_auth(client):
     assert res.status_code in (401, 422)
 
 
+# ── Logout tests ──
+
+def test_logout_success(auth_client):
+    res = auth_client.post("/auth/logout")
+
 # ── Change password tests ──
 
 def test_change_password_success(auth_client, monkeypatch):
@@ -160,6 +165,9 @@ def test_change_password_success(auth_client, monkeypatch):
     body = res.json()
     assert body["success"] is True
 
+
+def test_logout_requires_auth(client):
+    res = client.post("/auth/logout")
 
 def test_change_password_wrong_current_password_400(auth_client, monkeypatch):
     fake_user = {"user_id": 7, "username": "alice", "hashed_password": "hashed"}

@@ -23,7 +23,9 @@ from src.api.schemas.public_schemas import (
 from src.api.schemas.resumes import ResumeListDTO, ResumeListItemDTO
 from src.api.schemas.skills import SkillTimelineDTO
 from src.db.resumes import get_resume_snapshot
+from src.db.skill_preferences import has_skill_preferences
 from src.db.users import get_user_by_username
+from src.services.skill_preferences_service import get_highlighted_skills_for_display
 from src.export.resume_docx import export_resume_record_to_docx
 from src.export.resume_pdf import export_resume_record_to_pdf
 from src.services.public_portfolio_service import (
@@ -193,10 +195,17 @@ def public_export_resume_docx(
     if not record:
         raise HTTPException(status_code=404, detail="Resume not found")
 
+    highlighted_skills = None
+    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
+       has_skill_preferences(conn, user_id, "global"):
+        highlighted_skills = get_highlighted_skills_for_display(
+            conn, user_id, context="resume", context_id=resume_id
+        )
+
     temp_dir = tempfile.mkdtemp()
     background_tasks.add_task(shutil.rmtree, temp_dir, True)
 
-    filepath = export_resume_record_to_docx(username=username, record=record, out_dir=temp_dir)
+    filepath = export_resume_record_to_docx(username=username, record=record, out_dir=temp_dir, highlighted_skills=highlighted_skills)
     return FileResponse(
         path=str(filepath),
         filename=filepath.name,
@@ -217,10 +226,17 @@ def public_export_resume_pdf(
     if not record:
         raise HTTPException(status_code=404, detail="Resume not found")
 
+    highlighted_skills = None
+    if has_skill_preferences(conn, user_id, "resume", context_id=resume_id) or \
+       has_skill_preferences(conn, user_id, "global"):
+        highlighted_skills = get_highlighted_skills_for_display(
+            conn, user_id, context="resume", context_id=resume_id
+        )
+
     temp_dir = tempfile.mkdtemp()
     background_tasks.add_task(shutil.rmtree, temp_dir, True)
 
-    filepath = export_resume_record_to_pdf(username=username, record=record, out_dir=temp_dir)
+    filepath = export_resume_record_to_pdf(username=username, record=record, out_dir=temp_dir, highlighted_skills=highlighted_skills)
     return FileResponse(
         path=str(filepath),
         filename=filepath.name,
