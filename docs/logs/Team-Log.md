@@ -988,4 +988,5 @@ This was the last week of coding and deliverables. In the following weeks, The t
 | `johaneshp`     | ![Completed tasks for Johanes]()   |
 | `salmavkh`      | ![Completed tasks for Salma](screenshots/Completed-Salma-Week11-12.png)       |
 | `taoTimTim`     | ![Completed tasks for Timmi]()       |
+| `ivonanicetin`  | ![Completed tasks for Ivona](screenshots/Completed-Ivona-Week11-12.png)       |
 
