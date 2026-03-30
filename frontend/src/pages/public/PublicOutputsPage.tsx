@@ -4,6 +4,7 @@ import PublicLayout from "./PublicLayout";
 import { publicGetActiveResume, publicDownloadResumeDocx, publicDownloadResumePdf } from "../../api/public";
 import type { PublicResumeDetail, PublicResumeProject } from "../../api/public";
 import ExportDropdown from "../../components/outputs/ExportDropdown";
+import { PageContainer, PageHeader, SectionCard } from "../../components/shared";
 
 function formatDateRange(start: string | null, end: string | null): string {
     const fmt = (iso: string) => {
@@ -108,15 +109,23 @@ export default function PublicOutputsPage() {
 
     return (
         <PublicLayout>
-            {loading ? (
-                <div className="p-7"><p>Loading...</p></div>
-            ) : error ? (
-                <div className="p-7"><p className="text-[#b00020] text-xs">{error}</p></div>
-            ) : !resume ? (
-                <div className="p-7"><p>No resume has been set for this portfolio.</p></div>
-            ) : (
-                <ResumeView resume={resume} username={username!} />
-            )}
+            <PageContainer className="flex min-h-[calc(100vh-64px)] flex-col gap-[20px] bg-background pt-[12px]">
+                <PageHeader
+                    title="Outputs"
+                    breadcrumbs={[{ label: "Home", href: "/" }, { label: "Outputs" }]}
+                />
+                <SectionCard className="flex w-full flex-1 flex-col bg-white">
+                    {loading ? (
+                        <p className="text-[14px] text-[#7f7f7f]">Loading...</p>
+                    ) : error ? (
+                        <p className="text-[14px] text-[#cc4b4b]">{error}</p>
+                    ) : !resume ? (
+                        <p className="text-[14px] text-[#7f7f7f]">No resume has been set for this portfolio.</p>
+                    ) : (
+                        <ResumeView resume={resume} username={username!} />
+                    )}
+                </SectionCard>
+            </PageContainer>
         </PublicLayout>
     );
 }

@@ -1,18 +1,33 @@
 import sqlite3
 
-def find_existing_version_by_strict_fp(conn, user_id: int, fp_strict: str, *, exclude_upload_id: int | None = None):
+def find_existing_version_by_strict_fp(
+    conn,
+    user_id: int,
+    fp_strict: str,
+    *,
+    exclude_upload_id: int | None = None,
+    only_done_uploads: bool = False,
+):
     params: list[object] = [user_id, fp_strict]
     exclude_clause = ""
     if exclude_upload_id is not None:
         exclude_clause = " AND pv.upload_id != ?"
         params.append(int(exclude_upload_id))
+    done_clause = ""
+    if only_done_uploads:
+        done_clause = (
+            " AND EXISTS ("
+            "SELECT 1 FROM uploads u "
+            "WHERE u.upload_id = pv.upload_id AND LOWER(u.status) = 'done'"
+            ")"
+        )
 
     row = conn.execute(
         f"""
         SELECT pv.project_key, pv.version_key
         FROM project_versions pv
         JOIN projects p ON p.project_key = pv.project_key
-        WHERE p.user_id = ? AND pv.fingerprint_strict = ?{exclude_clause}
+        WHERE p.user_id = ? AND pv.fingerprint_strict = ?{exclude_clause}{done_clause}
         LIMIT 1
         """,
         params,

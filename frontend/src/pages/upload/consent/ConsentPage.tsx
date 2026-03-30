@@ -85,8 +85,7 @@ export default function ConsentPage() {
       username={username}
       steps={steps}
       actionLabel={submitting ? "Saving..." : "Next"}
-      onAction={onNext}
-      actionDisabled={controlsDisabled}
+      showAction={false}
       breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Upload", href: "/upload" },
@@ -190,6 +189,17 @@ export default function ConsentPage() {
             <span>No, I don&apos;t want to use LLM.</span>
           </label>
         </section>
+
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            className="h-10 min-w-[140px] rounded-md bg-[var(--upload-accent)] px-5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-70"
+            onClick={onNext}
+            disabled={controlsDisabled}
+          >
+            {submitting ? "Saving..." : "Next"}
+          </button>
+        </div>
       </div>
     </UploadWizardShell>
   );

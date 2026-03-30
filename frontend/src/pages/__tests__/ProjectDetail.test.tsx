@@ -36,6 +36,10 @@ vi.mock("../../auth/user", () => ({
   getUsername: vi.fn(() => "testuser"),
 }));
 
+vi.mock("../../api/portfolioSettings", () => ({
+  updateProjectVisibility: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("../../components/TopBar", () => ({
   default: () => <div data-testid="topbar" />,
 }));
@@ -60,6 +64,7 @@ import {
   resetProjectDates,
   deleteThumbnail,
 } from "../../api/projects";
+import { updateProjectVisibility } from "../../api/portfolioSettings";
 
 const baseProject = {
   project_summary_id: 42,
@@ -401,6 +406,28 @@ describe("ProjectDetailPage", () => {
     });
   });
 
+  describe("public dashboard visibility", () => {
+    it("shows Private selected when project is not public", async () => {
+      renderPage();
+      await waitFor(() => {
+        expect(screen.getByRole("group", { name: "Project visibility" })).toBeInTheDocument();
+      });
+      const privateBtn = screen.getByRole("button", { name: "Private" });
+      expect(privateBtn).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: "Public" })).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("calls updateProjectVisibility when switching to Public", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await waitFor(() => screen.getByRole("button", { name: "Public" }));
+      await user.click(screen.getByRole("button", { name: "Public" }));
+      await waitFor(() => {
+        expect(updateProjectVisibility).toHaveBeenCalledWith(42, true);
+      });
+    });
+  });
+
   describe("collaborative project", () => {
     it("shows contribution summary section for collaborative projects", async () => {
       vi.mocked(getProject).mockResolvedValue({
@@ -412,6 +439,38 @@ describe("ProjectDetailPage", () => {
       await waitFor(() => {
         expect(screen.getByText("Contribution Summary")).toBeInTheDocument();
         expect(screen.getByText("I built the frontend.")).toBeInTheDocument();
+      });
+    });
+
+    it("shows LLM contribution summary when manual summary is missing", async () => {
+      vi.mocked(getProject).mockResolvedValue({
+        ...baseProject,
+        project_mode: "collaborative",
+        contributions: { llm_contribution_summary: "I led architecture and API integration." },
+      });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText("Contribution Summary")).toBeInTheDocument();
+        expect(screen.getByText("I led architecture and API integration.")).toBeInTheDocument();
+      });
+    });
+
+    it("falls back to text collaboration contribution summary", async () => {
+      vi.mocked(getProject).mockResolvedValue({
+        ...baseProject,
+        project_mode: "collaborative",
+        contributions: {
+          text_collab: { contribution_summary: "I authored the methods and results sections." },
+        },
+      });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText("Contribution Summary")).toBeInTheDocument();
+        expect(screen.getByText("I authored the methods and results sections.")).toBeInTheDocument();
       });
     });
   });

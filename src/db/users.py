@@ -52,6 +52,13 @@ def get_user_auth_by_username(conn: sqlite3.Connection, username: str):
     ).fetchone()
     return row if row else None
 
+def get_user_auth_by_id(conn: sqlite3.Connection, user_id: int):
+    row = conn.execute(
+        "SELECT user_id, username, hashed_password FROM users WHERE user_id = ?",
+        (user_id,),
+    ).fetchone()
+    return row if row else None
+
 def create_user_with_password(conn: sqlite3.Connection, username: str, email: Optional[str], password_hash: str) -> int:
     cur = conn.execute(
         "INSERT INTO users (username, email, hashed_password) VALUES (?, ?, ?)",
@@ -59,6 +66,14 @@ def create_user_with_password(conn: sqlite3.Connection, username: str, email: Op
     )
     conn.commit()
     return int(cur.lastrowid)
+
+def update_user_password(conn: sqlite3.Connection, user_id: int, password_hash: str) -> bool:
+    cur = conn.execute(
+        "UPDATE users SET hashed_password = ? WHERE user_id = ?",
+        (password_hash, user_id),
+    )
+    conn.commit()
+    return cur.rowcount > 0
 
 
 def delete_user(conn: sqlite3.Connection, user_id: int) -> bool:

@@ -7,15 +7,16 @@ import {
   type ResumeListItem,
 } from "../../api/outputs";
 import ExportDropdown from "./ExportDropdown";
+import { Button } from "@/components/ui/button";
+import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
 
 type Props = {
-  onBack: () => void;
   onView: (id: number) => void;
   onEdit: (id: number) => void;
   onCreateNew: () => void;
 };
 
-export default function ResumeList({ onBack, onView, onEdit, onCreateNew }: Props) {
+export default function ResumeList({ onView, onEdit, onCreateNew }: Props) {
   const [resumes, setResumes] = useState<ResumeListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -68,50 +69,55 @@ export default function ResumeList({ onBack, onView, onEdit, onCreateNew }: Prop
   }
 
   return (
-    <div className="content">
-      <div className="outputsHeader">
-        <button className="backBtn" onClick={onBack}>
-          &larr;
-        </button>
-        <h2>Resume Items</h2>
-        <button className="primaryBtn" onClick={onCreateNew}>
+    <div className="p-6">
+      <div className="flex justify-end">
+        <Button size="sm" onClick={onCreateNew} className="gap-1.5">
+          <Plus className="size-3.5" />
           Create New Resume
-        </button>
+        </Button>
       </div>
 
-      <hr className="divider" />
+      <hr className="my-4 border-t border-[#e5e5e5]" />
 
-      {loading && <p>Loading...</p>}
-      {err && <p className="error">{err}</p>}
+      {loading && <p className="text-sm text-[#7f7f7f]">Loading...</p>}
+      {err && <p className="text-sm text-[#cc4b4b]">{err}</p>}
 
       {!loading && resumes.length === 0 && (
-        <p className="hint">No resumes yet. Create one to get started.</p>
+        <p className="text-sm text-[#7f7f7f]">No resumes yet. Create one to get started.</p>
       )}
 
-      <div className="resumeCards">
+      <div className="flex flex-col gap-3">
         {resumes.map((r) => (
-          <div key={r.id} className="resumeRow">
-            <div className="resumeInfo">
-              <span className="resumeName">{r.name}</span>
-              <span className="resumeDate">{formatDate(r.created_at)}</span>
+          <div
+            key={r.id}
+            className="flex items-center justify-between rounded-xl border border-[#e5e5e5] bg-white px-5 py-4"
+          >
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[15px] font-semibold text-foreground">{r.name}</span>
+              <span className="text-xs italic text-[#7f7f7f]">{formatDate(r.created_at)}</span>
             </div>
-            <div className="resumeActions">
+            <div className="flex items-center gap-2">
               <ExportDropdown
                 onDocx={() => handleExportDocx(r.id)}
                 onPdf={() => handleExportPdf(r.id)}
               />
-              <button className="actionBtn dark" onClick={() => onView(r.id)}>
+              <Button variant="default" size="sm" onClick={() => onView(r.id)} className="gap-1.5">
+                <Eye className="size-3.5" />
                 View
-              </button>
-              <button className="actionBtn outline" onClick={() => onEdit(r.id)}>
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => onEdit(r.id)} className="gap-1.5">
+                <Pencil className="size-3.5" />
                 Edit
-              </button>
-              <button
-                className="actionBtn outline danger"
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
                 onClick={() => handleDelete(r.id)}
+                className="gap-1.5"
               >
+                <Trash2 className="size-3.5" />
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         ))}

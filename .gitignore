@@ -24,6 +24,12 @@ Thumbs.db
 build/
 dist/
 
+# Test coverage HTML / reports (generate locally; see docs/testing.md)
+htmlcov/
+.coverage
+coverage/
+frontend/coverage/
+
 # Vite dependency cache
 frontend/.vite/
 

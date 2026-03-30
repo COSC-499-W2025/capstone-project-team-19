@@ -56,13 +56,6 @@ export default function UploadAnalyzePage() {
   });
   const [clockMs, setClockMs] = useState(() => Date.now());
 
-  const steps = [
-    { label: "1. Consent", status: "inactive" as const, to: "/upload/consent" },
-    { label: "2. Upload", status: "inactive" as const, to: "/upload/upload" },
-    { label: "3. Setup", status: "disabled" as const, disabled: true },
-    { label: "4. Analyze", status: "active" as const },
-  ];
-
   const setScope = useCallback((scope: ScopeName, patch: Partial<ScopeCard>) => {
     setCards((previous) => ({
       ...previous,
@@ -178,7 +171,7 @@ export default function UploadAnalyzePage() {
 
   const completionText = useMemo(() => {
     if (!pageMessage?.includes("finished")) return null;
-    return "All analysis is complete. You can view, manage, and customize results in the Projects or Insights tabs. You can also export them as a resume or portfolio from the Outputs tab.";
+    return "All analysis is complete. You can view, manage, and customize results in the Projects or Insights tabs. You can also export them as a resume from the Resume tab.";
   }, [pageMessage]);
 
   const derivedRunStatus = useMemo(() => {
@@ -189,6 +182,24 @@ export default function UploadAnalyzePage() {
     if (scopeStatuses.some((status) => status === "completed" || status === "skipped")) return "analyzing";
     return null;
   }, [cards.collaborative.status, cards.individual.status]);
+
+  const steps = useMemo(() => {
+    if (derivedRunStatus === "done") {
+      return [
+        { label: "1. Consent", status: "disabled" as const, disabled: true },
+        { label: "2. Upload", status: "disabled" as const, disabled: true },
+        { label: "3. Setup", status: "disabled" as const, disabled: true },
+        { label: "4. Analyze", status: "disabled" as const, disabled: true },
+      ];
+    }
+
+    return [
+      { label: "1. Consent", status: "inactive" as const, to: "/upload/consent" },
+      { label: "2. Upload", status: "inactive" as const, to: "/upload/upload" },
+      { label: "3. Setup", status: "disabled" as const, disabled: true },
+      { label: "4. Analyze", status: "active" as const },
+    ];
+  }, [derivedRunStatus]);
 
   useEffect(() => {
     const hasRunningScope = cards.individual.status === "running" || cards.collaborative.status === "running";
@@ -283,13 +294,6 @@ export default function UploadAnalyzePage() {
             <div className="flex flex-wrap justify-center gap-3">
               <button
                 type="button"
-                onClick={() => nav("/projects")}
-                className="rounded border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-900"
-              >
-                Go to Projects
-              </button>
-              <button
-                type="button"
                 onClick={() => nav("/insights")}
                 className="rounded border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-900"
               >
@@ -297,10 +301,10 @@ export default function UploadAnalyzePage() {
               </button>
               <button
                 type="button"
-                onClick={() => nav("/outputs")}
+                onClick={() => nav("/resume")}
                 className="rounded border border-zinc-300 bg-[#001166] px-4 py-2 text-sm font-medium text-white"
               >
-                Go to Outputs
+                Go to Resume
               </button>
             </div>
           </div>

@@ -177,7 +177,13 @@ describe("ResumeDetail", () => {
       render(<ResumeDetail resumeId={1} onBack={onBack} />);
 
       await waitFor(() => screen.getByText("My Resume"));
-      await user.click(screen.getByText("←"));
+      // Back button is now an icon button with ArrowLeft SVG
+      const buttons = screen.getAllByRole("button");
+      const backBtn = buttons.find(
+        (b) => b.querySelector("svg") && !b.textContent?.trim()
+      );
+      expect(backBtn).toBeDefined();
+      await user.click(backBtn!);
       expect(onBack).toHaveBeenCalled();
     });
 

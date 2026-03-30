@@ -143,6 +143,73 @@ def test_delete_account_requires_auth(client):
     assert res.status_code in (401, 422)
 
 
+# ── Logout tests ──
+
+def test_logout_success(auth_client):
+    res = auth_client.post("/auth/logout")
+
+# ── Change password tests ──
+
+def test_change_password_success(auth_client, monkeypatch):
+    fake_user = {"user_id": 7, "username": "alice", "hashed_password": "hashed"}
+    monkeypatch.setattr(auth_routes, "get_user_auth_by_id", lambda conn, user_id: fake_user)
+    monkeypatch.setattr(auth_routes, "verify_password", lambda password, hashed: True)
+    monkeypatch.setattr(auth_routes, "hash_password", lambda password: "new-hash")
+    monkeypatch.setattr(auth_routes, "update_user_password", lambda conn, user_id, password_hash: True)
+
+    res = auth_client.post(
+        "/auth/change-password",
+        json={"current_password": "OldPass123", "new_password": "NewPass123"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["success"] is True
+
+
+def test_logout_requires_auth(client):
+    res = client.post("/auth/logout")
+
+def test_change_password_wrong_current_password_400(auth_client, monkeypatch):
+    fake_user = {"user_id": 7, "username": "alice", "hashed_password": "hashed"}
+    monkeypatch.setattr(auth_routes, "get_user_auth_by_id", lambda conn, user_id: fake_user)
+    monkeypatch.setattr(auth_routes, "verify_password", lambda password, hashed: False)
+
+    res = auth_client.post(
+        "/auth/change-password",
+        json={"current_password": "WrongPass123", "new_password": "NewPass123"},
+    )
+    assert res.status_code == 400
+    assert res.json()["detail"] == "Current password is incorrect"
+
+
+def test_change_password_rejects_same_current_and_new_password_400(auth_client):
+    res = auth_client.post(
+        "/auth/change-password",
+        json={"current_password": "SamePass123", "new_password": "SamePass123"},
+    )
+    assert res.status_code == 400
+    assert res.json()["detail"] == "New password must be different from current password"
+
+
+def test_change_password_rejects_weak_new_password_422(auth_client, monkeypatch):
+    fake_user = {"user_id": 7, "username": "alice", "hashed_password": "hashed"}
+    monkeypatch.setattr(auth_routes, "get_user_auth_by_id", lambda conn, user_id: fake_user)
+
+    res = auth_client.post(
+        "/auth/change-password",
+        json={"current_password": "OldPass123", "new_password": "abc"},
+    )
+    assert res.status_code == 422
+
+
+def test_change_password_requires_auth(client):
+    res = client.post(
+        "/auth/change-password",
+        json={"current_password": "OldPass123", "new_password": "NewPass123"},
+    )
+    assert res.status_code in (401, 422)
+
+
 # ── Integration test: real DB cascade ──
 
 def test_delete_user_cascades_all_related_data():
